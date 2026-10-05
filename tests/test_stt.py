@@ -215,7 +215,8 @@ def test_adjacent_speaker_markers_preserve_word_boundary(tmp_path):
 
 @pytest.mark.parametrize("status, kind", [
     (401, "credential"), (403, "credential"), (402, "quota"), (429, "rate_limit"),
-    (400, "invalid_request"), (404, "not_found"), (415, "unsupported_media"), (503, "availability")])
+    (400, "invalid_request"), (404, "not_found"), (413, "too_large"), (415, "unsupported_media"),
+    (503, "availability")])
 def test_failure_reports_error_kind(tmp_path, status, kind):
     path = tmp_path / "sample.ogg"
     path.write_bytes(b"OggSsynthetic")
@@ -250,3 +251,15 @@ def test_success_has_no_error_kind(tmp_path):
         mock.post(URL).respond(json={"text": "hello"})
         result = stt.FishAudioTranscriptionProvider().transcribe(path)
     assert result["success"] and "error_kind" not in result
+
+
+@pytest.mark.parametrize("kind_of_path", ["missing", "directory"])
+def test_unreadable_local_file_is_invalid_request_not_availability(tmp_path, kind_of_path):
+    path = tmp_path / ("missing.ogg" if kind_of_path == "missing" else "folder.ogg")
+    if kind_of_path == "directory":
+        path.mkdir()
+    with respx.mock() as mock:
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+        assert not mock.calls
+    assert not result["success"] and result["error_kind"] == "invalid_request"
+    assert "Could not read the audio file" in result["error"] and str(tmp_path) not in result["error"]

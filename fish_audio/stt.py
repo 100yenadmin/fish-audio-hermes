@@ -70,7 +70,14 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
                 if re.fullmatch(r"[a-z]{2,3}", primary):
                     fields["language"] = primary
             base_url = _base_url(transport_settings().get("base_url", DEFAULT_BASE_URL))
-            data = client.transcribe_audio(path.read_bytes(), path.name,
+            try:
+                audio = path.read_bytes()
+            except OSError:
+                # A missing or unreadable local file is the caller's input, not a Fish outage.
+                result.update(error_kind="invalid_request", error=str(FishAudioError(
+                    "invalid_request", None, None, "Could not read the audio file. Check the path and try again.")))
+                return result
+            data = client.transcribe_audio(audio, path.name,
                                            MIMES.get(path.suffix.lower(), "application/octet-stream"),
                                            fields, key=key, base_url=base_url, model=chosen)
             transcript = re.sub(r"<\|speaker:\d+\|>", " ", data["text"])
