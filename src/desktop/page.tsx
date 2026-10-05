@@ -520,7 +520,7 @@ function AccountTab({ pin }: { pin: AgentPin }) {
       </div>
       <div style={card}>
         <div style={{ ...muted, fontSize: 12 }}>{S.plan}</div>
-        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: 'capitalize' }}>{data.package_unavailable ? S.planUnavailable : plan?.type ?? S.noPlan}</div>
+        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: data.package_unavailable ? 'none' : 'capitalize' }}>{data.package_unavailable ? S.planUnavailable : plan?.type ?? S.noPlan}</div>
         {plan && (
           <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
             {typeof plan.total === 'number' && <div>{S.planBalance(Number(plan.balance ?? 0), plan.total)}</div>}

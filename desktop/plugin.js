@@ -903,7 +903,7 @@ function AccountTab({ pin }) {
     ] }),
     /* @__PURE__ */ jsxs3("div", { style: card, children: [
       /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12 }, children: S.plan }),
-      /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: "capitalize" }, children: data.package_unavailable ? S.planUnavailable : plan?.type ?? S.noPlan }),
+      /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: data.package_unavailable ? "none" : "capitalize" }, children: data.package_unavailable ? S.planUnavailable : plan?.type ?? S.noPlan }),
       plan && /* @__PURE__ */ jsxs3("div", { style: { ...muted, fontSize: 12, lineHeight: 1.7 }, children: [
         typeof plan.total === "number" && /* @__PURE__ */ jsx3("div", { children: S.planBalance(Number(plan.balance ?? 0), plan.total) }),
         plan.finished_at && /* @__PURE__ */ jsx3("div", { children: (renews(plan) ? S.renews : S.periodEnds)(String(plan.finished_at).slice(0, 10)) })

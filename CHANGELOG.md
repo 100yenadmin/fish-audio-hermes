@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.1 — 2026-10-06
+## 0.3.1 — 2026-10-05
 
 - Voices page polish:
   - the credit chip always reflects a billed preview or design;
