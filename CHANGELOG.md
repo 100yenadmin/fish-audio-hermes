@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2 — 2026-10-06
+
+- **Switching agents in Hermes Desktop no longer shows the previous agent's Voices entries.** When you switched from an
+  agent with the Fish Audio gateway plugin to one without it, the Voices sidebar row, credit chip and palette
+  commands stayed until the new agent answered "not found", and stayed for good if it timed out. A new agent now starts
+  with them hidden until its own gateway answers. For the same agent, a transient error still never hides them.
+- **Turning the plugin off and on again starts fresh.** Before, after you disabled the plugin, switched agents and
+  enabled it again, the Voices page briefly showed the previous agent's availability and balance. Now it starts
+  unknown and loads the current agent's.
+
 ## 1.0.1 — 2026-10-05
 
 - **Transcription failures say what kind of failure they are.** A failed transcription now carries `error_kind`

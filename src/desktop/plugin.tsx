@@ -59,7 +59,8 @@ function CreditChip() {
 
 /** The Voices route is always registered (a restored /fish-audio never falls through to the session route).
  *  The sidebar row, status-bar chip and palette commands appear only while the selected agent's gateway answers
- *  /available. Re-probe when the agent changes and every 60 s; remove them only on a definite 404. A generation
+ *  /available. Re-probe when the agent changes and every 60 s. For the same agent they go away only on a definite 404,
+ *  so a transient error never flaps them; a new agent starts hidden until its own gateway answers. A generation
  *  counter makes only the newest probe count, so a late answer about the previous agent changes nothing. */
 export function registerAvailabilityGate(ctx: PluginContext) {
   let removers: Array<() => void> | null = null
@@ -67,6 +68,9 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   let generation = 0
   let accountAt = 0
   let forcePending = false
+  // The stores outlive a disable: a re-enable may face another agent, so start unknown, never with the last answer.
+  $available.set(null)
+  $account.set(null)
 
   const show = (available: boolean) => {
     if (disposed) return
@@ -133,11 +137,12 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   void probe(true)
   ctx.setInterval(() => void probe(), PROBE_INTERVAL_MS)
   // listen, not subscribe: Nano Stores' subscribe also fires at once, which would triple the first probe.
-  // A new agent starts unknown: one agent's wallet or key state never carries over to another.
+  // A new agent starts unknown and hidden: one agent's entries, wallet or key state never carry over to another.
   const onAgentChange = () => {
     if (disposed) return
     $account.set(null)
     $available.set(null)
+    show(false)
     void probe(true)
   }
   const stops = [host.state.profile.listen(onAgentChange), host.state.connectionId.listen(onAgentChange)]
