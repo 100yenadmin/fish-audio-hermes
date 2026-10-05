@@ -12,7 +12,7 @@ from fish_audio.account import Wallet
 
 @pytest.fixture(autouse=True)
 def no_live_wallet(monkeypatch):
-    monkeypatch.setattr(settings, "cached_wallet", lambda *args: None)
+    monkeypatch.setattr("fish_audio.settings.cached_wallet", lambda *args: None)
 
 
 def test_provider_surface_and_no_network(monkeypatch):

@@ -23,7 +23,7 @@ def config(monkeypatch):
 
 @pytest.mark.parametrize("nested,call,allow,expected", [
     ("s1", "s2-pro", True, "s1"), ("bad", "s2-pro", True, "s2-pro"),
-    (None, "s2.1-pro-free", False, "s2.1-pro-free"), (None, None, False, "s2.1-pro"),
+    (None, "s2.1-pro-free", False, "s2.1-pro"), (None, None, False, "s2.1-pro"),
 ])
 def test_decided_models_do_not_request_wallet(config, monkeypatch, nested, call, allow, expected):
     config[0]["model"] = nested
@@ -70,3 +70,13 @@ def test_resolver_without_key_has_no_network(config, monkeypatch):
         raise AssertionError("wallet must not be requested")
     monkeypatch.setattr(settings, "cached_wallet", forbidden)
     assert settings.resolve_model(None, key="", base_url=BASE) == ("s2.1-pro", True)
+
+
+def test_explicit_nested_free_is_forbidden_once_per_process(config, monkeypatch, caplog):
+    config[0]["model"] = "s2.1-pro-free"
+    config[1]["allow_free_model"] = False
+    monkeypatch.setattr(settings._notice_logger, "_fish_policy_logged", False, raising=False)
+    for _ in range(2):
+        assert settings.resolve_model("s1", key="test-key", base_url=BASE) == ("s2.1-pro", False)
+    assert [r.message for r in caplog.records] == [
+        "allow_free_model is false; using s2.1-pro instead of s2.1-pro-free"]

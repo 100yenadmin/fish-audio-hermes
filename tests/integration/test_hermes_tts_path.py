@@ -19,9 +19,18 @@ def installed(installed_fish_home):
     return home, provider
 
 
-def test_ordinary_tts_delivers_mocked_fish_audio(installed):
+def test_ordinary_tts_delivers_mocked_fish_audio(installed, monkeypatch):
     home, provider = installed
     audio = (ROOT / "tests" / "fixtures" / "synthetic.mp3").read_bytes()
+    # Deliberately undecodable: this fixture proves provider output, not ffmpeg conversion.
+    written = []
+    synthesize = provider.synthesize
+    def capture(*args, **kwargs):
+        path = synthesize(*args, **kwargs)
+        written.append(Path(path))
+        return path
+    monkeypatch.setattr(provider, "synthesize", capture)
+    from hermes_cli import __version__
     from tools.tts_tool import text_to_speech_tool
     with respx.mock(assert_all_called=True) as mock:
         mock.get("https://api.fish.audio/wallet/self/api-credit?check_free_credit=true").respond(
@@ -32,13 +41,15 @@ def test_ordinary_tts_delivers_mocked_fish_audio(installed):
         assert result["provider"] == "fish-audio"
         delivered = Path(result["file_path"])
         assert delivered.is_relative_to(home)
-        assert delivered.read_bytes() == audio
+        assert written[0].read_bytes() == audio
+        assert result["voice_compatible"] is False
+        assert delivered.suffix == ".mp3"
         assert f"MEDIA:{delivered}" in result["media_tag"]
         assert route.call_count == 1
         request = route.calls.last.request
         assert request.headers["authorization"] == "Bearer test-key"
         assert dict(request.headers)["model"] == "s2.1-pro-free"
-        assert request.headers["user-agent"] == "fish-audio-hermes/0.0.1 (hermes-agent/0.21.5)"
+        assert request.headers["user-agent"] == f"fish-audio-hermes/0.0.1 (hermes-agent/{__version__})"
         payload = json.loads(request.content)
         assert payload["reference_id"] == VOICE and payload["text"] == "hello"
         assert payload["format"] == "mp3"

@@ -30,6 +30,7 @@ def atomic_write(path, chunks, cap=AUDIO_CAP):
             if not total:
                 raise ValueError("Fish Audio returned empty audio.")
             handle.flush()
+            os.fchmod(handle.fileno(), 0o644)
             os.fsync(handle.fileno())
         os.replace(temporary, path)
         temporary = None

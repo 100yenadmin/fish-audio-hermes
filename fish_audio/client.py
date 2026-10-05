@@ -5,7 +5,6 @@ import threading
 import time
 
 import httpx
-import msgpack
 
 from .errors import FishAudioError, response_error
 from .media import atomic_write
@@ -76,6 +75,7 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
     body = {k: v for k, v in params.items() if k not in {"model", "model_defaulted", "base_url", "streaming"}}
     headers = request_headers(key, model)
     if _has_bytes(body.get("references")):
+        import msgpack
         headers["Content-Type"] = "application/msgpack"
         payload = {"content": msgpack.packb(body, use_bin_type=True)}
     else:
@@ -114,12 +114,12 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
         sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))
 
 
-def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sleep=None):
+def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sleep=None, read_timeout=300):
     """Multipart ASR through the same client, with safe errors and bounded retries."""
     if model not in {"transcribe-1-pro", "transcribe-1"}:
         raise ValueError("Unknown Fish Audio ASR model.")
     sleep = time.sleep if sleep is None else sleep
-    timeout = httpx.Timeout(connect=10, read=300, write=60, pool=10)
+    timeout = httpx.Timeout(connect=10, read=read_timeout, write=60, pool=10)
     for attempt in range(3):
         received = False
         response_headers = None
@@ -145,6 +145,8 @@ def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sle
                         raise ValueError("invalid ASR response")
                 except (ValueError, UnicodeError):
                     raise response_error(response.status_code, response.headers, key=key) from None
+                if response.headers.get("x-request-id") and not data.get("request_id"):
+                    data["request_id"] = response.headers["x-request-id"]
                 return data
         except httpx.TransportError:
             error = response_error(None, response_headers, key=key)
@@ -154,3 +156,65 @@ def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sle
         if received or not retryable or attempt == 2:
             raise error from None
         sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))
+
+
+def _json_request(method, path, key, base_url, *, timeout=60, **payload):
+    """Only GET is retried: mutations may have succeeded before a disconnect."""
+    headers = request_headers(key, "voice-design-1" if path == "/v1/voice-design" else None)
+    attempts = 3 if method == "GET" else 1
+    for attempt in range(attempts):
+        received = False
+        response_headers = None
+        try:
+            limits = httpx.Timeout(connect=10, read=timeout, write=60, pool=10)
+            with _http_client().stream(method, base_url.rstrip("/") + path,
+                                       headers=headers, timeout=limits, **payload) as response:
+                response_headers = response.headers
+                if not 200 <= response.status_code < 300:
+                    try:
+                        body = _error_body(response)
+                    except httpx.TransportError:
+                        body = b""
+                    raise response_error(response.status_code, response.headers, body, key=key)
+                if response.status_code == 204:
+                    return {}
+                body = bytearray()
+                for chunk in response.iter_bytes():
+                    received = received or bool(chunk)
+                    body.extend(chunk)
+                    if len(body) > 64 * 1024 * 1024:
+                        raise FishAudioError("too_large", None, None, "Fish Audio response exceeds the size cap.")
+                try:
+                    result = json.loads(body) if body else {}
+                    if not isinstance(result, dict):
+                        raise ValueError()
+                    return result
+                except (ValueError, UnicodeError):
+                    raise response_error(response.status_code, response.headers, key=key) from None
+        except httpx.TransportError:
+            error = response_error(None, response_headers, key=key)
+        except FishAudioError as exc:
+            error = exc
+        if received or not _retryable(error) and error.status is not None or attempt == attempts - 1:
+            raise error from None
+        time.sleep((0.5, 1.0)[attempt] + random.uniform(0, 0.1))
+
+
+def get_json(path, params, key, base_url):
+    return _json_request("GET", path, key, base_url, params=params)
+
+
+def post_multipart(path, data, files, key, base_url, timeout):
+    return _json_request("POST", path, key, base_url, timeout=timeout, data=data, files=files)
+
+
+def post_json(path, body, key, base_url, timeout):
+    return _json_request("POST", path, key, base_url, timeout=timeout, json=body)
+
+
+def patch_form(path, data, key, base_url):
+    return _json_request("PATCH", path, key, base_url, data=data)
+
+
+def delete(path, key, base_url):
+    return _json_request("DELETE", path, key, base_url)

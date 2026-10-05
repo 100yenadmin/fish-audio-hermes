@@ -142,11 +142,17 @@ def transport_settings():
 def resolve_model(call_model, *, key, base_url):
     config = _config()
     nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))
+    transport = _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
+    allow_free = transport.get("allow_free_model", True) is not False
     for model in (nested.get("model"), call_model):
         if isinstance(model, str) and model in MODEL_IDS:
+            if model == "s2.1-pro-free" and not allow_free:
+                if not getattr(_notice_logger, "_fish_policy_logged", False):
+                    _notice_logger._fish_policy_logged = True
+                    logger.warning("allow_free_model is false; using s2.1-pro instead of s2.1-pro-free")
+                return "s2.1-pro", False
             return model, False
-    transport = _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
-    if transport.get("allow_free_model", True) is False:
+    if not allow_free:
         return "s2.1-pro", True
     # A resolver invoked without a synthesis key must never perform a wallet request.
     wallet = cached_wallet(key, base_url) if key else None

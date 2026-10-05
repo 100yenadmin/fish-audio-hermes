@@ -31,5 +31,5 @@ config_schema:
     default: auto
     label: "Streaming voice"
     description: "auto streams speech over Fish's live WebSocket in Desktop and CLI voice mode; off uses whole-file synthesis."
-provides_tools: []
-provides_hooks: []
+provides_tools: [fish_speak, fish_voices, fish_transcribe]
+provides_hooks: [transform_llm_output, pre_tool_call]

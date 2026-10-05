@@ -252,3 +252,21 @@ def test_defaulted_paid_402_carries_hint_and_trace(tmp_path):
             call(tmp_path / "out.mp3", {**PARAMS, "model_defaulted": True})
         assert "Switch to s2.1-pro and top up" in str(exc.value)
         assert exc.value.trace_id == "fish-trace"
+
+
+def test_atomic_audio_permissions(tmp_path):
+    import stat
+    path = tmp_path / "audio.ogg"
+    media.atomic_write(path, [b"OggSsynthetic"])
+    assert stat.S_IMODE(path.stat().st_mode) == 0o644
+
+
+def test_client_import_without_msgpack(monkeypatch):
+    import importlib.util
+    import sys
+    from pathlib import Path
+    monkeypatch.setitem(sys.modules, "msgpack", None)
+    spec = importlib.util.spec_from_file_location("fish_audio._client_without_msgpack", Path(client.__file__))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert callable(module.tts_to_file) and module._client is None

@@ -17,3 +17,17 @@ def test_old_host_missing_methods_only_logs(plugin, caplog):
     plugin.register(object())
     assert "register_tts_provider" in caplog.text
     assert "register_transcription_provider" in caplog.text
+
+
+def test_tool_and_hook_surface(plugin, fake_ctx, monkeypatch):
+    plugin.register(fake_ctx)
+    assert set(fake_ctx.tools) == {"fish_speak", "fish_voices", "fish_transcribe"}
+    assert set(fake_ctx.hooks) == {"transform_llm_output", "pre_tool_call"}
+    for name, tool in fake_ctx.tools.items():
+        assert tool["toolset"] == "fish_audio" and tool["schema"]["name"] == name
+        assert "billed to the user's Fish Audio account" in tool["description"]
+        module = __import__(tool["handler"].__module__, fromlist=["fish_api_key"])
+        monkeypatch.setattr(module, "fish_api_key", lambda: "")
+        assert not tool["check_fn"]()
+        monkeypatch.setattr(module, "fish_api_key", lambda: "test-key")
+        assert tool["check_fn"]()

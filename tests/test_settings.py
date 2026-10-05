@@ -47,7 +47,7 @@ def test_default_and_free_policy(config):
     assert resolve()[0]["model"] == "s2.1-pro"
     nested["model"] = "s2.1-pro-free"
     # Stage 2's ordered resolver gives explicit valid settings priority.
-    assert resolve(model="s2.1-pro-free")[0]["model"] == "s2.1-pro-free"
+    assert resolve(model="s2.1-pro-free")[0]["model"] == "s2.1-pro"
 
 
 @pytest.mark.parametrize("suffix,call_format,fmt,final", [
