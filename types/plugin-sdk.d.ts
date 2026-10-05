@@ -44,7 +44,18 @@ declare module '@hermes/plugin-sdk' {
     remove(key: string): void
   }
 
+  export interface PluginMessages {
+    [key: string]: PluginMessages | string | ((...args: never[]) => string)
+  }
+  export type PluginLocaleBundles = Partial<Record<'en' | 'zh' | 'zh-hant' | 'ja' | 'ar' | 'ru' | 'fr' | 'de' | 'es', PluginMessages>>
+  export function usePluginI18n(id: string): (key: string, ...args: unknown[]) => string
+
   export interface PluginContext {
+    i18n: {
+      register(bundles: PluginLocaleBundles): () => void
+      t(key: string, ...args: unknown[]): string
+      onLocaleChange(listener: () => void): () => void
+    }
     register(contribution: Contribution<any>): () => void
     onDispose(fn: () => void): void
     /** Both return a cancel function (not a timer id). */

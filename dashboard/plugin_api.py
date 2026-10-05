@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 _HOST_SCOPES = False
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0 — 2026-10-06
+
+- **Desktop UI translations.** The Voices page, sidebar row, credit chip and command palette follow Hermes
+  Desktop’s display language in Simplified Chinese, Traditional Chinese, Japanese, Arabic, Russian, French, German
+  and Spanish. Language changes take effect without a reload; English text stays unchanged. (#15)
+
 ## 1.1.0 — 2026-10-06
 
 - **Operator-managed keys.** When the Fish account behind an agent's key belongs to whoever runs the agent (for example

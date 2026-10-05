@@ -5,7 +5,7 @@ import { $available, $availableError, $tab, bindContext, setRefresher } from '..
 import { previewVoice, VoicesPage } from '../page'
 import plugin from '../plugin'
 import * as audio from '../audio'
-import { S } from '../strings'
+import { en } from '../locales/en'
 
 const flush = async () => {
   for (let i = 0; i < 5; i++) await act(() => new Promise(resolve => setTimeout(resolve, 0)))
@@ -96,7 +96,7 @@ describe('selected-agent dispatch and completion guards', () => {
     let button: HTMLElement
     if (action === 'delete') {
       fireEvent.click(screen.getByLabelText('Delete Narrator'))
-      fireEvent.change(screen.getByLabelText(S.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
+      fireEvent.change(screen.getByLabelText(en.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
       button = screen.getByRole('button', { name: 'Delete' })
     } else button = screen.getByRole('button', { name: action === 'use' ? 'Use' : 'Preview Narrator' })
     const notify = vi.spyOn(host, 'notify')
@@ -105,25 +105,25 @@ describe('selected-agent dispatch and completion guards', () => {
     fireEvent.click(button)
     await flush()
     expect(calls).toEqual([])
-    expect(notify).toHaveBeenCalledWith({ kind: 'error', message: S.agentChangedNothingSent })
+    expect(notify).toHaveBeenCalledWith({ kind: 'error', message: en.agentChangedNothingSent })
   })
 
   it.each(['design', 'save'])('does not dispatch %s after selection changed before the click', async action => {
     $tab.set('create')
     const { calls } = mount(async () => ({ ok: true, candidates: [candidate] }))
-    fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
+    fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
     if (action === 'save') {
-      fireEvent.click(screen.getByRole('button', { name: S.design }))
+      fireEvent.click(screen.getByRole('button', { name: en.design }))
       await flush()
-      fireEvent.change(screen.getByLabelText(`${S.saveAs} 1`), { target: { value: 'Warm' } })
+      fireEvent.change(screen.getByLabelText(`${en.saveAs} 1`), { target: { value: 'Warm' } })
     }
     const notify = vi.spyOn(host, 'notify')
     calls.length = 0
     otherSelected()
-    fireEvent.click(screen.getByRole('button', { name: action === 'design' ? S.design : S.save }))
+    fireEvent.click(screen.getByRole('button', { name: action === 'design' ? en.design : en.save }))
     await flush()
     expect(calls).toEqual([])
-    expect(notify).toHaveBeenCalledWith({ kind: 'error', message: S.agentChangedNothingSent })
+    expect(notify).toHaveBeenCalledWith({ kind: 'error', message: en.agentChangedNothingSent })
   })
 
   it('drops a late preview before caching or playback', async () => {
@@ -185,16 +185,16 @@ describe('selected-agent dispatch and completion guards', () => {
     await flush()
     let button: HTMLElement
     if (action === 'design' || action === 'save') {
-      fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
+      fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
       if (action === 'save') {
-        fireEvent.click(screen.getByRole('button', { name: S.design }))
+        fireEvent.click(screen.getByRole('button', { name: en.design }))
         await flush()
-        fireEvent.change(screen.getByLabelText(`${S.saveAs} 1`), { target: { value: 'Warm' } })
+        fireEvent.change(screen.getByLabelText(`${en.saveAs} 1`), { target: { value: 'Warm' } })
       }
-      button = screen.getByRole('button', { name: action === 'design' ? S.design : S.save })
+      button = screen.getByRole('button', { name: action === 'design' ? en.design : en.save })
     } else if (action === 'delete') {
       fireEvent.click(screen.getByLabelText('Delete Narrator'))
-      fireEvent.change(screen.getByLabelText(S.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
+      fireEvent.change(screen.getByLabelText(en.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
       button = screen.getByRole('button', { name: 'Delete' })
     } else button = screen.getByRole('button', { name: 'Use' })
     const notify = vi.spyOn(host, 'notify')
@@ -205,8 +205,8 @@ describe('selected-agent dispatch and completion guards', () => {
     await flush()
     expect(notify).not.toHaveBeenCalled()
     expect(screen.queryByText('In use')).toBeNull()
-    expect(screen.queryByLabelText(`${S.saveAs} 1`)).toBe(action === 'save' ? screen.getByLabelText(`${S.saveAs} 1`) : null)
-    expect(screen.queryByText(S.saved('Warm'))).toBeNull()
+    expect(screen.queryByLabelText(`${en.saveAs} 1`)).toBe(action === 'save' ? screen.getByLabelText(`${en.saveAs} 1`) : null)
+    expect(screen.queryByText(en.saved('Warm'))).toBeNull()
     expect(calls).toHaveLength(count) // no late delete/save query invalidation
   })
 
@@ -218,16 +218,16 @@ describe('selected-agent dispatch and completion guards', () => {
     await flush()
     let button: HTMLElement
     if (action === 'design' || action === 'save') {
-      fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
+      fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
       if (action === 'save') {
-        fireEvent.click(screen.getByRole('button', { name: S.design }))
+        fireEvent.click(screen.getByRole('button', { name: en.design }))
         await flush()
-        fireEvent.change(screen.getByLabelText(`${S.saveAs} 1`), { target: { value: 'Warm' } })
+        fireEvent.change(screen.getByLabelText(`${en.saveAs} 1`), { target: { value: 'Warm' } })
       }
-      button = screen.getByRole('button', { name: action === 'design' ? S.design : S.save })
+      button = screen.getByRole('button', { name: action === 'design' ? en.design : en.save })
     } else if (action === 'delete') {
       fireEvent.click(screen.getByLabelText('Delete Narrator'))
-      fireEvent.change(screen.getByLabelText(S.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
+      fireEvent.change(screen.getByLabelText(en.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
       button = screen.getByRole('button', { name: 'Delete' })
     } else button = screen.getByRole('button', { name: action === 'use' ? 'Use' : 'Preview Narrator' })
     const notify = vi.spyOn(host, 'notify')
@@ -240,7 +240,7 @@ describe('selected-agent dispatch and completion guards', () => {
   })
 
   it('uses truthful delete consequences', () => {
-    expect(S.deleteBody).toBe('This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.')
+    expect(en.deleteBody).toBe('This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.')
   })
 })
 
@@ -255,7 +255,7 @@ describe('review follow-ups', () => {
       $tab.set(tab)
       mount(async () => ({ ...page(1), total }))
       await flush()
-      const next = screen.queryByRole('button', { name: S.next }) as HTMLButtonElement | null
+      const next = screen.queryByRole('button', { name: en.next }) as HTMLButtonElement | null
       expect(next === null || next.disabled).toBe(true)
     })
 
@@ -263,18 +263,18 @@ describe('review follow-ups', () => {
       $tab.set(tab)
       mount(async path => ({ ...page(Number(new URLSearchParams(path.split('?')[1]).get('page'))), total: 40 }))
       await flush()
-      expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(false)
-      fireEvent.click(screen.getByRole('button', { name: S.next }))
+      expect((screen.getByRole('button', { name: en.next }) as HTMLButtonElement).disabled).toBe(false)
+      fireEvent.click(screen.getByRole('button', { name: en.next }))
       await flush()
-      expect(screen.getByText(S.pageOf(2))).toBeTruthy()
-      expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(true)
+      expect(screen.getByText(en.pageOf(2))).toBeTruthy()
+      expect((screen.getByRole('button', { name: en.next }) as HTMLButtonElement).disabled).toBe(true)
     })
 
     it.each(['1000+', undefined, Number.POSITIVE_INFINITY])('keeps the full-page heuristic for total %s', async total => {
       $tab.set(tab)
       mount(async () => ({ ...page(1), total }))
       await flush()
-      expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(false)
+      expect((screen.getByRole('button', { name: en.next }) as HTMLButtonElement).disabled).toBe(false)
     })
   })
 
@@ -285,9 +285,9 @@ describe('review follow-ups', () => {
     const open = vi.spyOn(t.ctx.os, 'openExternal')
     await flush()
     expect(screen.getByText('Plan details are unavailable right now.')).toBeTruthy()
-    expect(screen.queryByText(S.noPlan)).toBeNull()
-    expect(screen.getByText(S.usd('2.54'))).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: S.plans }))
+    expect(screen.queryByText(en.noPlan)).toBeNull()
+    expect(screen.getByText(en.usd('2.54'))).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: en.plans }))
     expect(open).toHaveBeenCalledWith('https://example.invalid/plans')
   })
 
@@ -295,11 +295,11 @@ describe('review follow-ups', () => {
     const { calls } = mount(async path => page(Number(new URLSearchParams(path.split('?')[1] ?? '').get('page') ?? 1)))
     await flush()
     for (let n = 1; n < 50; n++) {
-      fireEvent.click(screen.getByRole('button', { name: S.next }))
+      fireEvent.click(screen.getByRole('button', { name: en.next }))
       await flush()
     }
-    expect(screen.getByText(S.pageOf(50))).toBeTruthy()
-    expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText(en.pageOf(50))).toBeTruthy()
+    expect((screen.getByRole('button', { name: en.next }) as HTMLButtonElement).disabled).toBe(true)
     expect(calls.some(c => c.path.includes('page=51'))).toBe(false)
   })
 
@@ -307,7 +307,7 @@ describe('review follow-ups', () => {
     $tab.set('mine')
     const { calls } = mount(async path => page(Number(new URLSearchParams(path.split('?')[1] ?? '').get('page') ?? 1)))
     await flush()
-    fireEvent.click(screen.getByRole('button', { name: S.next }))
+    fireEvent.click(screen.getByRole('button', { name: en.next }))
     await flush()
     expect(calls.map(c => c.path)).toContain('/voices?page=2&self=true')
     expect(screen.getByText('Voice 2-0')).toBeTruthy()
@@ -341,8 +341,8 @@ describe('review follow-ups', () => {
     $tab.set('create')
     let release!: (value: unknown) => void
     const { calls } = mount(path => (path === '/design' ? new Promise(resolve => (release = resolve)) : Promise.resolve({ ok: true, key: true })))
-    fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
-    const button = screen.getByRole('button', { name: S.design })
+    fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
+    const button = screen.getByRole('button', { name: en.design })
     fireEvent.click(button)
     fireEvent.click(button)
     release({ ok: true, candidates: [] })
@@ -362,7 +362,7 @@ describe('list reads stay with the captured agent', () => {
     await flush()
     vi.spyOn(host.state.profile, 'get').mockReturnValue('other')
     calls.length = 0
-    fireEvent.click(screen.getByRole('button', { name: S.next }))
+    fireEvent.click(screen.getByRole('button', { name: en.next }))
     await flush()
     expect(calls).toEqual([])
     expect(screen.queryByText('other voice 0')).toBeNull()
@@ -422,7 +422,7 @@ describe('#13 follow-ups', () => {
     t.stored.set('favourites:conn-1::default', [{ id: NARRATOR, title: 'Narrator' }, { id: 'keep', title: 'Other' }])
     await flush()
     fireEvent.click(screen.getByLabelText('Delete Narrator'))
-    fireEvent.change(screen.getByLabelText(S.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
+    fireEvent.change(screen.getByLabelText(en.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await flush()
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'keep', title: 'Other' }])
@@ -435,14 +435,14 @@ describe('#13 follow-ups', () => {
     t.stored.set('favourites:conn-1::default', [{ id: NARRATOR, title: 'Narrator' }])
     await flush()
     fireEvent.click(screen.getByLabelText('Delete Narrator'))
-    fireEvent.change(screen.getByLabelText(S.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
+    fireEvent.change(screen.getByLabelText(en.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     act(() => $tab.set('library')) // the DELETE is still pending; Library mounts with Narrator starred
     await flush()
     answer.resolve({ ok: true })
     await flush()
-    const stars = screen.getAllByRole('button', { name: new RegExp(`^(${S.favourite}|${S.unfavourite})$`) })
-    expect(stars.map(b => b.getAttribute('aria-label'))).toEqual([S.favourite, S.favourite])
+    const stars = screen.getAllByRole('button', { name: new RegExp(`^(${en.favourite}|${en.unfavourite})$`) })
+    expect(stars.map(b => b.getAttribute('aria-label'))).toEqual([en.favourite, en.favourite])
     fireEvent.click(stars[1]) // star Storyteller
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ author: 'fish', id: 'b'.repeat(32), languages: ['en'], title: 'Storyteller' }])
   })
@@ -453,9 +453,9 @@ describe('#13 follow-ups', () => {
     $available.set(null)
     $availableError.set(new Error('The request timed out.'))
     mount(async () => ({ ok: true }))
-    expect(screen.getByRole('alert').textContent).toContain(S.unreachable('default'))
+    expect(screen.getByRole('alert').textContent).toContain(en.unreachable('default'))
     expect(screen.getByText('The request timed out.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: S.checkAgain }))
+    fireEvent.click(screen.getByRole('button', { name: en.checkAgain }))
     expect(retry).toHaveBeenCalledWith(true)
   })
 })
@@ -472,8 +472,8 @@ describe('operator account page', () => {
     expect($tab.get()).toBe('library')
     expect(screen.queryByRole('tab', { name: 'Account' })).toBeNull()
     expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByText(S.operatorBilledNote)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Preview Narrator' }).title).toBe(S.operatorBilledNote)
+    expect(screen.getByText(en.operatorBilledNote)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Preview Narrator' }).title).toBe(en.operatorBilledNote)
     expect(calls.some(c => c.path === '/account')).toBe(false)
     expect(document.body.textContent).not.toContain('your Fish Audio account')
     expect(screen.queryByRole('tab', { name: 'My voices' })).toBeNull()
@@ -495,15 +495,15 @@ describe('operator account page', () => {
     $available.set({ key: true, version: '1.1.0', account: false })
     $tab.set('create')
     mount(async () => VOICES)
-    expect(screen.getByText(S.operatorCloneBilled)).toBeTruthy()
-    expect(screen.getByText(S.operatorDesignBilled)).toBeTruthy()
+    expect(screen.getByText(en.operatorCloneBilled)).toBeTruthy()
+    expect(screen.getByText(en.operatorDesignBilled)).toBeTruthy()
     expect(document.body.textContent).not.toContain('your Fish Audio account')
     expect(screen.queryByRole('tab', { name: 'My voices' })).toBeNull()
     act(() => $available.set({ key: true, version: '1.1.0', account: true }))
     expect(screen.getByRole('tab', { name: 'Account' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'My voices' })).toBeTruthy()
-    expect(screen.getByText(S.cloneBilled)).toBeTruthy()
-    expect(screen.getByText(S.designBilled)).toBeTruthy()
+    expect(screen.getByText(en.cloneBilled)).toBeTruthy()
+    expect(screen.getByText(en.designBilled)).toBeTruthy()
   })
 
   it('a voice designed here lands in Favourites, where Use reaches it without My voices', async () => {
@@ -512,18 +512,18 @@ describe('operator account page', () => {
     const { calls, t } = mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
       : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' } } : path === '/use' ? { ok: true, message: 'Saved.' } : VOICES)
     const notify = vi.spyOn(host, 'notify')
-    fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
-    fireEvent.click(screen.getByRole('button', { name: S.design }))
+    fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: en.design }))
     await flush()
-    fireEvent.change(screen.getByLabelText(`${S.saveAs} 1`), { target: { value: 'Warm' } })
-    fireEvent.click(screen.getByRole('button', { name: S.save }))
+    fireEvent.change(screen.getByLabelText(`${en.saveAs} 1`), { target: { value: 'Warm' } })
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
     await flush()
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'w'.repeat(32), title: 'Warm' }])
-    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: S.operatorSaved('Warm') })
-    expect(screen.getByText(S.operatorSaved('Warm'))).toBeTruthy()
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.operatorSaved('Warm') })
+    expect(screen.getByText(en.operatorSaved('Warm'))).toBeTruthy()
     expect(document.body.textContent).not.toContain('My voices')
     act(() => $tab.set('library'))
-    fireEvent.click(screen.getByRole('button', { name: S.favouritesOnly }))
+    fireEvent.click(screen.getByRole('button', { name: en.favouritesOnly }))
     await flush()
     fireEvent.click(screen.getByRole('button', { name: 'Use' }))
     await flush()
@@ -536,15 +536,15 @@ describe('operator account page', () => {
     const { t } = mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
       : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' } } : VOICES)
     const notify = vi.spyOn(host, 'notify')
-    fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
-    fireEvent.click(screen.getByRole('button', { name: S.design }))
+    fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: en.design }))
     await flush()
-    fireEvent.change(screen.getByLabelText(`${S.saveAs} 1`), { target: { value: 'Warm' } })
-    fireEvent.click(screen.getByRole('button', { name: S.save }))
+    fireEvent.change(screen.getByLabelText(`${en.saveAs} 1`), { target: { value: 'Warm' } })
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
     await flush()
     expect(t.stored.get('favourites:conn-1::default')).toBeUndefined()
-    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: S.saved('Warm') })
-    expect(screen.getByText(S.saved('Warm'))).toBeTruthy()
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.saved('Warm') })
+    expect(screen.getByText(en.saved('Warm'))).toBeTruthy()
   })
 
   it('offers only Check again when an operator-managed agent has no key', () => {
@@ -552,12 +552,12 @@ describe('operator account page', () => {
     const refresh = vi.fn(async () => undefined)
     setRefresher(refresh)
     const { calls } = mount(async () => VOICES)
-    expect(screen.getByText(S.operatorOnboardTitle)).toBeTruthy()
-    expect(screen.getByText(S.operatorOnboardBody)).toBeTruthy()
+    expect(screen.getByText(en.operatorOnboardTitle)).toBeTruthy()
+    expect(screen.getByText(en.operatorOnboardBody)).toBeTruthy()
     expect(screen.getAllByRole('button')).toHaveLength(1)
-    expect(screen.queryByText(S.getKey)).toBeNull()
-    expect(screen.queryByText(S.openPlugins)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: S.checkAgain }))
+    expect(screen.queryByText(en.getKey)).toBeNull()
+    expect(screen.queryByText(en.openPlugins)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: en.checkAgain }))
     expect(refresh).toHaveBeenCalled()
     expect(calls).toEqual([])
   })

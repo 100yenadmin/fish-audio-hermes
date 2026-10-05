@@ -22,6 +22,7 @@ import {
   SegmentedControl,
   useQuery,
   useQueryClient,
+  usePluginI18n,
   useValue
 } from '@hermes/plugin-sdk'
 import { type ReactNode, useEffect, useState } from 'react'
@@ -49,7 +50,7 @@ import {
 import { $playing, cachedPreview, play, playbackEpoch, releasePlayback, rememberPreview, stop } from './audio'
 import { CreateTab } from './create'
 import { $favouritesRevision, forgetFavourite, readFavourites, writeFavourites } from './favourites'
-import { LANGUAGES, LINKS, S, useAccountText } from './strings'
+import { LANGUAGES, LINKS, PLUGIN_ID, useAccountText } from './strings'
 import { BilledNote, card, LoadError, muted, Rows } from './ui'
 
 const pad = '0 24px'
@@ -57,7 +58,7 @@ const pad = '0 24px'
 /** A read for the captured agent: refused when another agent is selected now, dropped when it changed meanwhile,
  *  so one agent's results never land in another agent's query cache. */
 function readFor<T>(pin: AgentPin, path: string): Promise<T> {
-  const changed = () => new ApiError('agent_changed', S.agentChangedNothingSent)
+  const changed = () => new ApiError('agent_changed', pluginCtx().i18n.t('agentChangedNothingSent'))
   if (!samePin(currentPin(), pin)) return Promise.reject(changed())
   return call<T>(path).then(res => {
     if (!samePin(currentPin(), pin)) throw changed()
@@ -70,6 +71,7 @@ const renews = (plan: NonNullable<Account['package']>) =>
   plan.cancel_at_period_end === false && ['active', 'trialing'].includes(plan.subscription_status ?? '')
 
 export function VoicesPage() {
+  const t = usePluginI18n(PLUGIN_ID)
   const available = useValue($available)
   const availableError = useValue($availableError)
   const profile = useValue(host.state.profile)
@@ -78,7 +80,7 @@ export function VoicesPage() {
   if (available === false) {
     return (
       <Frame profile={profile}>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, maxWidth: 560, padding: pad }}>{S.notSetUp(profile)}</p>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, maxWidth: 560, padding: pad }}>{t('notSetUp', profile)}</p>
       </Frame>
     )
   }
@@ -87,9 +89,9 @@ export function VoicesPage() {
       <Frame profile={profile}>
         {availableError ? (
           <div style={{ padding: pad }}>
-            <ErrorState description={errorText(availableError)} title={S.unreachable(profile)}>
+            <ErrorState description={errorText(availableError)} title={t('unreachable', profile)}>
               <Button onClick={() => void refreshAvailability()} size="xs" variant="secondary">
-                {S.checkAgain}
+                {t('checkAgain')}
               </Button>
             </ErrorState>
           </div>
@@ -111,13 +113,14 @@ export function VoicesPage() {
 }
 
 function Frame({ children, profile, tabs }: { children: ReactNode; profile: string; tabs?: ReactNode }) {
+  const t = usePluginI18n(PLUGIN_ID)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <header style={{ alignItems: 'center', display: 'flex', gap: 10, padding: '20px 24px 12px' }}>
         <Codicon name="unmute" size={18} />
-        <h1 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{S.title}</h1>
-        <Badge variant="muted">{S.poweredBy}</Badge>
-        <span style={{ ...muted, fontSize: 12 }}>{S.forAgent(profile)}</span>
+        <h1 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{t('title')}</h1>
+        <Badge variant="muted">{t('poweredBy')}</Badge>
+        <span style={{ ...muted, fontSize: 12 }}>{t('forAgent', profile)}</span>
         <div style={{ flex: 1 }} />
         {tabs}
       </header>
@@ -127,23 +130,24 @@ function Frame({ children, profile, tabs }: { children: ReactNode; profile: stri
 }
 
 function Onboarding({ profile, operator }: { profile: string; operator: boolean }) {
+  const t = usePluginI18n(PLUGIN_ID)
   const open = (url: string) => void pluginCtx().os.openExternal(url)
   return (
     <div style={{ padding: pad }}>
       <div style={{ ...card, maxWidth: 560 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{operator ? S.operatorOnboardTitle : S.onboardTitle}</h2>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{operator ? S.operatorOnboardBody : S.onboardBody(profile)}</p>
+        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{operator ? t('operatorOnboardTitle') : t('onboardTitle')}</h2>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{operator ? t('operatorOnboardBody') : t('onboardBody', profile)}</p>
         {!operator && <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingLeft: 20 }}>
-          <li>{S.onboardStep1}</li>
-          <li>{S.onboardStep2}</li>
+          <li>{t('onboardStep1')}</li>
+          <li>{t('onboardStep2')}</li>
         </ol>}
         <div style={{ display: 'flex', gap: 8 }}>
-          {!operator && <><Button onClick={() => open(LINKS.keys)}>{S.getKey}</Button>
+          {!operator && <><Button onClick={() => open(LINKS.keys)}>{t('getKey')}</Button>
           <Button onClick={() => host.navigate('/capabilities?tab=plugins')} variant="secondary">
-            {S.openPlugins}
+            {t('openPlugins')}
           </Button></>}
           <Button onClick={() => void refreshAvailability()} variant="ghost">
-            {S.checkAgain}
+            {t('checkAgain')}
           </Button>
         </div>
       </div>
@@ -152,6 +156,7 @@ function Onboarding({ profile, operator }: { profile: string; operator: boolean 
 }
 
 function Body({ pin }: { pin: AgentPin }) {
+  const t = usePluginI18n(PLUGIN_ID)
   const selected = useValue($tab)
   const available = useValue($available)
   const operator = available && available.account === false
@@ -162,7 +167,7 @@ function Body({ pin }: { pin: AgentPin }) {
   const tabs = (
     <SegmentedControl
       onChange={(id: typeof tab) => $tab.set(id)}
-      options={(['library', 'mine', 'create', 'account'] as const).filter(id => !operator || (id !== 'account' && id !== 'mine')).map(id => ({ id, label: S.tabs[id] }))}
+      options={(['library', 'mine', 'create', 'account'] as const).filter(id => !operator || (id !== 'account' && id !== 'mine')).map(id => ({ id, label: t(`tabs.${id}`) }))}
       value={tab}
     />
   )
@@ -203,7 +208,8 @@ function useFavourites(pin: AgentPin) {
 }
 
 function Library({ pin }: { pin: AgentPin }) {
-  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
+  const t = usePluginI18n(PLUGIN_ID)
+  const billedNote = useAccountText('billedNote', 'operatorBilledNote')
   const [text, setText] = useState('')
   const [language, setLanguage] = useState('any')
   const [page, setPage] = useState(1)
@@ -224,15 +230,15 @@ function Library({ pin }: { pin: AgentPin }) {
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ width: 280 }}>
-          <SearchField aria-label={S.search} onChange={setText} placeholder={S.search} value={text} />
+          <SearchField aria-label={t('search')} onChange={setText} placeholder={t('search')} value={text} />
         </div>
         <div style={{ width: 160 }}>
           <Select onValueChange={setLanguage} value={language}>
-            <SelectTrigger aria-label={S.language}>
+            <SelectTrigger aria-label={t('language')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="any">{S.anyLanguage}</SelectItem>
+              <SelectItem value="any">{t('anyLanguage')}</SelectItem>
               {LANGUAGES.map(([code, label]) => (
                 <SelectItem key={code} value={code}>
                   {label}
@@ -243,7 +249,7 @@ function Library({ pin }: { pin: AgentPin }) {
         </div>
         <Button aria-pressed={favouritesOnly} onClick={() => setFavouritesOnly(!favouritesOnly)} size="xs" variant={favouritesOnly ? 'secondary' : 'ghost'}>
           <Codicon name={favouritesOnly ? 'star-full' : 'star-empty'} />
-          {S.favouritesOnly}
+          {t('favouritesOnly')}
         </Button>
       </div>
       <BilledNote text={billedNote} />
@@ -252,7 +258,7 @@ function Library({ pin }: { pin: AgentPin }) {
       ) : !list ? (
         <Rows />
       ) : list.length === 0 ? (
-        favouritesOnly ? <EmptyState description={S.noFavouritesHint} title={S.noFavourites} /> : <EmptyState title={S.noVoices} />
+        favouritesOnly ? <EmptyState description={t('noFavouritesHint')} title={t('noFavourites')} /> : <EmptyState title={t('noVoices')} />
       ) : (
         <VoiceList favourites={favourites} pin={pin} voices={list} />
       )}
@@ -272,15 +278,16 @@ const hasMore = (items: number | undefined, page: number, total: number | string
 }
 
 function Pager({ page, more, setPage }: { page: number; more: boolean; setPage: (page: number) => void }) {
+  const t = usePluginI18n(PLUGIN_ID)
   if (page <= 1 && !more) return null
   return (
     <div style={{ alignItems: 'center', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
       <Button disabled={page <= 1} onClick={() => setPage(page - 1)} size="xs" variant="ghost">
-        {S.prev}
+        {t('prev')}
       </Button>
-      <span style={{ ...muted, fontSize: 12 }}>{S.pageOf(page)}</span>
+      <span style={{ ...muted, fontSize: 12 }}>{t('pageOf', page)}</span>
       <Button disabled={!more} onClick={() => setPage(page + 1)} size="xs" variant="ghost">
-        {S.next}
+        {t('next')}
       </Button>
     </div>
   )
@@ -294,7 +301,7 @@ const $usePending = atom<Record<string, string>>({})
 
 /** Play a billed preview of a voice, or replay one already fetched in this window. */
 export async function previewVoice(pin: AgentPin, voiceId: string) {
-  if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
+  if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: pluginCtx().i18n.t('agentChangedNothingSent') })
   const key = `preview:${agentKey(pin)}:${voiceId}`
   if ($playing.get() === key) return stop()
   const cached = cachedPreview(key)
@@ -320,13 +327,14 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   favourites?: ReturnType<typeof useFavourites>
   onDelete?: (voice: Voice) => void
 }) {
-  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
+  const t = usePluginI18n(PLUGIN_ID)
+  const billedNote = useAccountText('billedNote', 'operatorBilledNote')
   const playing = useValue($playing)
   const [busy, setBusy] = useState<null | string>(null)
   const [used, setUsed] = useState<null | string>(null)
   const pendingUse = useValue($usePending)[agentKey(pin)]
   const run = async (id: string, action: () => Promise<unknown>) => {
-    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
+    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: pluginCtx().i18n.t('agentChangedNothingSent') })
     setBusy(id)
     try {
       await action()
@@ -346,7 +354,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
         if (!samePin(currentPin(), pin)) return
         setUsed(voice.id)
         const note = res.message && res.message !== 'Saved.' ? ` ${res.message.replace(/^Saved\.\s*/, '')}` : ''
-        host.notify({ kind: 'success', message: S.usedVoice(voice.title, pin.profile) + note })
+        host.notify({ kind: 'success', message: pluginCtx().i18n.t('usedVoice', voice.title, pin.profile) + note })
       })
     } finally {
       const { [agent]: mine, ...rest } = $usePending.get()
@@ -357,7 +365,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
     <div style={{ border: '1px solid var(--ui-stroke-tertiary)', borderRadius: 6 }}>
       {voices.map((voice, i) => {
         const key = `preview:${agentKey(pin)}:${voice.id}`
-        const meta = [voice.author, (voice.languages ?? []).join(', '), voice.task_count ? S.uses(voice.task_count) : '']
+        const meta = [voice.author, (voice.languages ?? []).join(', '), voice.task_count ? t('uses', voice.task_count) : '']
           .filter(Boolean)
           .join(' · ')
         return (
@@ -383,7 +391,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
             </div>
             <div style={{ alignItems: 'center', display: 'flex', gap: 6 }}>
               <Button
-                aria-label={`${playing === key ? S.stop : S.preview} ${voice.title}`}
+                aria-label={`${playing === key ? t('stop') : t('preview')} ${voice.title}`}
                 loading={busy === `play:${voice.id}`}
                 onClick={() => void run(`play:${voice.id}`, () => previewVoice(pin, voice.id))}
                 size="xs"
@@ -391,7 +399,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 variant="secondary"
               >
                 <Codicon name={playing === key ? 'debug-stop' : 'play'} />
-                {playing === key ? S.stop : S.preview}
+                {playing === key ? t('stop') : t('preview')}
               </Button>
               <Button
                 disabled={used === voice.id || (pendingUse !== undefined && pendingUse !== voice.id)}
@@ -400,11 +408,11 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 size="xs"
                 variant={used === voice.id ? 'ghost' : 'default'}
               >
-                {used === voice.id ? S.inUse : S.use}
+                {used === voice.id ? t('inUse') : t('use')}
               </Button>
               {favourites && (
                 <Button
-                  aria-label={favourites.has(voice.id) ? S.unfavourite : S.favourite}
+                  aria-label={favourites.has(voice.id) ? t('unfavourite') : t('favourite')}
                   onClick={() => favourites.toggle(voice)}
                   size="icon-xs"
                   style={{ color: favourites.has(voice.id) ? 'var(--ui-orange)' : undefined }}
@@ -414,7 +422,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 </Button>
               )}
               {onDelete && (
-                <Button aria-label={`${S.delete} ${voice.title}`} onClick={() => onDelete(voice)} size="icon-xs" variant="ghost">
+                <Button aria-label={`${t('delete')} ${voice.title}`} onClick={() => onDelete(voice)} size="icon-xs" variant="ghost">
                   <Codicon name="trash" />
                 </Button>
               )}
@@ -427,6 +435,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
 }
 
 function Avatar({ title }: { title: string }) {
+  const t = usePluginI18n(PLUGIN_ID)
   const hue = [...title].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360
   return (
     <div
@@ -450,7 +459,8 @@ function Avatar({ title }: { title: string }) {
 }
 
 function MyVoices({ pin }: { pin: AgentPin }) {
-  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
+  const t = usePluginI18n(PLUGIN_ID)
+  const billedNote = useAccountText('billedNote', 'operatorBilledNote')
   const client = useQueryClient()
   const [page, setPage] = useState(1)
   const queryKey = ['fish-audio', agentKey(pin), 'mine']
@@ -469,7 +479,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
       ) : !voices.data ? (
         <Rows n={3} />
       ) : voices.data.items.length === 0 ? (
-        <EmptyState description={S.mineEmptyHint} title={S.mineEmpty} />
+        <EmptyState description={t('mineEmptyHint')} title={t('mineEmpty')} />
       ) : (
         <VoiceList onDelete={setTarget} pin={pin} voices={voices.data.items} />
       )}
@@ -480,18 +490,19 @@ function MyVoices({ pin }: { pin: AgentPin }) {
 }
 
 function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice: null | Voice; onClose: () => void; onDeleted: () => void }) {
+  const t = usePluginI18n(PLUGIN_ID)
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   useEffect(() => setTyped(''), [voice])
   const confirm = async () => {
     if (!voice) return
-    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
+    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: pluginCtx().i18n.t('agentChangedNothingSent') })
     setBusy(true)
     try {
       await call(`/voices/${encodeURIComponent(voice.id)}`, { method: 'DELETE', timeoutMs: 60_000 })
       forgetFavourite(pin, voice.id)  // gone from that agent's account, whichever agent is selected now
       if (!samePin(currentPin(), pin)) return
-      host.notify({ kind: 'success', message: S.deleted(voice.title) })
+      host.notify({ kind: 'success', message: pluginCtx().i18n.t('deleted', voice.title) })
       onDeleted()
       onClose()
     } catch (error) {
@@ -504,19 +515,19 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice
     <Dialog onOpenChange={(open: boolean) => !open && onClose()} open={voice !== null}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{voice ? S.deleteTitle(voice.title) : ''}</DialogTitle>
+          <DialogTitle>{voice ? t('deleteTitle', voice.title) : ''}</DialogTitle>
         </DialogHeader>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }}>{S.deleteBody}</p>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }}>{t('deleteBody')}</p>
         <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>
-          {voice ? S.deleteConfirmLabel(voice.title) : ''}
-          <Input aria-label={voice ? S.deleteConfirmLabel(voice.title) : ''} onChange={(e: { target: { value: string } }) => setTyped(e.target.value)} value={typed} />
+          {voice ? t('deleteConfirmLabel', voice.title) : ''}
+          <Input aria-label={voice ? t('deleteConfirmLabel', voice.title) : ''} onChange={(e: { target: { value: string } }) => setTyped(e.target.value)} value={typed} />
         </label>
         <DialogFooter>
           <Button onClick={onClose} variant="ghost">
-            {S.cancel}
+            {t('cancel')}
           </Button>
           <Button disabled={!voice || typed !== voice.title} loading={busy} onClick={() => void confirm()} variant="destructive">
-            {S.delete}
+            {t('delete')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -525,6 +536,7 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice
 }
 
 function AccountTab({ pin }: { pin: AgentPin }) {
+  const t = usePluginI18n(PLUGIN_ID)
   const account = useQuery({
     queryFn: () => readFor<Account>(pin, '/account'),
     queryKey: ['fish-audio', agentKey(pin), 'account'],
@@ -542,40 +554,40 @@ function AccountTab({ pin }: { pin: AgentPin }) {
   return (
     <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', maxWidth: 820, padding: pad }}>
       <div style={card}>
-        <div style={{ ...muted, fontSize: 12 }}>{S.apiCredit}</div>
+        <div style={{ ...muted, fontSize: 12 }}>{t('apiCredit')}</div>
         <div style={{ color: data.low ? 'var(--ui-orange)' : undefined, fontSize: 28, fontVariantNumeric: 'tabular-nums', fontWeight: 600, margin: '4px 0 8px' }}>
-          {S.usd(data.credit)}
+          {t('usd', data.credit)}
         </div>
-        {data.low && <p style={{ color: 'var(--ui-orange)', fontSize: 12, margin: '0 0 8px' }}>{S.lowCredit}</p>}
+        {data.low && <p style={{ color: 'var(--ui-orange)', fontSize: 12, margin: '0 0 8px' }}>{t('lowCredit')}</p>}
         <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
           <div>
-            {S.topUps}: {S.usd(data.cumulative_top_up)}
+            {t('topUps')}: {t('usd', data.cumulative_top_up)}
           </div>
-          {data.has_free_credit && <div>{S.freeCredit}</div>}
+          {data.has_free_credit && <div>{t('freeCredit')}</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <Button onClick={() => open(data.links.top_up)}>{S.topUp}</Button>
+          <Button onClick={() => open(data.links.top_up)}>{t('topUp')}</Button>
           <Button onClick={() => open(data.links.keys)} variant="ghost">
-            {S.apiKeys}
+            {t('apiKeys')}
           </Button>
         </div>
       </div>
       <div style={card}>
-        <div style={{ ...muted, fontSize: 12 }}>{S.plan}</div>
-        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: data.package_unavailable ? 'none' : 'capitalize' }}>{data.package_unavailable ? S.planUnavailable : plan?.type ?? S.noPlan}</div>
+        <div style={{ ...muted, fontSize: 12 }}>{t('plan')}</div>
+        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: data.package_unavailable ? 'none' : 'capitalize' }}>{data.package_unavailable ? t('planUnavailable') : plan?.type ?? t('noPlan')}</div>
         {plan && (
           <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
-            {typeof plan.total === 'number' && <div>{S.planBalance(Number(plan.balance ?? 0), plan.total)}</div>}
+            {typeof plan.total === 'number' && <div>{t('planBalance', Number(plan.balance ?? 0), plan.total)}</div>}
             {plan.finished_at && (
               <div>
-                {(renews(plan) ? S.renews : S.periodEnds)(String(plan.finished_at).slice(0, 10))}
+                {t(renews(plan) ? 'renews' : 'periodEnds', String(plan.finished_at).slice(0, 10))}
               </div>
             )}
           </div>
         )}
-        <p style={{ ...muted, fontSize: 12, lineHeight: 1.5 }}>{S.creditsSeparate}</p>
+        <p style={{ ...muted, fontSize: 12, lineHeight: 1.5 }}>{t('creditsSeparate')}</p>
         <Button onClick={() => open(data.links.plans)} variant="secondary">
-          {S.plans}
+          {t('plans')}
         </Button>
       </div>
     </div>
