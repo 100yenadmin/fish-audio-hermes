@@ -26,6 +26,7 @@ class FakeCtx:
         self.commands: Dict[str, Dict[str, Any]] = {}
         self.cli_commands: Dict[str, Dict[str, Any]] = {}
         self.skills: Dict[str, Path] = {}
+        self.skill_descriptions: Dict[str, str] = {}
 
     def register_tts_provider(self, provider: Any) -> None:
         self.tts_providers.append(provider)
@@ -45,8 +46,9 @@ class FakeCtx:
     def register_cli_command(self, name: str, **kwargs: Any) -> None:
         self.cli_commands[name] = kwargs
 
-    def register_skill(self, name: str, path: Any) -> None:
+    def register_skill(self, name: str, path: Any, description: str = "") -> None:
         self.skills[name] = Path(path)
+        self.skill_descriptions[name] = description
 
 
 def load_plugin_package():
