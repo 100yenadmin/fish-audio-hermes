@@ -252,3 +252,15 @@ def test_cli_status_is_the_operator_view_in_operator_mode(config, monkeypatch, c
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")
     assert run("status") == 0
     assert capsys.readouterr().out.strip() == commands.NO_KEY
+
+
+@pytest.mark.parametrize("status,link", [(401, "api-keys"), (402, "developers/billing")])
+def test_operator_terminal_errors_keep_their_links(config, status, link, capsys):
+    # operator_account hides the account from the agent's users, never from the operator's own terminal.
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(WALLET).respond(status, json={})
+        assert run("login") == 1
+    output = capsys.readouterr().out
+    assert link in output and "operator" not in output
+    assert settings.operator_account() is True  # outside the terminal the setting applies again

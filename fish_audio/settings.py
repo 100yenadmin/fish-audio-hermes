@@ -1,4 +1,6 @@
 """Resolve synthesis settings afresh for each active profile and call."""
+from contextlib import contextmanager
+from contextvars import ContextVar
 import ipaddress
 import logging
 import math
@@ -139,8 +141,22 @@ def transport_settings():
     return _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
 
 
+_OPERATOR_TERMINAL = ContextVar("fish_audio_operator_terminal", default=False)
+
+
 def operator_account() -> bool:
-    return transport_settings().get("operator_account") is True
+    """True when the people using this agent must not see its Fish account. The operator's own terminal always does."""
+    return not _OPERATOR_TERMINAL.get() and transport_settings().get("operator_account") is True
+
+
+@contextmanager
+def operator_terminal():
+    """`hermes fish` runs here: status, login, doctor and their errors keep the account view and its links."""
+    token = _OPERATOR_TERMINAL.set(True)
+    try:
+        yield
+    finally:
+        _OPERATOR_TERMINAL.reset(token)
 
 
 def resolve_model(call_model, *, key, base_url, prefer_call: bool = False):
