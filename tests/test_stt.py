@@ -173,6 +173,25 @@ def test_asr_success_body_is_capped(tmp_path):
         assert not result["success"] and route.call_count == 1
 
 
+@pytest.mark.parametrize("tail, ok", [(b'"}', True), (b'"}x', False)])
+def test_asr_body_cap_boundary(tmp_path, monkeypatch, tail, ok):
+    # A body of exactly the cap is read; one byte more is refused before it is buffered.
+    from fish_audio import client
+    head = b'{"text":"abc'
+    monkeypatch.setattr(client, "RESPONSE_CAP", len(head) + 2)
+
+    class Body(httpx.SyncByteStream):
+        def __iter__(self):
+            yield head
+            yield tail
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(URL).mock(return_value=httpx.Response(200, stream=Body()))
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+        assert result["success"] is ok and route.call_count == 1
+
+
 def test_asr_no_retry_after_partial_success_response(tmp_path):
     class Stream(httpx.SyncByteStream):
         def __iter__(self):

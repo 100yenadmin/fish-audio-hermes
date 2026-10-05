@@ -304,3 +304,24 @@ def test_plugin_versions_agree():
     manifest = re.search(r"^version: (\S+)$", (root / "plugin.yaml").read_text(), re.M).group(1)
     project = re.search(r'^version = "([^"]+)"$', (root / "pyproject.toml").read_text(), re.M).group(1)
     assert manifest == project == client.PLUGIN_VERSION == fish_audio.PLUGIN_VERSION
+
+
+@pytest.mark.parametrize("tail, ok", [(b'}', True), (b'} ', False)])
+def test_json_body_cap_boundary(monkeypatch, tail, ok):
+    # A JSON body of exactly the cap is read; one byte more is refused before it is buffered.
+    head = b'{"a": 1'
+    monkeypatch.setattr(client, "RESPONSE_CAP", len(head) + 1)
+
+    class Body(httpx.SyncByteStream):
+        def __iter__(self):
+            yield head
+            yield tail
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.get("https://api.fish.audio/model").mock(return_value=httpx.Response(200, stream=Body()))
+        if ok:
+            assert client.get_json("/model", {}, "test-key", "https://api.fish.audio") == {"a": 1}
+        else:
+            with pytest.raises(FishAudioError) as exc:
+                client.get_json("/model", {}, "test-key", "https://api.fish.audio")
+            assert exc.value.kind == "too_large"
+        assert route.call_count == 1

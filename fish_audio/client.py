@@ -47,6 +47,9 @@ def request_headers(key, model=None):
     return headers
 
 
+RESPONSE_CAP = 64 * 1024 * 1024
+
+
 def _retryable(error):
     return error.status == 429 or error.status is not None and 500 <= error.status < 600
 
@@ -176,9 +179,9 @@ def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sle
                 for chunk in response.iter_bytes():
                     if chunk:
                         received = True
-                        body.extend(chunk)
-                        if len(body) > 64 * 1024 * 1024:
+                        if len(body) + len(chunk) > RESPONSE_CAP:
                             raise FishAudioError("too_large", None, None, "Fish Audio response exceeds the size cap.")
+                        body.extend(chunk)
                 try:
                     data = json.loads(body)
                     if not isinstance(data, dict) or not isinstance(data.get("text"), str):
@@ -221,9 +224,9 @@ def _json_request(method, path, key, base_url, *, timeout=60, **payload):
                 body = bytearray()
                 for chunk in response.iter_bytes():
                     received = received or bool(chunk)
-                    body.extend(chunk)
-                    if len(body) > 64 * 1024 * 1024:
+                    if len(body) + len(chunk) > RESPONSE_CAP:
                         raise FishAudioError("too_large", None, None, "Fish Audio response exceeds the size cap.")
+                    body.extend(chunk)
                 try:
                     result = json.loads(body) if body else {}
                     if not isinstance(result, dict):
