@@ -86,7 +86,14 @@ function CloneCard({ pin }: { pin: AgentPin }) {
           <Input disabled={busy} onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)} value={description} />
         </label>
         <label style={{ alignItems: 'flex-start', display: 'flex', fontSize: 12, gap: 8, lineHeight: 1.4 }}>
-          <Checkbox aria-label={S.consent} checked={consent} disabled={busy} onCheckedChange={(value: boolean) => setConsent(value === true)} />
+          <Checkbox
+            aria-label={S.consent}
+            checked={consent}
+            disabled={busy}
+            onCheckedChange={(value: boolean) => setConsent(value === true)}
+            // The kit's unchecked border is near-white in the light theme; give it the muted text colour.
+            style={consent ? undefined : { borderColor: 'var(--ui-text-tertiary)' }}
+          />
           <span>{S.consent}</span>
         </label>
         <BilledNote text={S.cloneBilled} />

@@ -155,8 +155,6 @@ declare module '@hermes/plugin-sdk' {
   export const SelectValue: ComponentType<any>
   export const Skeleton: ComponentType<any>
   export const Streamdown: ComponentType<any>
-  export const Tabs: ComponentType<any>
-  export const TabsList: ComponentType<any>
-  export const TabsTrigger: ComponentType<any>
+  export const SegmentedControl: ComponentType<any>
   export const Textarea: ComponentType<any>
 }

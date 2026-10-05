@@ -17,9 +17,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsList,
-  TabsTrigger,
+  SegmentedControl,
   useQuery,
   useQueryClient,
   useValue
@@ -104,7 +102,7 @@ function Onboarding({ profile }: { profile: string }) {
       <div style={{ ...card, maxWidth: 560 }}>
         <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{S.onboardTitle}</h2>
         <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{S.onboardBody(profile)}</p>
-        <ol style={{ fontSize: 13, lineHeight: 1.8, margin: '0 0 14px', paddingLeft: 20 }}>
+        <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingLeft: 20 }}>
           <li>{S.onboardStep1}</li>
           <li>{S.onboardStep2}</li>
         </ol>
@@ -125,15 +123,11 @@ function Onboarding({ profile }: { profile: string }) {
 function Body({ pin }: { pin: AgentPin }) {
   const tab = useValue($tab)
   const tabs = (
-    <Tabs onValueChange={(value: string) => $tab.set(value as typeof tab)} value={tab}>
-      <TabsList>
-        {(['library', 'mine', 'create', 'account'] as const).map(id => (
-          <TabsTrigger key={id} value={id}>
-            {S.tabs[id]}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <SegmentedControl
+      onChange={(id: typeof tab) => $tab.set(id)}
+      options={(['library', 'mine', 'create', 'account'] as const).map(id => ({ id, label: S.tabs[id] }))}
+      value={tab}
+    />
   )
   useEffect(() => () => stop(), [])
   return (
@@ -190,7 +184,9 @@ function Library({ pin }: { pin: AgentPin }) {
   return (
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        <SearchField aria-label={S.search} containerClassName="" onChange={setText} placeholder={S.search} value={text} />
+        <div style={{ width: 280 }}>
+          <SearchField aria-label={S.search} onChange={setText} placeholder={S.search} value={text} />
+        </div>
         <div style={{ width: 160 }}>
           <Select onValueChange={setLanguage} value={language}>
             <SelectTrigger aria-label={S.language}>
@@ -479,7 +475,7 @@ function AccountTab({ pin }: { pin: AgentPin }) {
         <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: 'capitalize' }}>{plan?.type ?? S.noPlan}</div>
         {plan && (
           <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
-            {plan.total !== undefined && <div>{S.planBalance(plan.balance ?? 0, plan.total)}</div>}
+            {typeof plan.total === 'number' && <div>{S.planBalance(Number(plan.balance ?? 0), plan.total)}</div>}
             {plan.finished_at && <div>{S.renews(String(plan.finished_at).slice(0, 10))}</div>}
           </div>
         )}

@@ -79,9 +79,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsList,
-  TabsTrigger,
+  SegmentedControl,
   useQuery,
   useQueryClient as useQueryClient2,
   useValue as useValue2
@@ -220,7 +218,7 @@ var S = {
   topUps: "Lifetime top-ups",
   freeCredit: "Free credit available",
   plan: "Plan",
-  planBalance: (balance, total) => `${balance} of ${total} credits left`,
+  planBalance: (balance, total) => `${balance.toLocaleString()} of ${total.toLocaleString()} credits left`,
   renews: (date) => `Renews ${date}`,
   noPlan: "No app plan",
   creditsSeparate: "App plan credits and API credits are separate. Voice replies use API credit.",
@@ -395,7 +393,16 @@ function CloneCard({ pin }) {
         /* @__PURE__ */ jsx2(Input, { disabled: busy, onChange: (e) => setDescription(e.target.value), value: description })
       ] }),
       /* @__PURE__ */ jsxs2("label", { style: { alignItems: "flex-start", display: "flex", fontSize: 12, gap: 8, lineHeight: 1.4 }, children: [
-        /* @__PURE__ */ jsx2(Checkbox, { "aria-label": S.consent, checked: consent, disabled: busy, onCheckedChange: (value) => setConsent(value === true) }),
+        /* @__PURE__ */ jsx2(
+          Checkbox,
+          {
+            "aria-label": S.consent,
+            checked: consent,
+            disabled: busy,
+            onCheckedChange: (value) => setConsent(value === true),
+            style: consent ? void 0 : { borderColor: "var(--ui-text-tertiary)" }
+          }
+        ),
         /* @__PURE__ */ jsx2("span", { children: S.consent })
       ] }),
       /* @__PURE__ */ jsx2(BilledNote, { text: S.cloneBilled }),
@@ -547,7 +554,7 @@ function Onboarding({ profile }) {
   return /* @__PURE__ */ jsx3("div", { style: { padding: pad }, children: /* @__PURE__ */ jsxs3("div", { style: { ...card, maxWidth: 560 }, children: [
     /* @__PURE__ */ jsx3("h2", { style: { fontSize: 15, fontWeight: 600, margin: "0 0 6px" }, children: S.onboardTitle }),
     /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }, children: S.onboardBody(profile) }),
-    /* @__PURE__ */ jsxs3("ol", { style: { fontSize: 13, lineHeight: 1.8, margin: "0 0 14px", paddingLeft: 20 }, children: [
+    /* @__PURE__ */ jsxs3("ol", { style: { fontSize: 13, lineHeight: 1.8, listStyle: "decimal", margin: "0 0 14px", paddingLeft: 20 }, children: [
       /* @__PURE__ */ jsx3("li", { children: S.onboardStep1 }),
       /* @__PURE__ */ jsx3("li", { children: S.onboardStep2 })
     ] }),
@@ -560,7 +567,14 @@ function Onboarding({ profile }) {
 }
 function Body({ pin }) {
   const tab = useValue2($tab);
-  const tabs = /* @__PURE__ */ jsx3(Tabs, { onValueChange: (value) => $tab.set(value), value: tab, children: /* @__PURE__ */ jsx3(TabsList, { children: ["library", "mine", "create", "account"].map((id) => /* @__PURE__ */ jsx3(TabsTrigger, { value: id, children: S.tabs[id] }, id)) }) });
+  const tabs = /* @__PURE__ */ jsx3(
+    SegmentedControl,
+    {
+      onChange: (id) => $tab.set(id),
+      options: ["library", "mine", "create", "account"].map((id) => ({ id, label: S.tabs[id] })),
+      value: tab
+    }
+  );
   useEffect(() => () => stop(), []);
   return /* @__PURE__ */ jsxs3(Frame, { profile: pin.profile, tabs, children: [
     tab === "library" && /* @__PURE__ */ jsx3(Library, { pin }),
@@ -606,7 +620,7 @@ function Library({ pin }) {
   const more = !favouritesOnly && (voices.data?.items.length ?? 0) >= 20;
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }, children: [
-      /* @__PURE__ */ jsx3(SearchField, { "aria-label": S.search, containerClassName: "", onChange: setText, placeholder: S.search, value: text }),
+      /* @__PURE__ */ jsx3("div", { style: { width: 280 }, children: /* @__PURE__ */ jsx3(SearchField, { "aria-label": S.search, onChange: setText, placeholder: S.search, value: text }) }),
       /* @__PURE__ */ jsx3("div", { style: { width: 160 }, children: /* @__PURE__ */ jsxs3(Select, { onValueChange: setLanguage, value: language, children: [
         /* @__PURE__ */ jsx3(SelectTrigger, { "aria-label": S.language, children: /* @__PURE__ */ jsx3(SelectValue, {}) }),
         /* @__PURE__ */ jsxs3(SelectContent, { children: [
@@ -829,7 +843,7 @@ function AccountTab({ pin }) {
       /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12 }, children: S.plan }),
       /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: "capitalize" }, children: plan?.type ?? S.noPlan }),
       plan && /* @__PURE__ */ jsxs3("div", { style: { ...muted, fontSize: 12, lineHeight: 1.7 }, children: [
-        plan.total !== void 0 && /* @__PURE__ */ jsx3("div", { children: S.planBalance(plan.balance ?? 0, plan.total) }),
+        typeof plan.total === "number" && /* @__PURE__ */ jsx3("div", { children: S.planBalance(Number(plan.balance ?? 0), plan.total) }),
         plan.finished_at && /* @__PURE__ */ jsx3("div", { children: S.renews(String(plan.finished_at).slice(0, 10)) })
       ] }),
       /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 12, lineHeight: 1.5 }, children: S.creditsSeparate }),

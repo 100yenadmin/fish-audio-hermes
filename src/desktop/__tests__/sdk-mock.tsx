@@ -1,6 +1,6 @@
 // Test double for Hermes Desktop's '@hermes/plugin-sdk' (aliased in vitest.config.ts).
 // Only what the plugin uses; behaviour mirrors the real SDK where tests depend on it. Copied from
-// hermes-cloud-file-manager and extended (palette/status-bar areas, Tabs, Badge, storage with a fallback).
+// hermes-cloud-file-manager and extended (palette/status-bar areas, SegmentedControl, Badge, storage with a fallback).
 import { createContext, createElement, type ReactNode, useContext, useEffect, useReducer, useRef, useSyncExternalStore } from 'react'
 
 type Listener<T> = (value: T) => void
@@ -149,15 +149,10 @@ export const Input = passthrough('input')
 export const Skeleton = passthrough('div')
 export const Streamdown = ({ children }: { children?: ReactNode }) => createElement('div', { 'data-testid': 'md' }, children)
 export const Textarea = passthrough('textarea')
-// Tabs: each trigger is a button that reports its value to the Tabs' onValueChange.
-const TabsCtx = createContext<{ value?: string; onValueChange?: (value: string) => void }>({})
-export const Tabs = ({ value, onValueChange, children }: any) =>
-  createElement(TabsCtx.Provider, { value: { value, onValueChange } }, createElement('div', { role: 'tablist' }, children))
-export const TabsList = passthrough('div')
-export const TabsTrigger = ({ value, children }: any) => {
-  const ctx = useContext(TabsCtx)
-  return createElement('button', { role: 'tab', type: 'button', 'aria-selected': ctx.value === value, onClick: () => ctx.onValueChange?.(value) }, children)
-}
+// SegmentedControl: one button per option, reporting its id to onChange.
+export const SegmentedControl = ({ options, value, onChange }: any) =>
+  createElement('div', { role: 'tablist' }, options.map((o: any) =>
+    createElement('button', { key: o.id, role: 'tab', type: 'button', 'aria-selected': o.id === value, onClick: () => onChange(o.id) }, o.label)))
 export const Dialog = ({ open, children }: { open?: boolean; children?: ReactNode }) => (open ? createElement('div', null, children) : null)
 export const DialogContent = (props: any) => createElement('div', { role: 'dialog', ...omit(props, 'onOpenAutoFocus') }, props.children)
 export const DialogHeader = passthrough('div')

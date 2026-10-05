@@ -88,7 +88,7 @@ export const S = {
   topUps: 'Lifetime top-ups',
   freeCredit: 'Free credit available',
   plan: 'Plan',
-  planBalance: (balance: unknown, total: unknown) => `${balance} of ${total} credits left`,
+  planBalance: (balance: number, total: number) => `${balance.toLocaleString()} of ${total.toLocaleString()} credits left`,
   renews: (date: string) => `Renews ${date}`,
   noPlan: 'No app plan',
   creditsSeparate: 'App plan credits and API credits are separate. Voice replies use API credit.',
