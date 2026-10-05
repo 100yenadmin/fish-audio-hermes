@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1 — 2026-10-05
+
+- **Transcription failures say what kind of failure they are.** A failed transcription now carries `error_kind`
+  (`credential`, `quota`, `rate_limit`, `availability`, `invalid_request` and the rest), alongside the existing
+  message. A caller can then decide to retry elsewhere without parsing text.
+- **A clearer limit for pronunciations.** When call `pronunciations` and a configured inline dictionary together
+  come to more than Fish's 15,000 entries, the message gives the count and the limit instead of "Invalid
+  pronunciation entry." (#8)
+- Each release now attaches `fish-audio-<version>-managed.tgz` with a `.fish-audio-release.json` sidecar, for
+  managed installs that pin an artifact by digest.
+
 ## 1.0.0 — 2026-10-05
 
 - **Every field of Fish Audio's voice API the plugin claims is now sent and tested.** The parity map has no planned
