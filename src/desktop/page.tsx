@@ -31,6 +31,7 @@ import {
   type Account,
   type AgentPin,
   agentKey,
+  ApiError,
   call,
   currentPin,
   errorText,
@@ -48,6 +49,17 @@ import { LANGUAGES, LINKS, S } from './strings'
 import { BilledNote, card, LoadError, muted, Rows } from './ui'
 
 const pad = '0 24px'
+
+/** A read for the captured agent: refused when another agent is selected now, dropped when it changed meanwhile,
+ *  so one agent's results never land in another agent's query cache. */
+function readFor<T>(pin: AgentPin, path: string): Promise<T> {
+  const changed = () => new ApiError('agent_changed', S.agentChangedNothingSent)
+  if (!samePin(currentPin(), pin)) return Promise.reject(changed())
+  return call<T>(path).then(res => {
+    if (!samePin(currentPin(), pin)) throw changed()
+    return res
+  })
+}
 
 /** A plan renews only when Fish reports an active (or trial) subscription that is not set to cancel. */
 const renews = (plan: NonNullable<Account['package']>) =>
@@ -178,7 +190,7 @@ function Library({ pin }: { pin: AgentPin }) {
   useEffect(() => setPage(1), [q, language])
   const voices = useQuery({
     enabled: !favouritesOnly,
-    queryFn: () => call<VoicesResponse>(query('/voices', { language: language === 'any' ? undefined : language, page, q })),
+    queryFn: () => readFor<VoicesResponse>(pin, query('/voices', { language: language === 'any' ? undefined : language, page, q })),
     queryKey: ['fish-audio', agentKey(pin), 'voices', q, language, page],
     retry: false,
     staleTime: 60_000
@@ -397,7 +409,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
   const [page, setPage] = useState(1)
   const queryKey = ['fish-audio', agentKey(pin), 'mine']
   const voices = useQuery({
-    queryFn: () => call<VoicesResponse>(query('/voices', { page, self: 'true' })),
+    queryFn: () => readFor<VoicesResponse>(pin, query('/voices', { page, self: 'true' })),
     queryKey: [...queryKey, page],
     retry: false,
     staleTime: 30_000
@@ -467,7 +479,7 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice
 
 function AccountTab({ pin }: { pin: AgentPin }) {
   const account = useQuery({
-    queryFn: () => call<Account>('/account'),
+    queryFn: () => readFor<Account>(pin, '/account'),
     queryKey: ['fish-audio', agentKey(pin), 'account'],
     retry: false,
     staleTime: 30_000

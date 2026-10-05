@@ -544,6 +544,14 @@ function DesignCard({ pin }) {
 // src/desktop/page.tsx
 import { jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 var pad = "0 24px";
+function readFor(pin, path) {
+  const changed = () => new ApiError("agent_changed", S.agentChangedNothingSent);
+  if (!samePin(currentPin(), pin)) return Promise.reject(changed());
+  return call(path).then((res) => {
+    if (!samePin(currentPin(), pin)) throw changed();
+    return res;
+  });
+}
 var renews = (plan) => plan.cancel_at_period_end === false && ["active", "trialing"].includes(plan.subscription_status ?? "");
 function VoicesPage() {
   const available = useValue2($available);
@@ -636,7 +644,7 @@ function Library({ pin }) {
   useEffect(() => setPage(1), [q, language]);
   const voices = useQuery({
     enabled: !favouritesOnly,
-    queryFn: () => call(query("/voices", { language: language === "any" ? void 0 : language, page, q })),
+    queryFn: () => readFor(pin, query("/voices", { language: language === "any" ? void 0 : language, page, q })),
     queryKey: ["fish-audio", agentKey(pin), "voices", q, language, page],
     retry: false,
     staleTime: 6e4
@@ -808,7 +816,7 @@ function MyVoices({ pin }) {
   const [page, setPage] = useState2(1);
   const queryKey = ["fish-audio", agentKey(pin), "mine"];
   const voices = useQuery({
-    queryFn: () => call(query("/voices", { page, self: "true" })),
+    queryFn: () => readFor(pin, query("/voices", { page, self: "true" })),
     queryKey: [...queryKey, page],
     retry: false,
     staleTime: 3e4
@@ -856,7 +864,7 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }) {
 }
 function AccountTab({ pin }) {
   const account = useQuery({
-    queryFn: () => call("/account"),
+    queryFn: () => readFor(pin, "/account"),
     queryKey: ["fish-audio", agentKey(pin), "account"],
     retry: false,
     staleTime: 3e4

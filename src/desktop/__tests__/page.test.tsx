@@ -281,3 +281,32 @@ describe('review follow-ups', () => {
     expect(calls.filter(c => c.path === '/design')).toHaveLength(1)
   })
 })
+
+describe('list reads stay with the captured agent', () => {
+  beforeEach(() => $available.set({ key: true, version: '0.3.0' }))
+  afterEach(() => vi.restoreAllMocks())
+  const full = (who: string) => ({ ok: true, page: 1, total: 40, items: Array.from({ length: 20 }, (_, i) => ({ id: `${who}${i}`.padEnd(32, 'b'), title: `${who} voice ${i}` })) })
+
+  it('a stale My voices view does not page the newly selected agent', async () => {
+    $tab.set('mine')
+    const { calls } = mount(async () => full(host.state.profile.get()))
+    await flush()
+    vi.spyOn(host.state.profile, 'get').mockReturnValue('other')
+    calls.length = 0
+    fireEvent.click(screen.getByRole('button', { name: S.next }))
+    await flush()
+    expect(calls).toEqual([])
+    expect(screen.queryByText('other voice 0')).toBeNull()
+  })
+
+  it('drops a list response that arrives after the agent changed', async () => {
+    $tab.set('mine')
+    let release!: (value: unknown) => void
+    mount(() => new Promise(resolve => (release = resolve)))
+    await flush()
+    vi.spyOn(host.state.profile, 'get').mockReturnValue('other')
+    release(full('other'))
+    await flush()
+    expect(screen.queryByText('other voice 0')).toBeNull()
+  })
+})
