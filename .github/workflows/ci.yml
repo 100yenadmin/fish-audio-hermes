@@ -63,7 +63,7 @@ jobs:
         run: |
           cd hermes
           uv sync --frozen --no-dev
-          uv pip install --python .venv/bin/python "msgpack>=1.0,<2" "pytest==8.4.2" "respx==0.22.0"
+          uv pip install --python .venv/bin/python "msgpack>=1.0,<2" "pyyaml>=6,<7" "pytest==8.4.2" "respx==0.22.0"
       - name: hermes plugins validate (catalog admission checks)
         if: matrix.target == 'main' || matrix.target == 'release'
         env:

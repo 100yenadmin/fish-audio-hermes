@@ -13,6 +13,8 @@ from .secrets import fish_api_key, redact
 from .tool_support import require, ToolInputError
 from .tts import FishAudioTTSProvider
 
+RESTART_HINT = "If a Hermes gateway or the desktop app is already running for this profile, restart it to pick up the new key."
+
 
 def setup(parser):
     sub = parser.add_subparsers(dest="fish_command")
@@ -28,7 +30,8 @@ def setup(parser):
 
 
 def _login(args):
-    key = (sys.stdin.read() if args.key_stdin else getpass.getpass("Fish Audio API key: ")).strip()
+    key = (sys.stdin.read() if args.key_stdin and not sys.stdin.isatty()
+           else getpass.getpass("Fish Audio API key: ")).strip()
     require(bool(key), "No key supplied. Create one at https://fish.audio/app/api-keys")
     base = commands.base_url()
     require(account.get_wallet(key, base, strict=True) is not None, "Fish Audio returned an invalid wallet; no key was saved.")
@@ -37,6 +40,10 @@ def _login(args):
     require(save is not None, "Use hermes tools or Desktop ▸ Plugins ▸ Fish Audio to save the key.")
     saved = save("FISH_API_KEY", key)
     require(not isinstance(saved, dict) or saved.get("success", True), "Hermes could not save the key. Use hermes tools or Desktop.")
+    read = getattr(config, "get_env_value", None)
+    effective = read("FISH_API_KEY") if read is not None else fish_api_key()
+    require(effective == key,
+            "The Fish Audio key is pinned by an administrator or config; the new key is not active. Providers were not switched.")
     def change(cfg):
         for section, label in (("tts", "text-to-speech"), ("stt", "speech-to-text")):
             block = cfg.setdefault(section, {})
@@ -51,6 +58,7 @@ def _login(args):
     print(f"Key saved for this profile. Model: {model}")
     if defaulted and model == "s2.1-pro-free":
         print(settings.FREE_MODEL_NOTICE)
+    print(RESTART_HINT)
     return 0
 
 
@@ -87,9 +95,12 @@ def _doctor(args):
         selected = cfg.get(section, {}).get("provider") == "fish-audio"
         line("ok" if selected else "warn", f"{section}.provider {'is Fish Audio' if selected else 'not Fish Audio; select it with hermes tools'}")
     version = _version()
-    match = re.match(r"^(\d+)\.(\d+)\.(\d+)", version)
-    supported = bool(match and tuple(map(int, match.groups())) >= (0, 21, 5))
-    line("ok" if supported else "fail", f"Hermes {version}; {'floor 0.21.5 met' if supported else 'upgrade to 0.21.5 or newer'}")
+    if version in {"unknown", "0.0.0"}:
+        line("warn", "Hermes version unknown (source checkout?)")
+    else:
+        match = re.match(r"^(\d+)\.(\d+)\.(\d+)", version)
+        supported = bool(match and tuple(map(int, match.groups())) >= (0, 21, 5))
+        line("ok" if supported else "fail", f"Hermes {version}; {'floor 0.21.5 met' if supported else 'upgrade to 0.21.5 or newer'}")
     if args.no_synth:
         line("ok", "TTS round trip skipped (--no-synth)")
     elif key:

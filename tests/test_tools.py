@@ -181,6 +181,7 @@ def test_clone_private_fast_and_never_retried(monkeypatch):
                               ("enhance_audio_quality", "true"), ("texts", "hello")):
             assert f'name="{field}"\r\n\r\n{value}'.encode() in body
         assert (FIXTURES / "synthetic.mp3").read_bytes() in body
+        assert b'name="voices"; filename="synthetic.mp3"' in body and b"Content-Type: audio/mpeg" in body
         route.respond(503, json={"message": "not echoed"})
         before = route.call_count
         assert not call(tools.fish_voices, **args)["success"]
@@ -201,10 +202,12 @@ def test_design_save_signature_stays_server_side(monkeypatch):
         assert Path(candidate["file_path"]).read_bytes() == WAV
         assert candidate["media_tag"] == "MEDIA:" + candidate["file_path"]
         assert design.calls.last.request.headers["model"] == "voice-design-1"
+        assert json.loads(design.calls.last.request.content) == {"instruction": "warm", "n": 1}
         raw_save = tools.fish_voices({"action": "save", "design_token": candidate["design_token"], "title": "Saved"})
         assert signature not in raw_save and json.loads(raw_save)["source"] == "voice_design"
         body = save.calls.last.request.content
-        assert signature.encode() in body and b'name="voice_design_signatures"' in body and b'preview text' in body
+        assert signature.encode() in body and b'name="voice_design_signatures"' in body
+        assert b'name="texts"\r\n\r\npreview text' in body
         assert candidate["design_token"] not in voices._DESIGNS
         assert "design again" in call(tools.fish_voices, action="save", design_token=candidate["design_token"], title="Saved")["error"]
         assert save.call_count == 1

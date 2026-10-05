@@ -1,9 +1,11 @@
 import sys
+import json
 from types import ModuleType
 
 import pytest
+import respx
 
-from fish_audio import settings
+from fish_audio import client, settings
 
 A, B = "a" * 32, "b" * 32
 
@@ -79,11 +81,17 @@ VALID = {"temperature": 0.8, "top_p": 1, "latency": "balanced", "normalize": Fal
          "features": ["quality-guard"], "pronunciation_dictionary": [{"id": "dict", "version": "v1"}]}
 
 
-def test_every_valid_knob(config):
+def test_every_valid_knob(config, tmp_path):
     config[1].update(VALID)
     p, _ = resolve()
     for name, value in VALID.items():
         assert (p["prosody"] if name in {"volume", "normalize_loudness"} else p)[name] == value
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(p["base_url"] + "/v1/tts").respond(content=b"ID3synthetic")
+        client.tts_to_file({**p, "text": "hello"}, "test-key", p["base_url"], tmp_path / "out.mp3")
+        body = json.loads(route.calls.last.request.content)
+        for name, value in VALID.items():
+            assert (body["prosody"] if name in {"volume", "normalize_loudness"} else body)[name] == value
 
 
 @pytest.mark.parametrize("name,value", [

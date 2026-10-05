@@ -95,6 +95,30 @@ def test_model_selection_and_unknown_rejected(config):
     assert data["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
 
 
+def test_model_free_selection_under_paid_policy_is_honest(config):
+    data = config[0]
+    data["plugins"] = {"entries": {"fish-audio": {"settings": {"allow_free_model": False}}}}
+    with respx.mock(assert_all_called=True) as mock:
+        reply = commands.handle("model s2.1-pro-free")
+        assert reply == "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
+        assert settings.FREE_MODEL_NOTICE not in reply and not mock.calls
+    assert data["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
+    assert settings.resolve_model(None, key="test-key", base_url=BASE) == ("s2.1-pro", False)
+
+
+@pytest.mark.parametrize("allowed,expected", [(False, "s2.1-pro"), (True, "s2.1-pro-free")])
+def test_chat_status_names_effective_model(config, allowed, expected):
+    data = config[0]
+    data["tts"]["fish-audio"] = {"model": "s2.1-pro-free"}
+    data["plugins"] = {"entries": {"fish-audio": {"settings": {"allow_free_model": allowed}}}}
+    with respx.mock(assert_all_called=True) as mock:
+        wallet_routes(mock)
+        output = commands.handle("status")
+        assert output.split("Model: ", 1)[1].split()[0] == expected
+        assert expected == settings.resolve_model(None, key="test-key", base_url=BASE)[0]
+        assert settings.FREE_MODEL_NOTICE not in output
+
+
 def test_voices_top_five_and_status_balance(config):
     with respx.mock(assert_all_called=True) as mock:
         route = mock.get(BASE + "/model").respond(json={"items": [{"_id": VOICE, "title": "Warm", "languages": ["en"]}], "total": 1})

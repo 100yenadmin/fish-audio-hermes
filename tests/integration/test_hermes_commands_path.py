@@ -37,10 +37,15 @@ def test_real_cli_subparser_help(installed_fish_home, capsys):
 
 def test_real_namespaced_skills_resolve(installed_fish_home):
     from tools.skills_tool import skill_view
+    from hermes_cli.plugins import get_plugin_manager
+    import yaml
     for name in ("fish-audio-setup", "fish-audio-expressive-speech", "fish-audio-voice-studio"):
         result = json.loads(skill_view("fish-audio:" + name, preprocess=False))
         assert result["success"], result
         assert result["name"] == "fish-audio:" + name
         assert len(result["content"].splitlines()) < 200
+        entry = get_plugin_manager()._plugin_skills["fish-audio:" + name]
+        frontmatter = yaml.safe_load(entry["path"].read_text().split("---", 2)[1])
+        assert entry["description"] == frontmatter["description"] and entry["description"]
         if name == "fish-audio-setup":
             assert "required_environment_variables" in result["content"] and "FISH_API_KEY" in result["content"]

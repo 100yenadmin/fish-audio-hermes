@@ -31,4 +31,19 @@ def register_all(ctx) -> None:
         ctx.register_cli_command("fish", help="Fish Audio setup and diagnostics", setup_fn=cli.setup, handler_fn=cli.handle)
     if hasattr(ctx, "register_skill"):
         for name in ("fish-audio-setup", "fish-audio-expressive-speech", "fish-audio-voice-studio"):
-            ctx.register_skill(name, Path(__file__).resolve().parents[1] / "skills" / name / "SKILL.md")
+            path = Path(__file__).resolve().parents[1] / "skills" / name / "SKILL.md"
+            ctx.register_skill(name, path, description=_skill_description(path))
+
+
+def _skill_description(path: Path) -> str:
+    """Read the one-line ``description:`` of a shipped SKILL.md without a YAML dependency.
+
+    Hermes main no longer ships PyYAML, so the plugin must not import it at load time.
+    """
+    for line in path.read_text(encoding="utf-8").split("---", 2)[1].splitlines():
+        if line.startswith("description:"):
+            value = line.split(":", 1)[1].strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                value = value[1:-1]
+            return value
+    return ""

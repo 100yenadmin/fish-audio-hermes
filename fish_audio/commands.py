@@ -100,7 +100,10 @@ def handle(raw_args=""):
         if command == "model":
             require(rest in MODEL_IDS, "Unknown Fish model. Choose: " + ", ".join(sorted(MODEL_IDS)))
             write_config(lambda cfg: cfg.setdefault("tts", {}).setdefault("fish-audio", {}).__setitem__("model", rest))
-            return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if rest == "s2.1-pro-free" else "")
+            model, _ = settings.resolve_model(rest, key=key, base_url=base)
+            if rest == "s2.1-pro-free" and model != rest:
+                return "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
+            return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" else "")
         if command == "preview":
             ident, _, text = rest.partition(" ")
             text = text or "Hi! This is how I sound."

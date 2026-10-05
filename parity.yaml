@@ -748,7 +748,7 @@ entries:
   method: post
   location: response
   field: duration
-  surface: fish_transcribe response duration
+  surface: fish_transcribe response duration, asserted against the ASR response
   status: verified
   tests:
   - tests/test_transcribe_tool.py::test_srt_prefers_turns_and_preserves_text
@@ -765,7 +765,7 @@ entries:
   method: post
   location: response
   field: segments
-  surface: fish_transcribe response segments
+  surface: fish_transcribe response segments, asserted even when SRT prefers speaker turns
   status: verified
   tests:
   - tests/test_transcribe_tool.py::test_srt_prefers_turns_and_preserves_text
@@ -2471,7 +2471,7 @@ entries:
   method: post
   location: json
   field: instruction
-  surface: fish_voices design instruction
+  surface: fish_voices design instruction, asserted in the JSON request body
   status: verified
   tests:
   - tests/test_tools.py::test_design_save_signature_stays_server_side
@@ -2509,7 +2509,7 @@ entries:
   method: post
   location: json
   field: n
-  surface: fish_voices design n
+  surface: fish_voices design n, asserted in the JSON request body
   status: verified
   tests:
   - tests/test_tools.py::test_design_save_signature_stays_server_side

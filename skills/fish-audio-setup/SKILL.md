@@ -13,6 +13,7 @@ Set up Fish Audio for the active Hermes profile.
    Use Desktop ▸ Plugins ▸ Fish Audio, `hermes tools`, or `hermes fish login` on the Hermes machine.
 2. Select Fish Audio for Text-to-Speech and Speech-to-Text in `hermes tools`. Login asks before
    changing existing providers; `hermes fish login --yes` permits those switches.
+   If a Hermes gateway or the desktop app is already running for this profile, restart it to pick up the new key.
 3. Run `/fish voices <description>` and choose `/fish use <id>`. An existing provider is preserved.
    Browse more voices at https://fish.audio/discovery.
 4. Use `/fish model s2.1-pro` for paid synthesis, or `/fish model s2.1-pro-free` for the free model.

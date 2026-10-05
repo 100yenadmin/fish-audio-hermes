@@ -26,6 +26,7 @@ def config(monkeypatch):
     module.save_config = save
     module.is_managed = lambda: False
     module.save_env_value_secure = lambda name, value: saved_keys.append((name, value))
+    module.get_env_value = lambda name: next((value for key, value in reversed(saved_keys) if key == name), None)
     parent = ModuleType("hermes_cli")
     parent.config = module
     parent.__version__ = "0.21.5"
@@ -73,7 +74,8 @@ def test_login_yes_with_stdin_switches_providers(config, monkeypatch, capsys):
         assert run("login", "--key-stdin", "--yes") == 0
     assert saved == [("FISH_API_KEY", "test-key")]
     assert data["tts"]["provider"] == data["stt"]["provider"] == "fish-audio"
-    assert "test-key" not in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "test-key" not in output and cli.RESTART_HINT in output
 
 
 def test_login_noninteractive_preserves_existing_and_sets_unset(config, monkeypatch):
@@ -101,6 +103,87 @@ def test_login_interactive_prompt_declined_and_legacy_saver(config, monkeypatch)
     assert data["tts"]["provider"] == data["stt"]["provider"] == "other" and saved
 
 
+@pytest.mark.parametrize("result", [None, {"success": True}])
+def test_login_readback_pinned_key_does_not_switch(config, monkeypatch, capsys, result):
+    data, _, module = config
+    data["tts"]["provider"] = "elevenlabs"
+    data["stt"]["provider"] = "other"
+    before = copy.deepcopy(data)
+    events = []
+    def save(name, value):
+        events.append("save")
+        return result
+    def read(name):
+        assert name == "FISH_API_KEY"
+        events.append("read")
+        return "pinned-test-key"
+    module.save_env_value_secure = save
+    module.get_env_value = read
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(WALLET).respond(json={"credit": "1", "cumulative_top_up": "0"})
+        assert run("login", "--yes") == 1
+    assert events == ["save", "read"] and data == before
+    output = capsys.readouterr().out
+    assert "pinned by an administrator or config" in output and "Providers were not switched" in output
+    assert "test-key" not in output and cli.RESTART_HINT not in output and "Key saved" not in output
+
+
+def test_login_readback_falls_back_to_scoped_key(config, monkeypatch, capsys):
+    data, _, module = config
+    monkeypatch.delattr(module, "get_env_value")
+    monkeypatch.setattr(cli, "fish_api_key", lambda: "pinned-test-key")
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(WALLET).respond(json={"credit": "1", "cumulative_top_up": "0"})
+        assert run("login", "--yes") == 1
+    assert data == {"tts": {}, "stt": {}}
+    assert "pinned by an administrator or config" in capsys.readouterr().out
+
+
+def test_login_key_stdin_tty_uses_getpass_without_reading_or_echo(config, monkeypatch, capsys):
+    class Terminal(io.StringIO):
+        def isatty(self):
+            return True
+        def read(self, *args):
+            pytest.fail("a TTY key must use getpass")
+    monkeypatch.setattr(sys, "stdin", Terminal())
+    prompts = []
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: prompts.append(prompt) or "test-key")
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(WALLET).respond(json={"credit": "1", "cumulative_top_up": "0"})
+        assert run("login", "--key-stdin", "--yes") == 0
+    assert prompts == ["Fish Audio API key: "] and config[1] == [("FISH_API_KEY", "test-key")]
+    assert "test-key" not in capsys.readouterr().out
+
+
+def test_login_key_stdin_pipe_never_uses_getpass(config, monkeypatch):
+    monkeypatch.setattr(sys, "stdin", io.StringIO("test-key\n"))
+    monkeypatch.setattr(cli.getpass, "getpass", lambda *args: pytest.fail("pipe input must read stdin"))
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(WALLET).respond(json={"credit": "1", "cumulative_top_up": "0"})
+        assert run("login", "--key-stdin", "--yes") == 0
+    assert config[1] == [("FISH_API_KEY", "test-key")]
+
+
+@pytest.mark.parametrize("allowed,expected", [(False, "s2.1-pro"), (True, "s2.1-pro-free")])
+def test_cli_status_and_login_name_effective_model(config, monkeypatch, capsys, allowed, expected):
+    data = config[0]
+    data["tts"]["fish-audio"] = {"model": "s2.1-pro-free"}
+    data["plugins"] = {"entries": {"fish-audio": {"settings": {"allow_free_model": allowed}}}}
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(WALLET).respond(json={"credit": "0", "cumulative_top_up": "0", "has_free_credit": False})
+        mock.get(BASE + "/wallet/self/package").respond(json={"type": "free"})
+        assert run("status") == 0
+        output = capsys.readouterr().out
+        assert output.split("Model: ", 1)[1].split()[0] == expected
+        assert expected == settings.resolve_model(None, key="test-key", base_url=BASE)[0]
+        assert run("login", "--yes") == 0
+        output = capsys.readouterr().out
+        assert f"Key saved for this profile. Model: {expected}\n" in output
+        if not allowed:
+            assert "s2.1-pro-free" not in output and settings.FREE_MODEL_NOTICE not in output
+        assert cli.RESTART_HINT in output and "test-key" not in output
+
+
 @pytest.mark.parametrize("missing", [False, True])
 def test_doctor_no_synth_exit_and_no_tts(config, monkeypatch, capsys, missing):
     data, _, _ = config
@@ -116,6 +199,21 @@ def test_doctor_no_synth_exit_and_no_tts(config, monkeypatch, capsys, missing):
     output = capsys.readouterr().out
     assert "round trip skipped" in output and "Host isolation" in output
     assert all(line.startswith(("ok:", "warn:", "fail:")) for line in output.splitlines())
+
+
+@pytest.mark.parametrize("version,level,code", [("unknown", "warn", 0), ("0.0.0", "warn", 0),
+    ("0.21.4", "fail", 1), ("0.21.5", "ok", 0)])
+def test_doctor_unknown_version_warns_but_known_old_version_fails(config, monkeypatch, capsys, version, level, code):
+    config[0]["tts"]["provider"] = config[0]["stt"]["provider"] = "fish-audio"
+    monkeypatch.setattr(cli, "_version", lambda: version)
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(WALLET).respond(json={"credit": "1", "cumulative_top_up": "0"})
+        assert run("doctor", "--no-synth") == code
+    output = capsys.readouterr().out
+    if level == "warn":
+        assert "warn: Hermes version unknown (source checkout?)" in output and "fail:" not in output
+    else:
+        assert f"{level}: Hermes {version}" in output
 
 
 def test_doctor_synth_temp_file_deleted(config, monkeypatch, capsys):

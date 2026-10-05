@@ -31,3 +31,27 @@ def test_tool_and_hook_surface(plugin, fake_ctx, monkeypatch):
         assert not tool["check_fn"]()
         monkeypatch.setattr(module, "fish_api_key", lambda: "test-key")
         assert tool["check_fn"]()
+
+
+def test_registered_skill_descriptions_match_frontmatter(plugin, fake_ctx):
+    import yaml
+    plugin.register(fake_ctx)
+    assert len(fake_ctx.skills) == 3
+    for name, path in fake_ctx.skills.items():
+        frontmatter = yaml.safe_load(path.read_text().split("---", 2)[1])
+        assert fake_ctx.skill_descriptions[name] == frontmatter["description"]
+        assert fake_ctx.skill_descriptions[name]
+
+
+def test_register_needs_no_yaml(plugin, fake_ctx, monkeypatch):
+    # Hermes main no longer ships PyYAML; loading the plugin must not import it.
+    import sys
+    monkeypatch.setitem(sys.modules, "yaml", None)
+    plugin.register(fake_ctx)
+    assert len(fake_ctx.skills) == 3 and all(fake_ctx.skill_descriptions.values())
+
+
+def test_setup_skill_contains_exact_login_restart_hint(plugin, fake_ctx):
+    from fish_audio.cli import RESTART_HINT
+    plugin.register(fake_ctx)
+    assert RESTART_HINT in fake_ctx.skills["fish-audio-setup"].read_text()

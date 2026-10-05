@@ -73,6 +73,9 @@ def test_srt_prefers_turns_and_preserves_text(tmp_path):
         mock.post(BASE + "/v1/asr").respond(json=data)
         result = call(srt=True)
         assert result["request_id"] == "body-id"
+        assert result["duration"] == 2
+        assert result["segments"] == data["segments"]
+        assert result["speaker_turns"] == data["speaker_turns"]
         path = Path(result["srt_path"])
         assert path.parent == tmp_path and path.suffix == ".srt"
         assert path.read_text() == "1\n00:00:00,250 --> 00:00:01,500\nSpeaker 1: [happy] Hello!\n"
