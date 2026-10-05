@@ -82,6 +82,7 @@ export const S = {
   uploading: (n: number, total: number, percent: number) => `Uploading ${n} of ${total} · ${percent}%`,
   cloning: 'Creating the voice…',
   cloned: (title: string) => `Created ${title}. Find it in My voices.`,
+  operatorCloned: (title: string) => `Created ${title}. Find it in the Library under Favourites.`,
   tooMany: 'Choose up to 3 files.',
   tooLarge: (name: string) => `${name} is larger than 10 MB.`,
   agentChangedNothingSent: 'The selected agent changed, so nothing was sent.',
@@ -96,6 +97,7 @@ export const S = {
   saveAs: 'Name',
   save: 'Save voice',
   saved: (title: string) => `Saved ${title}. Find it in My voices.`,
+  operatorSaved: (title: string) => `Saved ${title}. Find it in the Library under Favourites.`,
   // Account
   apiCredit: 'API credit',
   lowCredit: 'Low balance — top up to keep voice replies working.',

@@ -117,7 +117,7 @@ var agentKey = (pin) => `${pin.connectionId ?? "local"}::${pin.profile}`;
 
 // src/desktop/page.tsx
 import {
-  atom as atom3,
+  atom as atom4,
   Badge,
   Button as Button3,
   Codicon as Codicon3,
@@ -146,6 +146,29 @@ import { useEffect, useState as useState2 } from "react";
 // src/desktop/create.tsx
 import { Button as Button2, Checkbox, Codicon as Codicon2, host as host2, Input, Textarea, useQueryClient, useValue as useValue2 } from "@hermes/plugin-sdk";
 import { useRef, useState } from "react";
+
+// src/desktop/favourites.ts
+import { atom as atom3 } from "@hermes/plugin-sdk";
+var favouritesKey = (pin) => `favourites:${agentKey(pin)}`;
+var $favouritesRevision = atom3(0);
+function readFavourites(pin) {
+  return pluginCtx().storage.get(favouritesKey(pin), []);
+}
+function writeFavourites(pin, list) {
+  pluginCtx().storage.set(favouritesKey(pin), list);
+  $favouritesRevision.set($favouritesRevision.get() + 1);
+}
+function forgetFavourite(pin, id) {
+  const list = readFavourites(pin);
+  if (list.some((f) => f.id === id)) writeFavourites(pin, list.filter((f) => f.id !== id));
+}
+function keepCreated(pin, voice) {
+  const available = $available.get();
+  if (!available || available.account !== false) return false;
+  const list = readFavourites(pin);
+  if (!list.some((f) => f.id === voice.id)) writeFavourites(pin, [...list, { id: voice.id, title: voice.title }]);
+  return true;
+}
 
 // src/desktop/strings.ts
 import { useValue } from "@hermes/plugin-sdk";
@@ -224,6 +247,7 @@ var S = {
   uploading: (n, total, percent) => `Uploading ${n} of ${total} \xB7 ${percent}%`,
   cloning: "Creating the voice\u2026",
   cloned: (title) => `Created ${title}. Find it in My voices.`,
+  operatorCloned: (title) => `Created ${title}. Find it in the Library under Favourites.`,
   tooMany: "Choose up to 3 files.",
   tooLarge: (name) => `${name} is larger than 10 MB.`,
   agentChangedNothingSent: "The selected agent changed, so nothing was sent.",
@@ -238,6 +262,7 @@ var S = {
   saveAs: "Name",
   save: "Save voice",
   saved: (title) => `Saved ${title}. Find it in My voices.`,
+  operatorSaved: (title) => `Saved ${title}. Find it in the Library under Favourites.`,
   // Account
   apiCredit: "API credit",
   lowCredit: "Low balance \u2014 top up to keep voice replies working.",
@@ -397,7 +422,7 @@ function CloneCard({ pin }) {
         (n, sent, total) => setStatus(S.uploading(n, files.length, Math.round(sent / Math.max(1, total) * 100)))
       );
       if (!samePin(currentPin(), pin)) return;
-      setStatus(S.cloned(voice.title));
+      setStatus(keepCreated(pin, voice) ? S.operatorCloned(voice.title) : S.cloned(voice.title));
       setFiles([]);
       setTitle("");
       setDescription("");
@@ -494,7 +519,7 @@ function DesignCard({ pin }) {
       const res = await post("/design/save", { design_token: candidate.design_token, title }, 12e4);
       if (!samePin(currentPin(), pin)) return;
       setSaved({ ...saved, [candidate.design_token]: res.voice.title });
-      host2.notify({ kind: "success", message: S.saved(res.voice.title) });
+      host2.notify({ kind: "success", message: keepCreated(pin, res.voice) ? S.operatorSaved(res.voice.title) : S.saved(res.voice.title) });
       void client.invalidateQueries({ queryKey: ["fish-audio", agentKey(pin), "mine"] });
     } catch (error) {
       if (samePin(currentPin(), pin)) host2.notify({ kind: "error", message: errorText(error) });
@@ -664,21 +689,11 @@ function useDebounced(value, ms) {
   }, [value, ms]);
   return settled;
 }
-var favouritesKey = (pin) => `favourites:${agentKey(pin)}`;
-var $favouritesRevision = atom3(0);
-function writeFavourites(pin, list) {
-  pluginCtx().storage.set(favouritesKey(pin), list);
-  $favouritesRevision.set($favouritesRevision.get() + 1);
-}
-function forgetFavourite(pin, id) {
-  const list = pluginCtx().storage.get(favouritesKey(pin), []);
-  if (list.some((f) => f.id === id)) writeFavourites(pin, list.filter((f) => f.id !== id));
-}
 function useFavourites(pin) {
   useValue3($favouritesRevision);
-  const list = pluginCtx().storage.get(favouritesKey(pin), []);
+  const list = readFavourites(pin);
   const toggle = (voice) => {
-    const current = pluginCtx().storage.get(favouritesKey(pin), []);
+    const current = readFavourites(pin);
     writeFavourites(
       pin,
       current.some((f) => f.id === voice.id) ? current.filter((f) => f.id !== voice.id) : [...current, { author: voice.author, id: voice.id, languages: voice.languages, title: voice.title }]
@@ -741,7 +756,7 @@ function Pager({ page, more, setPage }) {
   ] });
 }
 var inFlightPreviews = /* @__PURE__ */ new Set();
-var $usePending = atom3({});
+var $usePending = atom4({});
 async function previewVoice(pin, voiceId) {
   if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: S.agentChangedNothingSent });
   const key = `preview:${agentKey(pin)}:${voiceId}`;

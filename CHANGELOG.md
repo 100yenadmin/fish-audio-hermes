@@ -9,7 +9,7 @@
   `/account` route and the Desktop Voices page (no Account tab or credit chip). Because one operator account can serve
   many agents, its own voices aren't listed either: there is no My voices tab, and listing, editing or deleting the
   account's voices is refused on the Voices page, the gateway routes and `fish_voices`. Cloning and designing a voice
-  still work. Errors keep the same `error_kind` values, so nothing that branches on them changes. Without the
+  still work, and a voice created on the Voices page goes into that agent's Favourites, where Preview and Use reach it. Errors keep the same `error_kind` values, so nothing that branches on them changes. Without the
   setting, everything works as before.
 - **Use never competes with a managed provider.** Where a managed layer already sets the speech provider (such as
   evaOS's `evaos-fishaudio`), `/fish use` and the Voices page's **Use** save only the voice, and never write a provider

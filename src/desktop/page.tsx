@@ -48,6 +48,7 @@ import {
 } from './api'
 import { $playing, cachedPreview, play, playbackEpoch, releasePlayback, rememberPreview, stop } from './audio'
 import { CreateTab } from './create'
+import { $favouritesRevision, forgetFavourite, readFavourites, writeFavourites } from './favourites'
 import { LANGUAGES, LINKS, S, useAccountText } from './strings'
 import { BilledNote, card, LoadError, muted, Rows } from './ui'
 
@@ -185,30 +186,12 @@ function useDebounced<T>(value: T, ms: number): T {
   return settled
 }
 
-type Favourite = Pick<Voice, 'author' | 'id' | 'languages' | 'title'>
-
-const favouritesKey = (pin: AgentPin) => `favourites:${agentKey(pin)}`
-
-/** Storage holds the favourites; this changes on every write, so a mounted Library re-reads them. */
-const $favouritesRevision = atom(0)
-
-function writeFavourites(pin: AgentPin, list: Favourite[]) {
-  pluginCtx().storage.set(favouritesKey(pin), list)
-  $favouritesRevision.set($favouritesRevision.get() + 1)
-}
-
-/** A voice deleted from the account can no longer be previewed or used, so it leaves that agent's favourites too. */
-function forgetFavourite(pin: AgentPin, id: string) {
-  const list = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
-  if (list.some(f => f.id === id)) writeFavourites(pin, list.filter(f => f.id !== id))
-}
-
 function useFavourites(pin: AgentPin) {
   useValue($favouritesRevision)
-  const list = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
+  const list = readFavourites(pin)
   const toggle = (voice: Voice) => {
     // Read storage again: a delete may have changed it since this render.
-    const current = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
+    const current = readFavourites(pin)
     writeFavourites(
       pin,
       current.some(f => f.id === voice.id)

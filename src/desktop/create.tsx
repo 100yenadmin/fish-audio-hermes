@@ -4,6 +4,7 @@ import { type ChangeEvent, useRef, useState } from 'react'
 
 import { type AgentPin, agentKey, type Candidate, currentAgentEpoch, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
 import { $playing, play, stop } from './audio'
+import { keepCreated } from './favourites'
 import { S, useAccountText } from './strings'
 import { BilledNote, card, muted } from './ui'
 import { AgentChanged, cloneVoice, MAX_FILE_BYTES, MAX_FILES } from './upload'
@@ -55,7 +56,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
         (n, sent, total) => setStatus(S.uploading(n, files.length, Math.round((sent / Math.max(1, total)) * 100)))
       )
       if (!samePin(currentPin(), pin)) return
-      setStatus(S.cloned(voice.title))
+      setStatus(keepCreated(pin, voice) ? S.operatorCloned(voice.title) : S.cloned(voice.title))
       setFiles([])
       setTitle('')
       setDescription('')
@@ -162,7 +163,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
       const res = await post<{ voice: { id: string; title: string } }>('/design/save', { design_token: candidate.design_token, title }, 120_000)
       if (!samePin(currentPin(), pin)) return
       setSaved({ ...saved, [candidate.design_token]: res.voice.title })
-      host.notify({ kind: 'success', message: S.saved(res.voice.title) })
+      host.notify({ kind: 'success', message: keepCreated(pin, res.voice) ? S.operatorSaved(res.voice.title) : S.saved(res.voice.title) })
       void client.invalidateQueries({ queryKey: ['fish-audio', agentKey(pin), 'mine'] })
     } catch (error) {
       if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })

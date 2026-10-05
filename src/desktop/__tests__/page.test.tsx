@@ -462,6 +462,8 @@ describe('#13 follow-ups', () => {
 
 
 describe('operator account page', () => {
+  const candidate = { design_token: 'd'.repeat(32), index: 0, mime: 'audio/wav', audio: 'SUQz' }
+
   it('restores an account tab into Library, hides Account, and uses operator preview notes', async () => {
     $available.set({ key: true, version: '1.1.0', account: false })
     $tab.set('account')
@@ -502,6 +504,44 @@ describe('operator account page', () => {
     expect(screen.getByRole('tab', { name: 'My voices' })).toBeTruthy()
     expect(screen.getByText(S.cloneBilled)).toBeTruthy()
     expect(screen.getByText(S.designBilled)).toBeTruthy()
+  })
+
+  it('a voice designed here lands in Favourites, where Use reaches it without My voices', async () => {
+    $available.set({ key: true, version: '1.1.0', account: false })
+    $tab.set('create')
+    const { calls, t } = mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
+      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' } } : path === '/use' ? { ok: true, message: 'Saved.' } : VOICES)
+    const notify = vi.spyOn(host, 'notify')
+    fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: S.design }))
+    await flush()
+    fireEvent.change(screen.getByLabelText(`${S.saveAs} 1`), { target: { value: 'Warm' } })
+    fireEvent.click(screen.getByRole('button', { name: S.save }))
+    await flush()
+    expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'w'.repeat(32), title: 'Warm' }])
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: S.operatorSaved('Warm') })
+    act(() => $tab.set('library'))
+    fireEvent.click(screen.getByRole('button', { name: S.favouritesOnly }))
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'Use' }))
+    await flush()
+    expect(calls.find(c => c.path === '/use')?.body).toEqual({ voice: 'w'.repeat(32) })
+  })
+
+  it('default mode keeps created voices out of Favourites and points to My voices', async () => {
+    $available.set({ key: true, version: '1.1.0', account: true })
+    $tab.set('create')
+    const { t } = mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
+      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' } } : VOICES)
+    const notify = vi.spyOn(host, 'notify')
+    fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: S.design }))
+    await flush()
+    fireEvent.change(screen.getByLabelText(`${S.saveAs} 1`), { target: { value: 'Warm' } })
+    fireEvent.click(screen.getByRole('button', { name: S.save }))
+    await flush()
+    expect(t.stored.get('favourites:conn-1::default')).toBeUndefined()
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: S.saved('Warm') })
   })
 
   it('offers only Check again when an operator-managed agent has no key', () => {
