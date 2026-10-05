@@ -69,7 +69,7 @@ def _speak(args, key, base, session, *, record_media=True):
         hooks.record(session, path, as_voice)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
               "note": "Include media_tag verbatim in your reply so the user receives the audio."}
-    if defaulted and model == "s2.1-pro-free":
+    if defaulted and model == "s2.1-pro-free" and not settings.operator_account():
         result["notice"] = settings.FREE_MODEL_NOTICE
     if events is not None:
         from .transcribe import speech_timestamps
@@ -138,8 +138,11 @@ REQUIRED = {"fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe"
 
 
 def register(ctx):
+    # Description changes take effect after a gateway restart (registration time).
+    operator = settings.operator_account()
     for name in SCHEMAS:
-        schema = {"name": name, "description": DESCRIPTIONS[name],
+        description = DESCRIPTIONS[name].removesuffix(BILLING) if operator else DESCRIPTIONS[name]
+        schema = {"name": name, "description": description,
                   "parameters": {"type": "object", "properties": SCHEMAS[name], "required": REQUIRED[name]}}
         ctx.register_tool(name=name, toolset="fish_audio", schema=schema, handler=globals()[name],
-                          check_fn=lambda: bool(fish_api_key()), description=DESCRIPTIONS[name], emoji="🐟")
+                          check_fn=lambda: bool(fish_api_key()), description=description, emoji="🐟")

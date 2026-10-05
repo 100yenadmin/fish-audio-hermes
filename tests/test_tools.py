@@ -295,3 +295,26 @@ def test_clone_upload_uses_validated_fd_bytes_after_path_replacement(tmp_path, m
         route = mock.post(BASE + "/model").respond(201, json={"_id": VOICE})
         assert call(tools.fish_voices, action="clone", title="Voice", sample_paths=[str(path)], consent=True)["success"]
         assert original in route.calls.last.request.content and b"replacement" not in route.calls.last.request.content
+
+
+@pytest.mark.parametrize("operator", [False, True])
+def test_tool_registration_account_descriptions(monkeypatch, fake_ctx, operator):
+    monkeypatch.setattr(settings, "operator_account", lambda: operator)
+    tools.register(fake_ctx)
+    for tool in fake_ctx.tools.values():
+        assert tool["schema"]["description"] == tool["description"]
+        assert (tools.BILLING in tool["description"]) is (not operator)
+    monkeypatch.setattr(settings, "operator_account", lambda: not operator)
+    assert (tools.BILLING in fake_ctx.tools["fish_speak"]["description"]) is (not operator)
+
+
+def test_operator_tool_notice_and_missing_key(monkeypatch):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    monkeypatch.setattr(settings, "cached_wallet", lambda *args: account.Wallet(Decimal(0), Decimal(0), False))
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/v1/tts").respond(content=b"audio")
+        result = call(tools.fish_speak, text="hello")
+    assert result["success"] and "notice" not in result
+    monkeypatch.setattr("fish_audio.tool_support.fish_api_key", lambda: "")
+    result = call(tools.fish_speak, text="hello")
+    assert result["error"] == "Ask the operator of this agent to finish the Fish Audio setup."

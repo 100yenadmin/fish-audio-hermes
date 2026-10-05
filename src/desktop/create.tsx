@@ -4,7 +4,7 @@ import { type ChangeEvent, useRef, useState } from 'react'
 
 import { type AgentPin, agentKey, type Candidate, currentAgentEpoch, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
 import { $playing, play, stop } from './audio'
-import { S } from './strings'
+import { S, useAccountText } from './strings'
 import { BilledNote, card, muted } from './ui'
 import { AgentChanged, cloneVoice, MAX_FILE_BYTES, MAX_FILES } from './upload'
 
@@ -20,6 +20,7 @@ export function CreateTab({ pin }: { pin: AgentPin }) {
 }
 
 function CloneCard({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.cloneBilled, S.operatorCloneBilled)
   const client = useQueryClient()
   const input = useRef<HTMLInputElement>(null)
   const [files, setFiles] = useState<File[]>([])
@@ -103,7 +104,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
           />
           <span>{S.consent}</span>
         </label>
-        <BilledNote text={S.cloneBilled} />
+        <BilledNote text={billedNote} />
         <div style={{ alignItems: 'center', display: 'flex', gap: 10 }}>
           <Button disabled={!ready} loading={busy} onClick={() => void submit()}>
             {S.clone}
@@ -120,6 +121,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
 }
 
 function DesignCard({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.designBilled, S.operatorDesignBilled)
   const client = useQueryClient()
   const playing = useValue($playing)
   const [instruction, setInstruction] = useState('')
@@ -184,7 +186,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
           rows={3}
           value={instruction}
         />
-        <BilledNote text={S.designBilled} />
+        <BilledNote text={billedNote} />
         <div>
           <Button disabled={!instruction.trim() || busy !== null} loading={busy === 'design'} onClick={() => void design()}>
             {busy === 'design' ? S.designing : S.design}

@@ -25,6 +25,11 @@ class FishAudioError(Exception):
 
 def response_error(status, headers=None, body=b"", model=None, key="", *, defaulted=False):
     try:
+        from . import settings  # Lazy: settings also uses response_error through account.
+        operator = settings.operator_account()
+    except Exception:
+        operator = False
+    try:
         data = json.loads(body)
     except (ValueError, UnicodeError, TypeError):
         data = {}
@@ -40,6 +45,12 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         415: ("unsupported_media", "Fish Audio does not support this audio format."),
         429: ("rate_limit", "Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, ≥$100: 15, ≥$1k: 50 concurrent requests. Retry later."),
     }
+    if operator:
+        for status_code, text in ((401, "The voice service's credentials were rejected. Contact the operator of this agent."),
+                                  (403, "The voice service's credentials were rejected. Contact the operator of this agent."),
+                                  (402, "The voice service is out of credit. Contact the operator of this agent."),
+                                  (429, "The voice service is busy. Try again shortly.")):
+            messages[status_code] = (messages[status_code][0], text)
     if status == 400 and model in {"transcribe-1", "transcribe-1-pro"}:
         message = "Fish Audio could not decode this audio."
         if model == "transcribe-1":
@@ -61,7 +72,7 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         kind, message = "voice_not_found", by_kind["voice_not_found"]
     if code:
         message += f" Code: {code}."
-    if (model == "s2.1-pro-free" and status in {402, 403, 429}) or (defaulted and status == 402 and model != "s2.1-pro"):
+    if not operator and ((model == "s2.1-pro-free" and status in {402, 403, 429}) or (defaulted and status == 402 and model != "s2.1-pro")):
         message += f" Switch to s2.1-pro and top up: {BILLING_URL}"
     request_id = headers.get("x-request-id") or data.get("request_id")
     if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", request_id):

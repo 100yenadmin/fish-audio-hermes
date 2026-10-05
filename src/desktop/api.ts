@@ -45,7 +45,7 @@ export interface Candidate {
 }
 
 /** The selected agent's gateway half: null until the first probe answers, false on a definite 404. */
-export const $available = atom<null | false | { version: string; key: boolean }>(null)
+export const $available = atom<null | false | { version: string; key: boolean; account: boolean }>(null)
 /** The selected agent's wallet (status-bar chip, Account tab); null when unknown or without a key. */
 export const $account = atom<Account | null>(null)
 /** Which tab the page shows; palette commands set it before navigating. */

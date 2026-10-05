@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe('Voices page', () => {
   it('shows the onboarding card, not the tabs, when the agent has no key', async () => {
-    $available.set({ key: false, version: '0.3.0' })
+    $available.set({ key: false, version: '0.3.0', account: true })
     const { calls } = mount(async () => ({ ok: true }))
     expect(screen.getByText('Connect your Fish Audio account')).toBeTruthy()
     expect(screen.getByText('Get an API key')).toBeTruthy()
@@ -40,7 +40,7 @@ describe('Voices page', () => {
   })
 
   it('searches the library, previews with a billed note, uses and stars a voice', async () => {
-    $available.set({ key: true, version: '0.3.0' })
+    $available.set({ key: true, version: '0.3.0', account: true })
     const { calls, t } = mount(async path =>
       path.startsWith('/voices') ? VOICES : path === '/preview' ? { ok: true, audio: 'SUQz', mime: 'audio/mpeg' } : { ok: true, message: 'Saved.' }
     )
@@ -63,7 +63,7 @@ describe('Voices page', () => {
   })
 
   it('switches tabs from the tab list', async () => {
-    $available.set({ key: true, version: '0.3.0' })
+    $available.set({ key: true, version: '0.3.0', account: true })
     mount(async path => (path.startsWith('/voices') ? { ...VOICES, items: [] } : { ok: true }))
     fireEvent.click(screen.getByRole('tab', { name: 'Create' }))
     await flush()
@@ -86,7 +86,7 @@ describe('selected-agent dispatch and completion guards', () => {
     return { promise, resolve, reject }
   }
 
-  beforeEach(() => $available.set({ key: true, version: '0.3.0' }))
+  beforeEach(() => $available.set({ key: true, version: '0.3.0', account: true }))
   afterEach(() => vi.restoreAllMocks())
 
   it.each(['use', 'preview', 'delete'])('does not dispatch %s after selection changed before the click', async action => {
@@ -245,7 +245,7 @@ describe('selected-agent dispatch and completion guards', () => {
 })
 
 describe('review follow-ups', () => {
-  beforeEach(() => $available.set({ key: true, version: '0.3.0' }))
+  beforeEach(() => $available.set({ key: true, version: '0.3.0', account: true }))
   afterEach(() => vi.restoreAllMocks())
   const pin = { connectionId: 'conn-1', profile: 'default' }
   const page = (n: number) => ({ ok: true, page: n, total: 5000, items: Array.from({ length: 20 }, (_, i) => ({ id: `${n}x${i}`.padEnd(32, 'a'), title: `Voice ${n}-${i}` })) })
@@ -352,7 +352,7 @@ describe('review follow-ups', () => {
 })
 
 describe('list reads stay with the captured agent', () => {
-  beforeEach(() => $available.set({ key: true, version: '0.3.0' }))
+  beforeEach(() => $available.set({ key: true, version: '0.3.0', account: true }))
   afterEach(() => vi.restoreAllMocks())
   const full = (who: string) => ({ ok: true, page: 1, total: 40, items: Array.from({ length: 20 }, (_, i) => ({ id: `${who}${i}`.padEnd(32, 'b'), title: `${who} voice ${i}` })) })
 
@@ -397,7 +397,7 @@ describe('#13 follow-ups', () => {
     return { promise, resolve }
   }
 
-  beforeEach(() => $available.set({ key: true, version: '1.0.4' }))
+  beforeEach(() => $available.set({ key: true, version: '1.0.4', account: true }))
   afterEach(() => vi.restoreAllMocks())
 
   it('one Use per agent at a time: a second Use waits, so only one write is sent', async () => {
@@ -457,5 +457,53 @@ describe('#13 follow-ups', () => {
     expect(screen.getByText('The request timed out.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: S.checkAgain }))
     expect(retry).toHaveBeenCalledWith(true)
+  })
+})
+
+
+describe('operator account page', () => {
+  it('restores an account tab into Library, hides Account, and uses operator preview notes', async () => {
+    $available.set({ key: true, version: '1.1.0', account: false })
+    $tab.set('account')
+    const { calls } = mount(async () => VOICES)
+    await flush()
+    expect($tab.get()).toBe('library')
+    expect(screen.queryByRole('tab', { name: 'Account' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByText(S.operatorBilledNote)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Preview Narrator' }).title).toBe(S.operatorBilledNote)
+    expect(calls.some(c => c.path === '/account')).toBe(false)
+    expect(document.body.textContent).not.toContain('your Fish Audio account')
+    fireEvent.click(screen.getByRole('tab', { name: 'My voices' }))
+    await flush()
+    expect(screen.getByText(S.operatorBilledNote)).toBeTruthy()
+  })
+
+  it('uses operator clone and design notes and updates on a same-agent flip', async () => {
+    $available.set({ key: true, version: '1.1.0', account: false })
+    $tab.set('create')
+    mount(async () => VOICES)
+    expect(screen.getByText(S.operatorCloneBilled)).toBeTruthy()
+    expect(screen.getByText(S.operatorDesignBilled)).toBeTruthy()
+    expect(document.body.textContent).not.toContain('your Fish Audio account')
+    act(() => $available.set({ key: true, version: '1.1.0', account: true }))
+    expect(screen.getByRole('tab', { name: 'Account' })).toBeTruthy()
+    expect(screen.getByText(S.cloneBilled)).toBeTruthy()
+    expect(screen.getByText(S.designBilled)).toBeTruthy()
+  })
+
+  it('offers only Check again when an operator-managed agent has no key', () => {
+    $available.set({ key: false, version: '1.1.0', account: false })
+    const refresh = vi.fn(async () => undefined)
+    setRefresher(refresh)
+    const { calls } = mount(async () => VOICES)
+    expect(screen.getByText(S.operatorOnboardTitle)).toBeTruthy()
+    expect(screen.getByText(S.operatorOnboardBody)).toBeTruthy()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.queryByText(S.getKey)).toBeNull()
+    expect(screen.queryByText(S.openPlugins)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: S.checkAgain }))
+    expect(refresh).toHaveBeenCalled()
+    expect(calls).toEqual([])
   })
 })

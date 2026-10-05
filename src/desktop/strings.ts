@@ -1,4 +1,11 @@
 // Every user-facing English string, in one place for later i18n.
+import { useValue } from '@hermes/plugin-sdk'
+import { $available } from './api'
+
+export function useAccountText(normal: string, operator: string) {
+  const available = useValue($available)
+  return available && available.account === false ? operator : normal
+}
 
 const agentName = (profile: string) => (profile && profile !== 'default' ? profile : 'this agent')
 
@@ -18,6 +25,11 @@ export const S = {
     `Fish Audio isn't set up on ${agentName(profile)}'s machine yet. Install the plugin there, enable it, and restart the gateway.`,
   tabs: { library: 'Library', mine: 'My voices', create: 'Create', account: 'Account' },
   // Onboarding (no key)
+  operatorOnboardTitle: "Voice isn't set up for this agent yet",
+  operatorOnboardBody: 'Ask the operator of this agent to finish the Fish Audio setup.',
+  operatorBilledNote: 'Preview plays a short sample.',
+  operatorCloneBilled: 'Cloning creates a new voice for this agent.',
+  operatorDesignBilled: 'Each design creates new candidate voices.',
   onboardTitle: 'Connect your Fish Audio account',
   onboardBody: (profile: string) =>
     `Voices need a Fish Audio API key on ${agentName(profile)}. New accounts can start on the free s2.1-pro-free model.`,
@@ -54,6 +66,7 @@ export const S = {
   mineEmptyHint: 'Clone your voice or design a new one in Create.',
   delete: 'Delete',
   deleteTitle: (title: string) => `Delete "${title}"?`,
+  operatorDeleteBody: 'This removes the voice from this agent. Agents using this voice will need another voice selected.',
   deleteBody: 'This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.',
   deleteConfirmLabel: (title: string) => `Type "${title}" to confirm`,
   cancel: 'Cancel',

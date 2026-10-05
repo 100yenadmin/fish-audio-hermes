@@ -118,6 +118,12 @@ and the plugin's settings.
 
 All settings are per profile.
 
+### Operator-managed keys
+
+Set `plugins.entries.fish-audio.settings.operator_account: true` when the Fish account belongs to
+the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
+setup or credit problems to the operator. It defaults to false. Tool descriptions update after a gateway restart.
+
 ```yaml
 tts:
   provider: fish-audio

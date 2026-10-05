@@ -6,7 +6,7 @@ from . import settings
 from .errors import FishAudioError
 from .media import InputFileError
 from .secrets import fish_api_key, redact
-from .tts import SETUP_MESSAGE
+from .tts import setup_message
 
 
 class ToolInputError(ValueError):
@@ -29,7 +29,7 @@ def voice_id(value):
 def run(operation, args, session_id=""):
     try:
         key = fish_api_key()
-        require(bool(key), SETUP_MESSAGE)
+        require(bool(key), setup_message())
         require(isinstance(args, dict), "Tool arguments must be an object.")
         base = settings._base_url(settings.transport_settings().get("base_url", settings.DEFAULT_BASE_URL))
         result = operation(args, key, base, session_id)

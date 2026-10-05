@@ -1,6 +1,6 @@
 """Hermes's ordinary text_to_speech provider."""
 from ._compat import TTSProvider
-from . import client
+from . import client, settings
 from .models import MODELS
 from .secrets import fish_api_key
 from .settings import FREE_MODEL_NOTICE, resolve_tts
@@ -10,6 +10,10 @@ from .state import record_failure
 
 SETUP_MESSAGE = ("Set up Fish Audio with hermes tools or Desktop ▸ Plugins ▸ Fish Audio. "
                  "Get an API key at https://fish.audio/app/api-keys")
+
+
+def setup_message():
+    return "Ask the operator of this agent to finish the Fish Audio setup." if settings.operator_account() else SETUP_MESSAGE
 
 
 class FishAudioTTSProvider(TTSProvider):
@@ -57,13 +61,13 @@ class FishAudioTTSProvider(TTSProvider):
             raise ValueError("Nothing to say: the text is empty.")
         key = fish_api_key()
         if not key:
-            raise ValueError(SETUP_MESSAGE)
+            raise ValueError(setup_message())
         params, final_path = resolve_tts(voice, model, speed, format, output_path, key=key)
         base_url = params.pop("base_url")
         family = next(row["family"] for row in MODELS if row["id"] == params["model"])
         params["text"] = adapt_tags(text, family)
         metadata = extra.get("result_metadata")
-        if isinstance(metadata, dict) and params["model_defaulted"] and params["model"] == "s2.1-pro-free":
+        if isinstance(metadata, dict) and params["model_defaulted"] and params["model"] == "s2.1-pro-free" and not settings.operator_account():
             metadata["fish_audio_notice"] = FREE_MODEL_NOTICE
         try:
             client.tts_to_file(params, key, base_url, final_path)

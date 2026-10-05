@@ -172,3 +172,26 @@ def test_status_model_reason(config, monkeypatch, nested, managed, wallet, expec
     monkeypatch.setattr(settings, "cached_wallet", lambda *a: wallet)
     monkeypatch.setattr(account, "get_package", lambda *a: None)
     assert f"({expected})" in commands.status("test-key")
+
+
+def test_operator_chat_hides_account_without_wallet_reads(config, monkeypatch):
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    def forbidden(*args, **kwargs):
+        pytest.fail("operator chat read the account")
+    for name in ("get_wallet", "cached_wallet", "get_package"):
+        monkeypatch.setattr(account, name, forbidden)
+    monkeypatch.setattr(settings, "cached_wallet", forbidden)
+    assert commands.handle("balance") == "Voice billing for this agent is handled by its operator."
+    state.record_failure("quota", "Top up https://fish.audio/app/developers/billing")
+    output = commands.status()
+    assert "Top up" not in output and "fish.audio/app" not in output
+    assert "quota" in output
+    assert "Account: managed by the operator" in output
+    assert "API credit" not in output and "Plan:" not in output and "paid account" not in output
+    assert commands.handle("model s2.1-pro-free") == "Saved."
+    assert "http" not in commands.handle("sk-" + "x" * 30)
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    assert commands.handle("balance") == "Voice billing for this agent is handled by its operator."
+    assert commands.handle("status") == "Ask the operator of this agent to finish the Fish Audio setup."
+    config[0]["plugins"]["entries"]["fish-audio"]["settings"]["operator_account"] = False
+    assert commands.handle("balance") == commands.NO_KEY

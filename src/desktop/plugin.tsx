@@ -13,7 +13,7 @@ import {
 } from '@hermes/plugin-sdk'
 
 import { releasePlayback } from './audio'
-import { $account, $available, $availableError, $tab, type Account, bindContext, endAgentOperations, isNotFoundError, setRefresher } from './api'
+import { $account, $available, $availableError, $tab, type Account, bindContext, currentAgentEpoch, endAgentOperations, isNotFoundError, setRefresher } from './api'
 import { VoicesPage } from './page'
 import { S } from './strings'
 
@@ -65,6 +65,9 @@ function CreditChip() {
  *  counter makes only the newest probe count, so a late answer about the previous agent changes nothing. */
 export function registerAvailabilityGate(ctx: PluginContext) {
   let removers: Array<() => void> | null = null
+  let accountRemovers: Array<() => void> | null = null
+  let retries = 0
+  let cancelRetry: (() => void) | undefined
   let disposed = false
   let generation = 0
   let accountAt = 0
@@ -74,8 +77,18 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   $account.set(null)
   $availableError.set(null)
 
-  const show = (available: boolean) => {
+  const show = (available: boolean, account = false) => {
     if (disposed) return
+    if (available && account && !accountRemovers) {
+      accountRemovers = [
+        ctx.register({ id: 'credit', area: STATUSBAR_AREAS.right, order: 70, render: () => <CreditChip /> }),
+        ctx.register({ id: 'palette-account', area: PALETTE_AREA,
+          data: { id: 'fish-audio.account', keywords: ['fish', 'credit', 'balance'], label: S.paletteAccount, run: () => openTab('account') } satisfies PaletteContribution })
+      ]
+    } else if ((!available || !account) && accountRemovers) {
+      accountRemovers.forEach(remove => remove())
+      accountRemovers = null
+    }
     if (available && !removers) {
       removers = [
         ctx.register({
@@ -84,16 +97,10 @@ export function registerAvailabilityGate(ctx: PluginContext) {
           order: 46,
           data: { codicon: 'unmute', label: S.navLabel, path: PAGE_PATH } satisfies SidebarNavContribution
         }),
-        ctx.register({ id: 'credit', area: STATUSBAR_AREAS.right, order: 70, render: () => <CreditChip /> }),
         ctx.register({
           id: 'palette-voices',
           area: PALETTE_AREA,
           data: { id: 'fish-audio.voices', keywords: ['fish', 'voice', 'tts'], label: S.paletteVoices, run: () => openTab('library') } satisfies PaletteContribution
-        }),
-        ctx.register({
-          id: 'palette-account',
-          area: PALETTE_AREA,
-          data: { id: 'fish-audio.account', keywords: ['fish', 'credit', 'balance'], label: S.paletteAccount, run: () => openTab('account') } satisfies PaletteContribution
         })
       ]
     } else if (!available && removers) {
@@ -108,13 +115,14 @@ export function registerAvailabilityGate(ctx: PluginContext) {
       $availableError.set(null)  // a forced probe (Check again, a new agent) shows loading, not the last failure
     }
     const mine = ++generation
-    return ctx.rest<{ key?: boolean; version?: string }>('/available').then(
+    return ctx.rest<{ key?: boolean; version?: string; account?: boolean }>('/available').then(
       res => {
         if (mine !== generation || disposed) return
+        cancelRetry?.()
         $availableError.set(null)
-        $available.set({ key: res?.key === true, version: String(res?.version ?? '') })
-        show(true)
-        if (res?.key !== true) {
+        $available.set({ key: res?.key === true, version: String(res?.version ?? ''), account: res?.account !== false })
+        show(true, res?.account !== false)
+        if (res?.key !== true || res?.account === false) {
           $account.set(null)
           return
         }
@@ -136,9 +144,20 @@ export function registerAvailabilityGate(ctx: PluginContext) {
         if (!isNotFoundError(error)) {
           // Still unknown with no answer: the page shows the failure and Check again, not an endless skeleton.
           // A known agent keeps its entries: a transient error never hides them.
-          if ($available.get() === null) $availableError.set(error)
+          if ($available.get() === null) {
+            $availableError.set(error)
+            if (!cancelRetry && retries < 3) {
+              const epoch = currentAgentEpoch()
+              cancelRetry = ctx.setTimeout(() => {
+                if (disposed || epoch !== currentAgentEpoch()) return
+                cancelRetry = undefined
+                if ($available.get() === null) void probe()
+              }, [5_000, 15_000, 30_000][retries++])
+            }
+          }
           return
         }
+        cancelRetry?.()
         $availableError.set(null)
         $available.set(false)
         $account.set(null)
@@ -154,6 +173,9 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   const onAgentChange = () => {
     if (disposed) return
     endAgentOperations()
+    cancelRetry?.()
+    cancelRetry = undefined
+    retries = 0
     $account.set(null)
     $available.set(null)
     show(false)
@@ -162,6 +184,7 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   const stops = [host.state.profile.listen(onAgentChange), host.state.connectionId.listen(onAgentChange)]
   ctx.onDispose(() => {
     disposed = true
+    cancelRetry?.()
     stops.forEach(stop => stop())
   })
   return { probe }

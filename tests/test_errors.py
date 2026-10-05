@@ -101,3 +101,34 @@ def test_paid_quota_keeps_link_without_redundant_switch():
     message = str(response_error(402, model="s2.1-pro", defaulted=True))
     assert "Switch to s2.1-pro" not in message and "https://fish.audio/app/developers/billing" in message
     assert "Switch to s2.1-pro" in str(response_error(402, model="s2.1-pro-free"))
+
+
+@pytest.mark.parametrize("status,code", [(401, None), (402, None), (403, None), (429, None),
+                                        (500, "invalid_api_key"), (500, "quota"), (500, "rate_limit")])
+def test_operator_errors_preserve_fields_and_hide_account(monkeypatch, status, code):
+    from fish_audio import settings
+    body = json.dumps({"code": code}).encode()
+    headers = {"x-request-id": "request", "x-fish-trace-id": "trace"}
+    monkeypatch.setattr(settings, "operator_account", lambda: False)
+    ordinary = response_error(status, headers, body, model="s2.1-pro-free", defaulted=True)
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    operator = response_error(status, headers, body, model="s2.1-pro-free", defaulted=True)
+    assert (operator.kind, operator.status, operator.request_id, operator.trace_id) == (
+        ordinary.kind, ordinary.status, ordinary.request_id, ordinary.trace_id)
+    for forbidden in ("http", "top up", "Top-up", "plan", "API key", "Switch"):
+        assert forbidden not in str(operator)
+    assert (f"Code: {code}." in operator.message) if code else "Code:" not in operator.message
+    expected = {"credential": "The voice service's credentials were rejected. Contact the operator of this agent.",
+                "quota": "The voice service is out of credit. Contact the operator of this agent.",
+                "rate_limit": "The voice service is busy. Try again shortly."}
+    assert operator.message.startswith(expected[operator.kind])
+
+
+def test_operator_error_settings_failure_and_public_discovery(monkeypatch):
+    from fish_audio import settings
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    assert "https://fish.audio/discovery" in str(response_error(404, body=b'{"code":"voice_not_found"}'))
+    def broken():
+        raise RuntimeError("config unavailable")
+    monkeypatch.setattr(settings, "operator_account", broken)
+    assert "https://fish.audio/app/api-keys" in str(response_error(401))

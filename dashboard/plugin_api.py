@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.0.4"
+VERSION = "1.1.0"
 
 _HOST_SCOPES = False
 
@@ -166,7 +166,7 @@ def _scope():
     """The requesting profile's key and API base URL, read fresh for this call."""
     key = _fa("secrets").fish_api_key()
     if not key:
-        raise Refusal("no_key", NO_KEY)
+        raise Refusal("no_key", "Ask the operator of this agent to finish the Fish Audio setup." if _fa("settings").operator_account() else NO_KEY)
     return key, _fa("commands").base_url()
 
 
@@ -191,7 +191,7 @@ def available() -> dict:
         key = bool(_fa("secrets").fish_api_key())
     except Exception:
         key = False
-    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key}
+    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key, "account": not _fa("settings").operator_account()}
 
 
 @router.get("/voices")
@@ -285,7 +285,7 @@ def delete_voice(voice_id: str):
     key, base = _scope()
     ident = _voice_id(voice_id)
     if not _author_owned(ident, key, base):
-        raise Refusal("not_owner", "You can delete only voices your Fish Audio account created.")
+        raise Refusal("not_owner", "You can delete only voices created for this agent." if _fa("settings").operator_account() else "You can delete only voices your Fish Audio account created.")
     _fa("voices").execute({"action": "delete", "voice_id": ident}, key, base, "")
     return {"ok": True, "id": ident}
 
@@ -293,6 +293,9 @@ def delete_voice(voice_id: str):
 @router.get("/account")
 @_protocol
 def account():
+    if _fa("settings").operator_account():
+        return {"ok": False, "kind": "operator_account",
+                "message": "Billing for this agent's voice service is handled by its operator."}
     key, base = _scope()
     module = _fa("account")
     wallet = module.get_wallet(key, base, strict=True)

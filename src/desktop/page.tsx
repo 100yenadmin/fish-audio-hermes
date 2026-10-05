@@ -48,7 +48,7 @@ import {
 } from './api'
 import { $playing, cachedPreview, play, playbackEpoch, releasePlayback, rememberPreview, stop } from './audio'
 import { CreateTab } from './create'
-import { LANGUAGES, LINKS, S } from './strings'
+import { LANGUAGES, LINKS, S, useAccountText } from './strings'
 import { BilledNote, card, LoadError, muted, Rows } from './ui'
 
 const pad = '0 24px'
@@ -101,7 +101,7 @@ export function VoicesPage() {
   if (!available.key) {
     return (
       <Frame profile={profile}>
-        <Onboarding profile={profile} />
+        <Onboarding profile={profile} operator={available.account === false} />
       </Frame>
     )
   }
@@ -125,22 +125,22 @@ function Frame({ children, profile, tabs }: { children: ReactNode; profile: stri
   )
 }
 
-function Onboarding({ profile }: { profile: string }) {
+function Onboarding({ profile, operator }: { profile: string; operator: boolean }) {
   const open = (url: string) => void pluginCtx().os.openExternal(url)
   return (
     <div style={{ padding: pad }}>
       <div style={{ ...card, maxWidth: 560 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{S.onboardTitle}</h2>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{S.onboardBody(profile)}</p>
-        <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingLeft: 20 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{operator ? S.operatorOnboardTitle : S.onboardTitle}</h2>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{operator ? S.operatorOnboardBody : S.onboardBody(profile)}</p>
+        {!operator && <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingLeft: 20 }}>
           <li>{S.onboardStep1}</li>
           <li>{S.onboardStep2}</li>
-        </ol>
+        </ol>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button onClick={() => open(LINKS.keys)}>{S.getKey}</Button>
+          {!operator && <><Button onClick={() => open(LINKS.keys)}>{S.getKey}</Button>
           <Button onClick={() => host.navigate('/capabilities?tab=plugins')} variant="secondary">
             {S.openPlugins}
-          </Button>
+          </Button></>}
           <Button onClick={() => void refreshAvailability()} variant="ghost">
             {S.checkAgain}
           </Button>
@@ -151,11 +151,15 @@ function Onboarding({ profile }: { profile: string }) {
 }
 
 function Body({ pin }: { pin: AgentPin }) {
-  const tab = useValue($tab)
+  const selected = useValue($tab)
+  const available = useValue($available)
+  const operator = available && available.account === false
+  const tab = operator && selected === 'account' ? 'library' : selected
+  useEffect(() => { if (operator && selected === 'account') $tab.set('library') }, [operator, selected])
   const tabs = (
     <SegmentedControl
       onChange={(id: typeof tab) => $tab.set(id)}
-      options={(['library', 'mine', 'create', 'account'] as const).map(id => ({ id, label: S.tabs[id] }))}
+      options={(['library', 'mine', 'create', 'account'] as const).filter(id => !operator || id !== 'account').map(id => ({ id, label: S.tabs[id] }))}
       value={tab}
     />
   )
@@ -214,6 +218,7 @@ function useFavourites(pin: AgentPin) {
 }
 
 function Library({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
   const [text, setText] = useState('')
   const [language, setLanguage] = useState('any')
   const [page, setPage] = useState(1)
@@ -256,7 +261,7 @@ function Library({ pin }: { pin: AgentPin }) {
           {S.favouritesOnly}
         </Button>
       </div>
-      <BilledNote text={S.billedNote} />
+      <BilledNote text={billedNote} />
       {!favouritesOnly && voices.error ? (
         <LoadError error={voices.error} onRetry={() => void voices.refetch()} />
       ) : !list ? (
@@ -330,6 +335,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   favourites?: ReturnType<typeof useFavourites>
   onDelete?: (voice: Voice) => void
 }) {
+  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
   const playing = useValue($playing)
   const [busy, setBusy] = useState<null | string>(null)
   const [used, setUsed] = useState<null | string>(null)
@@ -396,7 +402,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 loading={busy === `play:${voice.id}`}
                 onClick={() => void run(`play:${voice.id}`, () => previewVoice(pin, voice.id))}
                 size="xs"
-                title={S.billedNote}
+                title={billedNote}
                 variant="secondary"
               >
                 <Codicon name={playing === key ? 'debug-stop' : 'play'} />
@@ -459,6 +465,7 @@ function Avatar({ title }: { title: string }) {
 }
 
 function MyVoices({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
   const client = useQueryClient()
   const [page, setPage] = useState(1)
   const queryKey = ['fish-audio', agentKey(pin), 'mine']
@@ -471,7 +478,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
   const [target, setTarget] = useState<null | Voice>(null)
   return (
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
-      <BilledNote text={S.billedNote} />
+      <BilledNote text={billedNote} />
       {voices.error ? (
         <LoadError error={voices.error} onRetry={() => void voices.refetch()} />
       ) : !voices.data ? (
@@ -488,6 +495,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
 }
 
 function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice: null | Voice; onClose: () => void; onDeleted: () => void }) {
+  const deleteBody = useAccountText(S.deleteBody, S.operatorDeleteBody)
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   useEffect(() => setTyped(''), [voice])
@@ -514,7 +522,7 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice
         <DialogHeader>
           <DialogTitle>{voice ? S.deleteTitle(voice.title) : ''}</DialogTitle>
         </DialogHeader>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }}>{S.deleteBody}</p>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }}>{deleteBody}</p>
         <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>
           {voice ? S.deleteConfirmLabel(voice.title) : ''}
           <Input aria-label={voice ? S.deleteConfirmLabel(voice.title) : ''} onChange={(e: { target: { value: string } }) => setTyped(e.target.value)} value={typed} />

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0 — 2026-10-06
+
+- Operator-managed keys hide account billing, plans and key links from agent users.
+- Desktop retries an unanswered first availability probe after 5, 15 and 30 seconds.
+
 ## 1.0.4 — 2026-10-06
 
 Hermes Desktop Voices page fixes, from a review of the evaOS Agent app's copy of the plugin (#13):

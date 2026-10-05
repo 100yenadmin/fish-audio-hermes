@@ -7,7 +7,7 @@ from .models import MODELS
 from .secrets import fish_api_key
 from .state import record_failure
 from .tags import adapt_tags
-from .tts import SETUP_MESSAGE
+from .tts import setup_message
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class FishStreamer(StreamingTTSProvider):
         try:
             key = fish_api_key()
             if not key:
-                raise FishAudioError("credential", None, None, SETUP_MESSAGE)
+                raise FishAudioError("credential", None, None, setup_message())
             params, _ = settings.resolve_tts(voice, model, None, None, "stream.wav", key=key)
             base_url = params.pop("base_url")
             family = next(row["family"] for row in MODELS if row["id"] == params["model"])
