@@ -10,15 +10,25 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
 
 ## What the plugin does with your data
 
-- It sends only the text and audio you ask it to process, and your API key, to Fish Audio (`api.fish.audio`, or
-  the self-hosted `base_url` you configure). It sends nothing anywhere else and collects no telemetry.
-- Every Fish Audio request is billed to your Fish Audio account, except requests on the free `s2.1-pro-free`
-  model. Fish Audio may use free-model requests to improve its models.
-- Your key is stored by Hermes in the active profile's `.env` and is read from that profile's secret scope only.
-  It is never logged or included in error messages, tool results or command output.
-- Files the model asks to upload (clone samples, recordings to transcribe) must be regular audio files. The plugin
-  refuses symlinks, Hermes config and secret files, and SSH or cloud credential paths.
-- Cloning and deleting voices go through Hermes's human-approval gate and are refused when no human is present.
+- **Where requests go.** Every request goes to Fish Audio at `api.fish.audio`, or to the `base_url` you configure;
+  whatever host you configure receives your API key and the requests below. The plugin sends nothing anywhere
+  else and collects no telemetry.
+- **What requests carry.** Your API key; the text you ask it to speak; the audio you ask it to transcribe or clone,
+  with the uploaded file names; voice titles, tags, descriptions and design instructions for voice-library actions;
+  and wallet and plan reads for balance and model choice. Headers name the plugin and its version, and pass on an
+  OpenTelemetry trace context when one is active.
+- **Billing.** Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish
+  account, except requests on the free `s2.1-pro-free` model. Fish Audio may use free-model requests to improve
+  its models.
+- **Keys.** Hermes stores your key in the active profile's `.env`. The plugin reads it through the profile's secret
+  scope, so when one Hermes process serves several profiles each uses its own key; a single-profile install may
+  also read `FISH_API_KEY` from the process environment. Keys are never logged or included in error messages, tool
+  results or command output.
+- **Files.** Files the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be
+  regular audio files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
+  Audio that Hermes itself hands to the speech-to-text provider (voice notes, dictation) is read as given.
+- **Approvals.** Cloning and deleting voices go through Hermes's approval gate and follow your Hermes approval
+  settings. By default Hermes asks you, and refuses when no one is there to answer.
 
 ## Streaming bridge
 

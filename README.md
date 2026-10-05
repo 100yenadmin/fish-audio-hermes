@@ -15,26 +15,30 @@ hermes fish login        # paste your key from https://fish.audio/app/api-keys
 ```
 
 Hermes 0.21.5 installs the plugin's Python dependencies automatically. Newer Hermes builds ask first;
-add `--yes-deps` there to answer yes. After login, your agent's voice replies, read-aloud and voice notes go
-through Fish Audio.
+add `--yes-deps` there to answer yes. `hermes fish login` checks the key against your Fish account, saves it to the
+active profile and selects Fish Audio for speech and transcription, asking first before it replaces another
+provider. From then on, voice replies, read-aloud and voice notes go through Fish Audio.
 
 ## What you get
 
 | | |
 |---|---|
 | **Expressive speech** | Fish Audio S2 models follow emotion and delivery cues such as `[excited]`, `[whispering]` and `[laughing]`. Multi-speaker dialogue and custom pronunciations are supported too. |
-| **Streaming voice** | CLI voice mode and Desktop voice replies start speaking on the first sentence, in about a third of a second on our measurements. |
+| **Streaming voice** | CLI voice mode and Desktop voice replies stream each sentence as it is ready. In our tests the first audio bytes arrived 0.24–0.38 s after a sentence was sent (see [Streaming voice](#configuration) for how this was measured). |
 | **Voice library** | Search Fish Audio's community voices from chat (`/fish voices narrator`) and switch with `/fish use <id>`. |
-| **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting always ask for your confirmation first. |
+| **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting go through Hermes's approval gate, so by default Hermes asks you first. |
 | **Speech-to-text** | Voice notes and Desktop dictation are transcribed by `transcribe-1-pro`. `fish_transcribe` adds speaker turns, timestamps and SRT subtitles. |
-| **Account at a glance** | `/fish balance` shows your API credit and plan. If credits run out you get a clear message with a top-up link, not silence. |
+| **Account at a glance** | `/fish balance` shows your API credit and plan. When credits run out, tools and `/fish` commands reply with a top-up link; for voice replies, `/fish status` shows the last error. |
 
 ## Setup
 
 1. **Get a key** at <https://fish.audio/app/api-keys>. New accounts can start on the free `s2.1-pro-free` model.
-2. **Add it** with `hermes fish login` on the machine running Hermes (it also selects Fish Audio for speech and
-   transcription), or in Desktop ▸ Plugins ▸ Fish Audio, or in `hermes tools` ▸ Text-to-Speech ▸ Fish Audio.
-3. **Check it** with `hermes fish doctor`. Restart a running gateway or the Desktop app to pick up a new key.
+2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop ▸ Plugins ▸ Fish Audio, or in
+   `hermes tools` ▸ Text-to-Speech ▸ Fish Audio. `login` checks the key against your Fish wallet and saves it to the
+   active profile. It selects Fish Audio for speech and transcription where no provider is set yet, and asks before
+   replacing another provider (`--yes` accepts both; `--key-stdin` reads the key from standard input).
+3. **Check it** with `hermes fish doctor`, which makes one short billed synthesis (`--no-synth` skips it). Restart a
+   running gateway or the Desktop app to pick up a new key.
 
 Never paste API keys into a chat. `/fish` refuses them and tells you to rotate the key.
 
@@ -56,7 +60,9 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3-preview`) |
 | `/fish preview <voice-id> [text]` | Hear a voice (a billed synthesis) |
 | `/fish balance` | API credit and plan |
-| `hermes fish login · status · doctor · use` | The same from your terminal |
+| `hermes fish login [--key-stdin] [--yes]` | Save and check a key, offer to switch providers |
+| `hermes fish status` · `hermes fish use <voice-id>` | Status and voice choice from your terminal |
+| `hermes fish doctor [--no-synth]` | Check the setup with one billed synthesis, or without it |
 
 **Model tools** (toolset `fish_audio`; calls are billed to your Fish Audio account)
 
@@ -95,14 +101,18 @@ plugins:
         allow_free_model: true # false = never use s2.1-pro-free
 ```
 
-**Which model?** If you set `tts.fish-audio.model`, that model is used. Otherwise the plugin picks `s2.1-pro` when
-your account has API credit or has ever topped up, and `s2.1-pro-free` for brand-new accounts. It tells you once
-that the free model is free until 30 November 2026 and that Fish Audio may use free-tier requests to improve its
-models. Set `allow_free_model: false` to always use the paid model.
+**Which model?** A valid `tts.fish-audio.model` is used as set (for `fish_speak`, a model named in the call comes
+first); invalid ids are ignored. Otherwise the plugin uses `s2.1-pro`, and picks `s2.1-pro-free` only when Fish
+reports a wallet with no API credit, no past top-ups and no free credit. If the wallet can't be read, it uses
+`s2.1-pro`. When it picks the free model it tells you once that the model is free until 30 November 2026 and that
+Fish Audio may use free-tier requests to improve its models. `allow_free_model: false` replaces `s2.1-pro-free`
+with `s2.1-pro` everywhere, even when you name the free model yourself.
 
 **Streaming voice.** With `tts.provider: fish-audio`, the plugin registers a Fish streamer with Hermes's streaming
 TTS registry through its public `register` call, and streams 24 kHz PCM from `POST /v1/tts`. Each spoken sentence
-is one billed request. Set `streaming: "off"` for whole-file speech; `transport: ws` switches to Fish's live
+is one billed request and is not retried. Measured first audio bytes: Fish HTTP API p50 243 ms (3 samples, 238–356
+ms), CLI voice mode 373–381 ms, Desktop speak-stream handler 310 ms (in-process, not through the Electron UI);
+these exclude the model's own reply time. Set `streaming: "off"` for whole-file speech; `transport: ws` switches to Fish's live
 WebSocket for diagnosis. Reviewers and packagers can turn the registration off with
 `FISH_AUDIO_HERMES_NO_BRIDGE=1`. When Hermes gains its plugin PCM streaming seam, the plugin uses that instead.
 
@@ -112,19 +122,22 @@ both providers still work. Config changes apply to the active profile; managed i
 
 ## Privacy and security
 
-- **No telemetry.** The plugin sends nothing to anyone except Fish Audio's API, and only for the requests you make.
-  Links to Fish Audio are plain links, with no tracking parameters.
-- **Keys** are read from the active profile's secret scope only. They are never logged, never put in error messages,
-  and never shared across profiles.
-- **Files** you ask it to upload, such as clone samples and recordings to transcribe, must be regular audio files.
-  It refuses symlinks, Hermes config and secret files, and SSH or cloud credential paths.
-- **Approvals:** cloning and deleting voices always go through Hermes's human-approval gate. With no human present,
-  they are refused.
+- **No telemetry.** The plugin talks only to Fish Audio's API (`api.fish.audio`, or the `base_url` you configure),
+  and only for the work you ask for. See [SECURITY.md](SECURITY.md) for exactly what each request carries. Links to
+  Fish Audio are plain links, with no tracking parameters.
+- **Keys** come from the active profile's secret scope. When one Hermes process serves several profiles, each
+  profile uses its own key; a single-profile install may also read `FISH_API_KEY` from the environment. Keys are
+  never logged or put in error messages.
+- **Files** the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be regular audio
+  files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
+- **Approvals:** cloning and deleting voices go through Hermes's approval gate and follow your Hermes approval
+  settings. By default Hermes asks you, and refuses when no one is there to answer.
 - Report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
 ## Disclosure
 
-- Every Fish Audio request is billed to your Fish Audio account (the free `s2.1-pro-free` model excepted).
+- Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish account (the
+  free `s2.1-pro-free` model excepted).
 - Fish Audio may use free-model requests to improve its models.
 - Streaming uses a small bridge into Hermes's streaming-voice registry until Hermes ships a public plugin streaming
   API. `FISH_AUDIO_HERMES_NO_BRIDGE=1` turns it off.
@@ -139,10 +152,11 @@ Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. CI tests it against
 | Message | Fix |
 |---|---|
 | "Fish Audio isn't set up for this profile" | `hermes fish login` |
-| "out of API credits" | Top up at <https://fish.audio/app/developers/billing>. Plan credits and API credits are separate. |
-| "rate limited" | Fish allows 5 concurrent requests below $100 of lifetime top-ups, 15 above $100, and 50 above $1,000. |
-| "voice not found" | The id is wrong or the voice is private to another account. Try `/fish voices`. |
-| Anything else | Run `hermes fish doctor` and include the Fish trace id when you contact Fish Audio support. |
+| "Top up Fish Audio API credits" | Top up at <https://fish.audio/app/developers/billing>. Plan credits and API credits are separate. |
+| "Fish Audio concurrency limit reached" | Fish allows 5 concurrent requests below $100 of lifetime top-ups, 15 from $100, and 50 from $1,000. |
+| "The voice id was not found" | The id is wrong or the voice is private to another account. Try `/fish voices`. |
+| Voice replies stay silent | Run `/fish status`; it shows the last Fish error, with its Fish trace id when Fish sent one. |
+| Anything else | Run `hermes fish doctor`, and quote the Fish trace id from the error when you contact Fish Audio support. |
 
 ## Known limitations
 

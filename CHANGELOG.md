@@ -2,14 +2,16 @@
 
 ## 0.2.0 — 2026-10-05
 
-- **Streaming voice.** CLI voice mode and Desktop voice replies start on the first sentence. The plugin streams
-  24 kHz PCM from Fish Audio (first audio in about a third of a second on our measurements) through Hermes's
-  streaming TTS registry, and adopts Hermes's plugin streaming seam automatically once it ships. Set
+- **Streaming voice.** CLI voice mode and Desktop voice replies stream sentence by sentence. The plugin streams
+  24 kHz PCM from Fish Audio through Hermes's streaming TTS registry (first audio bytes 0.24–0.38 s after a
+  sentence was sent in our tests, excluding the model's reply time), and adopts Hermes's plugin streaming seam automatically once it ships. Set
   `streaming: "off"` for whole-file speech, or `FISH_AUDIO_HERMES_NO_BRIDGE=1` to turn the bridge off.
 - **Speech timestamps.** `fish_speak` with `timestamps: true` returns word timings plus SRT and WebVTT subtitles
   next to the audio.
-- **Safer requests.** Billed requests are retried only when Fish cannot have processed them (429, 500, 503), and
-  response bodies are capped at 64 MiB.
+- **Safer requests.** Whole-file speech and transcription make at most three attempts, retrying only on 429, 500
+  and 503 responses or on connection failures before the request was sent, and never once the response has
+  started arriving; 502 and 504 are not retried. Streaming sentences and voice-library changes are not retried. Whole-file
+  audio, transcription and JSON responses are capped at 64 MiB.
 - README product page, SECURITY.md and launch art.
 
 ## 0.1.0 — 2026-10-05
@@ -18,8 +20,8 @@ First release of the Fish Audio plugin for Hermes Agent (private preview).
 
 - **Text-to-speech provider `fish-audio`** for Hermes's `text_to_speech`, voice replies and read-aloud. The output
   format follows the requested file suffix, and `.ogg` gets Fish's native Ogg/Opus. One model resolver picks the
-  model: `s2.1-pro` for funded accounts, `s2.1-pro-free` for new ones (with a one-time notice), and never the free
-  model when `allow_free_model: false`.
+  model: a configured model when valid, otherwise `s2.1-pro`, and `s2.1-pro-free` only for a wallet with no API
+  credit, top-ups or free credit (with a one-time notice); never the free model when `allow_free_model: false`.
 - **Speech-to-text provider `fish-audio`** on `transcribe-1-pro`, with clean transcripts for voice notes and
   dictation (including WebM).
 - **Model tools** in toolset `fish_audio`:
