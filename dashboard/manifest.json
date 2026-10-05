@@ -3,7 +3,7 @@
   "label": "Fish Audio",
   "description": "Voices page for Hermes Desktop: search, preview, use, clone and design Fish Audio voices, and see your account.",
   "icon": "AudioLines",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "tab": { "path": "/fish-audio", "hidden": true },
   "entry": "dist/index.js",
   "api": "plugin_api.py"

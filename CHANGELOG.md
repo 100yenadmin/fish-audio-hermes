@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 — 2026-10-06
+
+- **A voice preview no longer plays after you leave the Voices page.** If you started a preview and then left the page
+  or turned the plugin off before the preview returned, it played anyway, on whatever screen you were on. Now it stays
+  silent. It is still kept, so playing that preview again on the page costs nothing. (#11)
+
 ## 1.0.2 — 2026-10-06
 
 - **Switching agents in Hermes Desktop no longer shows the previous agent's Voices entries.** When you switched from an

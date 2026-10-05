@@ -12,6 +12,7 @@ import {
   useValue
 } from '@hermes/plugin-sdk'
 
+import { releasePlayback } from './audio'
 import { $account, $available, $tab, type Account, bindContext, isNotFoundError, setRefresher } from './api'
 import { VoicesPage } from './page'
 import { S } from './strings'
@@ -166,6 +167,7 @@ const plugin: HermesPlugin = {
       render: () => <VoicesPage />
     })
     setRefresher(registerAvailabilityGate(ctx).probe)
+    ctx.onDispose(releasePlayback)
   }
 }
 
