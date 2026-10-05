@@ -130,6 +130,11 @@ def _failure(exc: Exception) -> dict:
     return {"ok": False, "kind": "error", "message": "Fish Audio could not complete this request. Try again."}
 
 
+# Token-shaped only, so ordinary voice titles ("Ring Bearer Narrator", "task-oriented-…") pass through untouched.
+_BEARER_RE = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/-]{16,}=*")
+_SK_RE = re.compile(r"(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}")
+
+
 def _scrub(value, key):
     if isinstance(value, dict):
         return {k: v if k == "audio" else _scrub(v, key) for k, v in value.items()}
@@ -137,8 +142,8 @@ def _scrub(value, key):
         return [_scrub(v, key) for v in value]
     if isinstance(value, str):
         value = value.replace(key, "[redacted]") if key else value
-        value = re.sub(r"Bearer\s+\S+", "Bearer [redacted]", value, flags=re.I)
-        return re.sub(r"sk-[A-Za-z0-9_-]{20,}", "[redacted]", value)
+        value = _BEARER_RE.sub("Bearer [redacted]", value)
+        return _SK_RE.sub("[redacted]", value)
     return value
 
 

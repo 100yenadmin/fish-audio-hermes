@@ -593,7 +593,7 @@ def test_clone_finish_checks_open_descriptor_identity(env, monkeypatch):
 def test_successful_voice_strings_are_scrubbed(env, detail):
     key = env.active().key
     item = {"_id": VOICE, "title": f"Voice {key}", "description": f"Bearer {key}",
-            "samples": [{"title": "Bearer arbitrary-token", "text": key}]}
+            "samples": [{"title": "Bearer opaque-token-0123456789", "text": key}]}
     route = f"/model/{VOICE}" if detail else "/model"
     with respx.mock(assert_all_called=True) as mock:
         mock.get(env.active().base + route).respond(json=item if detail else {"items": [item]})
@@ -610,7 +610,7 @@ def test_account_drops_non_scalar_package_fields_and_scrubs_text(env):
     with respx.mock(assert_all_called=True) as mock:
         mock.get(base + "/wallet/self/api-credit").respond(json={"credit": "1", "cumulative_top_up": "2"})
         package = mock.get(base + "/wallet/self/package").respond(json={
-            "type": "Bearer arbitrary-token", "total": {"nested": "Bearer secret"}, "balance": True,
+            "type": "Bearer opaque-token-0123456789", "total": {"nested": "Bearer secret"}, "balance": True,
             "finished_at": env.active().key, "billing_period": {"path": "/outside/private"}})
         body = env.get("/account")
         assert body["package"] == {"type": "Bearer [redacted]", "finished_at": "[redacted]"}
@@ -624,8 +624,14 @@ def test_scrub_leaves_preview_audio_unchanged(env, monkeypatch):
     with respx.mock(assert_all_called=True) as mock:
         mock.post(env.active().base + "/v1/tts").respond(content=MP3)
         assert env.post("/preview", voice=VOICE)["audio"] == base64.b64encode(MP3).decode()
-    assert env.api._scrub({"nested": ["bEaReR opaque", "sk-" + "Z" * 25]}, "") == {
+    assert env.api._scrub({"nested": ["Bearer opaque-token-0123456789", "sk-" + "Z" * 25]}, "") == {
         "nested": ["Bearer [redacted]", "[redacted]"]}
+
+
+def test_scrub_leaves_ordinary_voice_text_alone(env):
+    # Library titles and descriptions are upstream prose: only token-shaped strings are redacted.
+    text = {"title": "Ring Bearer Narrator", "description": "A task-oriented-narration-voice for bearer bonds"}
+    assert env.api._scrub(text, "") == text
 
 
 def test_gateway_partial_design_leaves_no_files_or_receipts(env):

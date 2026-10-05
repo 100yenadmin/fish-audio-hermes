@@ -83,6 +83,8 @@ and `fish-audio:fish-audio-voice-studio`.
 
 ## Hermes Desktop
 
+![The Voices page in Hermes Desktop: the Fish Audio voice library searched for "narrator", with Preview, Use and favourite on each voice](docs/media/screenshot-desktop-library.png)
+
 The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
 
 - **Library:** search Fish Audio's voices by name and language, preview them (a short billed sample), star
@@ -92,6 +94,10 @@ The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
   voice and save the candidate you like.
 - **Account:** API credit, plan credits and top-up links. The status bar shows your API credit, in orange when it
   runs low.
+
+| Create | Account |
+|---|---|
+| ![Create: design a voice from a description and save a candidate, or clone one from recordings with the speaker's consent](docs/media/screenshot-desktop-create.png) | ![Account: API credit, plan credits, top-up and plan links](docs/media/screenshot-desktop-account.png) |
 
 The page has two halves in one package: routes that run **on the agent's gateway** and screens that run **in
 Hermes Desktop**. To install from Desktop:
@@ -174,7 +180,7 @@ both providers still work. Config changes apply to the active profile; managed i
 - Streaming uses a small bridge into Hermes's streaming-voice registry until Hermes ships a public plugin streaming
   API. `FISH_AUDIO_HERMES_NO_BRIDGE=1` turns it off.
 - The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
-  existing authentication. On that page, previews and voice designs are billed; cloning a voice or saving a
+  existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a
   designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a
   speaker-consent box, a typed voice name) instead of through Hermes's approval gate; and Use sets the
   profile's Fish voice, and its speech provider when none is set. Preview and design audio files are deleted

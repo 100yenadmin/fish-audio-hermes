@@ -33,7 +33,7 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
 ## Desktop Voices page
 
 The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
-existing authentication. On that page, previews and voice designs are billed; cloning a voice or saving a
+existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a
 designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a
 speaker-consent box, a typed voice name) instead of through Hermes's approval gate; and Use sets the profile's
 Fish voice, and its speech provider when none is set. Preview and design audio files are deleted from the
