@@ -16,13 +16,16 @@ class Wallet:
     has_free_credit: bool | None
 
 
-def _get(path, key, base_url, timeout=5.0, *, strict=False):
+def _get(path, key, base_url, timeout=5.0, *, strict=False, empty=False):
     if not key:
         return None
     try:
         response = client._http_client().get(base_url.rstrip("/") + path,
                                              headers=client.request_headers(key), timeout=timeout)
         try:
+            # ``empty``: a 204, or a 200 with no body, is an answer (nothing there), not a failure.
+            if empty and (response.status_code == 204 or response.status_code == 200 and not response.content.strip()):
+                return None
             if response.status_code != 200:
                 if strict:
                     raise response_error(response.status_code, response.headers, response.content[:65536], key=key)
@@ -61,15 +64,18 @@ def get_wallet(key, base_url, *, timeout=5.0, strict=False) -> Wallet | None:
         return None
 
 
-def get_package(key, base_url) -> dict | None:
+def get_package(key, base_url, strict=False) -> dict | None:
     try:
-        data = _get("/wallet/self/package", key, base_url)
+        data = _get("/wallet/self/package", key, base_url, strict=strict, empty=True)
         if data is None:
             return None
         fields = {"type", "total", "balance", "extra_balance", "finished_at", "billing_period", "subscription_status",
                   "cancel_at_period_end"}
         return {k: v for k, v in data.items() if k in fields}
-    except Exception:
+    except Exception as exc:
+        # A 404 means "no plan" (the OpenAPI documents no absence shape), so only real failures raise.
+        if strict and getattr(exc, "status", None) != 404:
+            raise
         return None
 
 

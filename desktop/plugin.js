@@ -223,6 +223,7 @@ var S = {
   renews: (date) => `Renews ${date}`,
   periodEnds: (date) => `Current period ends ${date}`,
   noPlan: "No app plan",
+  planUnavailable: "Plan details are unavailable right now.",
   creditsSeparate: "App plan credits and API credits are separate. Voice replies use API credit.",
   topUp: "Top up API credit",
   plans: "Plans",
@@ -650,7 +651,7 @@ function Library({ pin }) {
     staleTime: 6e4
   });
   const list = favouritesOnly ? favourites.list : voices.data?.items;
-  const more = !favouritesOnly && hasMore(voices.data?.items.length, page);
+  const more = !favouritesOnly && hasMore(voices.data?.items.length, page, voices.data?.total);
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }, children: [
       /* @__PURE__ */ jsx3("div", { style: { width: 280 }, children: /* @__PURE__ */ jsx3(SearchField, { "aria-label": S.search, onChange: setText, placeholder: S.search, value: text }) }),
@@ -673,7 +674,12 @@ function Library({ pin }) {
 }
 var PAGE_SIZE = 20;
 var LAST_PAGE = 50;
-var hasMore = (items, page) => (items ?? 0) >= PAGE_SIZE && page < LAST_PAGE;
+var hasMore = (items, page, total) => {
+  if (typeof total === "number" && Number.isFinite(total) || typeof total === "string" && /^\d+$/.test(total)) {
+    return page * PAGE_SIZE < Number(total) && page < LAST_PAGE;
+  }
+  return (items ?? 0) >= PAGE_SIZE && page < LAST_PAGE;
+};
 function Pager({ page, more, setPage }) {
   if (page <= 1 && !more) return null;
   return /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
@@ -825,7 +831,7 @@ function MyVoices({ pin }) {
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsx3(BilledNote, { text: S.billedNote }),
     voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !voices.data ? /* @__PURE__ */ jsx3(Rows, { n: 3 }) : voices.data.items.length === 0 ? /* @__PURE__ */ jsx3(EmptyState, { description: S.mineEmptyHint, title: S.mineEmpty }) : /* @__PURE__ */ jsx3(VoiceList, { onDelete: setTarget, pin, voices: voices.data.items }),
-    /* @__PURE__ */ jsx3(Pager, { more: hasMore(voices.data?.items.length, page), page, setPage }),
+    /* @__PURE__ */ jsx3(Pager, { more: hasMore(voices.data?.items.length, page, voices.data?.total), page, setPage }),
     /* @__PURE__ */ jsx3(DeleteDialog, { pin, onClose: () => setTarget(null), onDeleted: () => void client.invalidateQueries({ queryKey }), voice: target })
   ] });
 }
@@ -897,7 +903,7 @@ function AccountTab({ pin }) {
     ] }),
     /* @__PURE__ */ jsxs3("div", { style: card, children: [
       /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12 }, children: S.plan }),
-      /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: "capitalize" }, children: plan?.type ?? S.noPlan }),
+      /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: data.package_unavailable ? "none" : "capitalize" }, children: data.package_unavailable ? S.planUnavailable : plan?.type ?? S.noPlan }),
       plan && /* @__PURE__ */ jsxs3("div", { style: { ...muted, fontSize: 12, lineHeight: 1.7 }, children: [
         typeof plan.total === "number" && /* @__PURE__ */ jsx3("div", { children: S.planBalance(Number(plan.balance ?? 0), plan.total) }),
         plan.finished_at && /* @__PURE__ */ jsx3("div", { children: (renews(plan) ? S.renews : S.periodEnds)(String(plan.finished_at).slice(0, 10)) })
@@ -950,6 +956,7 @@ function registerAvailabilityGate(ctx) {
   let disposed = false;
   let generation = 0;
   let accountAt = 0;
+  let forcePending = false;
   const show = (available) => {
     if (disposed) return;
     if (available && !removers) {
@@ -978,6 +985,7 @@ function registerAvailabilityGate(ctx) {
     }
   };
   const probe = (force = false) => {
+    if (force) forcePending = true;
     const mine = ++generation;
     return ctx.rest("/available").then(
       (res) => {
@@ -988,11 +996,14 @@ function registerAvailabilityGate(ctx) {
           $account.set(null);
           return;
         }
-        if (!force && $account.get() !== null && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return;
+        if (!forcePending && $account.get() !== null && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return;
         accountAt = Date.now();
         return ctx.rest("/account").then(
           (account) => {
-            if (mine === generation && !disposed) $account.set(account?.ok ? account : null);
+            if (mine === generation && !disposed) {
+              forcePending = false;
+              $account.set(account?.ok ? account : null);
+            }
           },
           () => void 0
         );

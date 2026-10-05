@@ -222,6 +222,47 @@ describe('review follow-ups', () => {
   const pin = { connectionId: 'conn-1', profile: 'default' }
   const page = (n: number) => ({ ok: true, page: n, total: 5000, items: Array.from({ length: 20 }, (_, i) => ({ id: `${n}x${i}`.padEnd(32, 'a'), title: `Voice ${n}-${i}` })) })
 
+  describe.each(['library', 'mine'] as const)('%s exact totals', tab => {
+    it.each([20, '20'])('offers no Next for exactly %s voices', async total => {
+      $tab.set(tab)
+      mount(async () => ({ ...page(1), total }))
+      await flush()
+      const next = screen.queryByRole('button', { name: S.next }) as HTMLButtonElement | null
+      expect(next === null || next.disabled).toBe(true)
+    })
+
+    it('disables Next on page 2 of exactly 40 voices', async () => {
+      $tab.set(tab)
+      mount(async path => ({ ...page(Number(new URLSearchParams(path.split('?')[1]).get('page'))), total: 40 }))
+      await flush()
+      expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(false)
+      fireEvent.click(screen.getByRole('button', { name: S.next }))
+      await flush()
+      expect(screen.getByText(S.pageOf(2))).toBeTruthy()
+      expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    it.each(['1000+', undefined, Number.POSITIVE_INFINITY])('keeps the full-page heuristic for total %s', async total => {
+      $tab.set(tab)
+      mount(async () => ({ ...page(1), total }))
+      await flush()
+      expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(false)
+    })
+  })
+
+  it('shows unavailable plan details while keeping the wallet and Plans button', async () => {
+    $tab.set('account')
+    const { t } = mount(async () => ({ ok: true, credit: '2.54', cumulative_top_up: '10', has_free_credit: false, low: false,
+      package: null, package_unavailable: true, links: { plans: 'https://example.invalid/plans' } }))
+    const open = vi.spyOn(t.ctx.os, 'openExternal')
+    await flush()
+    expect(screen.getByText('Plan details are unavailable right now.')).toBeTruthy()
+    expect(screen.queryByText(S.noPlan)).toBeNull()
+    expect(screen.getByText(S.usd('2.54'))).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: S.plans }))
+    expect(open).toHaveBeenCalledWith('https://example.invalid/plans')
+  })
+
   it('stops paging at the gateway\'s last page (50)', async () => {
     const { calls } = mount(async path => page(Number(new URLSearchParams(path.split('?')[1] ?? '').get('page') ?? 1)))
     await flush()

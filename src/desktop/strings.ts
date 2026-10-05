@@ -93,6 +93,7 @@ export const S = {
   renews: (date: string) => `Renews ${date}`,
   periodEnds: (date: string) => `Current period ends ${date}`,
   noPlan: 'No app plan',
+  planUnavailable: 'Plan details are unavailable right now.',
   creditsSeparate: 'App plan credits and API credits are separate. Voice replies use API credit.',
   topUp: 'Top up API credit',
   plans: 'Plans',

@@ -196,7 +196,7 @@ function Library({ pin }: { pin: AgentPin }) {
     staleTime: 60_000
   })
   const list = favouritesOnly ? favourites.list : voices.data?.items
-  const more = !favouritesOnly && hasMore(voices.data?.items.length, page)
+  const more = !favouritesOnly && hasMore(voices.data?.items.length, page, voices.data?.total)
   return (
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -241,7 +241,12 @@ function Library({ pin }: { pin: AgentPin }) {
 /** The gateway serves pages 1–50 of 20 voices. */
 const PAGE_SIZE = 20
 const LAST_PAGE = 50
-const hasMore = (items: number | undefined, page: number) => (items ?? 0) >= PAGE_SIZE && page < LAST_PAGE
+const hasMore = (items: number | undefined, page: number, total: number | string | undefined) => {
+  if ((typeof total === 'number' && Number.isFinite(total)) || (typeof total === 'string' && /^\d+$/.test(total))) {
+    return page * PAGE_SIZE < Number(total) && page < LAST_PAGE
+  }
+  return (items ?? 0) >= PAGE_SIZE && page < LAST_PAGE
+}
 
 function Pager({ page, more, setPage }: { page: number; more: boolean; setPage: (page: number) => void }) {
   if (page <= 1 && !more) return null
@@ -427,7 +432,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
       ) : (
         <VoiceList onDelete={setTarget} pin={pin} voices={voices.data.items} />
       )}
-      <Pager more={hasMore(voices.data?.items.length, page)} page={page} setPage={setPage} />
+      <Pager more={hasMore(voices.data?.items.length, page, voices.data?.total)} page={page} setPage={setPage} />
       <DeleteDialog pin={pin} onClose={() => setTarget(null)} onDeleted={() => void client.invalidateQueries({ queryKey })} voice={target} />
     </div>
   )
@@ -515,7 +520,7 @@ function AccountTab({ pin }: { pin: AgentPin }) {
       </div>
       <div style={card}>
         <div style={{ ...muted, fontSize: 12 }}>{S.plan}</div>
-        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: 'capitalize' }}>{plan?.type ?? S.noPlan}</div>
+        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: data.package_unavailable ? 'none' : 'capitalize' }}>{data.package_unavailable ? S.planUnavailable : plan?.type ?? S.noPlan}</div>
         {plan && (
           <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
             {typeof plan.total === 'number' && <div>{S.planBalance(Number(plan.balance ?? 0), plan.total)}</div>}
