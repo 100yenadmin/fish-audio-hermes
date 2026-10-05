@@ -2331,9 +2331,8 @@ entries:
   location: header
   field: model
   surface: Streaming voice model header (streaming bridge uses /v1/tts/live, the same event stream without alignment)
-  status: verified
-  tests:
-  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  status: excluded
+  tests: []
   spec:
     type: string
     enum:
@@ -2343,14 +2342,14 @@ entries:
     - s2.1-pro
     - s2.1-pro-free
     required: false
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp, so it never sends this header there. PCM streaming sends the same model header to /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
   field: event
   surface: Streaming voice audio events, int16-aligned PCM (streaming bridge uses /v1/tts/live, the same event stream without alignment)
-  status: verified
-  tests:
-  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  status: excluded
+  tests: []
   spec:
     type: string
     enum:
@@ -2362,14 +2361,14 @@ entries:
         enum:
         - error
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
   field: audio
   surface: Streaming voice audio events, int16-aligned PCM (streaming bridge uses /v1/tts/live, the same event stream without alignment)
-  status: verified
-  tests:
-  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  status: excluded
+  tests: []
   spec:
     type: string
     enum: null
@@ -2379,6 +2378,7 @@ entries:
         type: string
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
@@ -2477,10 +2477,8 @@ entries:
   location: response
   field: reason
   surface: finish reason stop ends the sentence; error raises (streaming bridge uses /v1/tts/live, the same event stream without alignment)
-  status: verified
-  tests:
-  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
-  - tests/test_streaming.py::test_ws_error_events_raise_mapped_errors[events1]
+  status: excluded
+  tests: []
   spec:
     type:
     - 'null'
@@ -2514,6 +2512,7 @@ entries:
         - string
         enum: null
         required: false
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
@@ -2552,9 +2551,8 @@ entries:
   location: response
   field: error
   surface: error event raises a safe FishAudioError; raw text not echoed (streaming bridge uses /v1/tts/live, the same event stream without alignment)
-  status: verified
-  tests:
-  - tests/test_streaming.py::test_ws_error_events_raise_mapped_errors[events0]
+  status: excluded
+  tests: []
   spec:
     type: string
     enum: null
@@ -2564,6 +2562,7 @@ entries:
         type: string
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
@@ -2590,9 +2589,8 @@ entries:
   location: response
   field: status
   surface: error event raises a safe FishAudioError; raw text not echoed (streaming bridge uses /v1/tts/live, the same event stream without alignment)
-  status: verified
-  tests:
-  - tests/test_streaming.py::test_ws_error_event_status_maps_to_kind
+  status: excluded
+  tests: []
   spec:
     type: integer
     enum: null
@@ -2610,6 +2608,7 @@ entries:
         type: integer
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/voice-design
   method: post
   location: header
