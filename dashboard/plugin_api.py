@@ -265,10 +265,15 @@ def _author_owned(ident: str, key: str, base: str) -> bool:
         items = mine.get("items", [])
         if any(isinstance(item, dict) and item.get("_id", item.get("id")) == ident for item in items):
             return True
-        total = mine.get("total")
-        if not items or (type(total) is int and page_number * 100 >= total):
+        total, more = mine.get("total"), mine.get("has_more")
+        if not items or more is False:
             break
-        if type(total) is not int and len(items) < 100:
+        # Fish flags a lower-bound total (total_is_exact false / window_limited); only an exact total ends the scan.
+        exact = type(total) is int and mine.get("total_is_exact") is not False and mine.get("window_limited") is not True
+        if exact:
+            if page_number * 100 >= total:
+                break
+        elif more is not True and len(items) < 100:
             break
     return False
 

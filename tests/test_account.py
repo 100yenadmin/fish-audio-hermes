@@ -89,7 +89,8 @@ def test_package_strict_failure_raises_but_default_returns_none(failure):
             account.get_package("test-key", BASE, strict=True)
 
 
-@pytest.mark.parametrize("status,body", [(200, b"null"), (404, b'{"status": 404, "message": "Not Found"}')])
+@pytest.mark.parametrize("status,body", [(200, b"null"), (404, b'{"status": 404, "message": "Not Found"}'),
+                                         (200, b""), (200, b"  \n"), (204, b"")])
 def test_package_strict_no_plan_returns_none(status, body):
     with respx.mock(assert_all_called=True) as mock:
         mock.get(BASE + "/wallet/self/package").respond(status, content=body)
@@ -121,3 +122,10 @@ def test_account_no_key_no_request():
         assert account.get_wallet("", BASE) is None
         assert account.get_package("", BASE) is None
         assert not mock.calls
+
+
+def test_wallet_strict_empty_body_still_raises():
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/wallet/self/api-credit").respond(200, content=b"")
+        with pytest.raises(FishAudioError):
+            account.get_wallet("test-key", BASE, strict=True)

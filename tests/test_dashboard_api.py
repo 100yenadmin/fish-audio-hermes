@@ -301,6 +301,37 @@ def test_delete_pages_owned_list_to_exact_total(env, found):
         assert seen == [1, 2]
 
 
+@pytest.mark.parametrize("flags", [{"total_is_exact": False}, {"window_limited": True}])
+def test_delete_owned_paging_ignores_a_lower_bound_total(env, flags):
+    base = env.active().base
+    seen = []
+    def listing(request):
+        page = int(request.url.params["page_number"])
+        seen.append(page)
+        items = [{"_id": OTHER}] * 100 if page == 1 else [{"_id": OTHER}] * 49 + [{"_id": VOICE}]
+        return httpx.Response(200, json={"items": items, "total": 100, **flags})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(base + f"/model/{VOICE}").respond(json={"_id": VOICE, "title": "Mine"})
+        mock.get(base + "/model").mock(side_effect=listing)
+        deleted = mock.delete(base + f"/model/{VOICE}").respond(204)
+        assert env.delete(f"/voices/{VOICE}")["ok"]
+        assert deleted.call_count == 1 and seen == [1, 2]
+
+
+def test_delete_owned_paging_stops_when_fish_says_no_more(env):
+    base = env.active().base
+    seen = []
+    def listing(request):
+        seen.append(int(request.url.params["page_number"]))
+        return httpx.Response(200, json={"items": [{"_id": OTHER}] * 100, "has_more": False})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(base + f"/model/{VOICE}").respond(json={"_id": VOICE, "title": "Mine"})
+        mock.get(base + "/model").mock(side_effect=listing)
+        refused(env.delete(f"/voices/{VOICE}"), "not_owner")
+        assert seen == [1]
+        assert not [c for c in mock.calls if c.request.method == "DELETE"]
+
+
 @pytest.mark.parametrize("ending", ["empty", "short", "ceiling"])
 def test_delete_owned_paging_stops_without_exact_total(env, ending):
     base = env.active().base
