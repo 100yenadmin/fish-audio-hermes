@@ -43,7 +43,7 @@ import {
   type Voice,
   type VoicesResponse
 } from './api'
-import { $playing, cachedPreview, play, rememberPreview, stop } from './audio'
+import { $playing, cachedPreview, play, playbackEpoch, releasePlayback, rememberPreview, stop } from './audio'
 import { CreateTab } from './create'
 import { LANGUAGES, LINKS, S } from './strings'
 import { BilledNote, card, LoadError, muted, Rows } from './ui'
@@ -145,7 +145,7 @@ function Body({ pin }: { pin: AgentPin }) {
       value={tab}
     />
   )
-  useEffect(() => () => stop(), [])
+  useEffect(() => () => releasePlayback(), [])
   return (
     <Frame profile={pin.profile} tabs={tabs}>
       {tab === 'library' && <Library pin={pin} />}
@@ -274,11 +274,13 @@ export async function previewVoice(pin: AgentPin, voiceId: string) {
   if (cached) return play(key, cached.audio, cached.mime)
   if (inFlightPreviews.has(key)) return  // one billed preview per voice at a time
   inFlightPreviews.add(key)
+  const epoch = playbackEpoch()
   try {
     const res = await post<{ audio: string; mime: string }>('/preview', { voice: voiceId })
     if (!samePin(currentPin(), pin)) return
     rememberPreview(key, res)
-    play(key, res.audio, res.mime)
+    // Returned after the page closed or the plugin was turned off: kept for a free replay, never played.
+    if (playbackEpoch() === epoch) play(key, res.audio, res.mime)
     void refreshAvailability()
   } finally {
     inFlightPreviews.delete(key)

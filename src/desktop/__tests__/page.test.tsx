@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createTestContext, host, resetHost, resetQueryCache } from './sdk-mock'
 import { $available, $tab, bindContext } from '../api'
 import { previewVoice, VoicesPage } from '../page'
+import plugin from '../plugin'
 import * as audio from '../audio'
 import { S } from '../strings'
 
@@ -134,6 +135,32 @@ describe('selected-agent dispatch and completion guards', () => {
     answer.resolve({ ok: true, audio: 'SUQz', mime: 'audio/mpeg' })
     await pending
     expect(audio.cachedPreview(`preview:conn-1::default:${voice}`)).toBeUndefined()
+    expect(playback).not.toHaveBeenCalled()
+  })
+
+  it('a preview that returns after the page closed is kept for a free replay, never played', async () => {
+    const answer = deferred()
+    const voice = 'closed-page'
+    const playback = vi.spyOn(audio, 'play').mockImplementation(() => undefined)
+    mount(async path => (path === '/preview' ? answer.promise : path.startsWith('/voices') ? VOICES : { ok: true, key: true }))
+    await flush()
+    const pending = previewVoice(pin, voice)
+    cleanup()
+    answer.resolve({ ok: true, audio: 'SUQz', mime: 'audio/mpeg' })
+    await pending
+    expect(playback).not.toHaveBeenCalled()
+    expect(audio.cachedPreview(`preview:conn-1::default:${voice}`)).toEqual({ ok: true, audio: 'SUQz', mime: 'audio/mpeg' })
+  })
+
+  it('a preview that returns after the plugin was turned off never plays', async () => {
+    const answer = deferred()
+    const t = createTestContext({ rest: path => (path === '/preview' ? answer.promise : Promise.resolve({ ok: true, key: true })) })
+    plugin.register(t.ctx as any)
+    const playback = vi.spyOn(audio, 'play').mockImplementation(() => undefined)
+    const pending = previewVoice(pin, 'disabled-plugin')
+    t.dispose()
+    answer.resolve({ ok: true, audio: 'SUQz', mime: 'audio/mpeg' })
+    await pending
     expect(playback).not.toHaveBeenCalled()
   })
 

@@ -30,6 +30,17 @@ export function play(key: string, data: string, mime: string): void {
   void audio.play().catch(() => stop(key))
 }
 
+let epoch = 0
+
+/** Changes whenever the Voices page closes or the plugin is turned off. */
+export const playbackEpoch = () => epoch
+
+/** The Voices page closed or the plugin was turned off: stop playback, and keep previews still in flight silent. */
+export function releasePlayback(): void {
+  epoch++
+  stop()
+}
+
 /** Stop playback; with a key, only when that sample is the one playing. */
 export function stop(key?: string): void {
   if (key !== undefined && $playing.get() !== key) return
