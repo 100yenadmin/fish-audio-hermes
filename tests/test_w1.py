@@ -249,3 +249,27 @@ def test_large_inline_config_plus_call_pronunciations_split_into_groups(monkeypa
 
 def test_visibility_schema_has_no_default():
     assert "default" not in tools.SCHEMAS["fish_voices"]["visibility"]
+
+
+@pytest.mark.parametrize("value", [["private"], {"v": "unlist"}, 3, None])
+def test_non_string_visibility_is_a_tool_input_error(value):
+    with respx.mock() as mock:
+        with pytest.raises(ToolInputError, match="visibility must be private or unlist"):
+            voices.execute({"action": "update", "voice_id": "a" * 32, "visibility": value}, "synthetic", BASE, "")
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("code", ["zh-Hant-TW", "en", "yue", "sr-Latn"])
+def test_title_language_accepts_bcp47_tags(code):
+    with respx.mock() as mock:
+        route = mock.get(BASE + "/model").respond(json={"items": [], "total": 0})
+        voices.execute({"action": "search", "title_language": code}, "synthetic", BASE, "")
+        assert route.calls.last.request.url.params.get_list("title_language") == [code]
+
+
+@pytest.mark.parametrize("code", ["", "e", "en_US", "-en", "en-", "en--US"])
+def test_title_language_rejects_malformed_tags(code):
+    with respx.mock() as mock:
+        with pytest.raises(ToolInputError, match="Invalid title_language"):
+            voices.execute({"action": "search", "title_language": code}, "synthetic", BASE, "")
+        assert not mock.calls

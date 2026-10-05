@@ -45,6 +45,7 @@ def _summary(item, fields):
 
 
 def _visibility(value):
+    require(isinstance(value, str), "visibility must be private or unlist.")
     require(value != "public", "Publish publicly from the Fish Audio website.")
     require(value in {"private", "unlist"}, "visibility must be private or unlist.")
     return value
@@ -104,7 +105,7 @@ def execute(args, key, base, session):
             codes = filters["title_language"]
             codes = [codes] if isinstance(codes, str) else codes
             require(isinstance(codes, list) and 1 <= len(codes) <= 10 and all(
-                isinstance(code, str) and re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?", code) for code in codes),
+                isinstance(code, str) and len(code) <= 35 and re.fullmatch(r"[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*", code) for code in codes),
                 "Invalid title_language.")
         require("licensed" not in filters or type(filters["licensed"]) is bool, "licensed must be boolean.")
         params.update(filters)
