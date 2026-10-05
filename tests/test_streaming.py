@@ -115,6 +115,7 @@ def test_missing_key_raises_setup_message(monkeypatch):
         with pytest.raises(FishAudioError, match="hermes tools"):
             speak()
         assert not mock.calls
+    assert state.last_failure()[1] == "credential"
 
 
 def test_consumer_close_closes_the_http_response():
@@ -255,6 +256,13 @@ def test_ws_error_events_raise_mapped_errors(live, events):
         speak()
     assert exc.value.kind == "availability" and KEY not in str(exc.value)
     assert state.last_failure()[1] == "availability"
+
+
+def test_ws_error_event_status_maps_to_kind(live):
+    live([{"event": "error", "status": 402, "error": "insufficient balance"}])
+    with pytest.raises(FishAudioError) as exc:
+        speak()
+    assert exc.value.kind == "quota" and exc.value.status == 402
 
 
 def test_ws_handshake_rejection_maps_status(live):

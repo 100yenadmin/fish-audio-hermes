@@ -2459,7 +2459,7 @@ entries:
   surface: error event raises a safe FishAudioError; raw text not echoed (streaming bridge uses /v1/tts/live, the same event stream without alignment)
   status: verified
   tests:
-  - tests/test_streaming.py::test_ws_error_events_raise_mapped_errors[events0]
+  - tests/test_streaming.py::test_ws_error_event_status_maps_to_kind
   spec:
     type: integer
     enum: null
