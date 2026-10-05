@@ -2,6 +2,7 @@
 from bisect import bisect_left
 import math
 import re
+import unicodedata
 from pathlib import Path
 from uuid import uuid4
 
@@ -107,6 +108,9 @@ def speech_timestamps(events, audio_path):
             caption = text
             if found >= 0:
                 found, stop = index[found], index[found + len(needle) - 1] + 1
+                # Folding drops combining marks; keep those that finish the last letter (é, Indic vowel signs).
+                while stop < len(content) and unicodedata.category(content[stop]).startswith("M"):
+                    stop += 1
                 while stop < len(content) and content[stop] in _TRAILING:
                     stop += 1
                 caption, cursor = content[found:stop], stop

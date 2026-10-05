@@ -172,3 +172,31 @@ def test_oversized_timestamp_stream_is_refused_before_decoding(monkeypatch):
     events = [dict(FIXTURE[-1], audio_bytes=4096)]
     result, _ = speak(sse(events, [b"\x00" * 4096]), format="mp3")
     assert not result["success"] and "exceeds the size cap" in result["error"]
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+def test_timestamp_stream_accepts_every_sse_line_break(newline):
+    event = dict(FIXTURE[-1], audio_base64=base64.b64encode(b"ID3audio").decode())
+    event.pop("audio_bytes")
+    body = f": keepalive{newline}{newline}event: message{newline}data: {json.dumps(event)}{newline}{newline}".encode()
+    result, _ = speak(body, format="mp3")  # speak() re-chunks every 777 bytes, splitting CRLF pairs too
+    assert result["success"] and Path(result["file_path"]).read_bytes() == b"ID3audio"
+    assert len(result["segments"]) == 7
+
+
+def test_bounded_lines_join_a_crlf_split_across_chunks():
+    from fish_audio import client
+
+    class Response:
+        def iter_bytes(self):
+            yield from [b"a\r", b"", b"\nb\r", b"\rc", b"\xe4\xb8", b"\xad\n", b"d"]
+    assert list(client._bounded_lines(Response(), 100)) == ["a", "b", "", "c中", "d"]
+
+
+@pytest.mark.parametrize("content,token,caption", [("café.", "café", "café."),
+                                                  ("हिन्दी।", "हिन्दी", "हिन्दी")])
+def test_captions_keep_combining_marks(content, token, caption):
+    events = [{"content": content, "chunk_seq": 0, "chunk_audio_offset_sec": 0.0,
+               "alignment": {"segments": [{"text": token, "start": 0.0, "end": 0.6}], "audio_duration": 0.6}}]
+    result = transcribe.speech_timestamps(events, Path(media.audio_output_dir()) / "x.ogg")
+    assert Path(result["srt_path"]).read_text().split("\n")[2] == caption

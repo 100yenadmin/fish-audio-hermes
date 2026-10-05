@@ -113,23 +113,30 @@ def _tts_body(params):
 
 # Base64 audio (4/3 of the 64 MiB audio cap) plus alignment metadata.
 SSE_CAP = 2 * RESPONSE_CAP
+_LINE_BREAK = re.compile(rb"\r\n|\r|\n")
 
 
 def _bounded_lines(response, limit):
-    """Split a response into lines, failing once more than ``limit`` bytes arrive, before any decoding."""
-    pending, total = [], 0
+    """Split a response into lines on CR, LF or CRLF (as SSE allows), failing once more than ``limit`` bytes
+    arrive, before any decoding."""
+    pending, total, after_cr = [], 0, False
     for chunk in response.iter_bytes():
         total += len(chunk)
         if total > limit:
             raise FishAudioError("too_large", None, None, "Fish Audio timestamp stream exceeds the size cap.")
-        *complete, rest = chunk.split(b"\n")
+        if not chunk:
+            continue
+        if after_cr and chunk[:1] == b"\n":  # the LF of a CRLF split across chunks
+            chunk = chunk[1:]
+        after_cr = chunk.endswith(b"\r")
+        *complete, rest = _LINE_BREAK.split(chunk)
         for piece in complete:
             pending.append(piece)
-            yield b"".join(pending).rstrip(b"\r").decode("utf-8", "replace")
+            yield b"".join(pending).decode("utf-8", "replace")
             pending = []
         pending.append(rest)
     if any(pending):
-        yield b"".join(pending).rstrip(b"\r").decode("utf-8", "replace")
+        yield b"".join(pending).decode("utf-8", "replace")
 
 
 def _sse_audio(response, events):
