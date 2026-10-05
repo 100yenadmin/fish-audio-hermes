@@ -68,6 +68,9 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   let generation = 0
   let accountAt = 0
   let forcePending = false
+  // The stores outlive a disable: a re-enable may face another agent, so start unknown, never with the last answer.
+  $available.set(null)
+  $account.set(null)
 
   const show = (available: boolean) => {
     if (disposed) return

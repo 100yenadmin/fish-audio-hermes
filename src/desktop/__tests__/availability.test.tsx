@@ -124,6 +124,16 @@ describe('availability gate', () => {
     t.dispose()
   })
 
+  it('a re-enable starts unknown, not with the state left by the previous lifecycle', async () => {
+    const { t } = backend({ '/available': () => new Promise(() => undefined) })
+    $available.set({ key: true, version: '1.0.1' }) // left by an earlier enable, possibly for another agent
+    $account.set(ACCOUNT as any)
+    plugin.register(t.ctx as any)
+    expect($available.get()).toBeNull()
+    expect($account.get()).toBeNull()
+    t.dispose()
+  })
+
   it('generation counter: a late answer from the previous agent changes nothing', async () => {
     const pending: Array<{ resolve: (v: unknown) => void; reject: (e: unknown) => void }> = []
     const { t } = backend({ '/available': () => new Promise((resolve, reject) => pending.push({ resolve, reject })) })
