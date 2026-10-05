@@ -73,6 +73,17 @@ def test_use_keeps_fish_provider_and_only_sets_unset(config, provider, expected)
     assert ("Switch with" in result) == (provider == "elevenlabs")
 
 
+def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch):
+    data, saves, _ = config
+    # The profile layer has no provider; the merged config (managed layer) uses the evaOS overlay.
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": "evaos-fishaudio"}})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model/" + VOICE).respond(json={"_id": VOICE})
+        result = commands.handle("use " + VOICE)
+    assert result == "Saved."
+    assert len(saves) == 1 and "provider" not in saves[0]["tts"] and saves[0]["tts"]["fish-audio"]["voice"] == VOICE
+
+
 @pytest.mark.parametrize("status", [400, 404])
 def test_use_not_found_or_managed_does_not_write(config, status):
     _, saves, _ = config

@@ -70,13 +70,16 @@ def use(ident, key, base):
         if exc.status in {400, 404}:
             raise response_error(exc.status, body=b'{"code":"voice_not_found"}', key=key) from None
         raise
+    # Decide on the effective config: a managed layer (the evaOS overlay) may set the provider that this
+    # profile's own config.yaml leaves unset, and Use must never compete with it.
+    effective = settings._mapping(settings._config().get("tts")).get("provider")
     def change(cfg):
         tts = cfg.setdefault("tts", {})
         tts.setdefault("fish-audio", {})["voice"] = ident
-        if not tts.get("provider"):
+        if not effective and not tts.get("provider"):
             tts["provider"] = "fish-audio"
     cfg = write_config(change)
-    provider = cfg["tts"]["provider"]
+    provider = effective or cfg["tts"].get("provider") or "fish-audio"
     if "fishaudio" in provider.casefold() or "fish-audio" in provider.casefold():
         return "Saved."
     return f"Saved. Your current TTS provider is {provider}. Switch with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio."
