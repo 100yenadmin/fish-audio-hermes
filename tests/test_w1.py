@@ -232,3 +232,20 @@ def test_parity_equivalent_target_and_exclusion():
     target = next(e for e in mapping["entries"] if e["path"] == "/v1/asr" and e["location"] == "form" and e["field"] == "audio")
     target["status"] = "planned"
     assert any("Equivalent needs" in error for error in parity.check(spec, mapping))
+
+
+def test_large_inline_config_plus_call_pronunciations_split_into_groups(monkeypatch):
+    configured = [{"items": [{"key": f"g{g}k{i}", "value": "v"} for i in range(2000)]} for g in range(3)]
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"model": "s2.1-pro",
+                                                                             "pronunciation_dictionary": configured}}})
+    with respx.mock() as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"ID3")
+        tools._speak({"text": "hi", "pronunciations": {"Fish": "fish", "g0k0": "new"}}, "synthetic", BASE, "")
+        groups = json.loads(route.calls.last.request.content)["pronunciation_dictionary"]
+    assert [len(g["items"]) for g in groups] == [5000, 1001]
+    items = {i["key"]: i["value"] for g in groups for i in g["items"]}
+    assert items["g0k0"] == "new" and items["Fish"] == "fish" and len(items) == 6001
+
+
+def test_visibility_schema_has_no_default():
+    assert "default" not in tools.SCHEMAS["fish_voices"]["visibility"]

@@ -53,7 +53,8 @@ def _speak(args, key, base, session, *, record_media=True):
         configured = params.get("pronunciation_dictionary", [])
         merged = {item["key"]: item for group in configured for item in group.get("items", [])}
         merged.update({item["key"]: item for item in dictionary[0]["items"]})
-        dictionary = [{"items": list(merged.values())}]
+        items = list(merged.values())  # Fish allows at most 5000 items per group (and 3 groups)
+        dictionary = [{"items": items[i:i + 5000]} for i in range(0, len(items), 5000)]
         require(settings._dictionary(dictionary), "Invalid pronunciation entry.")
         params["pronunciation_dictionary"] = dictionary
     path = media.audio_output_dir() / f"fish-{uuid4().hex[:12]}.{fmt}"
@@ -113,7 +114,7 @@ SCHEMAS = {
         "page": _field("integer", minimum=1), "page_size": _field("integer", minimum=1, maximum=20),
         "voice_id": VOICE, "title": S, "description": S,
         "sample_paths": _field("array", items=S, minItems=1, maxItems=20), "texts": STRINGS,
-        "visibility": _field("string", enum=["private", "unlist"], default="private"),
+        "visibility": _field("string", enum=["private", "unlist"]),
         "generate_sample": B, "cover_image_path": S,
         "enhance_audio_quality": _field("boolean", default=True), "consent": B,
         "instruction": _field("string", minLength=1, maxLength=500), "reference_text": S,
