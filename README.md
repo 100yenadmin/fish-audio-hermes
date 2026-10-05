@@ -43,6 +43,8 @@ read-aloud and voice notes go through it.
 
 Never paste API keys into a chat. `/fish` refuses them and tells you to rotate the key.
 
+![hermes fish doctor: key, wallet, providers, Hermes version, a billed TTS round trip and STT all pass](docs/media/screenshot-setup.png)
+
 ## Use
 
 **In conversation:** just ask.
