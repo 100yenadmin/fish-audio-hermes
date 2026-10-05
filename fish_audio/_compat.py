@@ -9,3 +9,10 @@ except ImportError:
         def default_model(self):
             models = self.list_models()
             return models[0]["id"] if models else None
+
+try:
+    from agent.transcription_provider import TranscriptionProvider
+except ImportError:
+    class TranscriptionProvider:
+        def list_models(self):
+            return []

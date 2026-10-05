@@ -47,4 +47,44 @@ def test_request_id_and_code_redacted(monkeypatch):
     monkeypatch.setenv("FISH_API_KEY", "synthetic_key")
     error = response_error(402, {"x-request-id": "synthetic_key"}, b'{"code":"synthetic_key"}', key="synthetic_key")
     assert "synthetic_key" not in str(error)
-    assert "sk-fish-" not in str(FishAudioError("availability", None, None, "failed sk-fish-synthetic"))
+    synthetic = "sk-" + "a" * 48
+    assert synthetic not in str(FishAudioError("availability", None, None, f"failed {synthetic}"))
+
+
+@pytest.mark.parametrize("headers,trace", [
+    ({"x-fish-trace-id": "fish-trace"}, "fish-trace"),
+    ({"x-cloud-trace-context": "4bf92f3577b34da6a3ce929d0e0e4736/123;o=1"}, "4bf92f3577b34da6a3ce929d0e0e4736"),
+    ({"x-cloud-trace-context": "4bf92f"}, "4bf92f"),
+    ({"x-fish-trace-id": "primary", "x-cloud-trace-context": "abcd/123"}, "primary"),
+])
+def test_trace_forms_and_both_references(headers, trace):
+    error = response_error(400, headers, b'{"request_id":"supplied"}')
+    assert error.trace_id == trace and error.request_id == "supplied"
+    assert f"(Fish trace {trace})" in str(error) and "request id supplied" in str(error)
+    absent = response_error(400)
+    assert absent.trace_id is None and absent.request_id is None
+    assert "Fish trace" not in str(absent) and "request id" not in str(absent)
+
+
+def test_header_code_wins_and_bad_header_falls_to_body():
+    error = response_error(500, {"x-fish-error-code": "invalid_api_key"}, b'{"code":"quota"}')
+    assert error.kind == "credential" and "invalid_api_key" in str(error)
+    assert "Code: quota" not in str(error)
+    assert response_error(500, {"x-fish-error-code": "BAD!"}, b'{"code":"quota"}').kind == "quota"
+    assert response_error(401, body=b"No permission -- see authorization schemes").kind == "credential"
+
+
+@pytest.mark.parametrize("status,message", [(400, "Reference not found"), (404, "Model not found"), (400, "rEfErEnCe NoT fOuNd")])
+def test_known_voice_failure(status, message):
+    error = response_error(status, body=json.dumps({"message": message}).encode())
+    assert error.kind == "voice_not_found"
+    assert "private to another account" in str(error) and "https://fish.audio/discovery" in str(error)
+    assert message not in str(error)
+
+
+def test_defaulted_paid_quota_hint_and_safe_trace(monkeypatch):
+    assert "Switch to s2.1-pro and top up" in str(response_error(402, model="s2.1-pro", defaulted=True))
+    key = "sk-" + "a" * 48
+    monkeypatch.setenv("FISH_API_KEY", key)
+    assert key not in str(response_error(400, {"x-fish-trace-id": key}, key=key))
+    assert response_error(400, body=None).kind == "invalid_request"

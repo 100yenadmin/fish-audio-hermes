@@ -15,7 +15,10 @@ def fish_api_key() -> str:
 
 
 def redact(text: str) -> str:
-    key = fish_api_key()
+    try:
+        key = fish_api_key()
+    except Exception:
+        key = ""  # Redaction must work even while the secret backend is failing.
     if key:
         text = text.replace(key, "[redacted]")
-    return re.sub(r"sk-fish-\S+", "[redacted]", text)
+    return re.sub(r"sk-[A-Za-z0-9_-]{20,}", "[redacted]", text)

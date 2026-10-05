@@ -7,10 +7,17 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .models import MODEL_IDS
+from .account import cached_wallet
 
 DEFAULT_BASE_URL = "https://api.fish.audio"
 logger = logging.getLogger(__name__)
 _warned = set()
+FREE_MODEL_NOTICE = ("Using Fish Audio's free s2.1-pro-free model (free until 30 November 2026; "
+                     "Fish may use free-tier requests to improve its models). Top up at "
+                     "https://fish.audio/app/developers/billing to use s2.1-pro.")
+# Hermes loads distinct plugin modules per profile; a named logger is shared by
+# the process, so the notice stays once-per-process across those module copies.
+_notice_logger = logging.getLogger("fish_audio.free_model_notice")
 # (type, minimum, maximum, choices); bounds follow the vendored OpenAPI.
 KNOBS = {
     "temperature": (float, 0, 1, None),
@@ -127,17 +134,39 @@ def _base_url(value):
     return DEFAULT_BASE_URL
 
 
-def resolve_tts(call_voice, call_model, call_speed, call_format, output_path):
+def transport_settings():
+    config = _config()
+    return _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
+
+
+def resolve_model(call_model, *, key, base_url):
+    config = _config()
+    nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))
+    for model in (nested.get("model"), call_model):
+        if isinstance(model, str) and model in MODEL_IDS:
+            return model, False
+    transport = _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
+    if transport.get("allow_free_model", True) is False:
+        return "s2.1-pro", True
+    # A resolver invoked without a synthesis key must never perform a wallet request.
+    wallet = cached_wallet(key, base_url) if key else None
+    if wallet is None or wallet.credit > 0 or wallet.cumulative_top_up > 0 or wallet.has_free_credit is True:
+        return "s2.1-pro", True
+    if not getattr(_notice_logger, "_fish_notice_logged", False):
+        _notice_logger._fish_notice_logged = True
+        logger.warning(FREE_MODEL_NOTICE)
+    return "s2.1-pro-free", True
+
+
+def resolve_tts(call_voice, call_model, call_speed, call_format, output_path, *, key=""):
     config = _config()
     nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))
     transport = _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
     voice = nested.get("voice")
     if not isinstance(voice, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,128}", voice):
         voice = call_voice if isinstance(call_voice, str) and re.fullmatch(r"[0-9a-f]{32}", call_voice) else None
-    allow_free = transport.get("allow_free_model", True) is not False
-    model = next((v for v in (nested.get("model"), call_model) if isinstance(v, str) and v in MODEL_IDS), None)
-    if model is None or model == "s2.1-pro-free" and not allow_free:
-        model = "s2.1-pro-free" if allow_free else "s2.1-pro"
+    base_url = _base_url(transport.get("base_url", DEFAULT_BASE_URL))
+    model, defaulted = resolve_model(call_model, key=key, base_url=base_url)
     speed = call_speed if call_speed is not None else nested.get("speed", 1.0)
     if not _number(speed):
         _warn("speed")
@@ -151,7 +180,8 @@ def resolve_tts(call_voice, call_model, call_speed, call_format, output_path):
         path = path.with_suffix(".ogg" if fmt == "opus" else f".{fmt}")
     elif suffix == ".flac":
         path = path.with_suffix(".wav")
-    params = {"model": model, "format": fmt, "prosody": {"speed": max(0.5, min(2.0, speed))}, "base_url": _base_url(transport.get("base_url", DEFAULT_BASE_URL))}
+    params = {"model": model, "model_defaulted": defaulted, "format": fmt,
+              "prosody": {"speed": max(0.5, min(2.0, speed))}, "base_url": base_url}
     if voice is not None:
         params["reference_id"] = voice
     for key in KNOBS:

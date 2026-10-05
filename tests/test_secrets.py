@@ -52,5 +52,15 @@ def test_missing_scoped_key_never_falls_back(scope, monkeypatch):
 
 def test_redact_live_and_pattern(scope):
     scope.get_secret = lambda name: "test-key"
-    text = secrets.redact("live test-key and sk-fish-synthetic more")
-    assert "test-key" not in text and "sk-fish-" not in text
+    synthetic = "sk-" + "aB_9-" * 9 + "xyz"
+    assert len(synthetic) == 51
+    text = secrets.redact(f"live test-key and {synthetic} more")
+    assert "test-key" not in text and synthetic not in text
+
+
+def test_redaction_survives_secret_backend_failure(scope):
+    def failed(name):
+        raise RuntimeError("synthetic backend failure")
+    scope.get_secret = failed
+    synthetic = "sk-" + "a" * 48
+    assert synthetic not in secrets.redact(synthetic)

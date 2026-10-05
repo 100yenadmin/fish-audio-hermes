@@ -201,3 +201,54 @@ def test_lazy_timeout_and_unknown_ua(monkeypatch):
         assert "authorization" not in http.headers
     finally:
         http.close()
+
+
+@pytest.mark.parametrize("text", ["", " \t\n"])
+def test_empty_text_and_unknown_model_never_request(tmp_path, text):
+    with respx.mock as mock:
+        with pytest.raises(ValueError, match="Nothing to say: the text is empty."):
+            call(tmp_path / "out.mp3", {**PARAMS, "text": text})
+        with pytest.raises(ValueError, match="Unknown Fish Audio TTS model"):
+            call(tmp_path / "out.mp3", {**PARAMS, "model": "unknown-model"})
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("valid,raises", [(True, False), (False, False), (True, True)])
+def test_traceparent_optional_valid_context(tmp_path, monkeypatch, valid, raises):
+    from types import SimpleNamespace
+    module = ModuleType("opentelemetry.trace")
+    def current():
+        if raises:
+            raise RuntimeError("synthetic tracing failure")
+        context = SimpleNamespace(is_valid=valid, trace_id=int("4bf92f3577b34da6a3ce929d0e0e4736", 16),
+                                  span_id=int("00f067aa0ba902b7", 16), trace_flags=1)
+        return SimpleNamespace(get_span_context=lambda: context)
+    module.get_current_span = current
+    monkeypatch.setitem(sys.modules, "opentelemetry", ModuleType("opentelemetry"))
+    monkeypatch.setitem(sys.modules, "opentelemetry.trace", module)
+    with respx.mock as mock:
+        route = mock.post(URL).respond(content=b"audio")
+        call(tmp_path / "out.mp3")
+        headers = route.calls.last.request.headers
+        if valid and not raises:
+            assert headers["traceparent"] == "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        else:
+            assert "traceparent" not in headers
+
+
+def test_missing_otel_no_header_and_defaulted_flag_not_sent(tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "opentelemetry.trace", None)
+    with respx.mock as mock:
+        route = mock.post(URL).respond(content=b"audio")
+        call(tmp_path / "out.mp3", {**PARAMS, "model_defaulted": True})
+        r = route.calls.last.request
+        assert "traceparent" not in r.headers and "model_defaulted" not in json.loads(r.content)
+
+
+def test_defaulted_paid_402_carries_hint_and_trace(tmp_path):
+    with respx.mock as mock:
+        mock.post(URL).respond(402, headers={"x-fish-trace-id": "fish-trace"})
+        with pytest.raises(FishAudioError) as exc:
+            call(tmp_path / "out.mp3", {**PARAMS, "model_defaulted": True})
+        assert "Switch to s2.1-pro and top up" in str(exc.value)
+        assert exc.value.trace_id == "fish-trace"

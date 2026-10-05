@@ -1,4 +1,5 @@
 """Lazy shared transport; authentication belongs only to individual requests."""
+import json
 import random
 import threading
 import time
@@ -8,6 +9,7 @@ import msgpack
 
 from .errors import FishAudioError, response_error
 from .media import atomic_write
+from .models import MODEL_IDS
 
 PLUGIN_VERSION = "0.0.1"
 MODEL_HEADER = "model"
@@ -31,6 +33,24 @@ def _user_agent():
     return f"fish-audio-hermes/{PLUGIN_VERSION} (hermes-agent/{__version__})"
 
 
+def request_headers(key, model=None):
+    headers = {"Authorization": f"Bearer {key}", "User-Agent": _user_agent()}
+    if model is not None:
+        headers[MODEL_HEADER] = model
+    try:
+        from opentelemetry.trace import get_current_span
+        context = get_current_span().get_span_context()
+        if context.is_valid:
+            headers["traceparent"] = f"00-{context.trace_id:032x}-{context.span_id:016x}-{int(context.trace_flags):02x}"
+    except Exception:
+        pass
+    return headers
+
+
+def _retryable(error):
+    return error.status == 429 or error.status is not None and 500 <= error.status < 600
+
+
 def _has_bytes(value):
     if isinstance(value, (bytes, bytearray)):
         return True
@@ -47,10 +67,14 @@ def _error_body(response):
 
 
 def tts_to_file(params, key, base_url, out_path, *, sleep=None):
+    if not isinstance(params.get("text"), str) or not params["text"].strip():
+        raise ValueError("Nothing to say: the text is empty.")
+    model = params.get("model")
+    if not isinstance(model, str) or model not in MODEL_IDS:
+        raise ValueError("Unknown Fish Audio TTS model.")
     sleep = time.sleep if sleep is None else sleep
-    body = {k: v for k, v in params.items() if k not in {"model", "base_url", "streaming"}}
-    model = params["model"]
-    headers = {"Authorization": f"Bearer {key}", MODEL_HEADER: model, "User-Agent": _user_agent()}
+    body = {k: v for k, v in params.items() if k not in {"model", "model_defaulted", "base_url", "streaming"}}
+    headers = request_headers(key, model)
     if _has_bytes(body.get("references")):
         headers["Content-Type"] = "application/msgpack"
         payload = {"content": msgpack.packb(body, use_bin_type=True)}
@@ -58,15 +82,18 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
         payload = {"json": body}
     for attempt in range(3):
         written = False
+        response_headers = None
         try:
             with _http_client().stream("POST", base_url.rstrip("/") + "/v1/tts", headers=headers, **payload) as response:
+                response_headers = response.headers
                 if not 200 <= response.status_code < 300:
                     try:
                         error_body = _error_body(response)
                     except httpx.TransportError:
                         # A known 4xx remains nonretryable even if its body disconnects.
                         error_body = b""
-                    raise response_error(response.status_code, response.headers, error_body, model, key)
+                    raise response_error(response.status_code, response.headers, error_body, model, key,
+                                         defaulted=params.get("model_defaulted", False))
 
                 def chunks():
                     nonlocal written
@@ -77,11 +104,53 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
 
                 return atomic_write(out_path, chunks())
         except httpx.TransportError:
-            error = FishAudioError("availability", None, None, "Fish Audio is unavailable. Try again later.")
+            error = response_error(None, response_headers, model=model, key=key)
             retryable = True
         except FishAudioError as exc:
             error = exc
-            retryable = exc.status == 429 or exc.status is not None and 500 <= exc.status < 600
+            retryable = _retryable(exc)
         if written or not retryable or attempt == 2:
+            raise error from None
+        sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))
+
+
+def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sleep=None):
+    """Multipart ASR through the same client, with safe errors and bounded retries."""
+    if model not in {"transcribe-1-pro", "transcribe-1"}:
+        raise ValueError("Unknown Fish Audio ASR model.")
+    sleep = time.sleep if sleep is None else sleep
+    timeout = httpx.Timeout(connect=10, read=300, write=60, pool=10)
+    for attempt in range(3):
+        received = False
+        response_headers = None
+        try:
+            with _http_client().stream("POST", base_url.rstrip("/") + "/v1/asr",
+                                       headers=request_headers(key, model), data=fields,
+                                       files={"audio": (filename, audio, mime)}, timeout=timeout) as response:
+                response_headers = response.headers
+                if not 200 <= response.status_code < 300:
+                    try:
+                        body = _error_body(response)
+                    except httpx.TransportError:
+                        body = b""
+                    raise response_error(response.status_code, response.headers, body, model, key)
+                chunks = []
+                for chunk in response.iter_bytes():
+                    if chunk:
+                        received = True
+                        chunks.append(chunk)
+                try:
+                    data = json.loads(b"".join(chunks))
+                    if not isinstance(data, dict) or not isinstance(data.get("text"), str):
+                        raise ValueError("invalid ASR response")
+                except (ValueError, UnicodeError):
+                    raise response_error(response.status_code, response.headers, key=key) from None
+                return data
+        except httpx.TransportError:
+            error = response_error(None, response_headers, key=key)
+            retryable = True
+        except FishAudioError as exc:
+            error, retryable = exc, _retryable(exc)
+        if received or not retryable or attempt == 2:
             raise error from None
         sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))

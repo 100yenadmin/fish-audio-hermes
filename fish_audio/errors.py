@@ -9,21 +9,24 @@ BILLING_URL = "https://fish.audio/app/developers/billing"
 
 
 class FishAudioError(Exception):
-    def __init__(self, kind, status, request_id, message):
+    def __init__(self, kind, status, request_id, message, *, trace_id=None):
         self.kind = kind
         self.status = status
         self.request_id = redact(request_id) if request_id else None
         self.message = redact(message)
+        self.trace_id = redact(trace_id) if trace_id else None
         super().__init__(self.message)
 
     def __str__(self):
-        return self.message + (f" (request id {self.request_id})" if self.request_id else "")
+        return (self.message
+                + (f" (request id {self.request_id})" if self.request_id else "")
+                + (f" (Fish trace {self.trace_id})" if self.trace_id else ""))
 
 
-def response_error(status, headers=None, body=b"", model=None, key=""):
+def response_error(status, headers=None, body=b"", model=None, key="", *, defaulted=False):
     try:
         data = json.loads(body)
-    except (ValueError, UnicodeError):
+    except (ValueError, UnicodeError, TypeError):
         data = {}
     if not isinstance(data, dict):
         data = {}
@@ -37,16 +40,37 @@ def response_error(status, headers=None, body=b"", model=None, key=""):
         415: ("unsupported_media", "Fish Audio does not support this audio format."),
         429: ("rate_limit", "Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, ≥$100: 15, ≥$1k: 50 concurrent requests. Retry later."),
     }
+    headers = {str(k).lower(): v for k, v in (headers or {}).items()}
     kind, message = messages.get(status, ("availability", "Fish Audio is unavailable. Try again later."))
-    code = data.get("code")
-    if isinstance(code, str) and re.fullmatch(r"[a-z_]{1,64}", code):
+    code = next((v for v in (headers.get("x-fish-error-code"), data.get("code"))
+                 if isinstance(v, str) and re.fullmatch(r"[a-z_]{1,64}", v)), None)
+    by_kind = {k: m for k, m in messages.values()}
+    by_kind["availability"] = "Fish Audio is unavailable. Try again later."
+    by_kind["voice_not_found"] = ("The voice id was not found, or is private to another account. "
+                                 "Browse voices at https://fish.audio/discovery.")
+    resolved_kind = "credential" if code == "invalid_api_key" else code
+    known_message = data.get("message")
+    if resolved_kind in by_kind:
+        kind, message = resolved_kind, by_kind[resolved_kind]
+    elif status in {400, 404} and isinstance(known_message, str) and known_message.lower() in {"reference not found", "model not found"}:
+        kind, message = "voice_not_found", by_kind["voice_not_found"]
+    if code:
         message += f" Code: {code}."
-    if model == "s2.1-pro-free" and status in {402, 403, 429}:
+    if (model == "s2.1-pro-free" and status in {402, 403, 429}) or (defaulted and status == 402):
         message += f" Switch to s2.1-pro and top up: {BILLING_URL}"
-    request_id = (headers or {}).get("x-request-id") or data.get("request_id")
+    request_id = headers.get("x-request-id") or data.get("request_id")
     if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", request_id):
         request_id = None
+    trace_id = headers.get("x-fish-trace-id")
+    if not trace_id:
+        cloud_trace = headers.get("x-cloud-trace-context")
+        trace_id = cloud_trace.split("/", 1)[0] if isinstance(cloud_trace, str) else None
+        if not isinstance(trace_id, str) or not re.fullmatch(r"[0-9a-fA-F]+", trace_id):
+            trace_id = None
+    if not isinstance(trace_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", trace_id):
+        trace_id = None
     if key:
         message = message.replace(key, "[redacted]")
         request_id = request_id.replace(key, "[redacted]") if request_id else None
-    return FishAudioError(kind, status, request_id, message)
+        trace_id = trace_id.replace(key, "[redacted]") if trace_id else None
+    return FishAudioError(kind, status, request_id, message, trace_id=trace_id)

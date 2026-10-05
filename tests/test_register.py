@@ -9,3 +9,11 @@ def test_register_is_network_free_and_importable(plugin, fake_ctx, monkeypatch):
     plugin.register(fake_ctx)
     assert len(fake_ctx.tts_providers) == 1
     assert fake_ctx.tts_providers[0].name == "fish-audio"
+    assert len(fake_ctx.stt_providers) == 1
+    assert fake_ctx.stt_providers[0].name == "fish-audio"
+
+
+def test_old_host_missing_methods_only_logs(plugin, caplog):
+    plugin.register(object())
+    assert "register_tts_provider" in caplog.text
+    assert "register_transcription_provider" in caplog.text

@@ -1,5 +1,6 @@
 """Bounded audio writes that leave the destination intact on failure."""
 import os
+import stat
 import tempfile
 from pathlib import Path
 
@@ -36,3 +37,77 @@ def atomic_write(path, chunks, cap=AUDIO_CAP):
         if temporary is not None:
             os.unlink(temporary)
     return str(path)
+
+
+class InputFileError(ValueError):
+    """An unsafe, oversized or unrecognized media input (contents never echoed)."""
+
+
+def _hermes_home():
+    try:
+        from hermes_constants import get_hermes_home
+        return Path(get_hermes_home()).resolve()
+    except ImportError:
+        return Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes"))).expanduser().resolve()
+
+
+def _secret_path(path):
+    if path.name.lower().endswith(".pem") or path.name.startswith("id_"):
+        return True
+    user_home = Path.home().resolve()
+    for directory in (user_home / ".ssh", user_home / ".aws", user_home / ".config" / "gcloud"):
+        if path.is_relative_to(directory) or path.is_relative_to(directory.resolve()):
+            return True
+    home = _hermes_home()
+    if path.is_relative_to(home):
+        relative = path.relative_to(home)
+        return (path.name in {".env", "auth.json", "config.yaml"}
+                or "secrets" in relative.parts or path.name.lower().endswith(".key"))
+    return False
+
+
+def _audio_kind(header):
+    # ADTS must precede MP3's broader frame-sync match.
+    if header[:2] in {b"\xff\xf1", b"\xff\xf9"}:
+        return "aac"
+    if header.startswith(b"ID3") or len(header) >= 2 and header[0] == 0xFF and header[1] & 0xE0 == 0xE0:
+        return "mp3"
+    if header.startswith(b"RIFF") and header[8:12] == b"WAVE":
+        return "wav"
+    if header.startswith(b"OggS"):
+        return "ogg"
+    if header.startswith(b"\x1aE\xdf\xa3"):
+        return "webm"
+    if header.startswith(b"fLaC"):
+        return "flac"
+    if header[4:8] == b"ftyp":
+        return "mp4"
+    return None
+
+
+def validate_input_file(path, *, max_bytes, kinds):
+    try:
+        path = Path(path).expanduser()
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
+            raise InputFileError("Audio input must be a regular file, not a symlink.")
+        resolved = path.parent.resolve(strict=True) / path.name
+        if resolved != Path(os.path.realpath(path)):
+            raise InputFileError("Audio input changed while resolving its path.")
+        if _secret_path(path.absolute()) or _secret_path(resolved):
+            raise InputFileError("Secret and credential files cannot be used as audio input.")
+        if not 0 < info.st_size <= max_bytes:
+            raise InputFileError("Audio input is empty or exceeds the size limit.")
+        fd = os.open(resolved, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        with os.fdopen(fd, "rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if (opened.st_dev, opened.st_ino, opened.st_size) != (info.st_dev, info.st_ino, info.st_size):
+                raise InputFileError("Audio input changed while opening it.")
+            kind = _audio_kind(handle.read(64))
+        if kind is None or kind not in kinds:
+            raise InputFileError("Audio input has an unsupported or mismatched media kind.")
+        return resolved, kind
+    except InputFileError:
+        raise
+    except (OSError, TypeError, ValueError):
+        raise InputFileError("Audio input could not be read safely.") from None

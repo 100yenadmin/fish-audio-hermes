@@ -42,11 +42,12 @@ def test_foreign_legacy_voice_rejected(config, voice):
 
 def test_default_and_free_policy(config):
     _, nested, transport = config
-    assert resolve()[0]["model"] == "s2.1-pro-free"
+    assert resolve()[0]["model"] == "s2.1-pro"
     transport["allow_free_model"] = False
     assert resolve()[0]["model"] == "s2.1-pro"
     nested["model"] = "s2.1-pro-free"
-    assert resolve(model="s2.1-pro-free")[0]["model"] == "s2.1-pro"
+    # Stage 2's ordered resolver gives explicit valid settings priority.
+    assert resolve(model="s2.1-pro-free")[0]["model"] == "s2.1-pro-free"
 
 
 @pytest.mark.parametrize("suffix,call_format,fmt,final", [
@@ -138,4 +139,4 @@ def test_load_failure_defaults(config, monkeypatch):
     def fail():
         raise RuntimeError("synthetic config failure")
     monkeypatch.setattr(sys.modules["hermes_cli.config"], "load_config", fail)
-    assert resolve()[0]["model"] == "s2.1-pro-free"
+    assert resolve()[0]["model"] == "s2.1-pro"

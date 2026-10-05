@@ -2,7 +2,6 @@
 import importlib.util
 import json
 from pathlib import Path
-import shutil
 
 import httpx
 import pytest
@@ -15,50 +14,9 @@ VOICE = "b" * 32
 
 
 @pytest.fixture
-def installed(tmp_path, monkeypatch):
-    home = tmp_path / "home"
-    mount = home / "plugins" / "fish-audio"
-    mount.mkdir(parents=True)
-    for name in ("__init__.py", "plugin.yaml", "pyproject.toml", "README.md", "LICENSE", ".gitignore"):
-        shutil.copy2(ROOT / name, mount / name)
-    # Include the whole publishable tree, while keeping ignored local harnesses out.
-    for name in ("fish_audio", "tests", ".github"):
-        shutil.copytree(ROOT / name, mount / name, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
-    (home / "config.yaml").write_text(
-        "plugins:\n  enabled: [fish-audio]\ntts:\n  provider: fish-audio\n"
-        f"  fish-audio:\n    voice: {VOICE}\n", encoding="utf-8")
-    (home / ".env").write_text("FISH_API_KEY=test-key\n", encoding="utf-8")
-    monkeypatch.setenv("HERMES_HOME", str(home))
-    monkeypatch.setenv("FISH_API_KEY", "")
-    monkeypatch.delenv("HERMES_SAFE_MODE", raising=False)
-    monkeypatch.delenv("HERMES_PLUGIN_HOST_PROCESS", raising=False)
-    monkeypatch.delenv("HERMES_SESSION_PLATFORM", raising=False)
-    # Fail immediately if an unmocked socket is attempted, including registration.
-    import socket
-    def no_network(*args, **kwargs):
-        raise AssertionError("integration must remain offline")
-    monkeypatch.setattr(socket.socket, "connect", no_network)
-    monkeypatch.setattr(socket, "create_connection", no_network)
-
-    from hermes_constants import set_hermes_home_override, reset_hermes_home_override
-    from agent.secret_scope import set_secret_scope, reset_secret_scope, load_env_file
-    token = set_hermes_home_override(home)
-    secret_token = set_secret_scope(load_env_file(home / ".env"), profile_home=str(home))
-    try:
-        from hermes_cli.plugins import discover_plugins, get_plugin_manager
-        discover_plugins()
-        from agent.tts_registry import get_provider
-        from agent.tts_provider import TTSProvider
-        provider = get_provider("fish-audio")
-        assert provider is not None and isinstance(provider, TTSProvider)
-        assert provider.__class__.__name__ == "FishAudioTTSProvider"
-        assert Path(__import__(provider.__class__.__module__, fromlist=["__file__"]).__file__).is_relative_to(mount)
-        assert provider.is_available()
-        yield home, provider
-    finally:
-        get_plugin_manager().unload()
-        reset_secret_scope(secret_token)
-        reset_hermes_home_override(token)
+def installed(installed_fish_home):
+    home, provider, _ = installed_fish_home
+    return home, provider
 
 
 def test_ordinary_tts_delivers_mocked_fish_audio(installed):
@@ -66,6 +24,8 @@ def test_ordinary_tts_delivers_mocked_fish_audio(installed):
     audio = (ROOT / "tests" / "fixtures" / "synthetic.mp3").read_bytes()
     from tools.tts_tool import text_to_speech_tool
     with respx.mock(assert_all_called=True) as mock:
+        mock.get("https://api.fish.audio/wallet/self/api-credit?check_free_credit=true").respond(
+            json={"credit": "0", "cumulative_top_up": "0", "has_free_credit": False})
         route = mock.post("https://api.fish.audio/v1/tts").respond(content=audio, headers={"content-type": "audio/mpeg"})
         result = json.loads(text_to_speech_tool(text="hello"))
         assert result["success"] is True, result
