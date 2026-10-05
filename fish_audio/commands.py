@@ -35,11 +35,11 @@ def write_config(change):
     return cfg
 
 
-def status(key=None):
+def status(key=None, end_user=True):
     key = fish_api_key() if key is None else key
     cfg, base = settings._config(), base_url()
     nested = settings._mapping(settings._mapping(cfg.get("tts")).get("fish-audio"))
-    operator = settings.operator_account()
+    operator = end_user and settings.operator_account()
     wallet = account.cached_wallet(key, base) if key and not operator else None
     package = account.get_package(key, base) if key and not operator else None
     model, defaulted = settings.resolve_model(None, key="" if operator else key, base_url=base)
@@ -49,6 +49,8 @@ def status(key=None):
               "free tier" if model == "s2.1-pro-free" else "paid account")
     if operator:
         reason = "operator managed"
+        if defaulted and not managed:
+            model = "Fish default"  # The unpinned default depends on the operator's wallet, which isn't read here.
     tts, stt = cfg.get("tts", {}), cfg.get("stt", {})
     failure = state.last_failure()
     if operator and failure:
@@ -94,22 +96,24 @@ def use(ident, key, base):
     return f"Saved. Your current TTS provider is {provider}. Switch with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio."
 
 
-def handle(raw_args=""):
+def handle(raw_args="", *, end_user=True):
+    """`end_user=False` is the operator's own terminal (`hermes fish status`), which keeps the account view."""
+    operator = end_user and settings.operator_account()
     try:
         if re.search(r"sk-[A-Za-z0-9_-]{20,}", raw_args):
-            return "Never paste API keys into chat. Contact the operator of this agent." if settings.operator_account() else KEY_IN_CHAT
+            return "Never paste API keys into chat. Contact the operator of this agent." if operator else KEY_IN_CHAT
         command, _, rest = raw_args.strip().partition(" ")
         command = command or "status"
         if command == "help":
             return HELP
-        if command == "balance" and settings.operator_account():
+        if command == "balance" and operator:
             return "Voice billing for this agent is handled by its operator."
         key = fish_api_key()
         if not key:
-            return "Ask the operator of this agent to finish the Fish Audio setup." if settings.operator_account() else NO_KEY
+            return "Ask the operator of this agent to finish the Fish Audio setup." if operator else NO_KEY
         base = base_url()
         if command == "status":
-            return redact(status(key))
+            return redact(status(key, end_user))
         if command == "voices":
             from .voices import execute
             result = execute({"action": "search", "query": rest, "page_size": 5}, key, base, "")
@@ -123,7 +127,7 @@ def handle(raw_args=""):
             model, _ = settings.resolve_model(rest, key=key, base_url=base)
             if rest == "s2.1-pro-free" and model != rest:
                 return "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
-            return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" and not settings.operator_account() else "")
+            return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" and not operator else "")
         if command == "preview":
             ident, _, text = rest.partition(" ")
             text = text or "Hi! This is how I sound."

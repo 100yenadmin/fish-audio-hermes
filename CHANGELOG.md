@@ -6,8 +6,11 @@
   a managed evaOS agent), set `plugins.entries.fish-audio.settings.operator_account: true`. People using the agent then
   never see that account: no balance or plan, no top-up, plan or API-key links, and no "billed to your Fish Audio
   account" notes. This covers `/fish balance` and `/fish status`, tool descriptions, error messages, the gateway's
-  `/account` route and the Desktop Voices page (no Account tab or credit chip). Errors keep the same `error_kind`
-  values, so nothing that branches on them changes. Without the setting, everything works as before.
+  `/account` route and the Desktop Voices page (no Account tab or credit chip). Because one operator account can serve
+  many agents, its own voices aren't listed either: there is no My voices tab, and listing, editing or deleting the
+  account's voices is refused on the Voices page, the gateway routes and `fish_voices`. Cloning and designing a voice
+  still work. Errors keep the same `error_kind` values, so nothing that branches on them changes. Without the
+  setting, everything works as before.
 - **Use never competes with a managed provider.** Where a managed layer already sets the speech provider (such as
   evaOS's `evaos-fishaudio`), `/fish use` and the Voices page's **Use** save only the voice, and never write a provider
   to the profile. Elsewhere they work as before: they select Fish Audio when the profile has no provider of its own.

@@ -208,7 +208,6 @@ var S = {
   mineEmptyHint: "Clone your voice or design a new one in Create.",
   delete: "Delete",
   deleteTitle: (title) => `Delete "${title}"?`,
-  operatorDeleteBody: "This removes the voice from this agent. Agents using this voice will need another voice selected.",
   deleteBody: "This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.",
   deleteConfirmLabel: (title) => `Type "${title}" to confirm`,
   cancel: "Cancel",
@@ -636,15 +635,16 @@ function Body({ pin }) {
   const selected = useValue3($tab);
   const available = useValue3($available);
   const operator = available && available.account === false;
-  const tab = operator && selected === "account" ? "library" : selected;
+  const hidden = operator && (selected === "account" || selected === "mine");
+  const tab = hidden ? "library" : selected;
   useEffect(() => {
-    if (operator && selected === "account") $tab.set("library");
-  }, [operator, selected]);
+    if (hidden) $tab.set("library");
+  }, [hidden]);
   const tabs = /* @__PURE__ */ jsx3(
     SegmentedControl,
     {
       onChange: (id) => $tab.set(id),
-      options: ["library", "mine", "create", "account"].filter((id) => !operator || id !== "account").map((id) => ({ id, label: S.tabs[id] })),
+      options: ["library", "mine", "create", "account"].filter((id) => !operator || id !== "account" && id !== "mine").map((id) => ({ id, label: S.tabs[id] })),
       value: tab
     }
   );
@@ -903,7 +903,6 @@ function MyVoices({ pin }) {
   ] });
 }
 function DeleteDialog({ pin, voice, onClose, onDeleted }) {
-  const deleteBody = useAccountText(S.deleteBody, S.operatorDeleteBody);
   const [typed, setTyped] = useState2("");
   const [busy, setBusy] = useState2(false);
   useEffect(() => setTyped(""), [voice]);
@@ -926,7 +925,7 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }) {
   };
   return /* @__PURE__ */ jsx3(Dialog, { onOpenChange: (open) => !open && onClose(), open: voice !== null, children: /* @__PURE__ */ jsxs3(DialogContent, { children: [
     /* @__PURE__ */ jsx3(DialogHeader, { children: /* @__PURE__ */ jsx3(DialogTitle, { children: voice ? S.deleteTitle(voice.title) : "" }) }),
-    /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }, children: deleteBody }),
+    /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }, children: S.deleteBody }),
     /* @__PURE__ */ jsxs3("label", { style: { display: "grid", fontSize: 12, gap: 6 }, children: [
       voice ? S.deleteConfirmLabel(voice.title) : "",
       /* @__PURE__ */ jsx3(Input2, { "aria-label": voice ? S.deleteConfirmLabel(voice.title) : "", onChange: (e) => setTyped(e.target.value), value: typed })

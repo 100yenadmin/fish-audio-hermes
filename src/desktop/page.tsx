@@ -154,12 +154,14 @@ function Body({ pin }: { pin: AgentPin }) {
   const selected = useValue($tab)
   const available = useValue($available)
   const operator = available && available.account === false
-  const tab = operator && selected === 'account' ? 'library' : selected
-  useEffect(() => { if (operator && selected === 'account') $tab.set('library') }, [operator, selected])
+  // An operator's account spans its agents: its balance and its own voices are not this agent's to show.
+  const hidden = operator && (selected === 'account' || selected === 'mine')
+  const tab = hidden ? 'library' : selected
+  useEffect(() => { if (hidden) $tab.set('library') }, [hidden])
   const tabs = (
     <SegmentedControl
       onChange={(id: typeof tab) => $tab.set(id)}
-      options={(['library', 'mine', 'create', 'account'] as const).filter(id => !operator || id !== 'account').map(id => ({ id, label: S.tabs[id] }))}
+      options={(['library', 'mine', 'create', 'account'] as const).filter(id => !operator || (id !== 'account' && id !== 'mine')).map(id => ({ id, label: S.tabs[id] }))}
       value={tab}
     />
   )
@@ -495,7 +497,6 @@ function MyVoices({ pin }: { pin: AgentPin }) {
 }
 
 function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice: null | Voice; onClose: () => void; onDeleted: () => void }) {
-  const deleteBody = useAccountText(S.deleteBody, S.operatorDeleteBody)
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   useEffect(() => setTyped(''), [voice])
@@ -522,7 +523,7 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice
         <DialogHeader>
           <DialogTitle>{voice ? S.deleteTitle(voice.title) : ''}</DialogTitle>
         </DialogHeader>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }}>{deleteBody}</p>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: 0 }}>{S.deleteBody}</p>
         <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>
           {voice ? S.deleteConfirmLabel(voice.title) : ''}
           <Input aria-label={voice ? S.deleteConfirmLabel(voice.title) : ''} onChange={(e: { target: { value: string } }) => setTyped(e.target.value)} value={typed} />

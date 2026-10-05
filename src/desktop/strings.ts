@@ -66,7 +66,6 @@ export const S = {
   mineEmptyHint: 'Clone your voice or design a new one in Create.',
   delete: 'Delete',
   deleteTitle: (title: string) => `Delete "${title}"?`,
-  operatorDeleteBody: 'This removes the voice from this agent. Agents using this voice will need another voice selected.',
   deleteBody: 'This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.',
   deleteConfirmLabel: (title: string) => `Type "${title}" to confirm`,
   cancel: 'Cancel',

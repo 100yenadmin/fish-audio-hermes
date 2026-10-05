@@ -474,9 +474,19 @@ describe('operator account page', () => {
     expect(screen.getByRole('button', { name: 'Preview Narrator' }).title).toBe(S.operatorBilledNote)
     expect(calls.some(c => c.path === '/account')).toBe(false)
     expect(document.body.textContent).not.toContain('your Fish Audio account')
-    fireEvent.click(screen.getByRole('tab', { name: 'My voices' }))
+    expect(screen.queryByRole('tab', { name: 'My voices' })).toBeNull()
+  })
+
+  it("restores a My voices tab into Library and never lists the operator account's voices", async () => {
+    $available.set({ key: true, version: '1.1.0', account: false })
+    $tab.set('mine')
+    const { calls } = mount(async () => VOICES)
     await flush()
-    expect(screen.getByText(S.operatorBilledNote)).toBeTruthy()
+    expect($tab.get()).toBe('library')
+    expect(screen.queryByRole('tab', { name: 'My voices' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true')
+    expect(calls.some(c => c.path.includes('self=true'))).toBe(false)
+    expect(screen.queryByRole('button', { name: /^Delete / })).toBeNull()
   })
 
   it('uses operator clone and design notes and updates on a same-agent flip', async () => {
@@ -486,8 +496,10 @@ describe('operator account page', () => {
     expect(screen.getByText(S.operatorCloneBilled)).toBeTruthy()
     expect(screen.getByText(S.operatorDesignBilled)).toBeTruthy()
     expect(document.body.textContent).not.toContain('your Fish Audio account')
+    expect(screen.queryByRole('tab', { name: 'My voices' })).toBeNull()
     act(() => $available.set({ key: true, version: '1.1.0', account: true }))
     expect(screen.getByRole('tab', { name: 'Account' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'My voices' })).toBeTruthy()
     expect(screen.getByText(S.cloneBilled)).toBeTruthy()
     expect(screen.getByText(S.designBilled)).toBeTruthy()
   })

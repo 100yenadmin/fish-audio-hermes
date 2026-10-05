@@ -197,6 +197,8 @@ def available() -> dict:
 @router.get("/voices")
 @_protocol
 def list_voices(q: str = "", mine: bool = Query(False, alias="self"), page: int = 1, language: str = ""):
+    if mine and _fa("settings").operator_account():
+        raise Refusal("operator_account", _fa("voices").ACCOUNT_VOICES)
     key, base = _scope()
     if len(q) > 100 or (language and not LANGUAGE_RE.fullmatch(language)) or not 1 <= page <= 50:
         raise Refusal("invalid", "Use a shorter search, a language code like en or ja, and a page from 1 to 50.")
@@ -282,10 +284,12 @@ def _author_owned(ident: str, key: str, base: str) -> bool:
 @_protocol
 def delete_voice(voice_id: str):
     """Delete one of the account's own voices; anything else is refused before the delete request."""
+    if _fa("settings").operator_account():
+        raise Refusal("operator_account", _fa("voices").ACCOUNT_VOICES)
     key, base = _scope()
     ident = _voice_id(voice_id)
     if not _author_owned(ident, key, base):
-        raise Refusal("not_owner", "You can delete only voices created for this agent." if _fa("settings").operator_account() else "You can delete only voices your Fish Audio account created.")
+        raise Refusal("not_owner", "You can delete only voices your Fish Audio account created.")
     _fa("voices").execute({"action": "delete", "voice_id": ident}, key, base, "")
     return {"ok": True, "id": ident}
 

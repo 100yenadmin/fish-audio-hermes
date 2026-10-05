@@ -220,6 +220,10 @@ def test_operator_chat_hides_account_without_wallet_reads(config, monkeypatch):
     assert "quota" in output
     assert "Account: managed by the operator" in output
     assert "API credit" not in output and "Plan:" not in output and "paid account" not in output
+    # The unpinned default follows the operator's wallet, which status doesn't read: it names no model.
+    assert "Model: Fish default (operator managed)" in output and "s2.1-pro" not in output
+    config[0]["tts"]["fish-audio"] = {"model": "s1"}
+    assert "Model: s1 (operator managed)" in commands.status()
     assert commands.handle("model s2.1-pro-free") == "Saved."
     assert "http" not in commands.handle("sk-" + "x" * 30)
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")
@@ -227,3 +231,14 @@ def test_operator_chat_hides_account_without_wallet_reads(config, monkeypatch):
     assert commands.handle("status") == "Ask the operator of this agent to finish the Fish Audio setup."
     config[0]["plugins"]["entries"]["fish-audio"]["settings"]["operator_account"] = False
     assert commands.handle("balance") == commands.NO_KEY
+
+
+def test_operator_terminal_status_keeps_the_account_view(config, monkeypatch):
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    with respx.mock(assert_all_called=True) as mock:
+        wallet_routes(mock)
+        output = commands.handle("status", end_user=False)
+    assert "API credit: 2.5" in output and "Plan: plus" in output and "operator" not in output
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    assert commands.handle("status", end_user=False) == commands.NO_KEY
+    assert commands.handle("status") == "Ask the operator of this agent to finish the Fish Audio setup."

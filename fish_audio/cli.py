@@ -127,7 +127,7 @@ def handle(args):
         if command == "doctor":
             return _doctor(args)
         if command == "status":
-            print(commands.handle("status"))
+            print(commands.handle("status", end_user=False))
         elif command == "use":
             key = fish_api_key()
             require(bool(key), commands.NO_KEY)

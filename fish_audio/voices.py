@@ -85,8 +85,13 @@ def _features(value, signature):
     return value
 
 
+ACCOUNT_VOICES = "Voices on this agent's account are managed by its operator."
+
+
 def execute(args, key, base, session):
     action = args.get("action")
+    # An operator's key can serve many agents: its own voices, edits and deletes span all of them.
+    require(action not in {"mine", "update", "delete"} or not settings.operator_account(), ACCOUNT_VOICES)
     if action in {"search", "mine"}:
         page, size, sort = args.get("page", 1), args.get("page_size", 20), args.get("sort", "score")
         require(integer(page, 1) and integer(size, 1, 20), "page must be positive and page_size must be 1–20.")
