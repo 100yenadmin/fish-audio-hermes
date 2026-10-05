@@ -129,3 +129,12 @@ def test_wallet_strict_empty_body_still_raises():
         mock.get(BASE + "/wallet/self/api-credit").respond(200, content=b"")
         with pytest.raises(FishAudioError):
             account.get_wallet("test-key", BASE, strict=True)
+
+
+@pytest.mark.parametrize("body", [b"[]", b"42", b'"plus"', b"true"])
+def test_package_strict_non_object_raises_but_default_returns_none(body):
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/wallet/self/package").respond(200, content=body)
+        assert account.get_package("test-key", BASE) is None
+        with pytest.raises(FishAudioError):
+            account.get_package("test-key", BASE, strict=True)
