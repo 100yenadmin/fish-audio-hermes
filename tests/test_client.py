@@ -311,9 +311,12 @@ def test_desktop_disclosure_worded_identically():
     root = Path(__file__).resolve().parents[1]
     texts = [" ".join((root / name).read_text().split()) for name in ("SECURITY.md", "README.md", "plugin.yaml")]
     start = "The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/"
-    sentence = texts[0][texts[0].index(start):].split(" after 15 minutes.")[0]
+    end = "until it closes."
+    sentence = texts[0][texts[0].index(start):].split(end, 1)[0] + end
+    expected = "The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's existing authentication. On that page, previews and voice designs are billed; cloning a voice or saving a designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a speaker-consent box, a typed voice name) instead of through Hermes's approval gate; and Use sets the profile's Fish voice, and its speech provider when none is set. Preview and design audio files are deleted from the gateway once returned; a design's audio is held in gateway memory so you can save it, until it is saved, a later design or save finds it over an hour old, or the gateway stops; clone uploads are deleted after the clone, or by the next upload once idle for 15 minutes. With a key set, Desktop reads your Fish wallet when an agent is selected and about every five minutes, for the status-bar credit; favourites stay in Desktop's plugin storage on that computer, and fetched previews stay in the window's memory until it closes."
+    assert sentence == expected
     assert "approval gate" in sentence and "billed" in sentence
-    assert all(sentence + " after 15 minutes." in text for text in texts)
+    assert all(sentence in text for text in texts)
 
 
 @pytest.mark.parametrize("tail, ok", [(b'}', True), (b'} ', False)])

@@ -11,7 +11,8 @@
 - **Gateway routes** under `/api/plugins/fish-audio/`, behind the Hermes dashboard's existing authentication. They
   resolve the key and settings for the profile Desktop has selected on every request, and return errors in the
   response body without the key. Clone uploads arrive in JSON chunks into owner-only temp files that are removed
-  after the clone or after 15 minutes. See SECURITY.md for what the page bypasses (Hermes's approval gate) and
+  after the clone or by the next upload after 15 minutes idle. Symlinks along the upload folder's path inside
+  the profile are refused. See SECURITY.md for what the page bypasses (Hermes's approval gate) and
   what it bills.
 - Install both halves from **Capabilities → Plugins → Install from Git**, switch on **Desktop**, and restart the
   gateway once.

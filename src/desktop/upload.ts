@@ -41,6 +41,7 @@ export async function cloneVoice(
   const send = <T>(path: string, body: unknown, timeoutMs: number): Promise<T> => {
     if (!samePin(deps.current(), pin)) throw new AgentChanged()
     return deps.rest<T & { kind?: string; message?: string; ok?: boolean }>(path, { method: 'POST', body, timeoutMs }).then(res => {
+      if (!samePin(deps.current(), pin)) throw new AgentChanged()
       if (res && res.ok === false) throw new ApiError(res.kind ?? 'error', res.message ?? 'Something went wrong')
       return res
     })
@@ -57,6 +58,7 @@ export async function cloneVoice(
       for (let offset = 0; offset < file.size; offset += start.chunk_bytes) {
         const data = await read(file.slice(offset, offset + start.chunk_bytes))
         await send('/clone/chunk', { upload_id: start.upload_id, offset, data }, 120_000)
+        if (!samePin(deps.current(), pin)) throw new AgentChanged()
         sent += Math.min(start.chunk_bytes, file.size - offset)
         onProgress?.(index + 1, sent, total)
       }

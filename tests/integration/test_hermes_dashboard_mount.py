@@ -1,9 +1,7 @@
 """The gateway REST half mounted by Hermes's own dashboard plugin loader, A -> B -> A, with Fish HTTP mocked.
 
-Builds whose loader scopes plugin routes per request (``_plugin_route_secret_scope``) get ``?profile=``; older
-builds do no plugin scoping, so the test binds the same contextvars ``_config_profile_scope`` binds.
+Every pin receives real ?profile= requests through the mount and middleware.
 """
-from contextlib import contextmanager
 import importlib.util
 from pathlib import Path
 import sys
@@ -18,12 +16,13 @@ VOICES = {"a": "a" * 32, "b": "c" * 32}
 
 def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_home, monkeypatch):
     home = installed_fish_home[0]
-    from agent.secret_scope import (build_profile_secret_scope, is_multiplex_active, reset_secret_scope,
-                                   set_multiplex_active, set_secret_scope)
+    from agent.secret_scope import is_multiplex_active, set_multiplex_active
     from fastapi.testclient import TestClient
     from hermes_cli import web_server as server
     from hermes_cli import web_server_dashboard as dashboard
-    from hermes_constants import reset_hermes_home_override, set_hermes_home_override
+
+    import tui_gateway.launch_profile_policy as policy
+    monkeypatch.setattr(policy, "_snapshot", None)
 
     assert any(p["name"] == "fish-audio" for p in server._get_dashboard_plugins(force_rescan=True))
     if not any(getattr(r, "path", None) == PREFIX + "/available" for r in server.app.routes):
@@ -55,26 +54,8 @@ def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_
             "tts:\n  provider: fish-audio\n  fish-audio:\n    model: s2.1-pro\n")
         profiles[name] = (profile_home, key, base)
 
-    per_request = hasattr(dashboard, "_plugin_route_secret_scope")
-    if per_request:
-        import tui_gateway.launch_profile_policy as policy
-        monkeypatch.setattr(policy, "_snapshot", None)
-
-    @contextmanager
-    def scope(name):
-        profile_home = profiles[name][0]
-        if per_request:
-            yield {"profile": name}
-            return
-        home_token = set_hermes_home_override(str(profile_home))
-        secret_token = set_secret_scope(build_profile_secret_scope(profile_home), profile_home=str(profile_home))
-        try:
-            yield {}
-        finally:
-            reset_secret_scope(secret_token)
-            reset_hermes_home_override(home_token)
-
     launch_config = (home / "config.yaml").read_text()
+    configs = {n: (p[0] / "config.yaml").read_text() for n, p in profiles.items()}
     previous = is_multiplex_active()
     set_multiplex_active(True)
     try:
@@ -84,11 +65,18 @@ def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_
                 voice = VOICES[name]
                 mock.get(base + "/model").respond(json={"items": [{"_id": voice, "title": name}]})
                 mock.get(base + f"/model/{voice}").respond(json={"_id": voice})
-                with scope(name) as params:
-                    body = client.get(PREFIX + "/voices", params=params).json()
-                    assert body["ok"] and body["items"][0]["id"] == voice, body
-                    body = client.post(PREFIX + "/use", params=params, json={"voice": voice}).json()
-                    assert body["ok"] and body["voice"] == voice, body
+                params = {"profile": name}
+                assert client.get(PREFIX + "/available", params=params).json()["key"] is True
+                body = client.get(PREFIX + "/voices", params=params).json()
+                assert body["ok"] and body["items"][0]["id"] == voice, body
+                body = client.post(PREFIX + "/use", params=params, json={"voice": voice}).json()
+                assert body["ok"] and body["voice"] == voice, body
+                written = (profile_home / "config.yaml").read_text()
+                assert voice in written
+                configs[name] = written
+                other = "b" if name == "a" else "a"
+                assert (profiles[other][0] / "config.yaml").read_text() == configs[other]
+                assert (home / "config.yaml").read_text() == launch_config
                 for call in mock.calls[-2:]:
                     assert call.request.headers["authorization"] == f"Bearer {key}"
                     assert str(call.request.url).startswith(base)

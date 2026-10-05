@@ -2,7 +2,7 @@
 import { Button, Checkbox, Codicon, host, Input, Textarea, useQueryClient, useValue } from '@hermes/plugin-sdk'
 import { type ChangeEvent, useRef, useState } from 'react'
 
-import { type AgentPin, agentKey, type Candidate, currentPin, errorText, pluginCtx, post, refreshAvailability } from './api'
+import { type AgentPin, agentKey, type Candidate, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
 import { $playing, play, stop } from './audio'
 import { S } from './strings'
 import { BilledNote, card, muted } from './ui'
@@ -40,6 +40,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
   }
 
   const submit = async () => {
+    if (!samePin(currentPin(), pin)) return setStatus(S.agentChangedNothingSent)
     setBusy(true)
     try {
       const voice = await cloneVoice(
@@ -49,6 +50,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
         { current: currentPin, rest: (path, opts) => pluginCtx().rest(path, opts) },
         (n, sent, total) => setStatus(S.uploading(n, files.length, Math.round((sent / Math.max(1, total)) * 100)))
       )
+      if (!samePin(currentPin(), pin)) return
       setStatus(S.cloned(voice.title))
       setFiles([])
       setTitle('')
@@ -57,9 +59,10 @@ function CloneCard({ pin }: { pin: AgentPin }) {
       void client.invalidateQueries({ queryKey: ['fish-audio', agentKey(pin), 'mine'] })
       void refreshAvailability()
     } catch (error) {
+      if (!samePin(currentPin(), pin)) return
       setStatus(error instanceof AgentChanged ? S.agentChanged : errorText(error))
     } finally {
-      setBusy(false)
+      if (samePin(currentPin(), pin)) setBusy(false)
     }
   }
 
@@ -122,32 +125,36 @@ function DesignCard({ pin }: { pin: AgentPin }) {
   const [busy, setBusy] = useState<null | string>(null)
 
   const design = async () => {
+    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
     setBusy('design')
     stop()
     try {
       const res = await post<{ candidates: Candidate[] }>('/design', { instruction: instruction.trim(), n: 2 }, 180_000)
+      if (!samePin(currentPin(), pin)) return
       setCandidates(res.candidates)
       setNames({})
       setSaved({})
     } catch (error) {
-      host.notify({ kind: 'error', message: errorText(error) })
+      if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
     } finally {
-      setBusy(null)
+      if (samePin(currentPin(), pin)) setBusy(null)
     }
   }
 
   const save = async (candidate: Candidate) => {
+    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
     const title = (names[candidate.design_token] ?? '').trim()
     setBusy(candidate.design_token)
     try {
       const res = await post<{ voice: { id: string; title: string } }>('/design/save', { design_token: candidate.design_token, title }, 120_000)
+      if (!samePin(currentPin(), pin)) return
       setSaved({ ...saved, [candidate.design_token]: res.voice.title })
       host.notify({ kind: 'success', message: S.saved(res.voice.title) })
       void client.invalidateQueries({ queryKey: ['fish-audio', agentKey(pin), 'mine'] })
     } catch (error) {
-      host.notify({ kind: 'error', message: errorText(error) })
+      if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
     } finally {
-      setBusy(null)
+      if (samePin(currentPin(), pin)) setBusy(null)
     }
   }
 
@@ -180,7 +187,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
             >
               <Button
                 disabled={!candidate.audio}
-                onClick={() => (playing === key ? stop() : candidate.audio && play(key, candidate.audio, candidate.mime))}
+                onClick={() => samePin(currentPin(), pin) && (playing === key ? stop() : candidate.audio && play(key, candidate.audio, candidate.mime))}
                 size="xs"
                 variant="secondary"
               >

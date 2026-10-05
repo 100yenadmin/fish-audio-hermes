@@ -3,7 +3,10 @@
 Two fake profiles stand in for the dashboard's per-request scope: each has its own key, config, base URL and
 Hermes home, and ``env.switch`` changes which one the next request runs in (as ``?profile=`` does upstream).
 """
+import asyncio
 import base64
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 import copy
 import importlib.util
 import json
@@ -11,6 +14,7 @@ import os
 from pathlib import Path
 import sys
 import time
+import threading
 from types import ModuleType, SimpleNamespace
 
 import pytest
@@ -444,3 +448,205 @@ def test_unexpected_errors_are_generic_and_in_band(env, monkeypatch):
     body = env.get("/voices")
     refused(body, "error")
     assert "internal detail" not in body["message"]
+
+
+@pytest.mark.parametrize("host_scopes", [False, True])
+def test_request_scope_uses_query_or_defers_to_host(env, monkeypatch, host_scopes):
+    dashboard = ModuleType("hermes_cli.web_server_dashboard")
+    if host_scopes:
+        dashboard._plugin_route_secret_scope = object()
+    monkeypatch.setitem(sys.modules, dashboard.__name__, dashboard)
+    profiles = ModuleType("hermes_cli.web_server_profiles")
+    entered = []
+
+    @contextmanager
+    def scope(profile):
+        entered.append(("enter", profile))
+        previous = env.active()
+        env.switch(profile)
+        try:
+            yield
+        finally:
+            env.switch("a" if previous is env.profiles["a"] else "b")
+            entered.append(("exit", profile))
+    profiles._config_profile_scope = scope
+    monkeypatch.setitem(sys.modules, profiles.__name__, profiles)
+    assert env.get("/available", profile="b")["key"] is True
+    # Abort has no _scope() call, so this also proves router-wide coverage.
+    app = FastAPI()
+    app.include_router(env.api.router, prefix=PREFIX)
+    assert TestClient(app).post(PREFIX + "/clone/abort?profile=b", json={}).json()["ok"]
+    assert entered == ([] if host_scopes else [("enter", "b"), ("exit", "b")] * 2)
+    if host_scopes:
+        del dashboard._plugin_route_secret_scope
+        assert env.api._host_scopes_plugin_routes() is True  # successful detection is cached
+
+
+def test_request_scope_falls_back_without_profile_helper(env, monkeypatch):
+    monkeypatch.setitem(sys.modules, "hermes_cli.web_server_profiles", ModuleType("hermes_cli.web_server_profiles"))
+    async def consume():
+        async for _ in env.api._request_scope("b"):
+            pass
+    asyncio.run(consume())
+
+
+def test_gateway_design_cannot_be_saved_with_another_profiles_key(env):
+    a = env.active()
+    candidate = {"signature": "synthetic-signature", "audio_base64": base64.b64encode(WAV).decode()}
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(a.base + "/v1/voice-design").respond(json={"candidates": [candidate]})
+        token = env.post("/design", instruction="warm", n=1)["candidates"][0]["design_token"]
+        env.switch("b")
+        refused(env.post("/design/save", design_token=token, title="Wrong account"), "invalid")
+        assert not [c for c in mock.calls if c.request.url.path == "/model"]
+        env.switch("a")
+        saved = mock.post(a.base + "/model").respond(json={"_id": OTHER, "title": "Original"})
+        assert env.post("/design/save", design_token=token, title="Original")["ok"]
+        assert saved.call_count == 1
+
+
+def concurrent_pair(action):
+    barrier = threading.Barrier(2)
+    def run():
+        barrier.wait(timeout=5)
+        return action()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(run) for _ in range(2)]
+        return [f.result(timeout=5) for f in futures]
+
+
+def test_concurrent_chunks_accept_exactly_one_offset(env, monkeypatch):
+    upload_id = env.post("/clone/start", size=4)["upload_id"]
+    lstat = os.lstat
+    def slow_stat(path, *args, **kwargs):
+        info = lstat(path, *args, **kwargs)
+        if str(path).endswith(".part"):
+            time.sleep(0.03)  # expose the old stat/write race; the fixed stat is lock-held
+        return info
+    monkeypatch.setattr(os, "lstat", slow_stat)
+    results = concurrent_pair(lambda: env.post("/clone/chunk", upload_id=upload_id, offset=0, data="SUQzYQ=="))
+    assert sum(r["ok"] for r in results) == 1
+    refused(next(r for r in results if not r["ok"]), "offset")
+    assert (env.api._uploads() / f"{upload_id}.part").read_bytes() == b"ID3a"
+
+
+def test_concurrent_starts_admit_exactly_one_upload(env, monkeypatch):
+    for _ in range(2):
+        assert env.post("/clone/start", size=4)["ok"]
+    sweep = env.api._sweep
+    def slow_sweep(folder):
+        live = sweep(folder)
+        time.sleep(0.03)  # old starts both see the same count; fixed admission is atomic
+        return live
+    monkeypatch.setattr(env.api, "_sweep", slow_sweep)
+    results = concurrent_pair(lambda: env.post("/clone/start", size=4))
+    assert sum(r["ok"] for r in results) == 1
+    refused(next(r for r in results if not r["ok"]), "busy")
+    assert len(uploads(env)) == 3
+
+
+def test_finishing_upload_survives_abort_sweep_and_second_finish(env):
+    upload_id = env.post("/clone/start", size=4)["upload_id"]
+    folder = env.api._uploads()
+    temp = folder / f"{upload_id}.part"
+    old = time.time() - env.api.UPLOAD_TTL_SECONDS - 5
+    os.utime(temp, (old, old))
+    env.api._FINISHING.add(upload_id)
+    try:
+        assert env.post("/clone/abort", upload_id=upload_id)["ok"]
+        assert env.post("/clone/start", size=4)["ok"]
+        refused(env.post("/clone/finish", files=[{"upload_id": upload_id, "size": 0}], title="t", consent=True), "busy")
+        assert temp.exists() and upload_id in env.api._FINISHING
+    finally:
+        env.api._FINISHING.remove(upload_id)
+    assert env.post("/clone/abort", upload_id=upload_id)["ok"]
+    assert not temp.exists()
+
+
+@pytest.mark.parametrize("component", ["cache", "fish-audio"])
+def test_clone_refuses_symlinked_upload_parents(env, tmp_path, component):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    parent = env.active().home
+    if component == "fish-audio":
+        parent = parent / "cache"
+        parent.mkdir()
+    (parent / component).symlink_to(outside, target_is_directory=True)
+    refused(env.post("/clone/start", size=4), "io_error")
+    assert list(outside.iterdir()) == []
+
+
+def test_clone_finish_checks_open_descriptor_identity(env, monkeypatch):
+    file = upload(env, MP3)
+    fstat = os.fstat
+    def swapped(fd):
+        info = fstat(fd)
+        return SimpleNamespace(st_dev=info.st_dev, st_ino=info.st_ino + 1)
+    monkeypatch.setattr(os, "fstat", swapped)
+    with respx.mock(assert_all_called=True) as mock:
+        refused(env.post("/clone/finish", files=[file], title="t", consent=True), "gone")
+        assert not mock.calls
+    assert not uploads(env) and not env.api._FINISHING
+
+
+@pytest.mark.parametrize("detail", [False, True])
+def test_successful_voice_strings_are_scrubbed(env, detail):
+    key = env.active().key
+    item = {"_id": VOICE, "title": f"Voice {key}", "description": f"Bearer {key}",
+            "samples": [{"title": "Bearer arbitrary-token", "text": key}]}
+    route = f"/model/{VOICE}" if detail else "/model"
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(env.active().base + route).respond(json=item if detail else {"items": [item]})
+        body = env.get(f"/voices/{VOICE}" if detail else "/voices")
+    voice = body["voice"] if detail else body["items"][0]
+    assert voice["title"] == "Voice [redacted]"
+    assert voice["description"] == "Bearer [redacted]"
+    if detail:
+        assert voice["samples"] == [{"title": "Bearer [redacted]", "text": "[redacted]"}]
+
+
+def test_account_drops_non_scalar_package_fields_and_scrubs_text(env):
+    base = env.active().base
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(base + "/wallet/self/api-credit").respond(json={"credit": "1", "cumulative_top_up": "2"})
+        package = mock.get(base + "/wallet/self/package").respond(json={
+            "type": "Bearer arbitrary-token", "total": {"nested": "Bearer secret"}, "balance": True,
+            "finished_at": env.active().key, "billing_period": {"path": "/outside/private"}})
+        body = env.get("/account")
+        assert body["package"] == {"type": "Bearer [redacted]", "finished_at": "[redacted]"}
+        package.respond(json={"type": {}, "total": True, "balance": [], "finished_at": 123})
+        assert env.get("/account")["package"] is None
+
+
+def test_scrub_leaves_preview_audio_unchanged(env, monkeypatch):
+    # A short synthetic key also present in the base64 payload must not alter audio bytes.
+    monkeypatch.setattr(env.api._fa("secrets"), "fish_api_key", lambda: "SUQz")
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(env.active().base + "/v1/tts").respond(content=MP3)
+        assert env.post("/preview", voice=VOICE)["audio"] == base64.b64encode(MP3).decode()
+    assert env.api._scrub({"nested": ["bEaReR opaque", "sk-" + "Z" * 25]}, "") == {
+        "nested": ["Bearer [redacted]", "[redacted]"]}
+
+
+def test_gateway_partial_design_leaves_no_files_or_receipts(env):
+    candidate = {"signature": "synthetic-signature", "audio_base64": base64.b64encode(WAV).decode()}
+    voices = env.api._fa("voices")
+    before = set(voices._DESIGNS)
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(env.active().base + "/v1/voice-design").respond(json={"candidates": [candidate, {"audio_base64": candidate["audio_base64"]}]})
+        refused(env.post("/design", instruction="warm", n=2), "invalid")
+    assert list((env.active().home / "audio").glob("fish-design-*.wav")) == []
+    assert set(voices._DESIGNS) == before
+
+
+@pytest.mark.parametrize("component", ["cache", "fish-audio", "uploads"])
+def test_clone_refuses_non_directory_upload_components(env, component):
+    path = env.active().home
+    for name in ("cache", "fish-audio", "uploads"):
+        path = path / name
+        if name == component:
+            path.write_bytes(b"keep")
+            break
+        path.mkdir()
+    refused(env.post("/clone/start", size=4), "io_error")
+    assert path.read_bytes() == b"keep"

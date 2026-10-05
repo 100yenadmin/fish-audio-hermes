@@ -2,8 +2,8 @@
 
 The dashboard loads this file by path, with no parent package. It loads the plugin's own ``fish_audio`` package
 by file path under a private module name, so the Desktop Voices page runs the same code as the model tools and
-``/fish`` commands. Authentication and the per-request profile scope come from the dashboard; this module adds
-none of its own. Every route resolves the key and settings of the requesting profile on each call and answers
+``/fish`` commands. Authentication comes from the dashboard; a compatibility dependency enters its per-request profile scope
+when the host does not already do so. Every route resolves the key and settings of the requesting profile on each call and answers
 protocol errors in-band as ``{ok: false, kind, message}``.
 """
 
@@ -26,18 +26,44 @@ import threading
 import time
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
 VERSION = "0.3.0"
 
-router = APIRouter()
+_HOST_SCOPES = False
+
+
+def _host_scopes_plugin_routes():
+    global _HOST_SCOPES
+    _HOST_SCOPES = _HOST_SCOPES or hasattr(sys.modules.get("hermes_cli.web_server_dashboard"),
+                                          "_plugin_route_secret_scope")
+    return _HOST_SCOPES
+
+
+async def _request_scope(profile: Optional[str] = None):
+    """Enter Hermes's home + secret scope on older dashboards; async like the upstream dependency."""
+    if _host_scopes_plugin_routes():
+        yield
+        return
+    try:
+        from hermes_cli.web_server_profiles import _config_profile_scope
+    except ImportError:  # older forks serve one profile per process
+        yield
+        return
+    with _config_profile_scope(profile):
+        yield
+
+
+router = APIRouter(dependencies=[Depends(_request_scope)])
 
 ROOT = Path(__file__).resolve().parents[1]
 # A private name: never ``hermes_plugins.*`` (the agent-side loader owns that namespace).
 _PACKAGE = "fish_audio_dashboard_" + hashlib.sha256(str(ROOT).encode()).hexdigest()[:12]
 _LOAD_LOCK = threading.Lock()
+_UPLOAD_LOCK = threading.Lock()
+_FINISHING = set()
 
 MiB = 1024 * 1024
 PREVIEW_TEXT = "Hi! This is how I sound."
@@ -104,11 +130,28 @@ def _failure(exc: Exception) -> dict:
     return {"ok": False, "kind": "error", "message": "Fish Audio could not complete this request. Try again."}
 
 
+def _scrub(value, key):
+    if isinstance(value, dict):
+        return {k: v if k == "audio" else _scrub(v, key) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_scrub(v, key) for v in value]
+    if isinstance(value, str):
+        value = value.replace(key, "[redacted]") if key else value
+        value = re.sub(r"Bearer\s+\S+", "Bearer [redacted]", value, flags=re.I)
+        return re.sub(r"sk-[A-Za-z0-9_-]{20,}", "[redacted]", value)
+    return value
+
+
 def _protocol(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
         try:
-            return fn(*args, **kwargs)
+            result = fn(*args, **kwargs)
+            try:
+                key = _fa("secrets").fish_api_key()
+            except Exception:
+                key = ""
+            return _scrub(result, key)
         except Exception as exc:
             return _failure(exc)
     return wrapped
@@ -227,16 +270,6 @@ def delete_voice(voice_id: str):
     return {"ok": True, "id": ident}
 
 
-def _json_safe(value):
-    if isinstance(value, Decimal):
-        return str(value)
-    if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(v) for v in value]
-    return value if value is None or isinstance(value, (str, int, float, bool)) else str(value)
-
-
 @router.get("/account")
 @_protocol
 def account():
@@ -245,10 +278,13 @@ def account():
     wallet = module.get_wallet(key, base, strict=True)
     if wallet is None:
         raise Refusal("availability", "Fish Audio returned an unreadable wallet. Try again later.")
-    package = module.get_package(key, base)
+    package = module.get_package(key, base) or {}
+    package = {k: v for k, v in package.items() if
+               (k in {"type", "finished_at"} and isinstance(v, str)) or
+               (k in {"total", "balance"} and type(v) in (int, float))}
     return {"ok": True, "credit": str(wallet.credit), "cumulative_top_up": str(wallet.cumulative_top_up),
             "has_free_credit": wallet.has_free_credit, "low": wallet.credit < LOW_CREDIT,
-            "package": _json_safe(package) if package else None, "links": LINKS}
+            "package": package or None, "links": LINKS}
 
 
 class Design(BaseModel):
@@ -317,11 +353,17 @@ def _home() -> Path:
 
 
 def _uploads() -> Path:
-    path = _home() / "cache" / "fish-audio" / "uploads"
-    path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    info = os.lstat(path)
-    if not stat.S_ISDIR(info.st_mode):
-        raise Refusal("io_error", "The plugin's upload folder is not a folder.")
+    home = path = _home()
+    for component in ("cache", "fish-audio", "uploads"):
+        path = path / component
+        try:
+            path.mkdir(exist_ok=True, mode=0o700)
+        except FileExistsError:
+            pass  # lstat below maps a non-directory to the same plain-folder refusal
+        if not stat.S_ISDIR(os.lstat(path).st_mode):
+            raise Refusal("io_error", "The plugin's upload folder is not a plain folder.")
+    if not path.resolve().is_relative_to(home.resolve()):
+        raise Refusal("io_error", "The plugin's upload folder is not a plain folder.")
     return path
 
 
@@ -336,7 +378,9 @@ def _sweep(folder: Path) -> int:
                 info = os.lstat(item.path)
                 if not stat.S_ISREG(info.st_mode):
                     continue
-                if info.st_mtime < cutoff:
+                if item.name[:32] in _FINISHING:
+                    live += 1
+                elif info.st_mtime < cutoff:
                     os.unlink(item.path)
                 else:
                     live += 1
@@ -369,12 +413,21 @@ def _discard(upload_id: str) -> None:
             pass
 
 
+def _upload_locked(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with _UPLOAD_LOCK:
+            return fn(*args, **kwargs)
+    return wrapped
+
+
 class CloneStart(BaseModel):
     size: Any = None
 
 
 @router.post("/clone/start")
 @_protocol
+@_upload_locked
 def clone_start(body: CloneStart):
     _scope()
     if type(body.size) is not int or not 0 < body.size <= CLONE_MAX_BYTES:
@@ -397,6 +450,7 @@ class CloneChunk(BaseModel):
 
 @router.post("/clone/chunk")
 @_protocol
+@_upload_locked
 def clone_chunk(body: CloneChunk):
     _scope()
     temp, info = _temp(body.upload_id)
@@ -438,8 +492,9 @@ class CloneAbort(BaseModel):
 
 @router.post("/clone/abort")
 @_protocol
+@_upload_locked
 def clone_abort(body: CloneAbort):
-    if isinstance(body.upload_id, str) and UPLOAD_RE.fullmatch(body.upload_id):
+    if isinstance(body.upload_id, str) and UPLOAD_RE.fullmatch(body.upload_id) and body.upload_id not in _FINISHING:
         _discard(body.upload_id)
     return {"ok": True}
 
@@ -462,36 +517,47 @@ def clone_finish(body: CloneFinish):
     """Clone from finished uploads. The human click in Desktop is the confirmation, with a consent flag that
     must be exactly ``true``. The upload temps are removed whatever the outcome."""
     ids = [f.upload_id for f in body.files]
+    owned = []
     try:
-        key, base = _scope()
-        if body.consent is not True:
-            raise Refusal("consent", "Confirm that you have the speaker's permission to clone this voice.")
-        title = _text(body.title, "The title", 100)
-        description = _text(body.description, "The description", 500, required=False)
-        if not 1 <= len(ids) <= CLONE_MAX_FILES or len(set(map(str, ids))) != len(ids):
-            raise Refusal("invalid", f"Add 1–{CLONE_MAX_FILES} different samples.")
-        paths = []
-        media = _fa("media")
-        for item in body.files:
-            temp, info = _temp(item.upload_id)
-            if type(item.size) is not int or item.size != info.st_size:
-                raise Refusal("size_mismatch", "A sample did not finish uploading; add it again.", size=info.st_size)
-            with open(temp, "rb") as handle:
-                kind = media._audio_kind(handle.read(64))
-            if kind not in EXTENSIONS:
-                raise Refusal("bad_audio", "Use an MP3, WAV, OGG, WebM, FLAC or MP4 audio sample.")
-            final = temp.with_name(f"{item.upload_id}.{EXTENSIONS[kind]}")
-            os.replace(temp, final)
-            paths.append(str(final))
+        with _UPLOAD_LOCK:
+            if any(isinstance(i, str) and i in _FINISHING for i in ids):
+                raise Refusal("busy", "This upload is already finishing.")
+            owned = [i for i in ids if isinstance(i, str) and UPLOAD_RE.fullmatch(i)]
+            _FINISHING.update(owned)
+            key, base = _scope()
+            if body.consent is not True:
+                raise Refusal("consent", "Confirm that you have the speaker's permission to clone this voice.")
+            title = _text(body.title, "The title", 100)
+            description = _text(body.description, "The description", 500, required=False)
+            if not 1 <= len(ids) <= CLONE_MAX_FILES or len(set(map(str, ids))) != len(ids):
+                raise Refusal("invalid", f"Add 1–{CLONE_MAX_FILES} different samples.")
+            paths = []
+            media = _fa("media")
+            for item in body.files:
+                temp, info = _temp(item.upload_id)
+                if type(item.size) is not int or item.size != info.st_size:
+                    raise Refusal("size_mismatch", "A sample did not finish uploading; add it again.", size=info.st_size)
+                fd = os.open(temp, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
+                with os.fdopen(fd, "rb") as handle:
+                    opened = os.fstat(handle.fileno())
+                    if (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
+                        raise Refusal("gone", "The upload is no longer available; add the file again.")
+                    kind = media._audio_kind(handle.read(64))
+                if kind not in EXTENSIONS:
+                    raise Refusal("bad_audio", "Use an MP3, WAV, OGG, WebM, FLAC or MP4 audio sample.")
+                final = temp.with_name(f"{item.upload_id}.{EXTENSIONS[kind]}")
+                os.replace(temp, final)
+                paths.append(str(final))
         args = {"action": "clone", "consent": True, "title": title, "sample_paths": paths}
         if description:
             args["description"] = description
         cloned = _fa("voices").execute(args, key, base, "")
         return {"ok": True, "voice": {"id": cloned.get("id"), "title": cloned.get("title"), "state": cloned.get("state")}}
     finally:
-        for upload_id in ids:
-            if isinstance(upload_id, str) and UPLOAD_RE.fullmatch(upload_id):
+        with _UPLOAD_LOCK:
+            for upload_id in owned:
                 try:
                     _discard(upload_id)
                 except Exception:
                     pass
+            _FINISHING.difference_update(owned)

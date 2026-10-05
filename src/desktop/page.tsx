@@ -234,11 +234,13 @@ function Library({ pin }: { pin: AgentPin }) {
 
 /** Play a billed preview of a voice, or replay one already fetched in this window. */
 export async function previewVoice(pin: AgentPin, voiceId: string) {
+  if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
   const key = `preview:${agentKey(pin)}:${voiceId}`
   if ($playing.get() === key) return stop()
   const cached = cachedPreview(key)
   if (cached) return play(key, cached.audio, cached.mime)
   const res = await post<{ audio: string; mime: string }>('/preview', { voice: voiceId })
+  if (!samePin(currentPin(), pin)) return
   rememberPreview(key, res)
   if (samePin(currentPin(), pin)) play(key, res.audio, res.mime)
 }
@@ -253,18 +255,20 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   const [busy, setBusy] = useState<null | string>(null)
   const [used, setUsed] = useState<null | string>(null)
   const run = async (id: string, action: () => Promise<unknown>) => {
+    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
     setBusy(id)
     try {
       await action()
     } catch (error) {
-      host.notify({ kind: 'error', message: errorText(error) })
+      if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
     } finally {
-      setBusy(null)
+      if (samePin(currentPin(), pin)) setBusy(null)
     }
   }
   const use = (voice: Voice) =>
     run(`use:${voice.id}`, async () => {
       const res = await post<{ message: string }>('/use', { voice: voice.id })
+      if (!samePin(currentPin(), pin)) return
       setUsed(voice.id)
       const note = res.message && res.message !== 'Saved.' ? ` ${res.message.replace(/^Saved\.\s*/, '')}` : ''
       host.notify({ kind: 'success', message: S.usedVoice(voice.title, pin.profile) + note })
@@ -387,27 +391,29 @@ function MyVoices({ pin }: { pin: AgentPin }) {
       ) : (
         <VoiceList onDelete={setTarget} pin={pin} voices={voices.data.items} />
       )}
-      <DeleteDialog onClose={() => setTarget(null)} onDeleted={() => void client.invalidateQueries({ queryKey })} voice={target} />
+      <DeleteDialog pin={pin} onClose={() => setTarget(null)} onDeleted={() => void client.invalidateQueries({ queryKey })} voice={target} />
     </div>
   )
 }
 
-function DeleteDialog({ voice, onClose, onDeleted }: { voice: null | Voice; onClose: () => void; onDeleted: () => void }) {
+function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice: null | Voice; onClose: () => void; onDeleted: () => void }) {
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   useEffect(() => setTyped(''), [voice])
   const confirm = async () => {
     if (!voice) return
+    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
     setBusy(true)
     try {
       await call(`/voices/${encodeURIComponent(voice.id)}`, { method: 'DELETE', timeoutMs: 60_000 })
+      if (!samePin(currentPin(), pin)) return
       host.notify({ kind: 'success', message: S.deleted(voice.title) })
       onDeleted()
       onClose()
     } catch (error) {
-      host.notify({ kind: 'error', message: errorText(error) })
+      if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
     } finally {
-      setBusy(false)
+      if (samePin(currentPin(), pin)) setBusy(false)
     }
   }
   return (

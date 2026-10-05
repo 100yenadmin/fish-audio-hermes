@@ -101,3 +101,21 @@ describe('clone upload', () => {
     expect(h.of('/clone/abort')).toEqual([])
   })
 })
+
+it('does not report progress for a chunk completed after an agent switch', async () => {
+  const progress = vi.fn()
+  const h = harness({ '/clone/chunk': () => h.select({ connectionId: 'conn-1', profile: 'other' }) && undefined })
+  await expect(cloneVoice([blob(10)], { title: 'Me', consent: true }, A, h.deps, progress)).rejects.toBeInstanceOf(AgentChanged)
+  expect(progress).not.toHaveBeenCalled()
+  expect(h.of('/clone/finish')).toEqual([])
+})
+
+it('does not return a clone completion received after an agent switch', async () => {
+  const h = harness({ '/clone/finish': () => {
+    h.select({ connectionId: 'conn-1', profile: 'other' })
+    return { ok: true, voice: { id: 'v1', title: 'Me' } }
+  } })
+  await expect(cloneVoice([blob(10)], { title: 'Me', consent: true }, A, h.deps)).rejects.toBeInstanceOf(AgentChanged)
+  expect(h.of('/clone/finish')).toHaveLength(1)
+  expect(h.of('/clone/abort')).toEqual([])
+})

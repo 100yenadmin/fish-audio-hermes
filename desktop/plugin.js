@@ -183,7 +183,7 @@ var S = {
   mineEmptyHint: "Clone your voice or design a new one in Create.",
   delete: "Delete",
   deleteTitle: (title) => `Delete "${title}"?`,
-  deleteBody: "This removes the voice from your Fish Audio account. Agents that use it fall back to the default voice.",
+  deleteBody: "This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.",
   deleteConfirmLabel: (title) => `Type "${title}" to confirm`,
   cancel: "Cancel",
   deleted: (title) => `Deleted ${title}`,
@@ -201,6 +201,7 @@ var S = {
   cloned: (title) => `Created ${title}. Find it in My voices.`,
   tooMany: "Choose up to 3 files.",
   tooLarge: (name) => `${name} is larger than 10 MB.`,
+  agentChangedNothingSent: "The selected agent changed, so nothing was sent.",
   agentChanged: "The selected agent changed, so the upload stopped. Nothing was sent to the other agent.",
   designTitle: "Design a voice",
   designBody: "Describe the voice you want. Fish Audio makes a few candidates to choose from.",
@@ -285,6 +286,7 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
   const send = (path, body, timeoutMs) => {
     if (!samePin(deps.current(), pin)) throw new AgentChanged();
     return deps.rest(path, { method: "POST", body, timeoutMs }).then((res) => {
+      if (!samePin(deps.current(), pin)) throw new AgentChanged();
       if (res && res.ok === false) throw new ApiError(res.kind ?? "error", res.message ?? "Something went wrong");
       return res;
     });
@@ -300,6 +302,7 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
       for (let offset = 0; offset < file.size; offset += start.chunk_bytes) {
         const data = await read(file.slice(offset, offset + start.chunk_bytes));
         await send("/clone/chunk", { upload_id: start.upload_id, offset, data }, 12e4);
+        if (!samePin(deps.current(), pin)) throw new AgentChanged();
         sent += Math.min(start.chunk_bytes, file.size - offset);
         onProgress?.(index + 1, sent, total);
       }
@@ -349,6 +352,7 @@ function CloneCard({ pin }) {
     setFiles(chosen);
   };
   const submit = async () => {
+    if (!samePin(currentPin(), pin)) return setStatus(S.agentChangedNothingSent);
     setBusy(true);
     try {
       const voice = await cloneVoice(
@@ -358,6 +362,7 @@ function CloneCard({ pin }) {
         { current: currentPin, rest: (path, opts) => pluginCtx().rest(path, opts) },
         (n, sent, total) => setStatus(S.uploading(n, files.length, Math.round(sent / Math.max(1, total) * 100)))
       );
+      if (!samePin(currentPin(), pin)) return;
       setStatus(S.cloned(voice.title));
       setFiles([]);
       setTitle("");
@@ -366,9 +371,10 @@ function CloneCard({ pin }) {
       void client.invalidateQueries({ queryKey: ["fish-audio", agentKey(pin), "mine"] });
       void refreshAvailability();
     } catch (error) {
+      if (!samePin(currentPin(), pin)) return;
       setStatus(error instanceof AgentChanged ? S.agentChanged : errorText(error));
     } finally {
-      setBusy(false);
+      if (samePin(currentPin(), pin)) setBusy(false);
     }
   };
   const ready = files.length > 0 && title.trim().length > 0 && consent && !busy;
@@ -422,31 +428,35 @@ function DesignCard({ pin }) {
   const [saved, setSaved] = useState({});
   const [busy, setBusy] = useState(null);
   const design = async () => {
+    if (!samePin(currentPin(), pin)) return host2.notify({ kind: "error", message: S.agentChangedNothingSent });
     setBusy("design");
     stop();
     try {
       const res = await post("/design", { instruction: instruction.trim(), n: 2 }, 18e4);
+      if (!samePin(currentPin(), pin)) return;
       setCandidates(res.candidates);
       setNames({});
       setSaved({});
     } catch (error) {
-      host2.notify({ kind: "error", message: errorText(error) });
+      if (samePin(currentPin(), pin)) host2.notify({ kind: "error", message: errorText(error) });
     } finally {
-      setBusy(null);
+      if (samePin(currentPin(), pin)) setBusy(null);
     }
   };
   const save = async (candidate) => {
+    if (!samePin(currentPin(), pin)) return host2.notify({ kind: "error", message: S.agentChangedNothingSent });
     const title = (names[candidate.design_token] ?? "").trim();
     setBusy(candidate.design_token);
     try {
       const res = await post("/design/save", { design_token: candidate.design_token, title }, 12e4);
+      if (!samePin(currentPin(), pin)) return;
       setSaved({ ...saved, [candidate.design_token]: res.voice.title });
       host2.notify({ kind: "success", message: S.saved(res.voice.title) });
       void client.invalidateQueries({ queryKey: ["fish-audio", agentKey(pin), "mine"] });
     } catch (error) {
-      host2.notify({ kind: "error", message: errorText(error) });
+      if (samePin(currentPin(), pin)) host2.notify({ kind: "error", message: errorText(error) });
     } finally {
-      setBusy(null);
+      if (samePin(currentPin(), pin)) setBusy(null);
     }
   };
   return /* @__PURE__ */ jsxs2("section", { style: card, children: [
@@ -478,7 +488,7 @@ function DesignCard({ pin }) {
                 Button2,
                 {
                   disabled: !candidate.audio,
-                  onClick: () => playing === key ? stop() : candidate.audio && play(key, candidate.audio, candidate.mime),
+                  onClick: () => samePin(currentPin(), pin) && (playing === key ? stop() : candidate.audio && play(key, candidate.audio, candidate.mime)),
                   size: "xs",
                   variant: "secondary",
                   children: [
@@ -643,11 +653,13 @@ function Library({ pin }) {
   ] });
 }
 async function previewVoice(pin, voiceId) {
+  if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: S.agentChangedNothingSent });
   const key = `preview:${agentKey(pin)}:${voiceId}`;
   if ($playing.get() === key) return stop();
   const cached = cachedPreview(key);
   if (cached) return play(key, cached.audio, cached.mime);
   const res = await post("/preview", { voice: voiceId });
+  if (!samePin(currentPin(), pin)) return;
   rememberPreview(key, res);
   if (samePin(currentPin(), pin)) play(key, res.audio, res.mime);
 }
@@ -656,17 +668,19 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
   const [busy, setBusy] = useState2(null);
   const [used, setUsed] = useState2(null);
   const run = async (id, action) => {
+    if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: S.agentChangedNothingSent });
     setBusy(id);
     try {
       await action();
     } catch (error) {
-      host3.notify({ kind: "error", message: errorText(error) });
+      if (samePin(currentPin(), pin)) host3.notify({ kind: "error", message: errorText(error) });
     } finally {
-      setBusy(null);
+      if (samePin(currentPin(), pin)) setBusy(null);
     }
   };
   const use = (voice) => run(`use:${voice.id}`, async () => {
     const res = await post("/use", { voice: voice.id });
+    if (!samePin(currentPin(), pin)) return;
     setUsed(voice.id);
     const note = res.message && res.message !== "Saved." ? ` ${res.message.replace(/^Saved\.\s*/, "")}` : "";
     host3.notify({ kind: "success", message: S.usedVoice(voice.title, pin.profile) + note });
@@ -772,25 +786,27 @@ function MyVoices({ pin }) {
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsx3(BilledNote, { text: S.billedNote }),
     voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !voices.data ? /* @__PURE__ */ jsx3(Rows, { n: 3 }) : voices.data.items.length === 0 ? /* @__PURE__ */ jsx3(EmptyState, { description: S.mineEmptyHint, title: S.mineEmpty }) : /* @__PURE__ */ jsx3(VoiceList, { onDelete: setTarget, pin, voices: voices.data.items }),
-    /* @__PURE__ */ jsx3(DeleteDialog, { onClose: () => setTarget(null), onDeleted: () => void client.invalidateQueries({ queryKey }), voice: target })
+    /* @__PURE__ */ jsx3(DeleteDialog, { pin, onClose: () => setTarget(null), onDeleted: () => void client.invalidateQueries({ queryKey }), voice: target })
   ] });
 }
-function DeleteDialog({ voice, onClose, onDeleted }) {
+function DeleteDialog({ pin, voice, onClose, onDeleted }) {
   const [typed, setTyped] = useState2("");
   const [busy, setBusy] = useState2(false);
   useEffect(() => setTyped(""), [voice]);
   const confirm = async () => {
     if (!voice) return;
+    if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: S.agentChangedNothingSent });
     setBusy(true);
     try {
       await call(`/voices/${encodeURIComponent(voice.id)}`, { method: "DELETE", timeoutMs: 6e4 });
+      if (!samePin(currentPin(), pin)) return;
       host3.notify({ kind: "success", message: S.deleted(voice.title) });
       onDeleted();
       onClose();
     } catch (error) {
-      host3.notify({ kind: "error", message: errorText(error) });
+      if (samePin(currentPin(), pin)) host3.notify({ kind: "error", message: errorText(error) });
     } finally {
-      setBusy(false);
+      if (samePin(currentPin(), pin)) setBusy(false);
     }
   };
   return /* @__PURE__ */ jsx3(Dialog, { onOpenChange: (open) => !open && onClose(), open: voice !== null, children: /* @__PURE__ */ jsxs3(DialogContent, { children: [

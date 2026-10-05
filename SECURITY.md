@@ -32,19 +32,25 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
 
 ## Desktop Voices page
 
-The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's existing
-authentication. There, previews and voice designs are billed; cloning and deleting are confirmed on the page (a
-speaker-consent box, a typed voice name) instead of through Hermes's approval gate; preview and design audio files
-are deleted from the gateway once returned (a design's audio stays in gateway memory for up to an hour so you can
-save it); and clone uploads are deleted once the clone finishes or after 15 minutes.
+The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
+existing authentication. On that page, previews and voice designs are billed; cloning a voice or saving a
+designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a
+speaker-consent box, a typed voice name) instead of through Hermes's approval gate; and Use sets the profile's
+Fish voice, and its speech provider when none is set. Preview and design audio files are deleted from the
+gateway once returned; a design's audio is held in gateway memory so you can save it, until it is saved, a
+later design or save finds it over an hour old, or the gateway stops; clone uploads are deleted after the
+clone, or by the next upload once idle for 15 minutes. With a key set, Desktop reads your Fish wallet when an
+agent is selected and about every five minutes, for the status-bar credit; favourites stay in Desktop's plugin
+storage on that computer, and fetched previews stay in the window's memory until it closes.
 
 - The routes use the same key, settings and Fish Audio requests as the tools, for the profile Desktop has
   selected; with no key they refuse without calling Fish Audio. Responses never carry the key, and a voice-design
-  signature stays on the gateway behind a token that expires within an hour.
-- **Use** writes the voice into the selected profile's `config.yaml` only, with the same writer as `/fish use`.
+  signature stays on the gateway behind an account-bound token that is refused once an hour old.
+- **Use** writes the voice and, when unset, the speech provider into the selected profile's `config.yaml`,
+  with the same writer as `/fish use`.
 - Clone uploads arrive in chunks of JSON and base64, never as multipart forms. The gateway names each upload
   itself (a random id, never a client path), writes it with owner-only permissions under the profile's
-  `cache/fish-audio/uploads`, refuses symlinks, caps it at 10 MB per file and 3 files, and checks that it is audio
+  `cache/fish-audio/uploads`, refuses symlinks along that path inside the profile, caps it at 10 MB per file and 3 files, and checks that it is audio
   before sending it to Fish Audio. A clone is refused unless the consent box is ticked.
 - Deleting checks that the voice belongs to your Fish account first.
 
