@@ -1,0 +1,19 @@
+[project]
+name = "fish-audio-hermes"
+version = "0.0.1"
+description = "Fish Audio plugin for Hermes Agent"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+# httpx and websockets ship with Hermes core; the bounds mirror core's pins so the plugin never drags them.
+dependencies = [
+  "httpx>=0.27,<1",
+  "websockets>=13,<16",
+  "msgpack>=1.0,<2",
+]
+
+[project.urls]
+Homepage = "https://github.com/100yenadmin/fish-audio-hermes"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

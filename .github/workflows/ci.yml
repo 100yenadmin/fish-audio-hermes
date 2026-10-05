@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Hermes builds the plugin is checked against. Bump deliberately (README "Compatibility").
+  HERMES_UPSTREAM_REPO: NousResearch/hermes-agent
+  HERMES_FLOOR_SHA: 2237be355906fbe6065ce1815711eee52b2d646e      # v2026.9.7 (0.21.1) = requires_hermes floor
+  HERMES_RELEASE_SHA: f97608f178d1ffeca59860195ab7da295f7c8e5f    # v2026.9.24 (0.21.5)
+  HERMES_MAIN_SHA: df81f543f8209b6d131449d98da7b0037cafedf4       # main, 2026-10-05
+  HERMES_FORK_REPO: electricsheephq/evaOS-hermes-desktop-app-adapter
+  HERMES_FORK_SHA: 9844ebe82d64080c4329c3747d16c74aa06c18c3
+
+jobs:
+  unit:
+    name: Unit (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install "httpx>=0.27,<1" "websockets>=13,<16" "msgpack>=1.0,<2" "pytest==8.4.2" "respx==0.22.0"
+      - run: python -m pytest -q
+
+  hermes:
+    name: Against Hermes (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [floor, release, main, fork]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: plugin
+      - name: Resolve pinned Hermes
+        id: pin
+        run: |
+          case "${{ matrix.target }}" in
+            floor)   echo "repo=$HERMES_UPSTREAM_REPO" >> "$GITHUB_OUTPUT"; echo "sha=$HERMES_FLOOR_SHA" >> "$GITHUB_OUTPUT" ;;
+            release) echo "repo=$HERMES_UPSTREAM_REPO" >> "$GITHUB_OUTPUT"; echo "sha=$HERMES_RELEASE_SHA" >> "$GITHUB_OUTPUT" ;;
+            main)    echo "repo=$HERMES_UPSTREAM_REPO" >> "$GITHUB_OUTPUT"; echo "sha=$HERMES_MAIN_SHA" >> "$GITHUB_OUTPUT" ;;
+            fork)    echo "repo=$HERMES_FORK_REPO" >> "$GITHUB_OUTPUT"; echo "sha=$HERMES_FORK_SHA" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: ${{ steps.pin.outputs.repo }}
+          ref: ${{ steps.pin.outputs.sha }}
+          path: hermes
+      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6
+      - name: Install Hermes from its own lockfile
+        run: |
+          cd hermes
+          uv sync --frozen --no-dev
+          uv pip install --python .venv/bin/python "msgpack>=1.0,<2" "pytest==8.4.2" "respx==0.22.0"
+      - name: hermes plugins validate (catalog admission checks)
+        if: matrix.target == 'main' || matrix.target == 'release'
+        env:
+          HERMES_HOME: ${{ runner.temp }}/hermes-home
+        run: hermes/.venv/bin/hermes plugins validate plugin
+      - name: Tests inside a real Hermes install (unit + loader integration)
+        env:
+          HERMES_HOME: ${{ runner.temp }}/hermes-home
+          FISH_AUDIO_HERMES_INTEGRATION: "1"
+        run: cd plugin && ../hermes/.venv/bin/python -m pytest -q

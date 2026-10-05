@@ -1,0 +1,35 @@
+name: fish-audio
+version: 0.0.1
+description: "Fish Audio voices for Hermes: expressive text-to-speech, speech-to-text, a searchable voice library, voice cloning and voice design, in the CLI, every messaging gateway and the Desktop app. Disclosure — every synthesis, transcription, clone or design call is a paid Fish Audio API request billed to your Fish account (the free s2.1-pro-free model excepted, which Fish may use to improve its models); the plugin sends only the text and audio you ask it to process to api.fish.audio, stores your key in Hermes's .env, and collects no telemetry."
+author: Electric Sheep
+kind: standalone
+manifest_version: 2
+api_version: 1
+requires_hermes: ">=0.21.1"
+license: Apache-2.0
+homepage: https://github.com/100yenadmin/fish-audio-hermes
+tags: [voice, tts, stt, speech, fish-audio, voice-cloning]
+requires_env:
+  - name: FISH_API_KEY
+    description: "Fish Audio API key (free to create)"
+    url: "https://fish.audio/app/api-keys"
+    secret: true
+config_schema:
+  api_key:
+    type: secret
+    env: FISH_API_KEY
+    label: "Fish Audio API key"
+    description: "Create one free at https://fish.audio/app/api-keys"
+  base_url:
+    type: str
+    default: "https://api.fish.audio"
+    label: "API base URL"
+    description: "Only change this for an enterprise self-hosted Fish Audio deployment (https, or http on loopback)."
+  streaming:
+    type: str
+    choices: [auto, "off"]
+    default: auto
+    label: "Streaming voice"
+    description: "auto streams speech over Fish's live WebSocket in Desktop and CLI voice mode; off uses whole-file synthesis."
+provides_tools: []
+provides_hooks: []
