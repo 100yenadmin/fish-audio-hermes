@@ -120,14 +120,16 @@ def test_available_reports_version_and_key_state(env, monkeypatch):
 
 def test_versions_agree(env):
     manifest = json.loads((ROOT / "dashboard" / "manifest.json").read_text())
-    assert manifest["name"] == "fish-audio"
+    package = json.loads((ROOT / "package.json").read_text())
+    assert manifest["name"] == package["name"].removesuffix("-desktop") == "fish-audio"
     assert manifest["tab"]["hidden"] is True
     version = env.api.VERSION
-    assert manifest["version"] == version
+    assert manifest["version"] == package["version"] == version
     assert f"version: {version}\n" in (ROOT / "plugin.yaml").read_text()
     assert f'version = "{version}"' in (ROOT / "pyproject.toml").read_text()
     assert env.api._fa("client").PLUGIN_VERSION == version
     assert f'PLUGIN_VERSION = "{version}"' in (ROOT / "fish_audio" / "__init__.py").read_text()
+    assert "fish-audio" in (ROOT / "src" / "desktop" / "plugin.tsx").read_text()
 
 
 def test_private_package_never_touches_hermes_plugins_namespace(env):

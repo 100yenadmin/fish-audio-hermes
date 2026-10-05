@@ -1,0 +1,27 @@
+{
+  "name": "fish-audio-desktop",
+  "private": true,
+  "version": "0.3.0",
+  "description": "Desktop half of the Fish Audio plugin for Hermes (built into desktop/plugin.js).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-desktop.mjs",
+    "check:bundle": "node scripts/build-desktop.mjs --check",
+    "check:sdk": "node scripts/check-sdk-exports.mjs pinned/release/apps/desktop/src/sdk/index.ts pinned/main/apps/desktop/src/sdk/index.ts pinned/fork/apps/desktop/src/sdk/index.ts",
+    "check:loader": "node scripts/check-loader-scan.mjs pinned/release/apps/desktop/src/contrib/runtime-loader.ts pinned/main/apps/desktop/src/contrib/runtime-loader.ts pinned/fork/apps/desktop/src/contrib/runtime-loader.ts && node scripts/check-loader-scan.mjs --self-test pinned/release/apps/desktop/src/contrib/runtime-loader.ts pinned/main/apps/desktop/src/contrib/runtime-loader.ts pinned/fork/apps/desktop/src/contrib/runtime-loader.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.2",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "esbuild": "0.28.1",
+    "jsdom": "29.1.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}
