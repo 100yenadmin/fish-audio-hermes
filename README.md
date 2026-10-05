@@ -21,7 +21,8 @@ You need a Fish Audio API key — create one free at <https://fish.audio/app/api
 
 `fish_speak` makes expressive or multi-speaker audio. Use Hermes's `text_to_speech` for plain
 read-aloud. Include the returned `media_tag` verbatim in the reply to deliver the audio;
-the plugin also appends missing audio tags through its output hook. Speech timestamps are coming in v0.2.
+the plugin also appends missing audio tags through its output hook. With `timestamps: true` it also returns
+word timings plus SRT and WebVTT subtitles next to the audio.
 
 `fish_voices` searches the library, manages your voices, clones with the speaker's permission,
 and designs voices. Clone and delete request human approval. Clones and saved designs are private;
@@ -46,6 +47,16 @@ unavailable; `/fish`, the tools, the hooks and both providers still work.
 
 Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
 and `fish-audio:fish-audio-voice-studio`. The parity map tracks implemented, tested and deferred API fields.
+
+## Streaming voice (preview)
+
+With `tts.provider: fish-audio`, CLI voice mode and Desktop voice replies start on the first sentence:
+the plugin registers a Fish streamer with Hermes's streaming TTS registry through its public `register`
+call, and streams 24 kHz PCM from `POST /v1/tts`. Each spoken sentence is one billed request.
+Set `streaming: "off"` in `plugins.entries.fish-audio.settings` for whole-file speech;
+`transport: ws` switches to Fish's live WebSocket for diagnosis. Reviewers and packagers can turn the
+registration off with the environment variable `FISH_AUDIO_HERMES_NO_BRIDGE=1`; host plugin isolation
+skips it too. When Hermes gains its plugin PCM streaming seam, the plugin uses that instead.
 
 ## Known limitations
 

@@ -1,0 +1,172 @@
+{
+ "source": "Live POST /v1/tts/stream/with-timestamp, 2026-10-05: the S3 sample request (text, public voice 22d4c8ff…, s2.1-pro) with format opus. audio_base64 removed; audio_bytes keeps each event's decoded size.",
+ "events": [
+  {
+   "content": "One. Two words. Three more words here.",
+   "alignment": null,
+   "chunk_seq": 0,
+   "chunk_audio_offset_sec": 0.0,
+   "audio_bytes": 3627
+  },
+  {
+   "content": "One. Two words. Three more words here.",
+   "alignment": {
+    "segments": [
+     {
+      "text": "One",
+      "start": 0.0,
+      "end": 0.56
+     }
+    ],
+    "audio_duration": 0.9287981859410431
+   },
+   "chunk_seq": 0,
+   "chunk_audio_offset_sec": 0.0,
+   "audio_bytes": 2799
+  },
+  {
+   "content": "One. Two words. Three more words here.",
+   "alignment": {
+    "segments": [
+     {
+      "text": "One",
+      "start": 0.0,
+      "end": 0.56
+     },
+     {
+      "text": "Two",
+      "start": 1.04,
+      "end": 1.28
+     }
+    ],
+    "audio_duration": 1.486077097505669
+   },
+   "chunk_seq": 0,
+   "chunk_audio_offset_sec": 0.0,
+   "audio_bytes": 4215
+  },
+  {
+   "content": "One. Two words. Three more words here.",
+   "alignment": {
+    "segments": [
+     {
+      "text": "One",
+      "start": 0.0,
+      "end": 0.56
+     },
+     {
+      "text": "Two",
+      "start": 1.04,
+      "end": 1.28
+     },
+     {
+      "text": "words",
+      "start": 1.28,
+      "end": 1.76
+     },
+     {
+      "text": "Three",
+      "start": 2.32,
+      "end": 2.56
+     },
+     {
+      "text": "more",
+      "start": 2.56,
+      "end": 2.72
+     }
+    ],
+    "audio_duration": 2.972154195011338
+   },
+   "chunk_seq": 0,
+   "chunk_audio_offset_sec": 0.0,
+   "audio_bytes": 10893
+  },
+  {
+   "content": "One. Two words. Three more words here.",
+   "alignment": {
+    "segments": [
+     {
+      "text": "One",
+      "start": 0.0,
+      "end": 0.56
+     },
+     {
+      "text": "Two",
+      "start": 1.04,
+      "end": 1.28
+     },
+     {
+      "text": "words",
+      "start": 1.28,
+      "end": 1.76
+     },
+     {
+      "text": "Three",
+      "start": 2.32,
+      "end": 2.56
+     },
+     {
+      "text": "more",
+      "start": 2.56,
+      "end": 2.72
+     },
+     {
+      "text": "words",
+      "start": 2.72,
+      "end": 3.04
+     }
+    ],
+    "audio_duration": 3.5294331065759637
+   },
+   "chunk_seq": 0,
+   "chunk_audio_offset_sec": 0.0,
+   "audio_bytes": 4153
+  },
+  {
+   "content": "One. Two words. Three more words here.",
+   "alignment": {
+    "segments": [
+     {
+      "text": "One",
+      "start": 0.0,
+      "end": 0.56
+     },
+     {
+      "text": "Two",
+      "start": 1.04,
+      "end": 1.28
+     },
+     {
+      "text": "words",
+      "start": 1.28,
+      "end": 1.76
+     },
+     {
+      "text": "Three",
+      "start": 2.32,
+      "end": 2.56
+     },
+     {
+      "text": "more",
+      "start": 2.56,
+      "end": 2.72
+     },
+     {
+      "text": "words",
+      "start": 2.72,
+      "end": 3.04
+     },
+     {
+      "text": "here",
+      "start": 3.04,
+      "end": 3.44
+     }
+    ],
+    "audio_duration": 3.5294331065759637
+   },
+   "chunk_seq": 0,
+   "chunk_audio_offset_sec": 0.0,
+   "audio_bytes": 105
+  }
+ ]
+}

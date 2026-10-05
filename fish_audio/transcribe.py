@@ -1,6 +1,7 @@
 """Rich ASR preserves Fish speaker markers and can write local subtitles."""
 import math
 import re
+from pathlib import Path
 from uuid import uuid4
 
 from . import client, media
@@ -17,7 +18,17 @@ def _stamp(seconds):
     return f"{hours:02}:{minutes:02}:{seconds:02},{ms:03}"
 
 
-def _srt(data):
+SENTENCE_END = tuple(".!?。！？…")
+_CLOSERS = "\"'”’)]」』"
+_TRAILING = ".,!?;:。！？，、；：…" + _CLOSERS
+
+
+def _sentence_end(text):
+    return text.rstrip(_CLOSERS).endswith(SENTENCE_END)
+
+
+def _srt(data, *, sentences=False):
+    """SRT cues of at most 7 s; with ``sentences``, a cue also closes at sentence punctuation."""
     turns = data.get("speaker_turns")
     if turns:
         cues = []
@@ -38,7 +49,7 @@ def _srt(data):
                 text = " ".join(words[len(words) * i // count:len(words) * (i + 1) // count])
                 if not text:
                     continue
-                if cues and right - cues[-1]["start"] <= 7:
+                if cues and right - cues[-1]["start"] <= 7 and not (sentences and _sentence_end(cues[-1]["text"])):
                     cues[-1]["text"] += " " + text
                     cues[-1]["end"] = right
                 else:
@@ -54,6 +65,46 @@ def _srt(data):
         timed.append({**cue, "start": start, "end": end})
     return "\n\n".join(f'{i}\n{_stamp(c["start"])} --> {_stamp(c["end"])}\n{c["text"]}'
                          for i, c in enumerate(timed, 1)) + "\n"
+
+
+def _vtt(srt):
+    return "WEBVTT\n\n" + re.sub(r"^\S+ --> \S+$", lambda m: m[0].replace(",", "."), srt, flags=re.M)
+
+
+def speech_timestamps(events, audio_path):
+    """fish_speak timestamps: keep the last alignment per chunk_seq, shifted onto the audio timeline."""
+    latest = {}
+    for event in events:
+        if isinstance(event.get("alignment"), dict):
+            latest[event.get("chunk_seq", 0)] = event
+    segments, captions = [], []
+    for seq in sorted(latest):
+        event = latest[seq]
+        offset = float(event.get("chunk_audio_offset_sec") or 0)
+        content = event.get("content") if isinstance(event.get("content"), str) else ""
+        cursor = 0
+        for segment in event["alignment"].get("segments") or []:
+            text = str(segment["text"])
+            start, end = float(segment["start"]) + offset, float(segment["end"]) + offset
+            segments.append({"text": text, "start": round(start, 3), "end": round(end, 3)})
+            # Fish strips punctuation from segments; recover it from the content for captions.
+            found = content.find(text, cursor) if text else -1
+            caption = text
+            if found >= 0:
+                stop = found + len(text)
+                while stop < len(content) and content[stop] in _TRAILING:
+                    stop += 1
+                caption, cursor = content[found:stop], stop
+            captions.append({"text": caption, "start": start, "end": end})
+    result = {"segments": segments[:500]}
+    if len(segments) > 500:
+        result.update(segments_truncated=True, segments_total=len(segments))
+    if captions:
+        srt = _srt({"segments": captions}, sentences=True)
+        base = Path(audio_path)
+        result["srt_path"] = media.atomic_write(base.with_suffix(".srt"), [srt.encode("utf-8")])
+        result["vtt_path"] = media.atomic_write(base.with_suffix(".vtt"), [_vtt(srt).encode("utf-8")])
+    return result
 
 
 def execute(args, key, base, session):
