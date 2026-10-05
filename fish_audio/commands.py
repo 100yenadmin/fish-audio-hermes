@@ -127,7 +127,7 @@ def handle(raw_args="", *, end_user=True):
             model, _ = settings.resolve_model(rest, key=key, base_url=base)
             if rest == "s2.1-pro-free" and model != rest:
                 return "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
-            return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" and not operator else "")
+            return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" and not (end_user and settings.operator_account()) else "")
         if command == "preview":
             ident, _, text = rest.partition(" ")
             text = text or "Hi! This is how I sound."

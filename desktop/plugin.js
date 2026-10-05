@@ -481,6 +481,8 @@ function CloneCard({ pin }) {
 }
 function DesignCard({ pin }) {
   const billedNote = useAccountText(S.designBilled, S.operatorDesignBilled);
+  const available = useValue2($available);
+  const savedText = available && available.account === false ? S.operatorSaved : S.saved;
   const client = useQueryClient();
   const playing = useValue2($playing);
   const [instruction, setInstruction] = useState("");
@@ -566,7 +568,7 @@ function DesignCard({ pin }) {
                   ]
                 }
               ),
-              saved[candidate.design_token] ? /* @__PURE__ */ jsx2("span", { style: { ...muted, fontSize: 12 }, children: S.saved(saved[candidate.design_token]) }) : /* @__PURE__ */ jsxs2(Fragment, { children: [
+              saved[candidate.design_token] ? /* @__PURE__ */ jsx2("span", { style: { ...muted, fontSize: 12 }, children: savedText(saved[candidate.design_token]) }) : /* @__PURE__ */ jsxs2(Fragment, { children: [
                 /* @__PURE__ */ jsx2("div", { style: { flex: 1, minWidth: 140 }, children: /* @__PURE__ */ jsx2(
                   Input,
                   {

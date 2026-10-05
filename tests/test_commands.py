@@ -242,3 +242,15 @@ def test_operator_terminal_status_keeps_the_account_view(config, monkeypatch):
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")
     assert commands.handle("status", end_user=False) == commands.NO_KEY
     assert commands.handle("status") == "Ask the operator of this agent to finish the Fish Audio setup."
+
+
+def test_model_notice_reads_the_operator_setting_after_the_write(config):
+    data, _, module = config
+    data["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": False}}}}
+    save = module.save_config
+    def save_then_turn_on_operator_mode(cfg, **kwargs):
+        save(cfg, **kwargs)
+        data["plugins"]["entries"]["fish-audio"]["settings"]["operator_account"] = True
+    module.save_config = save_then_turn_on_operator_mode
+    assert commands.handle("model s2.1-pro-free") == "Saved."
+    assert commands.handle("model s2.1-pro-free", end_user=False).startswith("Saved.\n")

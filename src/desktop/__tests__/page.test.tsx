@@ -520,6 +520,8 @@ describe('operator account page', () => {
     await flush()
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'w'.repeat(32), title: 'Warm' }])
     expect(notify).toHaveBeenCalledWith({ kind: 'success', message: S.operatorSaved('Warm') })
+    expect(screen.getByText(S.operatorSaved('Warm'))).toBeTruthy()
+    expect(document.body.textContent).not.toContain('My voices')
     act(() => $tab.set('library'))
     fireEvent.click(screen.getByRole('button', { name: S.favouritesOnly }))
     await flush()
@@ -542,6 +544,7 @@ describe('operator account page', () => {
     await flush()
     expect(t.stored.get('favourites:conn-1::default')).toBeUndefined()
     expect(notify).toHaveBeenCalledWith({ kind: 'success', message: S.saved('Warm') })
+    expect(screen.getByText(S.saved('Warm'))).toBeTruthy()
   })
 
   it('offers only Check again when an operator-managed agent has no key', () => {
