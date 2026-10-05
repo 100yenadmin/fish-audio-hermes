@@ -99,6 +99,31 @@ describe('availability gate', () => {
     t.dispose()
   })
 
+  it('hides the previous agent entries at once on an agent change, until the new agent answers', async () => {
+    let answer: ((value: unknown) => void) | null = null
+    let fail: ((error: unknown) => void) | null = null
+    let firstProbe = true
+    const { t } = backend({
+      '/available': () =>
+        firstProbe
+          ? ((firstProbe = false), Promise.resolve({ ok: true, version: '1.0.1', key: true }))
+          : new Promise((resolve, reject) => ((answer = resolve), (fail = reject)))
+    })
+    plugin.register(t.ctx as any)
+    await flush()
+    expect(gated.every(id => t.live.has(id))).toBe(true)
+    host.state.profile.set('agent-without-fish')
+    expect(gated.some(id => t.live.has(id))).toBe(false) // gone before the new agent answers
+    fail!(new Error('timeout')) // a transport error for the new agent keeps them hidden
+    await flush()
+    expect(gated.some(id => t.live.has(id))).toBe(false)
+    host.state.profile.set('agent-with-fish')
+    answer!({ ok: true, version: '1.0.1', key: true })
+    await flush()
+    expect(gated.every(id => t.live.has(id))).toBe(true)
+    t.dispose()
+  })
+
   it('generation counter: a late answer from the previous agent changes nothing', async () => {
     const pending: Array<{ resolve: (v: unknown) => void; reject: (e: unknown) => void }> = []
     const { t } = backend({ '/available': () => new Promise((resolve, reject) => pending.push({ resolve, reject })) })
