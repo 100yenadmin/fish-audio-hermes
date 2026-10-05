@@ -379,5 +379,9 @@ def patch_form(path, data, key, base_url):
     return _json_request("PATCH", path, key, base_url, data=data)
 
 
+def patch_multipart(path, data, files, key, base_url):
+    return _json_request("PATCH", path, key, base_url, data=data, files=files)
+
+
 def delete(path, key, base_url):
     return _json_request("DELETE", path, key, base_url)

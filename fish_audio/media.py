@@ -94,7 +94,18 @@ def _audio_kind(header):
     return None
 
 
-def validate_input_file(path, *, max_bytes, kinds):
+def _image_kind(header):
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if header.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def validate_input_file(path, *, max_bytes, kinds, sniff=_audio_kind):
+    label = "Image" if sniff is _image_kind else "Audio"
     try:
         path = Path(path).expanduser()
         try:
@@ -106,27 +117,27 @@ def validate_input_file(path, *, max_bytes, kinds):
                 raise InputFileError("Core file safety refused this credential or protected file.")
         info = path.lstat()
         if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
-            raise InputFileError("Audio input must be a regular file, not a symlink.")
+            raise InputFileError(f"{label} input must be a regular file, not a symlink.")
         resolved = path.parent.resolve(strict=True) / path.name
         if resolved != Path(os.path.realpath(path)):
-            raise InputFileError("Audio input changed while resolving its path.")
+            raise InputFileError(f"{label} input changed while resolving its path.")
         if _secret_path(path.absolute()) or _secret_path(resolved):
-            raise InputFileError("Secret and credential files cannot be used as audio input.")
+            raise InputFileError(f"Secret and credential files cannot be used as {label.lower()} input.")
         if not 0 < info.st_size <= max_bytes:
-            raise InputFileError("Audio input is empty or exceeds the size limit.")
+            raise InputFileError(f"{label} input is empty or exceeds the size limit.")
         fd = os.open(resolved, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         with os.fdopen(fd, "rb") as handle:
             opened = os.fstat(handle.fileno())
             if (opened.st_dev, opened.st_ino, opened.st_size) != (info.st_dev, info.st_ino, info.st_size):
-                raise InputFileError("Audio input changed while opening it.")
+                raise InputFileError(f"{label} input changed while opening it.")
             data = handle.read(max_bytes + 1)
             if len(data) != opened.st_size or len(data) > max_bytes:
-                raise InputFileError("Audio input changed or exceeds the size limit.")
-            kind = _audio_kind(data[:64])
+                raise InputFileError(f"{label} input changed or exceeds the size limit.")
+            kind = sniff(data[:64])
         if kind is None or kind not in kinds:
-            raise InputFileError("Audio input has an unsupported or mismatched media kind.")
+            raise InputFileError(f"{label} input has an unsupported or mismatched media kind.")
         return resolved, kind, data
     except InputFileError:
         raise
     except (OSError, TypeError, ValueError):
-        raise InputFileError("Audio input could not be read safely.") from None
+        raise InputFileError(f"{label} input could not be read safely.") from None

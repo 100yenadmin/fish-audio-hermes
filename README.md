@@ -165,8 +165,12 @@ both providers still work. Config changes apply to the active profile; managed i
 - **Keys** come from the active profile's secret scope. When one Hermes process serves several profiles, each
   profile uses its own key; a single-profile install may also read `FISH_API_KEY` from the environment. Keys are
   never logged or put in error messages.
+- **Voice fields:** search accepts `author_id`, `title_language` and `licensed`, and returns boolean `has_more`.
+  Design accepts `num_step` (1–128), `guidance_scale` and `instruct_guidance_scale` (finite, ≥ 0). Clone/update
+  accept private/unlist `visibility` and `cover_image_path` (PNG/JPEG/WebP, ≤ 5 MiB); clone also accepts boolean
+  `generate_sample`. Transcription returns `language` when Fish supplies a string.
 - **Files** the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be regular audio
-  files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
+  files (covers must be images). They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
 - **Approvals:** cloning and deleting voices from chat or the model tools go through Hermes's approval gate and
   follow your Hermes approval settings. By default Hermes asks you, and refuses when no one is there to answer. The
   Desktop Voices page confirms them on the page instead (see [Disclosure](#disclosure)).

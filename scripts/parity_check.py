@@ -14,7 +14,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 METHODS = {"get", "post", "patch", "delete", "put", "head", "options"}
-STATUSES = {"planned", "implemented", "verified"}
+STATUSES = {"planned", "implemented", "verified", "equivalent", "excluded"}
 
 
 def load_spec(source):
@@ -123,7 +123,9 @@ def prune(source):
 
 def check(spec, mapping, *, collected=None):
     expected, seen, errors = fields(spec), set(), []
-    for entry in mapping.get("entries", []):
+    entries = mapping.get("entries", [])
+    indexed = {(e.get("path"), e.get("method"), e.get("location"), e.get("field")): e for e in entries}
+    for entry in entries:
         key = tuple(entry.get(name) for name in ("path", "method", "location", "field"))
         if key in seen:
             errors.append(f"Duplicate mapping: {key}")
@@ -134,6 +136,12 @@ def check(spec, mapping, *, collected=None):
             errors.append(f"Type/enum/required drift: {key}")
         if entry.get("status") not in STATUSES:
             errors.append(f"Invalid status: {key}")
+        if entry.get("status") == "equivalent":
+            target = indexed.get((key[0], key[1], entry.get("equivalent_to"), key[3]), {})
+            if target.get("status") not in {"implemented", "verified"}:
+                errors.append(f"Equivalent needs implemented/verified target: {key}")
+        if entry.get("status") == "excluded" and not str(entry.get("reason") or "").strip():
+            errors.append(f"Excluded needs reason: {key}")
         tests = entry.get("tests", [])
         if entry.get("status") == "verified" and not tests:
             errors.append(f"Verified without tests: {key}")
@@ -183,7 +191,7 @@ def main(argv=None):
         errors = check(spec, mapping, collected=collected)
         if args.report:
             counts = Counter(e.get("status") for e in mapping.get("entries", []))
-            print("Parity: " + ", ".join(f"{s}={counts[s]}" for s in ("planned", "implemented", "verified")))
+            print("Parity: " + ", ".join(f"{s}={counts[s]}" for s in ("planned", "implemented", "verified", "equivalent", "excluded")))
             print(f"Fields={len(mapping.get('entries', []))}, doc_only={len(mapping.get('doc_only', []))}")
         for error in errors:
             print(error, file=sys.stderr)

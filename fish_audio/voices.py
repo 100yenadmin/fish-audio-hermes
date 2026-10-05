@@ -1,13 +1,14 @@
 """Voice library operations and opaque, short-lived design receipts."""
 import base64
 import hashlib
+import re
 from collections import OrderedDict
 from pathlib import Path
 import threading
 import time
 from uuid import uuid4
 
-from . import client, hooks, media
+from . import client, hooks, media, settings
 from .tool_support import require, integer, voice_id
 
 KINDS = {"mp3", "wav", "ogg", "webm", "flac", "mp4"}
@@ -43,10 +44,24 @@ def _summary(item, fields):
     return {"id": item.get("id", item.get("_id")), **{name: item.get(name) for name in fields}}
 
 
+def _visibility(value):
+    require(value != "public", "Publish publicly from the Fish Audio website.")
+    require(value in {"private", "unlist"}, "visibility must be private or unlist.")
+    return value
+
+
+def _cover(args):
+    if "cover_image_path" not in args:
+        return []
+    path, kind, data = media.validate_input_file(args["cover_image_path"], max_bytes=5 * 1024 * 1024,
+                                                kinds={"png", "jpeg", "webp"}, sniff=media._image_kind)
+    return [("cover_image", (path.name, data, "image/" + kind))]
+
+
 def _form(args):
     title = args.get("title")
     require(isinstance(title, str) and bool(title.strip()), "title is required.")
-    data = {"title": title, "type": "tts", "train_mode": "fast", "visibility": "private"}
+    data = {"title": title, "type": "tts", "train_mode": "fast", "visibility": _visibility(args.get("visibility", "private"))}
     data.update({name: args[name] for name in ("description", "tags") if name in args})
     return data
 
@@ -80,13 +95,29 @@ def execute(args, key, base, session):
         for src, dest in (("query", "title"), ("language", "language"), ("tags", "tag")):
             if src in args:
                 params[dest] = args[src]
+        filters = {name: args[name] for name in ("author_id", "title_language", "licensed") if name in args}
+        require(action != "mine" or not filters, "author_id, title_language and licensed apply to search only.")
+        if "author_id" in filters:
+            require(isinstance(filters["author_id"], str) and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", filters["author_id"]),
+                    "Invalid author_id.")
+        if "title_language" in filters:
+            codes = filters["title_language"]
+            codes = [codes] if isinstance(codes, str) else codes
+            require(isinstance(codes, list) and 1 <= len(codes) <= 10 and all(
+                isinstance(code, str) and re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?", code) for code in codes),
+                "Invalid title_language.")
+        require("licensed" not in filters or type(filters["licensed"]) is bool, "licensed must be boolean.")
+        params.update(filters)
         if action == "mine":
             params["self"] = "true"
         data = client.get_json("/model", params, key, base)
         exact = data.get("total_is_exact", not data.get("window_limited", False))
         limited = data.get("window_limited", False) or exact is False
-        return {"items": [_item(item) for item in data.get("items", [])],
+        result = {"items": [_item(item) for item in data.get("items", [])],
                 "total": "1000+" if limited else data.get("total", 0), "total_is_exact": False if limited else exact}
+        if type(data.get("has_more")) is bool:
+            result["has_more"] = data["has_more"]
+        return result
     if action in {"get", "update", "delete"}:
         ident = args.get("voice_id")
         require(voice_id(ident), "voice_id must be a valid Fish Audio id.")
@@ -95,8 +126,14 @@ def execute(args, key, base, session):
             return _item(client.get_json(path, {}, key, base), detail=True)
         if action == "update":
             data = {name: args[name] for name in ("title", "description", "tags") if name in args}
-            require(bool(data), "Provide title, description or tags to update.")
-            client.patch_form(path, data, key, base)
+            if "visibility" in args:
+                data["visibility"] = _visibility(args["visibility"])
+            files = _cover(args)
+            require(bool(data) or bool(files), "Provide title, description, tags, visibility or cover_image_path to update.")
+            if files:
+                client.patch_multipart(path, data, files, key, base)
+            else:
+                client.patch_form(path, data, key, base)
         else:
             client.delete(path, key, base)
         return {"id": ident, "action": action}
@@ -110,9 +147,12 @@ def execute(args, key, base, session):
         enhance = args.get("enhance_audio_quality", True)
         require(type(enhance) is bool, "enhance_audio_quality must be boolean.")
         data["enhance_audio_quality"] = str(enhance).lower()
+        if "generate_sample" in args:
+            require(type(args["generate_sample"]) is bool, "generate_sample must be boolean.")
+            data["generate_sample"] = str(args["generate_sample"]).lower()
         if texts is not None:
             data["texts"] = texts
-        item = client.post_multipart("/model", data, _upload(paths), key, base, 600)
+        item = client.post_multipart("/model", data, _upload(paths) + _cover(args), key, base, 600)
         return _summary(item, ("title", "state"))
     if action == "design":
         instruction, n = args.get("instruction"), args.get("n", 2)
@@ -120,6 +160,13 @@ def execute(args, key, base, session):
         require(integer(n, 1, 4), "n must be 1–4.")
         body = {"instruction": instruction, "n": n}
         body.update({name: args[name] for name in ("reference_text", "language", "seed", "speed") if name in args})
+        if "num_step" in args:
+            require(integer(args["num_step"], 1, 128), "num_step must be an integer from 1 to 128.")
+            body["num_step"] = args["num_step"]
+        for name in ("guidance_scale", "instruct_guidance_scale"):
+            if name in args:
+                require(settings._number(args[name]) and args[name] >= 0, f"{name} must be a finite number >= 0.")
+                body[name] = args[name]
         response = client.post_json("/v1/voice-design", body, key, base, 600)
         decoded, candidates, written = [], [], []
         for i, item in enumerate(response.get("candidates", [])[:n]):
