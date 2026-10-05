@@ -13,6 +13,9 @@
   stop retrying once audio or a transcript has started arriving. 502 and 504 are not retried, and neither are
   streaming sentences or voice-library changes. Whole-file audio, transcription, voice-library and voice-design
   responses are capped at 64 MiB.
+- **Fixes.** Subtitles keep apostrophes, accents and sentence punctuation; a subtitle failure no longer hides
+  the audio; a streamed sentence that returns no audio is reported (and shown by `/fish status`) instead of
+  playing silence.
 - README product page, SECURITY.md and launch art.
 
 ## 0.1.0 — 2026-10-05
