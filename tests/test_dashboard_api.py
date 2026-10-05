@@ -800,9 +800,13 @@ def test_operator_available_and_account_never_read_wallet(env, monkeypatch):
     assert env.get("/available")["account"] is True
 
 
-def test_operator_preview_names_no_wallet_chosen_model(env):
+def test_operator_preview_names_no_wallet_chosen_model(env, monkeypatch):
     settings = env.active().config["plugins"]["entries"]["fish-audio"]["settings"]
-    for operator, named in ((False, True), (True, False)):
+    nested = env.active().config["tts"]["fish-audio"]
+    monkeypatch.setattr(env.api._fa("settings"), "cached_wallet", lambda *args: None)  # unknown wallet: s2.1-pro
+    # Only an unpinned default follows the wallet; a pinned model is configuration and stays visible.
+    for pinned, operator, named in ((None, False, True), (None, True, False), ("s1", True, True)):
+        nested.pop("model", None) if pinned is None else nested.__setitem__("model", pinned)
         settings["operator_account"] = operator
         with respx.mock(assert_all_called=True) as mock:
             mock.post(env.active().base + "/v1/tts").respond(content=MP3)
