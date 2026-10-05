@@ -69,6 +69,19 @@ describe('clone upload', () => {
     expect(h.of('/clone/abort')).toEqual([]) // the old agent's expiry cleans up; no abort goes to the new one
   })
 
+  it('an A→B→A switch also stops it, though the same agent is selected again', async () => {
+    let epoch = 0
+    const h = harness({
+      '/clone/chunk': () => {
+        epoch += 2 // B, then A again, while the chunk was in flight: the pin matches, the epoch does not
+      }
+    })
+    h.deps.epoch = () => epoch
+    await expect(cloneVoice([blob(3 * MiB)], { title: 'Me', consent: true }, A, h.deps)).rejects.toBeInstanceOf(AgentChanged)
+    expect(h.calls.map(c => c.path)).toEqual(['/clone/start', '/clone/chunk'])
+    expect(h.of('/clone/finish')).toEqual([])
+  })
+
   it('a connection switch with the same profile name also stops it', async () => {
     const h = harness({
       '/clone/chunk': () => {

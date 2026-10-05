@@ -26,6 +26,7 @@ export const S = {
   getKey: 'Get an API key',
   openPlugins: 'Open Plugins',
   checkAgain: 'Check again',
+  unreachable: (profile: string) => `Couldn't reach Fish Audio on ${agentName(profile)}`,
   // Library
   search: 'Search voices',
   language: 'Language',

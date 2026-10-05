@@ -11,6 +11,8 @@ export interface CloneDeps {
   rest: <T>(path: string, opts: { method: string; body: unknown; timeoutMs?: number }) => Promise<T>
   /** The agent selected right now. */
   current: () => AgentPin
+  /** Changes on every agent change and plugin disable, so A→B→A still stops the upload. */
+  epoch?: () => number
   readChunk?: (slice: Blob) => Promise<string>
 }
 
@@ -37,11 +39,13 @@ export async function cloneVoice(
   onProgress?: (file: number, sent: number, total: number) => void
 ): Promise<{ id: string; title: string }> {
   const read = deps.readChunk ?? readChunk
+  const epoch = deps.epoch?.()
+  const still = () => samePin(deps.current(), pin) && deps.epoch?.() === epoch
 
   const send = <T>(path: string, body: unknown, timeoutMs: number): Promise<T> => {
-    if (!samePin(deps.current(), pin)) throw new AgentChanged()
+    if (!still()) throw new AgentChanged()
     return deps.rest<T & { kind?: string; message?: string; ok?: boolean }>(path, { method: 'POST', body, timeoutMs }).then(res => {
-      if (!samePin(deps.current(), pin)) throw new AgentChanged()
+      if (!still()) throw new AgentChanged()
       if (res && res.ok === false) throw new ApiError(res.kind ?? 'error', res.message ?? 'Something went wrong')
       return res
     })
@@ -59,7 +63,7 @@ export async function cloneVoice(
       for (let offset = 0; offset < file.size; offset += start.chunk_bytes) {
         const data = await read(file.slice(offset, offset + start.chunk_bytes))
         await send('/clone/chunk', { upload_id: start.upload_id, offset, data }, 120_000)
-        if (!samePin(deps.current(), pin)) throw new AgentChanged()
+        if (!still()) throw new AgentChanged()
         sent += Math.min(start.chunk_bytes, file.size - offset)
         onProgress?.(index + 1, sent, total)
       }
@@ -74,7 +78,7 @@ export async function cloneVoice(
   } catch (error) {
     // Finish removes the temps itself. Otherwise abort them, but only while the pinned agent is selected:
     // the gateway's expiry cleans up after an agent switch.
-    if (!finishing && samePin(deps.current(), pin)) {
+    if (!finishing && still()) {
       for (const item of uploaded) {
         void deps.rest('/clone/abort', { method: 'POST', body: { upload_id: item.upload_id } }).catch(() => undefined)
       }
