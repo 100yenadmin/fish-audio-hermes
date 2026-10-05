@@ -31,7 +31,7 @@ def test_json_headers_ua_and_output(tmp_path, transport, monkeypatch):
     module = ModuleType("hermes_cli")
     module.__version__ = "0.21.5"
     monkeypatch.setitem(sys.modules, "hermes_cli", module)
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(content=b"ID3synthetic")
         path = tmp_path / "out.mp3"
         assert call(path) == str(path) and path.read_bytes() == b"ID3synthetic"
@@ -51,7 +51,7 @@ def test_json_headers_ua_and_output(tmp_path, transport, monkeypatch):
     ([{"audio": "base64-text", "text": "sample"}], False), ([], False),
 ])
 def test_msgpack_only_bytes_references(tmp_path, refs, packed):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(content=b"audio")
         call(tmp_path / "out.wav", {**PARAMS, "references": refs})
         r = route.calls.last.request
@@ -60,7 +60,7 @@ def test_msgpack_only_bytes_references(tmp_path, refs, packed):
         assert body["references"] == refs
 
 
-@pytest.mark.parametrize("failure", [429, 500, 503, "timeout", "transport"])
+@pytest.mark.parametrize("failure", [429, 500, 503, "transport"])
 def test_retry_before_bytes(tmp_path, failure):
     delays = []
     if failure == "timeout":
@@ -69,7 +69,7 @@ def test_retry_before_bytes(tmp_path, failure):
         failed = httpx.ConnectError("test-key must not leak")
     else:
         failed = httpx.Response(failure, content=b"private")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).mock(side_effect=[failed, failed, httpx.Response(200, content=b"audio")])
         call(tmp_path / "out.mp3", sleep=delays.append)
         assert route.call_count == 3 and delays == [0.5, 1]
@@ -77,7 +77,7 @@ def test_retry_before_bytes(tmp_path, failure):
 
 @pytest.mark.parametrize("status", [400, 401, 402, 403, 404, 413, 415, 302])
 def test_nonretryable_status(tmp_path, status):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(status, content=b"private test-key", headers={"x-request-id": "fish-id"})
         with pytest.raises(FishAudioError) as exc:
             call(tmp_path / "out.mp3")
@@ -104,7 +104,7 @@ def test_no_retry_after_partial_write(tmp_path):
     stream = Stream(b"audio", fail=True)
     path = tmp_path / "out.mp3"
     path.write_bytes(b"previous")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).mock(return_value=httpx.Response(200, stream=stream))
         with pytest.raises(FishAudioError, match="unavailable"):
             call(path)
@@ -112,17 +112,18 @@ def test_no_retry_after_partial_write(tmp_path):
     assert path.read_bytes() == b"previous" and list(tmp_path.iterdir()) == [path]
 
 
-def test_retry_stream_failure_before_any_bytes(tmp_path):
+def test_uploaded_request_read_failure_before_response_is_not_retried(tmp_path):
     stream = Stream(fail=True)
-    with respx.mock as mock:
-        route = mock.post(URL).mock(side_effect=[httpx.Response(200, stream=stream), httpx.Response(200, content=b"ok")])
-        call(tmp_path / "out.mp3")
-        assert route.call_count == 2 and stream.closed
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(URL).respond(stream=stream)
+        with pytest.raises(FishAudioError):
+            call(tmp_path / "out.mp3")
+        assert route.call_count == 1 and stream.closed
 
 
 def test_disconnected_credential_body_still_not_retried(tmp_path):
     stream = Stream(fail=True)
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).mock(return_value=httpx.Response(401, headers={"x-request-id": "fish-id"}, stream=stream))
         with pytest.raises(FishAudioError) as exc:
             call(tmp_path / "out.mp3")
@@ -132,7 +133,7 @@ def test_disconnected_credential_body_still_not_retried(tmp_path):
 
 
 def test_exhaustion_is_safe(tmp_path):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).mock(side_effect=httpx.ConnectError("private test-key"))
         with pytest.raises(FishAudioError) as exc:
             call(tmp_path / "out.mp3")
@@ -145,7 +146,7 @@ def test_error_body_bounded_and_closed(tmp_path):
             yield b"x" * (64 * 1024)
             raise AssertionError("must not consume more than 64 KiB")
     stream = ErrorStream()
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.post(URL).mock(return_value=httpx.Response(400, stream=stream))
         with pytest.raises(FishAudioError):
             call(tmp_path / "out.mp3")
@@ -155,7 +156,7 @@ def test_error_body_bounded_and_closed(tmp_path):
 def test_client_zero_and_cap(tmp_path, monkeypatch):
     monkeypatch.setattr(client, "atomic_write", lambda path, chunks: media.atomic_write(path, chunks, cap=4))
     for content in (b"", b"12345"):
-        with respx.mock as mock:
+        with respx.mock(assert_all_called=True) as mock:
             route = mock.post(URL).respond(content=content)
             with pytest.raises(ValueError):
                 call(tmp_path / "out.mp3")
@@ -205,7 +206,7 @@ def test_lazy_timeout_and_unknown_ua(monkeypatch):
 
 @pytest.mark.parametrize("text", ["", " \t\n"])
 def test_empty_text_and_unknown_model_never_request(tmp_path, text):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         with pytest.raises(ValueError, match="Nothing to say: the text is empty."):
             call(tmp_path / "out.mp3", {**PARAMS, "text": text})
         with pytest.raises(ValueError, match="Unknown Fish Audio TTS model"):
@@ -226,7 +227,7 @@ def test_traceparent_optional_valid_context(tmp_path, monkeypatch, valid, raises
     module.get_current_span = current
     monkeypatch.setitem(sys.modules, "opentelemetry", ModuleType("opentelemetry"))
     monkeypatch.setitem(sys.modules, "opentelemetry.trace", module)
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(content=b"audio")
         call(tmp_path / "out.mp3")
         headers = route.calls.last.request.headers
@@ -238,7 +239,7 @@ def test_traceparent_optional_valid_context(tmp_path, monkeypatch, valid, raises
 
 def test_missing_otel_no_header_and_defaulted_flag_not_sent(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "opentelemetry.trace", None)
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(content=b"audio")
         call(tmp_path / "out.mp3", {**PARAMS, "model_defaulted": True})
         r = route.calls.last.request
@@ -246,11 +247,12 @@ def test_missing_otel_no_header_and_defaulted_flag_not_sent(tmp_path, monkeypatc
 
 
 def test_defaulted_paid_402_carries_hint_and_trace(tmp_path):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.post(URL).respond(402, headers={"x-fish-trace-id": "fish-trace"})
         with pytest.raises(FishAudioError) as exc:
             call(tmp_path / "out.mp3", {**PARAMS, "model_defaulted": True})
-        assert "Switch to s2.1-pro and top up" in str(exc.value)
+        assert "Switch to s2.1-pro" not in str(exc.value)
+        assert "https://fish.audio/app/developers/billing" in str(exc.value)
         assert exc.value.trace_id == "fish-trace"
 
 
@@ -270,3 +272,25 @@ def test_client_import_without_msgpack(monkeypatch):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert callable(module.tts_to_file) and module._client is None
+
+
+@pytest.mark.parametrize("endpoint", ["tts", "asr", "model", "voice-design"])
+def test_read_timeout_after_upload_never_retries(tmp_path, endpoint):
+    def uploaded(request):
+        assert request.read()
+        raise httpx.ReadTimeout("synthetic test-key", request=request)
+    with respx.mock(assert_all_called=True) as mock:
+        url = "https://api.fish.audio/" + ("model" if endpoint == "model" else "v1/" + endpoint)
+        route = mock.post(url).mock(side_effect=uploaded)
+        with pytest.raises(FishAudioError) as exc:
+            if endpoint == "tts":
+                call(tmp_path / "out.mp3")
+            elif endpoint == "asr":
+                client.transcribe_audio(b"OggSsynthetic", "sample.ogg", "audio/ogg", {},
+                                       key="test-key", base_url="https://api.fish.audio", model="transcribe-1-pro")
+            elif endpoint == "model":
+                client.post_multipart("/model", {"title": "x"}, {"voices": ("sample.ogg", b"OggS", "audio/ogg")},
+                                      "test-key", "https://api.fish.audio", 60)
+            else:
+                client.post_json("/v1/voice-design", {"instruction": "warm"}, "test-key", "https://api.fish.audio", 60)
+        assert route.call_count == 1 and "test-key" not in str(exc.value)

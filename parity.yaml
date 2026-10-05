@@ -1,0 +1,5114 @@
+entries:
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: user_id
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: type
+  surface: account /fish balance type
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: total
+  surface: account /fish balance total
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: balance
+  surface: account /fish balance balance
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: created_at
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: updated_at
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: finished_at
+  surface: account /fish balance finished_at
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: stripe_subscription_id
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: stripe_price_id
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: billing_period
+  surface: account /fish balance billing_period
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: current_period_end
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: cancel_at_period_end
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - boolean
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - boolean
+        - 'null'
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: cancel_at
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: scheduled_change
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - object
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: last_synced_at
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: subscription_currency
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: subscription_status
+  surface: account /fish balance subscription_status
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: extra_balance
+  surface: account /fish balance extra_balance
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - integer
+        - 'null'
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: has_used_trial
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: query
+  field: check_free_credit
+  surface: Wallet API-credit availability query
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: query
+  field: team_id
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: _id
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: user_id
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: credit
+  surface: account /fish balance credit
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: cumulative_top_up
+  surface: account /fish balance cumulative_top_up
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: created_at
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: updated_at
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: has_phone_sha256
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: has_free_credit
+  surface: account /fish balance has_free_credit
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - boolean
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - boolean
+        - 'null'
+        enum: null
+        required: false
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /wallet/{user_id}/api-credit
+  method: get
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /v1/asr
+  method: post
+  location: header
+  field: model
+  surface: STT provider / fish_transcribe model
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - transcribe-1
+    - transcribe-1-pro
+    required: false
+- path: /v1/asr
+  method: post
+  location: form
+  field: audio
+  surface: STT provider / fish_transcribe audio
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_transcription_uses_validated_fd_bytes
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /v1/asr
+  method: post
+  location: form
+  field: language
+  surface: STT provider / fish_transcribe language
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/asr
+  method: post
+  location: form
+  field: ignore_timestamps
+  surface: STT provider / fish_transcribe ignore_timestamps
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/asr
+  method: post
+  location: msgpack
+  field: audio
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /v1/asr
+  method: post
+  location: msgpack
+  field: language
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/asr
+  method: post
+  location: msgpack
+  field: ignore_timestamps
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/asr
+  method: post
+  location: response
+  field: text
+  surface: fish_transcribe response text
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_srt_prefers_turns_and_preserves_text
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /v1/asr
+  method: post
+  location: response
+  field: duration
+  surface: fish_transcribe response duration
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_srt_prefers_turns_and_preserves_text
+  spec:
+    type: number
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: number
+        enum: null
+        required: true
+- path: /v1/asr
+  method: post
+  location: response
+  field: segments
+  surface: fish_transcribe response segments
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_srt_prefers_turns_and_preserves_text
+  spec:
+    type: array
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: array
+        enum: null
+        required: true
+- path: /v1/asr
+  method: post
+  location: response
+  field: language_code
+  surface: fish_transcribe response language_code
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /v1/asr
+  method: post
+  location: response
+  field: language
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /v1/asr
+  method: post
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '402':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /v1/asr
+  method: post
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '402':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /v1/asr
+  method: post
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '402':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /v1/tts
+  method: post
+  location: header
+  field: model
+  surface: TTS model header
+  status: verified
+  tests:
+  - tests/test_client.py::test_json_headers_ua_and_output
+  spec:
+    type: string
+    enum:
+    - drama-3-preview
+    - s1
+    - s2-pro
+    - s2.1-pro
+    - s2.1-pro-free
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: text
+  surface: TTS transport json text
+  status: verified
+  tests:
+  - tests/test_client.py::test_json_headers_ua_and_output
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /v1/tts
+  method: post
+  location: json
+  field: temperature
+  surface: TTS transport json temperature
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: top_p
+  surface: TTS transport json top_p
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: references
+  surface: TTS transport json references
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: reference_id
+  surface: TTS transport json reference_id
+  status: verified
+  tests:
+  - tests/test_client.py::test_json_headers_ua_and_output
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: prosody
+  surface: TTS transport json prosody
+  status: verified
+  tests:
+  - tests/test_settings.py::test_speed_precedence_and_clamp
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: chunk_length
+  surface: TTS transport json chunk_length
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: normalize
+  surface: TTS transport json normalize
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: format
+  surface: TTS transport json format
+  status: verified
+  tests:
+  - tests/test_client.py::test_json_headers_ua_and_output
+  spec:
+    type: string
+    enum:
+    - mp3
+    - opus
+    - pcm
+    - wav
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: sample_rate
+  surface: TTS transport json sample_rate
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: mp3_bitrate
+  surface: TTS transport json mp3_bitrate
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: integer
+    enum:
+    - 128
+    - 192
+    - 64
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: opus_bitrate
+  surface: TTS transport json opus_bitrate
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: integer
+    enum:
+    - -1000
+    - 24000
+    - 32000
+    - 48000
+    - 64000
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: latency
+  surface: TTS transport json latency
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: string
+    enum:
+    - balanced
+    - low
+    - normal
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: max_new_tokens
+  surface: TTS transport json max_new_tokens
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: repetition_penalty
+  surface: TTS transport json repetition_penalty
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: min_chunk_length
+  surface: TTS transport json min_chunk_length
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: condition_on_previous_chunks
+  surface: TTS transport json condition_on_previous_chunks
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: early_stop_threshold
+  surface: TTS transport json early_stop_threshold
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: features
+  surface: TTS transport json features
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type: array
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
+  field: pronunciation_dictionary
+  surface: TTS transport json pronunciation_dictionary
+  status: verified
+  tests:
+  - tests/test_settings.py::test_every_valid_knob
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: text
+  surface: TTS transport msgpack text
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: temperature
+  surface: TTS transport msgpack temperature
+  status: implemented
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: top_p
+  surface: TTS transport msgpack top_p
+  status: implemented
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: references
+  surface: TTS transport msgpack references
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: reference_id
+  surface: TTS transport msgpack reference_id
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: prosody
+  surface: TTS transport msgpack prosody
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: chunk_length
+  surface: TTS transport msgpack chunk_length
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: normalize
+  surface: TTS transport msgpack normalize
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: format
+  surface: TTS transport msgpack format
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - mp3
+    - opus
+    - pcm
+    - wav
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: sample_rate
+  surface: TTS transport msgpack sample_rate
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: mp3_bitrate
+  surface: TTS transport msgpack mp3_bitrate
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - 128
+    - 192
+    - 64
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: opus_bitrate
+  surface: TTS transport msgpack opus_bitrate
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - -1000
+    - 24000
+    - 32000
+    - 48000
+    - 64000
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: latency
+  surface: TTS transport msgpack latency
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - balanced
+    - low
+    - normal
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: max_new_tokens
+  surface: TTS transport msgpack max_new_tokens
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: repetition_penalty
+  surface: TTS transport msgpack repetition_penalty
+  status: implemented
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: min_chunk_length
+  surface: TTS transport msgpack min_chunk_length
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: condition_on_previous_chunks
+  surface: TTS transport msgpack condition_on_previous_chunks
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: early_stop_threshold
+  surface: TTS transport msgpack early_stop_threshold
+  status: implemented
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: features
+  surface: TTS transport msgpack features
+  status: implemented
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: pronunciation_dictionary
+  surface: TTS transport msgpack pronunciation_dictionary
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '402':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /v1/tts
+  method: post
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '402':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts
+  method: post
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '402':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: header
+  field: model
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - drama-3-preview
+    - s1
+    - s2-pro
+    - s2.1-pro
+    - s2.1-pro-free
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: text
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: temperature
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: top_p
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: references
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: reference_id
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: prosody
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: chunk_length
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: normalize
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: format
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - mp3
+    - opus
+    - pcm
+    - wav
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: sample_rate
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: mp3_bitrate
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - 128
+    - 192
+    - 64
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: opus_bitrate
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - -1000
+    - 24000
+    - 32000
+    - 48000
+    - 64000
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: latency
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - balanced
+    - low
+    - normal
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: max_new_tokens
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: repetition_penalty
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: min_chunk_length
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: condition_on_previous_chunks
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: early_stop_threshold
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: features
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
+  field: pronunciation_dictionary
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: text
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: temperature
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: top_p
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: references
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: reference_id
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: prosody
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: chunk_length
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: normalize
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: format
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - mp3
+    - opus
+    - pcm
+    - wav
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: sample_rate
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: mp3_bitrate
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - 128
+    - 192
+    - 64
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: opus_bitrate
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - -1000
+    - 24000
+    - 32000
+    - 48000
+    - 64000
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: latency
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - balanced
+    - low
+    - normal
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: max_new_tokens
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: repetition_penalty
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: min_chunk_length
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: condition_on_previous_chunks
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: early_stop_threshold
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: features
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: pronunciation_dictionary
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: audio_base64
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: content
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: alignment
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: true
+    responses:
+      '200':
+        type:
+        - 'null'
+        - object
+        enum: null
+        required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: chunk_seq
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: chunk_audio_offset_sec
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: number
+        enum: null
+        required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: status
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '402':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: message
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '402':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: response
+  field: reason
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '402':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: header
+  field: model
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - drama-3-preview
+    - s1
+    - s2-pro
+    - s2.1-pro
+    - s2.1-pro-free
+    required: false
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: event
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - error
+    required: true
+    responses:
+      '200':
+        type: string
+        enum:
+        - error
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: audio
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: content
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: alignment
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: true
+    responses:
+      '200':
+        type:
+        - 'null'
+        - object
+        enum: null
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: chunk_seq
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: chunk_audio_offset_sec
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: number
+        enum: null
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: time
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - number
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - number
+        enum: null
+        required: false
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: reason
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - error
+    - stop
+    required: false
+    responses:
+      '200':
+        type: string
+        enum:
+        - error
+        - stop
+        required: true
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '402':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: message
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '401':
+        type: string
+        enum: null
+        required: true
+      '402':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: error
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: max_concurrency
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - integer
+        - 'null'
+        enum: null
+        required: false
+- path: /v1/tts/live/with-timestamp
+  method: get
+  location: response
+  field: status
+  surface: M2 SSE/WebSocket streaming and alignment
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '402':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /v1/voice-design
+  method: post
+  location: header
+  field: model
+  surface: Voice-design exact model header
+  status: verified
+  tests:
+  - tests/test_tools.py::test_design_save_signature_stays_server_side
+  spec:
+    type: string
+    enum:
+    - voice-design-1
+    required: true
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: instruction
+  surface: fish_voices design instruction
+  status: verified
+  tests:
+  - tests/test_tools.py::test_design_save_signature_stays_server_side
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: reference_text
+  surface: fish_voices design reference_text
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: language
+  surface: fish_voices design language
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: n
+  surface: fish_voices design n
+  status: verified
+  tests:
+  - tests/test_tools.py::test_design_save_signature_stays_server_side
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: speed
+  surface: fish_voices design speed
+  status: implemented
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: num_step
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: guidance_scale
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: instruct_guidance_scale
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: number
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: json
+  field: seed
+  surface: fish_voices design seed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+- path: /v1/voice-design
+  method: post
+  location: response
+  field: candidates
+  surface: Private signatures with opaque candidate tokens
+  status: verified
+  tests:
+  - tests/test_tools.py::test_design_save_signature_stays_server_side
+  spec:
+    type: array
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: array
+        enum: null
+        required: true
+- path: /v1/voice-design
+  method: post
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '402':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /v1/voice-design
+  method: post
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '402':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /v1/voice-design
+  method: post
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '402':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model
+  method: get
+  location: query
+  field: page_size
+  surface: fish_voices search/mine page_size
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: page_number
+  surface: fish_voices search/mine page_number
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: title
+  surface: fish_voices search/mine title
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: tag
+  surface: fish_voices search/mine tag
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: self
+  surface: fish_voices search/mine self
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: author_id
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: language
+  surface: fish_voices search/mine language
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: title_language
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: licensed
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: get
+  location: query
+  field: sort_by
+  surface: fish_voices search/mine sort_by
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - created_at
+    - score
+    - task_count
+    required: false
+- path: /model
+  method: get
+  location: response
+  field: max_offset
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - integer
+        - 'null'
+        enum: null
+        required: false
+- path: /model
+  method: get
+  location: response
+  field: accessible_upper_bound
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - integer
+        - 'null'
+        enum: null
+        required: false
+- path: /model
+  method: get
+  location: response
+  field: window_limited
+  surface: Voice library projection window_limited
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /model
+  method: get
+  location: response
+  field: total_is_exact
+  surface: Voice library projection total_is_exact
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /model
+  method: get
+  location: response
+  field: total
+  surface: Voice library projection total
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /model
+  method: get
+  location: response
+  field: items
+  surface: Voice library projection items
+  status: implemented
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: array
+        enum: null
+        required: true
+- path: /model
+  method: get
+  location: response
+  field: has_more
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - boolean
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - boolean
+        - 'null'
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: json
+  field: visibility
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - private
+    - public
+    - unlist
+    required: false
+- path: /model
+  method: post
+  location: json
+  field: type
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - tts
+    required: true
+- path: /model
+  method: post
+  location: json
+  field: title
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /model
+  method: post
+  location: json
+  field: description
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: json
+  field: cover_image
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: json
+  field: train_mode
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - fast
+    required: true
+- path: /model
+  method: post
+  location: json
+  field: voices
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - string
+    enum: null
+    required: true
+- path: /model
+  method: post
+  location: json
+  field: texts
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: json
+  field: voice_design_signatures
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: json
+  field: tags
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: json
+  field: enhance_audio_quality
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: json
+  field: generate_sample
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: visibility
+  surface: fish_voices clone/save visibility
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type: string
+    enum:
+    - private
+    - public
+    - unlist
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: type
+  surface: fish_voices clone/save type
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type: string
+    enum:
+    - tts
+    required: true
+- path: /model
+  method: post
+  location: form
+  field: title
+  surface: fish_voices clone/save title
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /model
+  method: post
+  location: form
+  field: description
+  surface: fish_voices clone/save description
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: cover_image
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: train_mode
+  surface: fish_voices clone/save train_mode
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type: string
+    enum:
+    - fast
+    required: true
+- path: /model
+  method: post
+  location: form
+  field: voices
+  surface: fish_voices clone/save voices
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type:
+    - array
+    - string
+    enum: null
+    required: true
+- path: /model
+  method: post
+  location: form
+  field: texts
+  surface: fish_voices clone/save texts
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: voice_design_signatures
+  surface: fish_voices clone/save voice_design_signatures
+  status: verified
+  tests:
+  - tests/test_tools.py::test_design_save_signature_stays_server_side
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: tags
+  surface: fish_voices clone/save tags
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: enhance_audio_quality
+  surface: fish_voices clone/save enhance_audio_quality
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: form
+  field: generate_sample
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: visibility
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - private
+    - public
+    - unlist
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: type
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - tts
+    required: true
+- path: /model
+  method: post
+  location: msgpack
+  field: title
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+- path: /model
+  method: post
+  location: msgpack
+  field: description
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: cover_image
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: train_mode
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: string
+    enum:
+    - fast
+    required: true
+- path: /model
+  method: post
+  location: msgpack
+  field: voices
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - string
+    enum: null
+    required: true
+- path: /model
+  method: post
+  location: msgpack
+  field: texts
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: voice_design_signatures
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: tags
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: enhance_audio_quality
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: msgpack
+  field: generate_sample
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+- path: /model
+  method: post
+  location: response
+  field: _id
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: string
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: type
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - svc
+    - tts
+    required: true
+    responses:
+      '201':
+        type: string
+        enum:
+        - svc
+        - tts
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: title
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: string
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: description
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: string
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: cover_image
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: string
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: train_mode
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - fast
+    - full
+    required: false
+    responses:
+      '201':
+        type: string
+        enum:
+        - fast
+        - full
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: state
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: verified
+  tests:
+  - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  spec:
+    type: string
+    enum:
+    - created
+    - failed
+    - trained
+    - training
+    required: true
+    responses:
+      '201':
+        type: string
+        enum:
+        - created
+        - failed
+        - trained
+        - training
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: tags
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: array
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: samples
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: array
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: created_at
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: string
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: updated_at
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: string
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: languages
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: array
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: visibility
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - private
+    - public
+    - unlist
+    required: true
+    responses:
+      '201':
+        type: string
+        enum:
+        - private
+        - public
+        - unlist
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: lock_visibility
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: boolean
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: dmca_taken_down
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - boolean
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '201':
+        type:
+        - boolean
+        - 'null'
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: takedown_category
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - dmca
+    - policy
+    required: false
+    responses:
+      '201':
+        type:
+        - 'null'
+        - string
+        enum:
+        - dmca
+        - policy
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: default_text
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: string
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: source
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: verified
+  tests:
+  - tests/test_tools.py::test_design_save_signature_stays_server_side
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '201':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: licensed
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: boolean
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: pvc_release_state
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - released
+    - retiring
+    required: false
+    responses:
+      '201':
+        type:
+        - 'null'
+        - string
+        enum:
+        - released
+        - retiring
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: pvc_notice_period_months
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '201':
+        type:
+        - integer
+        - 'null'
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: pvc_released_at
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '201':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: pvc_retire_requested_at
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '201':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: pvc_retire_effective_at
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '201':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: quality
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: false
+    responses:
+      '201':
+        type:
+        - 'null'
+        - object
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: like_count
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: integer
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: mark_count
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: integer
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: shared_count
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: integer
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: task_count
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: integer
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: unliked
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: boolean
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: liked
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: boolean
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: marked
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '201':
+        type: boolean
+        enum: null
+        required: false
+- path: /model
+  method: post
+  location: response
+  field: author
+  surface: Clone/save allowlist projection; other model metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: object
+    enum: null
+    required: true
+    responses:
+      '201':
+        type: object
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /model
+  method: post
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: _id
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: type
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - svc
+    - tts
+    required: true
+    responses:
+      '200':
+        type: string
+        enum:
+        - svc
+        - tts
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: title
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: description
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: cover_image
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: train_mode
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - fast
+    - full
+    required: false
+    responses:
+      '200':
+        type: string
+        enum:
+        - fast
+        - full
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: state
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum:
+    - created
+    - failed
+    - trained
+    - training
+    required: true
+    responses:
+      '200':
+        type: string
+        enum:
+        - created
+        - failed
+        - trained
+        - training
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: tags
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: array
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: samples
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_get_samples_are_text_only
+  spec:
+    type: array
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: array
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: created_at
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: updated_at
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: languages
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: array
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: visibility
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_get_samples_are_text_only
+  spec:
+    type: string
+    enum:
+    - private
+    - public
+    - unlist
+    required: true
+    responses:
+      '200':
+        type: string
+        enum:
+        - private
+        - public
+        - unlist
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: lock_visibility
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: dmca_taken_down
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - boolean
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - boolean
+        - 'null'
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: takedown_category
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - dmca
+    - policy
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum:
+        - dmca
+        - policy
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: default_text
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: source
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_get_samples_are_text_only
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: licensed
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: pvc_release_state
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - released
+    - retiring
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum:
+        - released
+        - retiring
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: pvc_notice_period_months
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - integer
+        - 'null'
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: pvc_released_at
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: pvc_retire_requested_at
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: pvc_retire_effective_at
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: quality
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - object
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - 'null'
+        - object
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: like_count
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: mark_count
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: shared_count
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: task_count
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: integer
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: unliked
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: liked
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: marked
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: boolean
+    enum: null
+    required: false
+    responses:
+      '200':
+        type: boolean
+        enum: null
+        required: false
+- path: /model/{id}
+  method: get
+  location: response
+  field: author
+  surface: Voice details allowlist projection; other metadata is dropped
+  status: implemented
+  tests: []
+  spec:
+    type: object
+    enum: null
+    required: true
+    responses:
+      '200':
+        type: object
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '403':
+        type: integer
+        enum: null
+        required: true
+      '404':
+        type: integer
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '403':
+        type: string
+        enum: null
+        required: true
+      '404':
+        type: string
+        enum: null
+        required: true
+- path: /model/{id}
+  method: get
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '403':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '404':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: patch
+  location: json
+  field: title
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: json
+  field: description
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: json
+  field: cover_image
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: json
+  field: visibility
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - private
+    - public
+    - unlist
+    required: false
+- path: /model/{id}
+  method: patch
+  location: json
+  field: tags
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: form
+  field: title
+  surface: fish_voices update title
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: form
+  field: description
+  surface: fish_voices update description
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: form
+  field: cover_image
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: form
+  field: visibility
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - private
+    - public
+    - unlist
+    required: false
+- path: /model/{id}
+  method: patch
+  location: form
+  field: tags
+  surface: fish_voices update tags
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - array
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: msgpack
+  field: title
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: msgpack
+  field: description
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: msgpack
+  field: cover_image
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: msgpack
+  field: visibility
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - private
+    - public
+    - unlist
+    required: false
+- path: /model/{id}
+  method: patch
+  location: msgpack
+  field: tags
+  surface: Not exposed in M1; deferred beyond this stage
+  status: planned
+  tests: []
+  spec:
+    type:
+    - array
+    - string
+    enum: null
+    required: false
+- path: /model/{id}
+  method: patch
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /model/{id}
+  method: patch
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /model/{id}
+  method: patch
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+- path: /model/{id}
+  method: delete
+  location: response
+  field: status
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+- path: /model/{id}
+  method: delete
+  location: response
+  field: message
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '401':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+- path: /model/{id}
+  method: delete
+  location: response
+  field: reason
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+doc_only:
+- field: start
+  surface: M2 /v1/tts/live events
+  status: planned
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+- field: text
+  surface: M2 /v1/tts/live events
+  status: planned
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+- field: flush
+  surface: M2 /v1/tts/live events
+  status: planned
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+- field: stop
+  surface: M2 /v1/tts/live events
+  status: planned
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+- field: audio
+  surface: M2 /v1/tts/live events
+  status: planned
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+- field: finish
+  surface: M2 /v1/tts/live events
+  status: planned
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+- field: error
+  surface: M2 /v1/tts/live events
+  status: planned
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+- field: diarize
+  surface: fish_transcribe / pro ASR
+  status: implemented
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+- field: num_speakers
+  surface: fish_transcribe / pro ASR
+  status: implemented
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+- field: min_speakers
+  surface: fish_transcribe / pro ASR
+  status: implemented
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+- field: max_speakers
+  surface: fish_transcribe / pro ASR
+  status: implemented
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+- field: tag_audio_events
+  surface: fish_transcribe / pro ASR
+  status: implemented
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+- field: speaker_turns
+  surface: fish_transcribe / pro ASR
+  status: implemented
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-turns
+- field: request_id
+  surface: fish_transcribe / pro ASR
+  status: implemented
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#request-ids
+- field: traceparent
+  surface: Fish support/error headers
+  status: implemented
+  url: https://docs.fish.audio/api-reference/observability#distributed-tracing
+- field: x-fish-trace-id
+  surface: Fish support/error headers
+  status: implemented
+  url: https://docs.fish.audio/api-reference/observability#bind-business-and-inference-traces
+- field: x-fish-error-code
+  surface: Fish support/error headers
+  status: implemented
+  url: https://docs.fish.audio/api-reference/errors#http-status-codes
+out_of_scope:
+- path: /v1/agent/*
+  reason: later phase

@@ -63,7 +63,7 @@ def test_missing_profile_key_returns_setup_envelope(installed):
     token = set_secret_scope(load_env_file(home / ".env"), profile_home=str(home))
     try:
         assert not provider.is_available()
-        with respx.mock as mock:
+        with respx.mock(assert_all_called=True) as mock:
             result = json.loads(text_to_speech_tool(text="hello"))
             assert result["success"] is False
             for hint in ("hermes tools", "Desktop ▸ Plugins ▸ Fish Audio", "https://fish.audio/app/api-keys"):

@@ -28,6 +28,21 @@ publish through Fish's web flow. Design previews return opaque tokens that expir
 All these calls are billed to your Fish Audio account. Setting `allow_free_model: false` in
 `plugins.entries.fish-audio.settings` forces paid `s2.1-pro` whenever the free model is selected.
 
+## Commands (preview)
+
+Use `/fish help` in chat for `status`, `voices`, `use`, `model`, `preview`, and `balance`.
+`/fish preview <voice_id> [text]` returns a voice reply through Hermes's media delivery.
+Never paste a key into chat; enter it locally with `hermes fish login` or Desktop ▸ Plugins ▸ Fish Audio.
+
+`hermes fish` prints help. It supports `login [--key-stdin] [--yes]`, `status`,
+`doctor [--no-synth]`, and `use <voice_id>`. Login asks before changing existing providers.
+Doctor's synthesis check is billed and deletes its temporary audio; use `--no-synth` to skip it.
+Config changes apply to the active profile; managed installs may refuse writes.
+Host plugin isolation does not expose `hermes fish` or these hooks.
+
+Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
+and `fish-audio:fish-audio-voice-studio`. The parity map tracks implemented, tested and deferred API fields.
+
 ## License
 
 Apache-2.0. Fish Audio is a trademark of Hanabi AI Inc.

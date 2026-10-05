@@ -29,7 +29,7 @@ def call(**args):
     {"timestamps": "true"}, {"srt": 1}, {"tag_audio_events": None},
 ])
 def test_field_validation_matrix(args):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         result = call(**args)
         assert not result["success"] and not mock.calls
 
@@ -37,7 +37,7 @@ def test_field_validation_matrix(args):
 @pytest.mark.parametrize("model,file,wire", [("transcribe-1-pro", "synthetic.ogg", "transcribe-1-pro"),
     ("transcribe-1", "synthetic.ogg", "transcribe-1"), ("transcribe-1", "synthetic.webm", "transcribe-1-pro")])
 def test_asr_fields_exact_model_timeout_and_raw_markers(model, file, wire):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/asr").respond(json={"text": "<|speaker:0|> [laughter] hello", "duration": 1,
                                 "segments": [], "language_code": "en"}, headers={"x-request-id": "from-header"})
         result = call(model=model, file_path=str(FIXTURES / file), language="en", timestamps=False, tag_audio_events=False)
@@ -58,7 +58,7 @@ def test_asr_fields_exact_model_timeout_and_raw_markers(model, file, wire):
 
 @pytest.mark.parametrize("hints", [{"num_speakers": 2}, {"min_speakers": 1, "max_speakers": 3}, {"min_speakers": 1}])
 def test_valid_speaker_hints_sent(hints):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/asr").respond(json={"text": "hi", "segments": []})
         assert call(diarize="true", **hints)["success"]
         for key, value in hints.items():
@@ -69,7 +69,7 @@ def test_srt_prefers_turns_and_preserves_text(tmp_path):
     data = {"text": "<|speaker:0|> hello", "request_id": "body-id", "duration": 2,
         "speaker_turns": [{"speaker": "speaker:0", "text": "[happy] Hello!", "start": .25, "end": 1.5}],
         "segments": [{"text": "wrong segment", "start": 0, "end": 2}]}
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.post(BASE + "/v1/asr").respond(json=data)
         result = call(srt=True)
         assert result["request_id"] == "body-id"
@@ -80,7 +80,7 @@ def test_srt_prefers_turns_and_preserves_text(tmp_path):
 
 
 def test_srt_groups_segments_to_seven_seconds():
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.post(BASE + "/v1/asr").respond(json={"text": "one two three", "segments": [
             {"text": "one", "start": 0, "end": 2}, {"text": "two", "start": 2, "end": 6.9},
             {"text": "three", "start": 6.9, "end": 8}]})
@@ -91,8 +91,24 @@ def test_srt_groups_segments_to_seven_seconds():
 
 def test_segment_truncation_keeps_count_and_full_srt():
     segments = [{"text": f"word{i}", "start": i, "end": i+1} for i in range(501)]
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.post(BASE + "/v1/asr").respond(json={"text": "long", "segments": segments})
         result = call(srt=True)
         assert len(result["segments"]) == 500 and result["segments_total"] == 501 and result["segments_truncated"]
         assert "word500" in Path(result["srt_path"]).read_text()
+
+
+def test_transcription_uses_validated_fd_bytes(tmp_path, monkeypatch):
+    path = tmp_path / "voice.ogg"
+    original = b"OggSsafe-synthetic"
+    path.write_bytes(original)
+    validate = media.validate_input_file
+    def replace_after_validation(*args, **kwargs):
+        result = validate(*args, **kwargs)
+        path.write_bytes(b"OggSreplacement")
+        return result
+    monkeypatch.setattr(media, "validate_input_file", replace_after_validation)
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/asr").respond(json={"text": "hi"})
+        assert call(file_path=str(path))["success"]
+        assert original in route.calls.last.request.content and b"replacement" not in route.calls.last.request.content

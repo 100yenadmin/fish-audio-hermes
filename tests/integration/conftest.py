@@ -13,9 +13,9 @@ def installed_fish_home(tmp_path, monkeypatch):
     home = tmp_path / "home"
     mount = home / "plugins" / "fish-audio"
     mount.mkdir(parents=True)
-    for name in ("__init__.py", "plugin.yaml", "pyproject.toml", "README.md", "LICENSE", ".gitignore"):
+    for name in ("__init__.py", "plugin.yaml", "pyproject.toml", "README.md", "LICENSE", ".gitignore", "parity.yaml"):
         shutil.copy2(ROOT / name, mount / name)
-    for name in ("fish_audio", "tests", ".github"):
+    for name in ("fish_audio", "tests", ".github", "skills", "scripts", "parity"):
         shutil.copytree(ROOT / name, mount / name, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (home / "config.yaml").write_text(
         "plugins:\n  enabled: [fish-audio]\ntts:\n  provider: fish-audio\n"

@@ -74,7 +74,7 @@ def test_audio_dir_uses_active_hermes_home(monkeypatch, tmp_path):
 @pytest.mark.parametrize("text", ["", " \t\n"])
 def test_empty_provider_text_no_network(monkeypatch, tmp_path, text):
     monkeypatch.setattr(tts, "fish_api_key", lambda: "test-key")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         with pytest.raises(ValueError, match="Nothing to say: the text is empty."):
             tts.FishAudioTTSProvider().synthesize(text, str(tmp_path / "out.mp3"))
         assert not mock.calls

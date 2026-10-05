@@ -3,6 +3,7 @@ import json
 import random
 import threading
 import time
+from contextlib import contextmanager
 
 import httpx
 
@@ -65,6 +66,35 @@ def _error_body(response):
     return next(response.iter_bytes(chunk_size=64 * 1024), b"")[:64 * 1024]
 
 
+class _UploadStream(httpx.SyncByteStream):
+    def __init__(self, stream, progress):
+        self.stream, self.progress = stream, progress
+
+    def __iter__(self):
+        yield from self.stream
+        self.progress["sent"] = True
+
+    def close(self):
+        self.stream.close()
+
+
+@contextmanager
+def _stream(method, url, progress, **kwargs):
+    http = _http_client()
+    built = http.build_request(method, url, **kwargs)
+    request = httpx.Request(method, built.url, headers=built.headers, extensions=built.extensions,
+                            stream=_UploadStream(built.stream, progress))
+    response = http.send(request, stream=True)
+    try:
+        yield response
+    finally:
+        response.close()
+
+
+def _transport_retry(exc, progress):
+    return not progress.get("sent") or isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout))
+
+
 def tts_to_file(params, key, base_url, out_path, *, sleep=None):
     if not isinstance(params.get("text"), str) or not params["text"].strip():
         raise ValueError("Nothing to say: the text is empty.")
@@ -82,9 +112,10 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
         payload = {"json": body}
     for attempt in range(3):
         written = False
+        progress = {}
         response_headers = None
         try:
-            with _http_client().stream("POST", base_url.rstrip("/") + "/v1/tts", headers=headers, **payload) as response:
+            with _stream("POST", base_url.rstrip("/") + "/v1/tts", progress, headers=headers, **payload) as response:
                 response_headers = response.headers
                 if not 200 <= response.status_code < 300:
                     try:
@@ -103,9 +134,9 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
                             yield chunk
 
                 return atomic_write(out_path, chunks())
-        except httpx.TransportError:
+        except httpx.TransportError as exc:
             error = response_error(None, response_headers, model=model, key=key)
-            retryable = True
+            retryable = _transport_retry(exc, progress)
         except FishAudioError as exc:
             error = exc
             retryable = _retryable(exc)
@@ -122,9 +153,10 @@ def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sle
     timeout = httpx.Timeout(connect=10, read=read_timeout, write=60, pool=10)
     for attempt in range(3):
         received = False
+        progress = {}
         response_headers = None
         try:
-            with _http_client().stream("POST", base_url.rstrip("/") + "/v1/asr",
+            with _stream("POST", base_url.rstrip("/") + "/v1/asr", progress,
                                        headers=request_headers(key, model), data=fields,
                                        files={"audio": (filename, audio, mime)}, timeout=timeout) as response:
                 response_headers = response.headers
@@ -148,9 +180,9 @@ def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sle
                 if response.headers.get("x-request-id") and not data.get("request_id"):
                     data["request_id"] = response.headers["x-request-id"]
                 return data
-        except httpx.TransportError:
+        except httpx.TransportError as exc:
             error = response_error(None, response_headers, key=key)
-            retryable = True
+            retryable = _transport_retry(exc, progress)
         except FishAudioError as exc:
             error, retryable = exc, _retryable(exc)
         if received or not retryable or attempt == 2:

@@ -22,7 +22,7 @@ def transport(monkeypatch):
 
 @pytest.mark.parametrize("credit,topup,free", [("2.630370", "10", None), (0, 0.5, True), ("0", "0", False)])
 def test_wallet_decimals_and_scope(credit, topup, free):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.get(WALLET).respond(json={"credit": credit, "cumulative_top_up": topup,
             "has_free_credit": free, "user_id": "synthetic-excluded"})
         wallet = account.get_wallet("test-key", BASE)
@@ -39,14 +39,14 @@ def test_wallet_decimals_and_scope(credit, topup, free):
     {"credit": "NaN", "cumulative_top_up": "0"}, {"credit": "0", "cumulative_top_up": "Infinity"},
     {"credit": True, "cumulative_top_up": "0"}, {"credit": "0", "cumulative_top_up": "0", "has_free_credit": "yes"}])
 def test_wallet_parse_failures_never_raise(data):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.get(WALLET).respond(json=data)
         assert account.get_wallet("test-key", BASE) is None
 
 
 @pytest.mark.parametrize("kind", ["401", "timeout", "text"])
 def test_wallet_bad_response(kind):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.get(WALLET)
         if kind == "401":
             route.respond(401, text="No permission")
@@ -61,14 +61,14 @@ def test_wallet_bad_response(kind):
 def test_package_only_allowed_fields():
     expected = {"type": "plus", "total": 250000, "balance": 250000, "extra_balance": 0,
         "finished_at": "synthetic-date", "billing_period": "month", "subscription_status": "active"}
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.get(BASE + "/wallet/self/package").respond(json={**expected, "user_id": "synthetic-excluded", "_id": "synthetic-excluded"})
         assert account.get_package("test-key", BASE) == expected
 
 
 @pytest.mark.parametrize("status,body", [(401, b"No permission"), (200, b"[]"), (200, b"oops")])
 def test_package_failure_never_raises(status, body):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.get(BASE + "/wallet/self/package").respond(status, content=body)
         assert account.get_package("test-key", BASE) is None
 
@@ -94,7 +94,7 @@ def test_cache_ttl_and_hashed_isolation(monkeypatch, wallet, ttl):
 
 
 def test_account_no_key_no_request():
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         assert account.get_wallet("", BASE) is None
         assert account.get_package("", BASE) is None
         assert not mock.calls

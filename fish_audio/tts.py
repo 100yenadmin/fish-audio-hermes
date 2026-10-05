@@ -5,6 +5,8 @@ from .models import MODELS
 from .secrets import fish_api_key
 from .settings import FREE_MODEL_NOTICE, resolve_tts
 from .tags import adapt_tags
+from .errors import FishAudioError
+from .state import record_failure
 
 SETUP_MESSAGE = ("Set up Fish Audio with hermes tools or Desktop ▸ Plugins ▸ Fish Audio. "
                  "Get an API key at https://fish.audio/app/api-keys")
@@ -50,7 +52,11 @@ class FishAudioTTSProvider(TTSProvider):
         metadata = extra.get("result_metadata")
         if isinstance(metadata, dict) and params["model_defaulted"] and params["model"] == "s2.1-pro-free":
             metadata["fish_audio_notice"] = FREE_MODEL_NOTICE
-        client.tts_to_file(params, key, base_url, final_path)
+        try:
+            client.tts_to_file(params, key, base_url, final_path)
+        except FishAudioError as exc:
+            record_failure(exc.kind, str(exc))
+            raise
         if isinstance(metadata, dict):
             metadata.update(primary_provider="fish-audio", fallback_active=False)
         return final_path

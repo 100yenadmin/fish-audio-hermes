@@ -17,7 +17,7 @@ def test_real_registry_tool_and_output_hook(installed_fish_home):
     for name in ("fish_speak", "fish_voices", "fish_transcribe"):
         entry = registry.get_entry(name)
         assert entry is not None and entry.toolset == "fish_audio"
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic-audio")
         result = json.loads(registry.dispatch("fish_speak", {"text": "[excited] hello <|speaker:0|>", "model": "s2.1-pro"}, session_id="s1"))
         assert result["success"], result

@@ -31,7 +31,7 @@ def test_decided_models_do_not_request_wallet(config, monkeypatch, nested, call,
     def forbidden(*args):
         raise AssertionError("wallet must not be requested")
     monkeypatch.setattr(settings, "cached_wallet", forbidden)
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         assert settings.resolve_model(call, key="test-key", base_url=BASE) == (expected, call is None)
         assert not mock.calls
 

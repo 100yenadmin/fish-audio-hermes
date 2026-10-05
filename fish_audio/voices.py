@@ -48,8 +48,8 @@ def _form(args):
 def _upload(paths):
     files = []
     for name in paths:
-        path, kind = media.validate_input_file(name, max_bytes=20 * 1024 * 1024, kinds=KINDS)
-        files.append(("voices", (path.name, path.read_bytes(), MIMES[kind])))
+        path, kind, data = media.validate_input_file(name, max_bytes=20 * 1024 * 1024, kinds=KINDS)
+        files.append(("voices", (path.name, data, MIMES[kind])))
     return files
 
 

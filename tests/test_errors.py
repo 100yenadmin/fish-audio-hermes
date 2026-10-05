@@ -83,8 +83,21 @@ def test_known_voice_failure(status, message):
 
 
 def test_defaulted_paid_quota_hint_and_safe_trace(monkeypatch):
-    assert "Switch to s2.1-pro and top up" in str(response_error(402, model="s2.1-pro", defaulted=True))
+    assert "Switch to s2.1-pro" not in str(response_error(402, model="s2.1-pro", defaulted=True))
     key = "sk-" + "a" * 48
     monkeypatch.setenv("FISH_API_KEY", key)
     assert key not in str(response_error(400, {"x-fish-trace-id": key}, key=key))
     assert response_error(400, body=None).kind == "invalid_request"
+
+
+@pytest.mark.parametrize("model,hint", [("transcribe-1", True), ("transcribe-1-pro", False)])
+def test_asr_decode_wording_is_specific(model, hint):
+    message = str(response_error(400, model=model))
+    assert message.startswith("Fish Audio could not decode this audio.") and "synthesis" not in message
+    assert ("transcribe-1-pro accepts more formats (including WebM)." in message) == hint
+
+
+def test_paid_quota_keeps_link_without_redundant_switch():
+    message = str(response_error(402, model="s2.1-pro", defaulted=True))
+    assert "Switch to s2.1-pro" not in message and "https://fish.audio/app/developers/billing" in message
+    assert "Switch to s2.1-pro" in str(response_error(402, model="s2.1-pro-free"))

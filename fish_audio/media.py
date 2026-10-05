@@ -53,17 +53,25 @@ def _hermes_home():
 
 
 def _secret_path(path):
-    if path.name.lower().endswith(".pem") or path.name.startswith("id_"):
+    path = Path(str(path).casefold())
+    if path.name.endswith(".pem") or path.name.startswith("id_"):
         return True
     user_home = Path.home().resolve()
     for directory in (user_home / ".ssh", user_home / ".aws", user_home / ".config" / "gcloud"):
-        if path.is_relative_to(directory) or path.is_relative_to(directory.resolve()):
+        if any(path.is_relative_to(Path(str(d).casefold())) for d in (directory, directory.resolve())):
             return True
-    home = _hermes_home()
-    if path.is_relative_to(home):
-        relative = path.relative_to(home)
-        return (path.name in {".env", "auth.json", "config.yaml"}
-                or "secrets" in relative.parts or path.name.lower().endswith(".key"))
+    try:
+        from hermes_constants import get_default_hermes_root
+        root = get_default_hermes_root().resolve()
+    except ImportError:
+        root = _hermes_home()
+    for home in (_hermes_home(), root):
+        home = Path(str(home).casefold())
+        if path.is_relative_to(home):
+            relative = path.relative_to(home)
+            if (path.name in {".env", "auth.json", "config.yaml"}
+                    or "secrets" in relative.parts or path.name.endswith(".key")):
+                return True
     return False
 
 
@@ -89,6 +97,13 @@ def _audio_kind(header):
 def validate_input_file(path, *, max_bytes, kinds):
     try:
         path = Path(path).expanduser()
+        try:
+            from agent.file_safety import get_read_block_error
+        except ImportError:
+            pass
+        else:
+            if get_read_block_error(str(path.absolute())):
+                raise InputFileError("Core file safety refused this credential or protected file.")
         info = path.lstat()
         if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
             raise InputFileError("Audio input must be a regular file, not a symlink.")
@@ -104,10 +119,13 @@ def validate_input_file(path, *, max_bytes, kinds):
             opened = os.fstat(handle.fileno())
             if (opened.st_dev, opened.st_ino, opened.st_size) != (info.st_dev, info.st_ino, info.st_size):
                 raise InputFileError("Audio input changed while opening it.")
-            kind = _audio_kind(handle.read(64))
+            data = handle.read(max_bytes + 1)
+            if len(data) != opened.st_size or len(data) > max_bytes:
+                raise InputFileError("Audio input changed or exceeds the size limit.")
+            kind = _audio_kind(data[:64])
         if kind is None or kind not in kinds:
             raise InputFileError("Audio input has an unsupported or mismatched media kind.")
-        return resolved, kind
+        return resolved, kind, data
     except InputFileError:
         raise
     except (OSError, TypeError, ValueError):

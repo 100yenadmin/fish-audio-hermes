@@ -10,6 +10,7 @@ from .errors import FishAudioError
 from .secrets import fish_api_key, redact
 from .settings import DEFAULT_BASE_URL, _base_url, transport_settings
 from .tts import FishAudioTTSProvider, SETUP_MESSAGE
+from .state import record_failure
 
 MODEL_PRO = "transcribe-1-pro"
 MODEL_T1 = "transcribe-1"
@@ -72,9 +73,10 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
             data = client.transcribe_audio(path.read_bytes(), path.name,
                                            MIMES.get(path.suffix.lower(), "application/octet-stream"),
                                            fields, key=key, base_url=base_url, model=chosen)
-            transcript = re.sub(r"<\|speaker:\d+\|>", "", data["text"])
+            transcript = re.sub(r"<\|speaker:\d+\|>", " ", data["text"])
             result.update(success=True, transcript=" ".join(transcript.split()))
         except FishAudioError as exc:
+            record_failure(exc.kind, str(exc))
             result["error"] = redact(str(exc))
         except Exception:
             # Unknown exception messages may contain file contents, paths or credentials.

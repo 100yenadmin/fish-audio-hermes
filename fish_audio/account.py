@@ -6,6 +6,7 @@ import threading
 import time
 
 from . import client
+from .errors import FishAudioError, response_error
 
 
 @dataclass(frozen=True)
@@ -15,7 +16,7 @@ class Wallet:
     has_free_credit: bool | None
 
 
-def _get(path, key, base_url, timeout=5.0):
+def _get(path, key, base_url, timeout=5.0, *, strict=False):
     if not key:
         return None
     try:
@@ -23,18 +24,22 @@ def _get(path, key, base_url, timeout=5.0):
                                              headers=client.request_headers(key), timeout=timeout)
         try:
             if response.status_code != 200:
+                if strict:
+                    raise response_error(response.status_code, response.headers, response.content[:65536], key=key)
                 return None
             data = response.json()
             return data if isinstance(data, dict) else None
         finally:
             response.close()
-    except Exception:
+    except Exception as exc:
+        if strict:
+            raise exc if isinstance(exc, FishAudioError) else response_error(None, key=key) from None
         return None
 
 
-def get_wallet(key, base_url, *, timeout=5.0) -> Wallet | None:
+def get_wallet(key, base_url, *, timeout=5.0, strict=False) -> Wallet | None:
     try:
-        data = _get("/wallet/self/api-credit?check_free_credit=true", key, base_url, timeout)
+        data = _get("/wallet/self/api-credit?check_free_credit=true", key, base_url, timeout, strict=strict)
         if data is None:
             return None
         amounts = []
@@ -50,7 +55,9 @@ def get_wallet(key, base_url, *, timeout=5.0) -> Wallet | None:
         if free is not None and type(free) is not bool:
             return None
         return Wallet(*amounts, free)
-    except Exception:
+    except Exception as exc:
+        if strict:
+            raise exc if isinstance(exc, FishAudioError) else response_error(None, key=key) from None
         return None
 
 

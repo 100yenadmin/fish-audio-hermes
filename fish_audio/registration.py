@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import logging
+from pathlib import Path
 
 
 def register_all(ctx) -> None:
@@ -22,3 +23,12 @@ def register_all(ctx) -> None:
     if hasattr(ctx, "register_hook"):
         ctx.register_hook("transform_llm_output", hooks.on_transform_llm_output)
         ctx.register_hook("pre_tool_call", hooks.on_pre_tool_call)
+    from . import commands, cli
+    if hasattr(ctx, "register_command"):
+        ctx.register_command("fish", handler=commands.handle, description="Fish Audio voices and account",
+                             args_hint="[status|voices|use|model|preview|balance|help]")
+    if hasattr(ctx, "register_cli_command"):
+        ctx.register_cli_command("fish", help="Fish Audio setup and diagnostics", setup_fn=cli.setup, handler_fn=cli.handle)
+    if hasattr(ctx, "register_skill"):
+        for name in ("fish-audio-setup", "fish-audio-expressive-speech", "fish-audio-voice-studio"):
+            ctx.register_skill(name, Path(__file__).resolve().parents[1] / "skills" / name / "SKILL.md")

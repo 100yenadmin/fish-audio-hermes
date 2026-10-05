@@ -32,7 +32,7 @@ def call(handler, **args):
 
 @pytest.mark.parametrize("fmt,wire,voice", [("ogg", "opus", True), ("mp3", "mp3", True), ("wav", "wav", False)])
 def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, voice):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"synthetic audio")
         result = call(tools.fish_speak, text="[excited] hello <|speaker:0|>", voice=VOICE, format=fmt)
         assert result["success"], result
@@ -49,7 +49,7 @@ def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, voice):
 
 
 def test_speak_multi_pronunciations_and_timestamp_note():
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
         result = call(tools.fish_speak, text="hello", speakers=[VOICE, "b" * 32],
                       pronunciations={"Codex": "code ex"}, timestamps=True)
@@ -57,7 +57,7 @@ def test_speak_multi_pronunciations_and_timestamp_note():
         assert body["reference_id"] == [VOICE, "b" * 32]
         assert body["pronunciation_dictionary"] == [{"items": [{"key": "Codex", "value": "code ex"}]}]
         assert "coming in v0.2" in result["note"] and result["success"]
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         result = call(tools.fish_speak, text="hello", speakers=[VOICE, VOICE], model="s1")
         assert not result["success"] and "s2.1-pro" in result["error"]
         assert not mock.calls
@@ -66,7 +66,7 @@ def test_speak_multi_pronunciations_and_timestamp_note():
 def test_speak_voice_precedence_and_free_notice(monkeypatch):
     monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"voice": "b" * 32}}})
     monkeypatch.setattr(settings, "cached_wallet", lambda *args: account.Wallet(Decimal(0), Decimal(0), False))
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"audio")
         result = call(tools.fish_speak, text="hello", voice=VOICE)
         assert result["notice"] == settings.FREE_MODEL_NOTICE and result["voice"] == VOICE
@@ -79,13 +79,13 @@ def test_speak_voice_precedence_and_free_notice(monkeypatch):
     {"text": "hi", "speed": 3}, {"text": "hi", "pronunciations": {"x": 1}},
     {"text": "hi", "pronunciations": {str(i): "a" for i in range(201)}}])
 def test_speak_invalid_args_never_raise_or_request(args):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         assert json.loads(tools.fish_speak(args))["success"] is False
         assert not mock.calls
 
 
 def test_speak_fish_error_is_safe_envelope():
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.post(BASE + "/v1/tts").respond(401, json={"message": "test-key secret body"})
         result = tools.fish_speak({"text": "hi"})
         assert not json.loads(result)["success"] and "test-key" not in result and "secret body" not in result
@@ -101,7 +101,7 @@ def library_item():
 
 @pytest.mark.parametrize("action,limited", [("search", False), ("search", True), ("mine", False)])
 def test_voice_search_mapping(action, limited):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.get(BASE + "/model").respond(json={"items": [library_item()], "total": 99,
                             "window_limited": limited, "total_is_exact": not limited})
         raw = tools.fish_voices({"action": action, "query": "warm", "tags": ["en"],
@@ -119,7 +119,7 @@ def test_voice_search_mapping(action, limited):
 
 
 def test_voice_get_samples_are_text_only():
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.get(BASE + "/model/" + VOICE).respond(json=library_item())
         result = call(tools.fish_voices, action="get", voice_id=VOICE)
         assert result["samples"] == [{"title": "Preview", "text": "hello"}]
@@ -129,7 +129,7 @@ def test_voice_get_samples_are_text_only():
 def test_clone_consent_and_symlink_rejected(tmp_path):
     link = tmp_path / "linked.mp3"
     link.symlink_to(FIXTURES / "synthetic.mp3")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         result = call(tools.fish_voices, action="clone", title="Voice", sample_paths=[str(link)])
         assert "speaker's permission" in result["error"]
         result = call(tools.fish_voices, action="clone", title="Voice", sample_paths=[str(link)], consent=True)
@@ -138,7 +138,7 @@ def test_clone_consent_and_symlink_rejected(tmp_path):
 
 
 def test_clone_private_fast_and_never_retried(monkeypatch):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/model").respond(201, json={"_id": VOICE, "title": "Voice", "state": "trained"})
         args = dict(action="clone", title="Voice", sample_paths=[str(FIXTURES / "synthetic.mp3")], consent=True, texts=["hello"])
         result = call(tools.fish_voices, **args)
@@ -156,7 +156,7 @@ def test_clone_private_fast_and_never_retried(monkeypatch):
 
 def test_design_save_signature_stays_server_side(monkeypatch):
     signature = "v1:synthetic-private-signature"
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         design = mock.post(BASE + "/v1/voice-design").respond(json={"candidates": [{"index": 0, "text": "preview text",
             "signature": signature, "audio_base64": base64.b64encode(WAV).decode(), "duration_ms": 123,
             "features": {"tone": "warm", "signature": signature, "nested": [signature]}}]})
@@ -181,7 +181,7 @@ def test_design_save_signature_stays_server_side(monkeypatch):
 @pytest.mark.parametrize("action", ["update", "delete"])
 @pytest.mark.parametrize("status", [204, 404, 503])
 def test_voice_mutation_status_and_no_retry(action, status):
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         method = "PATCH" if action == "update" else "DELETE"
         route = mock.request(method, BASE + "/model/" + VOICE).respond(status)
         result = call(tools.fish_voices, action=action, voice_id=VOICE, title="Updated", tags=["en"])
@@ -195,7 +195,7 @@ def test_voice_mutation_status_and_no_retry(action, status):
 def test_get_retry_only_before_success_bytes(monkeypatch):
     import httpx
     monkeypatch.setattr(client.time, "sleep", lambda _: None)
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.get(BASE + "/model").mock(side_effect=[httpx.Response(503), httpx.Response(429),
                                                           httpx.Response(200, json={"items": [], "total": 0})])
         assert call(tools.fish_voices, action="search")["success"] and route.call_count == 3
@@ -203,7 +203,23 @@ def test_get_retry_only_before_success_bytes(monkeypatch):
         def __iter__(self):
             yield b'{"items":'
             raise httpx.ReadError("synthetic failure test-key")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.get(BASE + "/model").respond(stream=Broken())
         result = tools.fish_voices({"action": "search"})
         assert not json.loads(result)["success"] and "test-key" not in result and route.call_count == 1
+
+
+def test_clone_upload_uses_validated_fd_bytes_after_path_replacement(tmp_path, monkeypatch):
+    path = tmp_path / "voice.mp3"
+    original = b"ID3safe-synthetic"
+    path.write_bytes(original)
+    validate = media.validate_input_file
+    def replace_after_validation(*args, **kwargs):
+        result = validate(*args, **kwargs)
+        path.write_bytes(b"ID3replacement")
+        return result
+    monkeypatch.setattr(media, "validate_input_file", replace_after_validation)
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/model").respond(201, json={"_id": VOICE})
+        assert call(tools.fish_voices, action="clone", title="Voice", sample_paths=[str(path)], consent=True)["success"]
+        assert original in route.calls.last.request.content and b"replacement" not in route.calls.last.request.content

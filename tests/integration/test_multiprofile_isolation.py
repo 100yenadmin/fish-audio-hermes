@@ -31,7 +31,7 @@ def test_two_profile_scope_isolation_and_unscoped_fail_closed(tmp_path, monkeypa
     previous = is_multiplex_active()
     set_multiplex_active(True)
     try:
-        with respx.mock as mock:
+        with respx.mock(assert_all_called=True) as mock:
             route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic-audio")
             for i, (home, key, voice) in enumerate((profiles[0], profiles[1], profiles[0])):
                 # Same contextvar mechanism as web_server_profiles._config_profile_scope:
@@ -50,7 +50,7 @@ def test_two_profile_scope_isolation_and_unscoped_fail_closed(tmp_path, monkeypa
             assert route.call_count == 3
         unscoped = set_secret_scope(None)
         try:
-            with respx.mock as mock:
+            with respx.mock(assert_all_called=True) as mock:
                 with pytest.raises(ValueError, match="hermes tools"):
                     FishAudioTTSProvider().synthesize("hello", str(tmp_path / "unscoped.ogg"))
                 result = FishAudioTranscriptionProvider().transcribe(str(tmp_path / "not-read.ogg"))

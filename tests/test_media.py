@@ -15,6 +15,7 @@ MAGIC = {"mp3": b"ID3synthetic", "wav": b"RIFF\x00\x00\x00\x00WAVEsynthetic",
 def homes(monkeypatch, tmp_path):
     module = ModuleType("hermes_constants")
     module.get_hermes_home = lambda: tmp_path / "hermes"
+    module.get_default_hermes_root = lambda: tmp_path / "hermes"
     monkeypatch.setitem(sys.modules, "hermes_constants", module)
     monkeypatch.setattr(Path, "home", lambda: tmp_path / "user")
 
@@ -23,8 +24,8 @@ def homes(monkeypatch, tmp_path):
 def test_each_magic_kind(tmp_path, kind):
     path = tmp_path / "input.wav"
     path.write_bytes(MAGIC[kind])
-    resolved, detected = validate_input_file(path, max_bytes=100, kinds={kind})
-    assert resolved == path.resolve() and detected == kind
+    resolved, detected, data = validate_input_file(path, max_bytes=100, kinds={kind})
+    assert resolved == path.resolve() and detected == kind and data == MAGIC[kind]
 
 
 @pytest.mark.parametrize("header,kind", [(b"\xff\xe3synthetic", "mp3"), (b"\xff\xf9synthetic", "aac")])
@@ -92,3 +93,25 @@ def test_missing_and_directory_fail_safely(tmp_path):
     for path in (tmp_path / "missing.wav", tmp_path):
         with pytest.raises(InputFileError):
             validate_input_file(path, max_bytes=100, kinds={"wav"})
+
+
+@pytest.mark.parametrize("relative", ["hermes/.env", "hermes/auth.json", "hermes/profiles/b/.env", "hermes/AUTH.JSON", "user/.SSH/x"])
+def test_root_sibling_and_casefold_secret_paths(tmp_path, monkeypatch, relative):
+    import hermes_constants
+    monkeypatch.setattr(hermes_constants, "get_hermes_home", lambda: tmp_path / "hermes/profiles/a")
+    path = tmp_path / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(MAGIC["mp3"])
+    with pytest.raises(InputFileError, match="credential"):
+        validate_input_file(path, max_bytes=100, kinds={"mp3"})
+
+
+def test_core_safety_is_first_even_before_open(tmp_path, monkeypatch):
+    core = ModuleType("agent.file_safety")
+    calls = []
+    core.get_read_block_error = lambda path: calls.append(path) or "blocked"
+    monkeypatch.setitem(sys.modules, "agent.file_safety", core)
+    path = tmp_path / "does-not-exist.mp3"
+    with pytest.raises(InputFileError, match="Core file safety"):
+        validate_input_file(path, max_bytes=100, kinds={"mp3"})
+    assert calls == [str(path)]

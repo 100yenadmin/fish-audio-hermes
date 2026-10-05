@@ -35,7 +35,7 @@ def transport(monkeypatch):
 def test_model_header_fields_and_clean_transcript(tmp_path, model, suffix, expected):
     path = tmp_path / f"sample.{suffix}"
     path.write_bytes(b"synthetic audio")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(json={"text": "<|speaker:0|> Hello from the fish audio plugin for Hermes.\n <|speaker:12|> [laughter]"})
         result = stt.FishAudioTranscriptionProvider().transcribe(path, model=model, language="EN-us", prompt="ignore", extra="ignore")
         assert result == {"success": True, "transcript": "Hello from the fish audio plugin for Hermes. [laughter]", "provider": "fish-audio"}
@@ -62,7 +62,7 @@ def test_model_header_fields_and_clean_transcript(tmp_path, model, suffix, expec
 def test_mime_table_and_silence(tmp_path, suffix, mime):
     path = tmp_path / f"sample.{suffix}"
     path.write_bytes(b"synthetic audio")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(json={"text": ""})
         result = stt.FishAudioTranscriptionProvider().transcribe(path)
         assert result["success"] and result["transcript"] == ""
@@ -73,7 +73,7 @@ def test_mime_table_and_silence(tmp_path, suffix, mime):
 def test_invalid_language_omitted(tmp_path, language):
     path = tmp_path / "sample.ogg"
     path.write_bytes(b"OggSsynthetic")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(json={"text": "hello"})
         assert stt.FishAudioTranscriptionProvider().transcribe(path, language=language)["success"]
         assert "language" not in multipart(route.calls.last.request)
@@ -82,7 +82,7 @@ def test_invalid_language_omitted(tmp_path, language):
 def test_unknown_model_warning_once_no_echo(tmp_path, caplog):
     path = tmp_path / "sample.ogg"
     path.write_bytes(b"OggSsynthetic")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         mock.post(URL).respond(json={"text": ""})
         for _ in range(2):
             stt.FishAudioTranscriptionProvider().transcribe(path, model="test-key")
@@ -92,7 +92,7 @@ def test_unknown_model_warning_once_no_echo(tmp_path, caplog):
 def test_400_webm_error_is_safe_envelope(tmp_path):
     path = tmp_path / "sample.webm"
     path.write_bytes(b"\x1aE\xdf\xa3synthetic")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(400, json={"message": "Invalid audio input: private test-key"}, headers={"x-fish-trace-id": "fish-trace"})
         result = stt.FishAudioTranscriptionProvider().transcribe(path)
         assert not result["success"] and result["transcript"] == ""
@@ -104,8 +104,8 @@ def test_400_webm_error_is_safe_envelope(tmp_path):
 def test_never_raises(tmp_path, monkeypatch, failure):
     path = tmp_path / "sample.ogg"
     path.write_bytes(b"OggSsynthetic")
-    with respx.mock as mock:
-        route = mock.post(URL)
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(URL) if failure in {"transport", "json"} else None
         if failure == "file":
             path = tmp_path / "missing.ogg"
         elif failure == "transport":
@@ -133,7 +133,7 @@ def test_no_key_and_surface(monkeypatch):
                                       {"id": stt.MODEL_T1, "display": "Transcribe 1"}]
     assert provider.is_available()
     monkeypatch.setattr(stt, "fish_api_key", lambda: "")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         assert not provider.is_available()
         result = provider.transcribe("unused.ogg")
         assert not result["success"] and "hermes tools" in result["error"] and not mock.calls
@@ -143,7 +143,7 @@ def test_no_key_and_surface(monkeypatch):
 def test_asr_retries_before_response_bytes(tmp_path, status):
     path = tmp_path / "sample.ogg"
     path.write_bytes(b"OggSsynthetic")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).mock(side_effect=[httpx.Response(status), httpx.Response(200, json={"text": "ok"})])
         assert stt.FishAudioTranscriptionProvider().transcribe(path)["success"]
         assert route.call_count == 2
@@ -156,7 +156,15 @@ def test_asr_no_retry_after_partial_success_response(tmp_path):
             raise httpx.ReadError("private test-key")
     path = tmp_path / "sample.ogg"
     path.write_bytes(b"OggSsynthetic")
-    with respx.mock as mock:
+    with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).mock(return_value=httpx.Response(200, stream=Stream()))
         assert not stt.FishAudioTranscriptionProvider().transcribe(path)["success"]
         assert route.call_count == 1
+
+
+def test_adjacent_speaker_markers_preserve_word_boundary(tmp_path):
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(URL).respond(json={"text": "Hi.<|speaker:1|>Yo"})
+        assert stt.FishAudioTranscriptionProvider().transcribe(path)["transcript"] == "Hi. Yo"

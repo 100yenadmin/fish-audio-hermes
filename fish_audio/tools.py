@@ -11,7 +11,7 @@ SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio
                      "or [whispering]. For plain read-aloud use text_to_speech." + BILLING)
 
 
-def _speak(args, key, base, session):
+def _speak(args, key, base, session, *, record_media=True):
     text = args.get("text")
     require(isinstance(text, str) and bool(text.strip()), "Nothing to say: the text is empty.")
     model, defaulted = settings.resolve_model(args.get("model"), key=key, base_url=base)
@@ -47,7 +47,8 @@ def _speak(args, key, base, session):
     client.tts_to_file(params, key, base, str(path))
     as_voice = fmt in {"ogg", "mp3"}
     tag = ("[[audio_as_voice]]\n" if as_voice else "") + f"MEDIA:{path}"
-    hooks.record(session, path, as_voice)
+    if record_media:
+        hooks.record(session, path, as_voice)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
               "note": "Include media_tag verbatim in your reply so the user receives the audio."}
     if defaulted and model == "s2.1-pro-free":

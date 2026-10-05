@@ -40,6 +40,11 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         415: ("unsupported_media", "Fish Audio does not support this audio format."),
         429: ("rate_limit", "Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, ≥$100: 15, ≥$1k: 50 concurrent requests. Retry later."),
     }
+    if status == 400 and model in {"transcribe-1", "transcribe-1-pro"}:
+        message = "Fish Audio could not decode this audio."
+        if model == "transcribe-1":
+            message += " transcribe-1-pro accepts more formats (including WebM)."
+        messages[400] = ("invalid_request", message)
     headers = {str(k).lower(): v for k, v in (headers or {}).items()}
     kind, message = messages.get(status, ("availability", "Fish Audio is unavailable. Try again later."))
     code = next((v for v in (headers.get("x-fish-error-code"), data.get("code"))
@@ -56,7 +61,7 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         kind, message = "voice_not_found", by_kind["voice_not_found"]
     if code:
         message += f" Code: {code}."
-    if (model == "s2.1-pro-free" and status in {402, 403, 429}) or (defaulted and status == 402):
+    if (model == "s2.1-pro-free" and status in {402, 403, 429}) or (defaulted and status == 402 and model != "s2.1-pro"):
         message += f" Switch to s2.1-pro and top up: {BILLING_URL}"
     request_id = headers.get("x-request-id") or data.get("request_id")
     if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", request_id):

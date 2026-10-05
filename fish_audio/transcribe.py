@@ -42,7 +42,7 @@ def _srt(data):
 
 
 def execute(args, key, base, session):
-    path, kind = media.validate_input_file(args.get("file_path"), max_bytes=50 * 1024 * 1024, kinds=KINDS | {"aac"})
+    path, kind, audio = media.validate_input_file(args.get("file_path"), max_bytes=50 * 1024 * 1024, kinds=KINDS | {"aac"})
     model = args.get("model", MODEL_PRO)
     require(model in {MODEL_PRO, MODEL_T1}, "Use transcribe-1-pro or transcribe-1 (exact lowercase).")
     if model == MODEL_T1 and kind == "webm":
@@ -62,7 +62,7 @@ def execute(args, key, base, session):
         fields.update({name: str(value) for name, value in hints.items()})
     if "language" in args:
         fields["language"] = args["language"]
-    data = client.transcribe_audio(path.read_bytes(), path.name, MIMES.get(kind, "audio/aac"), fields,
+    data = client.transcribe_audio(audio, path.name, MIMES.get(kind, "audio/aac"), fields,
                                   key=key, base_url=base, model=model, read_timeout=600)
     segments = data.get("segments", [])
     result = {"text": data["text"], "language_code": data.get("language_code"), "duration": data.get("duration"),

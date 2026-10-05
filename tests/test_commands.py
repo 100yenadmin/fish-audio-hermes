@@ -1,0 +1,135 @@
+import copy
+from decimal import Decimal
+from pathlib import Path
+import sys
+from types import ModuleType
+
+import pytest
+import respx
+
+from fish_audio import account, commands, media, settings, state
+
+BASE = "https://api.fish.audio"
+VOICE = "a" * 32
+
+
+@pytest.fixture
+def config(monkeypatch, tmp_path):
+    data, saves = {"tts": {}, "stt": {}}, []
+    module = ModuleType("hermes_cli.config")
+    module.read_raw_config = lambda: copy.deepcopy(data)
+    def save(cfg, **kwargs):
+        assert kwargs == {"strip_defaults": False}
+        saves.append(copy.deepcopy(cfg))
+        data.clear()
+        data.update(copy.deepcopy(cfg))
+    module.save_config = save
+    module.is_managed = lambda: False
+    parent = ModuleType("hermes_cli")
+    parent.config = module
+    monkeypatch.setitem(sys.modules, "hermes_cli", parent)
+    monkeypatch.setitem(sys.modules, "hermes_cli.config", module)
+    monkeypatch.setattr(settings, "_config", lambda: data)
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "test-key")
+    monkeypatch.setattr(media, "audio_output_dir", lambda: tmp_path)
+    account._wallet_cache.clear()
+    monkeypatch.setattr(state, "_last", None)
+    return data, saves, module
+
+
+def wallet_routes(mock):
+    mock.get(BASE + "/wallet/self/api-credit?check_free_credit=true").respond(
+        json={"credit": "2.5", "cumulative_top_up": "10", "has_free_credit": False})
+    mock.get(BASE + "/wallet/self/package").respond(json={"type": "plus", "balance": 20, "total": 30, "finished_at": "date"})
+
+
+@pytest.mark.parametrize("raw", ["", "status", "voices", "use " + VOICE, "model s1", "preview " + VOICE, "balance"])
+def test_no_key_any_non_help_command(config, monkeypatch, raw):
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    with respx.mock(assert_all_called=True) as mock:
+        assert commands.handle(raw) == commands.NO_KEY
+        assert not mock.calls
+
+
+def test_help_and_key_shaped_arguments_never_echo(config, monkeypatch):
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    assert "preview" in commands.handle("help")
+    token = "sk-" + "x" * 48
+    for prefix in ("use ", "voices ", "help ", "preview " + VOICE + " "):
+        result = commands.handle(prefix + token)
+        assert result == commands.KEY_IN_CHAT and token not in result
+
+
+@pytest.mark.parametrize("provider,expected", [(None, "fish-audio"), ("", "fish-audio"),
+    ("fish-audio", "fish-audio"), ("evaos-fishaudio", "evaos-fishaudio"), ("elevenlabs", "elevenlabs")])
+def test_use_keeps_fish_provider_and_only_sets_unset(config, provider, expected):
+    data, saves, _ = config
+    data["tts"]["provider"] = provider
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model/" + VOICE).respond(json={"_id": VOICE})
+        result = commands.handle("use " + VOICE)
+    assert data["tts"]["provider"] == expected and data["tts"]["fish-audio"]["voice"] == VOICE
+    assert len(saves) == 1
+    assert ("Switch with" in result) == (provider == "elevenlabs")
+
+
+@pytest.mark.parametrize("status", [400, 404])
+def test_use_not_found_or_managed_does_not_write(config, status):
+    _, saves, _ = config
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model/" + VOICE).respond(status)
+        assert "Browse voices" in commands.handle("use " + VOICE)
+    assert not saves
+
+
+def test_managed_write_refused(config):
+    _, saves, module = config
+    module.is_managed = lambda: True
+    assert "managed" in commands.handle("model s1") and not saves
+
+
+def test_model_selection_and_unknown_rejected(config):
+    data, saves, _ = config
+    assert "Unknown" in commands.handle("model unknown") and not saves
+    assert commands.handle("model s2.1-pro-free") == "Saved.\n" + settings.FREE_MODEL_NOTICE
+    assert data["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
+
+
+def test_voices_top_five_and_status_balance(config):
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.get(BASE + "/model").respond(json={"items": [{"_id": VOICE, "title": "Warm", "languages": ["en"]}], "total": 1})
+        assert f"{VOICE} · Warm · en" in commands.handle("voices warm")
+        assert route.calls.last.request.url.params["page_size"] == "5"
+        wallet_routes(mock)
+        status = commands.handle("status")
+        assert len(status.splitlines()) <= 12 and "Key set: yes" in status and "paid account" in status
+        assert "API credit: 2.5" in status and "Plan: plus" in status and "test-key" not in status
+        balance = commands.handle("balance")
+        assert "20/30" in balance and "date" in balance and "separate from API credits" in balance
+
+
+def test_preview_native_voice_reply_and_bound(config):
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/wallet/self/api-credit?check_free_credit=true").respond(
+            json={"credit": "1", "cumulative_top_up": "0", "has_free_credit": False})
+        route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
+        reply = commands.handle("preview " + VOICE)
+        assert reply.startswith("[[audio_as_voice]]\nMEDIA:")
+        assert Path(reply.split("MEDIA:", 1)[1]).read_bytes() == b"OggSsynthetic"
+        assert route.called
+    assert "200 characters" in commands.handle("preview " + VOICE + " " + "a" * 201)
+
+
+@pytest.mark.parametrize("nested,managed,wallet,expected", [
+    ("s1", False, None, "nested"), (None, True, None, "managed pin"),
+    (None, False, None, "unknown wallet"),
+    (None, False, account.Wallet(Decimal(0), Decimal(0), False), "free tier"),
+])
+def test_status_model_reason(config, monkeypatch, nested, managed, wallet, expected):
+    data, _, _ = config
+    data["tts"]["fish-audio"] = {"model": nested}
+    data["plugins"] = {"entries": {"fish-audio": {"settings": {"allow_free_model": not managed}}}}
+    monkeypatch.setattr(account, "cached_wallet", lambda *a: wallet)
+    monkeypatch.setattr(settings, "cached_wallet", lambda *a: wallet)
+    monkeypatch.setattr(account, "get_package", lambda *a: None)
+    assert f"({expected})" in commands.status("test-key")
