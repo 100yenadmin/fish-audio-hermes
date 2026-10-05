@@ -4,8 +4,9 @@ entries:
   location: response
   field: user_id
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_account.py::test_package_only_allowed_fields
   spec:
     type: string
     enum: null
@@ -71,8 +72,9 @@ entries:
   location: response
   field: created_at
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[created_at]
   spec:
     type: string
     enum: null
@@ -87,8 +89,9 @@ entries:
   location: response
   field: updated_at
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[updated_at]
   spec:
     type: string
     enum: null
@@ -120,8 +123,9 @@ entries:
   location: response
   field: stripe_subscription_id
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[stripe_subscription_id]
   spec:
     type:
     - 'null'
@@ -140,8 +144,9 @@ entries:
   location: response
   field: stripe_price_id
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[stripe_price_id]
   spec:
     type:
     - 'null'
@@ -181,8 +186,9 @@ entries:
   location: response
   field: current_period_end
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[current_period_end]
   spec:
     type:
     - 'null'
@@ -200,9 +206,11 @@ entries:
   method: get
   location: response
   field: cancel_at_period_end
-  surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  surface: 'Account package allowlist projection: cancel_at_period_end is retained'
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_cancel_at_period_end_retained[True]
+  - tests/test_w2.py::test_package_cancel_at_period_end_retained[False]
   spec:
     type:
     - boolean
@@ -221,8 +229,9 @@ entries:
   location: response
   field: cancel_at
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[cancel_at]
   spec:
     type:
     - 'null'
@@ -241,8 +250,9 @@ entries:
   location: response
   field: scheduled_change
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[scheduled_change]
   spec:
     type:
     - 'null'
@@ -261,8 +271,9 @@ entries:
   location: response
   field: last_synced_at
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[last_synced_at]
   spec:
     type:
     - 'null'
@@ -281,8 +292,9 @@ entries:
   location: response
   field: subscription_currency
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[subscription_currency]
   spec:
     type:
     - 'null'
@@ -343,8 +355,9 @@ entries:
   location: response
   field: has_used_trial
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[has_used_trial]
   spec:
     type: boolean
     enum: null
@@ -359,8 +372,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-package]
   spec:
     type: integer
     enum: null
@@ -379,8 +393,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-package]
   spec:
     type: string
     enum: null
@@ -399,8 +414,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-package]
   spec:
     type:
     - 'null'
@@ -425,8 +441,9 @@ entries:
   location: query
   field: check_free_credit
   surface: Wallet API-credit availability query
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_wallet_free_credit_query
   spec:
     type: boolean
     enum: null
@@ -450,8 +467,9 @@ entries:
   location: response
   field: _id
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_wallet_private_fields_dropped[_id]
   spec:
     type: string
     enum: null
@@ -466,8 +484,9 @@ entries:
   location: response
   field: user_id
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_wallet_private_fields_dropped[user_id]
   spec:
     type: string
     enum: null
@@ -482,8 +501,11 @@ entries:
   location: response
   field: credit
   surface: account /fish balance credit; Desktop Voices Account
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
+  - tests/test_account.py::test_wallet_decimals_and_scope[0-0.5-True]
+  - tests/test_account.py::test_wallet_decimals_and_scope[0-0-False]
   spec:
     type: string
     enum: null
@@ -498,8 +520,11 @@ entries:
   location: response
   field: cumulative_top_up
   surface: account /fish balance cumulative_top_up; Desktop Voices Account
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
+  - tests/test_account.py::test_wallet_decimals_and_scope[0-0.5-True]
+  - tests/test_account.py::test_wallet_decimals_and_scope[0-0-False]
   spec:
     type: string
     enum: null
@@ -514,8 +539,9 @@ entries:
   location: response
   field: created_at
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_wallet_private_fields_dropped[created_at]
   spec:
     type: string
     enum: null
@@ -530,8 +556,9 @@ entries:
   location: response
   field: updated_at
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_wallet_private_fields_dropped[updated_at]
   spec:
     type: string
     enum: null
@@ -546,8 +573,9 @@ entries:
   location: response
   field: has_phone_sha256
   surface: 'Account privacy projection: this raw field is dropped'
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_wallet_private_fields_dropped[has_phone_sha256]
   spec:
     type: boolean
     enum: null
@@ -562,8 +590,11 @@ entries:
   location: response
   field: has_free_credit
   surface: account /fish balance has_free_credit; Desktop Voices Account
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
+  - tests/test_account.py::test_wallet_decimals_and_scope[0-0.5-True]
+  - tests/test_account.py::test_wallet_decimals_and_scope[0-0-False]
   spec:
     type:
     - boolean
@@ -582,8 +613,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-wallet]
   spec:
     type: integer
     enum: null
@@ -602,8 +634,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-wallet]
   spec:
     type: string
     enum: null
@@ -622,8 +655,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-wallet]
   spec:
     type:
     - 'null'
@@ -648,8 +682,10 @@ entries:
   location: header
   field: model
   surface: STT provider / fish_transcribe model
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_stt.py::test_model_header_fields_and_clean_transcript[None-ogg-transcribe-1-pro]
+  - tests/test_stt.py::test_model_header_fields_and_clean_transcript[transcribe-1-mp3-transcribe-1]
   spec:
     type: string
     enum:
@@ -673,8 +709,10 @@ entries:
   location: form
   field: language
   surface: STT provider / fish_transcribe language
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_stt.py::test_model_header_fields_and_clean_transcript[None-ogg-transcribe-1-pro]
+  - tests/test_stt.py::test_model_header_fields_and_clean_transcript[transcribe-1-mp3-transcribe-1]
   spec:
     type:
     - 'null'
@@ -787,8 +825,9 @@ entries:
   location: response
   field: language_code
   surface: fish_transcribe response language_code
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w1.py::test_transcribe_language_passes_string_only[English]
   spec:
     type:
     - 'null'
@@ -830,8 +869,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-asr]
   spec:
     type: integer
     enum: null
@@ -854,8 +894,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-asr]
   spec:
     type: string
     enum: null
@@ -878,8 +919,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-asr]
   spec:
     type:
     - 'null'
@@ -967,8 +1009,9 @@ entries:
   location: json
   field: references
   surface: TTS transport json references
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_client.py::test_msgpack_only_bytes_references[refs2-False]
   spec:
     type:
     - array
@@ -1198,8 +1241,9 @@ entries:
   location: msgpack
   field: text
   surface: TTS transport msgpack text
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[text]
   spec:
     type: string
     enum: null
@@ -1209,8 +1253,9 @@ entries:
   location: msgpack
   field: temperature
   surface: TTS transport msgpack temperature
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[temperature]
   spec:
     type: number
     enum: null
@@ -1220,8 +1265,9 @@ entries:
   location: msgpack
   field: top_p
   surface: TTS transport msgpack top_p
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[top_p]
   spec:
     type: number
     enum: null
@@ -1231,8 +1277,10 @@ entries:
   location: msgpack
   field: references
   surface: TTS transport msgpack references
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_client.py::test_msgpack_only_bytes_references[refs0-True]
+  - tests/test_client.py::test_msgpack_only_bytes_references[refs1-True]
   spec:
     type:
     - array
@@ -1244,8 +1292,9 @@ entries:
   location: msgpack
   field: reference_id
   surface: TTS transport msgpack reference_id
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[reference_id]
   spec:
     type:
     - array
@@ -1258,8 +1307,9 @@ entries:
   location: msgpack
   field: prosody
   surface: TTS transport msgpack prosody
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[prosody]
   spec:
     type:
     - 'null'
@@ -1271,8 +1321,9 @@ entries:
   location: msgpack
   field: chunk_length
   surface: TTS transport msgpack chunk_length
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[chunk_length]
   spec:
     type: integer
     enum: null
@@ -1282,8 +1333,9 @@ entries:
   location: msgpack
   field: normalize
   surface: TTS transport msgpack normalize
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[normalize]
   spec:
     type: boolean
     enum: null
@@ -1293,8 +1345,9 @@ entries:
   location: msgpack
   field: format
   surface: TTS transport msgpack format
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[format]
   spec:
     type: string
     enum:
@@ -1308,8 +1361,9 @@ entries:
   location: msgpack
   field: sample_rate
   surface: TTS transport msgpack sample_rate
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[sample_rate]
   spec:
     type:
     - integer
@@ -1321,8 +1375,9 @@ entries:
   location: msgpack
   field: mp3_bitrate
   surface: TTS transport msgpack mp3_bitrate
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[mp3_bitrate]
   spec:
     type: integer
     enum:
@@ -1335,8 +1390,9 @@ entries:
   location: msgpack
   field: opus_bitrate
   surface: TTS transport msgpack opus_bitrate
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[opus_bitrate]
   spec:
     type: integer
     enum:
@@ -1351,8 +1407,9 @@ entries:
   location: msgpack
   field: latency
   surface: TTS transport msgpack latency
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[latency]
   spec:
     type: string
     enum:
@@ -1365,8 +1422,9 @@ entries:
   location: msgpack
   field: max_new_tokens
   surface: TTS transport msgpack max_new_tokens
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[max_new_tokens]
   spec:
     type: integer
     enum: null
@@ -1376,8 +1434,9 @@ entries:
   location: msgpack
   field: repetition_penalty
   surface: TTS transport msgpack repetition_penalty
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[repetition_penalty]
   spec:
     type: number
     enum: null
@@ -1387,8 +1446,9 @@ entries:
   location: msgpack
   field: min_chunk_length
   surface: TTS transport msgpack min_chunk_length
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[min_chunk_length]
   spec:
     type: integer
     enum: null
@@ -1398,8 +1458,9 @@ entries:
   location: msgpack
   field: condition_on_previous_chunks
   surface: TTS transport msgpack condition_on_previous_chunks
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[condition_on_previous_chunks]
   spec:
     type: boolean
     enum: null
@@ -1409,8 +1470,9 @@ entries:
   location: msgpack
   field: early_stop_threshold
   surface: TTS transport msgpack early_stop_threshold
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[early_stop_threshold]
   spec:
     type: number
     enum: null
@@ -1420,8 +1482,9 @@ entries:
   location: msgpack
   field: features
   surface: TTS transport msgpack features
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[features]
   spec:
     type: array
     enum: null
@@ -1431,8 +1494,9 @@ entries:
   location: msgpack
   field: pronunciation_dictionary
   surface: TTS transport msgpack pronunciation_dictionary
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_tts_msgpack_fields_sent[pronunciation_dictionary]
   spec:
     type:
     - array
@@ -1444,8 +1508,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-tts]
   spec:
     type: integer
     enum: null
@@ -1468,8 +1533,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-tts]
   spec:
     type: string
     enum: null
@@ -1492,8 +1558,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-tts]
   spec:
     type:
     - 'null'
@@ -2181,8 +2248,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-timestamps]
   spec:
     type: integer
     enum: null
@@ -2205,8 +2273,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-timestamps]
   spec:
     type: string
     enum: null
@@ -2229,8 +2298,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-timestamps]
   spec:
     type:
     - 'null'
@@ -2314,7 +2384,7 @@ entries:
   location: response
   field: content
   surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
-  status: implemented
+  status: excluded
   tests: []
   spec:
     type: string
@@ -2325,12 +2395,13 @@ entries:
         type: string
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
   field: alignment
   surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
-  status: implemented
+  status: excluded
   tests: []
   spec:
     type:
@@ -2345,12 +2416,13 @@ entries:
         - object
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
   field: chunk_seq
   surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
-  status: implemented
+  status: excluded
   tests: []
   spec:
     type: integer
@@ -2361,12 +2433,13 @@ entries:
         type: integer
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
   field: chunk_audio_offset_sec
   surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
-  status: implemented
+  status: excluded
   tests: []
   spec:
     type: number
@@ -2377,12 +2450,13 @@ entries:
         type: number
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
   field: time
   surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
-  status: implemented
+  status: excluded
   tests: []
   spec:
     type:
@@ -2397,6 +2471,7 @@ entries:
         - number
         enum: null
         required: false
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
@@ -2444,7 +2519,7 @@ entries:
   location: response
   field: message
   surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
-  status: implemented
+  status: excluded
   tests: []
   spec:
     type:
@@ -2471,6 +2546,7 @@ entries:
         type: string
         enum: null
         required: true
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
@@ -2493,7 +2569,7 @@ entries:
   location: response
   field: max_concurrency
   surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
-  status: implemented
+  status: excluded
   tests: []
   spec:
     type:
@@ -2508,6 +2584,7 @@ entries:
         - 'null'
         enum: null
         required: false
+  reason: The plugin does not connect to /v1/tts/live/with-timestamp or consume its response fields. PCM streaming uses /v1/tts/live; timestamp synthesis uses /v1/tts/stream/with-timestamp (SSE). Binding tests from either other endpoint would not verify this field on the mapped endpoint.
 - path: /v1/tts/live/with-timestamp
   method: get
   location: response
@@ -2563,8 +2640,9 @@ entries:
   location: json
   field: reference_text
   surface: fish_voices design reference_text; Desktop Voices Create (design)
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_design_json_fields_sent[reference_text]
   spec:
     type:
     - 'null'
@@ -2576,8 +2654,9 @@ entries:
   location: json
   field: language
   surface: fish_voices design language; Desktop Voices Create (design)
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_design_json_fields_sent[language]
   spec:
     type:
     - 'null'
@@ -2601,8 +2680,9 @@ entries:
   location: json
   field: speed
   surface: fish_voices design speed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_design_json_fields_sent[speed]
   spec:
     type: number
     enum: null
@@ -2648,8 +2728,9 @@ entries:
   location: json
   field: seed
   surface: fish_voices design seed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_design_json_fields_sent[seed]
   spec:
     type:
     - integer
@@ -2680,8 +2761,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-design]
   spec:
     type: integer
     enum: null
@@ -2704,8 +2786,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-design]
   spec:
     type: string
     enum: null
@@ -2728,8 +2811,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-design]
   spec:
     type:
     - 'null'
@@ -2760,8 +2844,10 @@ entries:
   location: query
   field: page_size
   surface: fish_voices search/mine page_size; Desktop Voices Library and My voices
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_search_query_fields_sent[search]
+  - tests/test_w2.py::test_search_query_fields_sent[mine]
   spec:
     type: integer
     enum: null
@@ -2771,8 +2857,10 @@ entries:
   location: query
   field: page_number
   surface: fish_voices search/mine page_number; Desktop Voices Library and My voices
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_search_mapping[search-False]
+  - tests/test_tools.py::test_voice_search_mapping[mine-False]
   spec:
     type: integer
     enum: null
@@ -2782,8 +2870,10 @@ entries:
   location: query
   field: title
   surface: fish_voices search/mine title; Desktop Voices Library and My voices
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_search_mapping[search-False]
+  - tests/test_tools.py::test_voice_search_mapping[mine-False]
   spec:
     type:
     - 'null'
@@ -2795,8 +2885,10 @@ entries:
   location: query
   field: tag
   surface: fish_voices search/mine tag
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_search_mapping[search-False]
+  - tests/test_tools.py::test_voice_search_mapping[mine-False]
   spec:
     type:
     - array
@@ -2809,8 +2901,10 @@ entries:
   location: query
   field: self
   surface: fish_voices search/mine self; Desktop Voices Library and My voices
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_search_mapping[search-False]
+  - tests/test_tools.py::test_voice_search_mapping[mine-False]
   spec:
     type: boolean
     enum: null
@@ -2835,8 +2929,10 @@ entries:
   location: query
   field: language
   surface: fish_voices search/mine language; Desktop Voices Library and My voices
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_search_query_fields_sent[search]
+  - tests/test_w2.py::test_search_query_fields_sent[mine]
   spec:
     type:
     - array
@@ -2878,8 +2974,10 @@ entries:
   location: query
   field: sort_by
   surface: fish_voices search/mine sort_by
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_search_mapping[search-False]
+  - tests/test_tools.py::test_voice_search_mapping[mine-False]
   spec:
     type: string
     enum:
@@ -2934,8 +3032,9 @@ entries:
   location: response
   field: window_limited
   surface: Voice library projection window_limited
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_search_response_projection[window_limited]
   spec:
     type: boolean
     enum: null
@@ -2950,8 +3049,10 @@ entries:
   location: response
   field: total_is_exact
   surface: Voice library projection total_is_exact
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_search_response_projection[inexact]
+  - tests/test_w2.py::test_search_response_projection[exact]
   spec:
     type: boolean
     enum: null
@@ -2966,8 +3067,9 @@ entries:
   location: response
   field: total
   surface: Voice library projection total; Desktop Voices Library and My voices
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_search_response_projection[exact]
   spec:
     type: integer
     enum: null
@@ -2982,8 +3084,9 @@ entries:
   location: response
   field: items
   surface: Voice library projection items; Desktop Voices Library and My voices
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_search_response_projection[exact]
   spec:
     type: array
     enum: null
@@ -3220,8 +3323,9 @@ entries:
   location: form
   field: title
   surface: fish_voices clone/save title; Desktop Voices Create (clone, save design)
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_form_fields_sent[clone]
   spec:
     type: string
     enum: null
@@ -3231,8 +3335,9 @@ entries:
   location: form
   field: description
   surface: fish_voices clone/save description; Desktop Voices Create (clone, save design)
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_form_fields_sent[clone]
   spec:
     type:
     - 'null'
@@ -3323,8 +3428,9 @@ entries:
   location: form
   field: tags
   surface: fish_voices clone/save tags
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_form_fields_sent[clone]
   spec:
     type:
     - array
@@ -3543,8 +3649,9 @@ entries:
   location: response
   field: type
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[type]
   spec:
     type: string
     enum:
@@ -3580,8 +3687,9 @@ entries:
   location: response
   field: description
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[description]
   spec:
     type: string
     enum: null
@@ -3596,8 +3704,9 @@ entries:
   location: response
   field: cover_image
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[cover_image]
   spec:
     type: string
     enum: null
@@ -3612,8 +3721,9 @@ entries:
   location: response
   field: train_mode
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[train_mode]
   spec:
     type: string
     enum:
@@ -3657,8 +3767,9 @@ entries:
   location: response
   field: tags
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[tags]
   spec:
     type: array
     enum: null
@@ -3673,8 +3784,9 @@ entries:
   location: response
   field: samples
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[samples]
   spec:
     type: array
     enum: null
@@ -3689,8 +3801,9 @@ entries:
   location: response
   field: created_at
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[created_at]
   spec:
     type: string
     enum: null
@@ -3705,8 +3818,9 @@ entries:
   location: response
   field: updated_at
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[updated_at]
   spec:
     type: string
     enum: null
@@ -3721,8 +3835,9 @@ entries:
   location: response
   field: languages
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[languages]
   spec:
     type: array
     enum: null
@@ -3737,8 +3852,9 @@ entries:
   location: response
   field: visibility
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[visibility]
   spec:
     type: string
     enum:
@@ -3759,8 +3875,9 @@ entries:
   location: response
   field: lock_visibility
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[lock_visibility]
   spec:
     type: boolean
     enum: null
@@ -3775,8 +3892,9 @@ entries:
   location: response
   field: dmca_taken_down
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[dmca_taken_down]
   spec:
     type:
     - boolean
@@ -3795,8 +3913,9 @@ entries:
   location: response
   field: takedown_category
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[takedown_category]
   spec:
     type:
     - 'null'
@@ -3819,8 +3938,9 @@ entries:
   location: response
   field: default_text
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[default_text]
   spec:
     type: string
     enum: null
@@ -3856,8 +3976,9 @@ entries:
   location: response
   field: licensed
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[licensed]
   spec:
     type: boolean
     enum: null
@@ -3872,8 +3993,9 @@ entries:
   location: response
   field: pvc_release_state
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[pvc_release_state]
   spec:
     type:
     - 'null'
@@ -3896,8 +4018,9 @@ entries:
   location: response
   field: pvc_notice_period_months
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[pvc_notice_period_months]
   spec:
     type:
     - integer
@@ -3916,8 +4039,9 @@ entries:
   location: response
   field: pvc_released_at
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[pvc_released_at]
   spec:
     type:
     - 'null'
@@ -3936,8 +4060,9 @@ entries:
   location: response
   field: pvc_retire_requested_at
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[pvc_retire_requested_at]
   spec:
     type:
     - 'null'
@@ -3956,8 +4081,9 @@ entries:
   location: response
   field: pvc_retire_effective_at
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[pvc_retire_effective_at]
   spec:
     type:
     - 'null'
@@ -3976,8 +4102,9 @@ entries:
   location: response
   field: quality
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[quality]
   spec:
     type:
     - 'null'
@@ -3996,8 +4123,9 @@ entries:
   location: response
   field: like_count
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[like_count]
   spec:
     type: integer
     enum: null
@@ -4012,8 +4140,9 @@ entries:
   location: response
   field: mark_count
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[mark_count]
   spec:
     type: integer
     enum: null
@@ -4028,8 +4157,9 @@ entries:
   location: response
   field: shared_count
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[shared_count]
   spec:
     type: integer
     enum: null
@@ -4044,8 +4174,9 @@ entries:
   location: response
   field: task_count
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[task_count]
   spec:
     type: integer
     enum: null
@@ -4060,8 +4191,9 @@ entries:
   location: response
   field: unliked
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[unliked]
   spec:
     type: boolean
     enum: null
@@ -4076,8 +4208,9 @@ entries:
   location: response
   field: liked
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[liked]
   spec:
     type: boolean
     enum: null
@@ -4092,8 +4225,9 @@ entries:
   location: response
   field: marked
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[marked]
   spec:
     type: boolean
     enum: null
@@ -4108,8 +4242,9 @@ entries:
   location: response
   field: author
   surface: Clone/save allowlist projection; other model metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_clone_response_fields_dropped[author]
   spec:
     type: object
     enum: null
@@ -4124,8 +4259,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-clone]
   spec:
     type: integer
     enum: null
@@ -4144,8 +4280,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-clone]
   spec:
     type: string
     enum: null
@@ -4164,8 +4301,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-clone]
   spec:
     type:
     - 'null'
@@ -4190,8 +4328,9 @@ entries:
   location: response
   field: _id
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: string
     enum: null
@@ -4206,8 +4345,9 @@ entries:
   location: response
   field: type
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[type]
   spec:
     type: string
     enum:
@@ -4226,8 +4366,9 @@ entries:
   location: response
   field: title
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: string
     enum: null
@@ -4242,8 +4383,9 @@ entries:
   location: response
   field: description
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: string
     enum: null
@@ -4258,8 +4400,9 @@ entries:
   location: response
   field: cover_image
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[cover_image]
   spec:
     type: string
     enum: null
@@ -4274,8 +4417,9 @@ entries:
   location: response
   field: train_mode
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[train_mode]
   spec:
     type: string
     enum:
@@ -4294,8 +4438,9 @@ entries:
   location: response
   field: state
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: string
     enum:
@@ -4318,8 +4463,9 @@ entries:
   location: response
   field: tags
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: array
     enum: null
@@ -4351,8 +4497,9 @@ entries:
   location: response
   field: created_at
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[created_at]
   spec:
     type: string
     enum: null
@@ -4367,8 +4514,9 @@ entries:
   location: response
   field: updated_at
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[updated_at]
   spec:
     type: string
     enum: null
@@ -4383,8 +4531,9 @@ entries:
   location: response
   field: languages
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: array
     enum: null
@@ -4422,8 +4571,9 @@ entries:
   location: response
   field: lock_visibility
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[lock_visibility]
   spec:
     type: boolean
     enum: null
@@ -4438,8 +4588,9 @@ entries:
   location: response
   field: dmca_taken_down
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[dmca_taken_down]
   spec:
     type:
     - boolean
@@ -4458,8 +4609,9 @@ entries:
   location: response
   field: takedown_category
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[takedown_category]
   spec:
     type:
     - 'null'
@@ -4482,8 +4634,9 @@ entries:
   location: response
   field: default_text
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[default_text]
   spec:
     type: string
     enum: null
@@ -4519,8 +4672,9 @@ entries:
   location: response
   field: licensed
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[licensed]
   spec:
     type: boolean
     enum: null
@@ -4535,8 +4689,9 @@ entries:
   location: response
   field: pvc_release_state
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[pvc_release_state]
   spec:
     type:
     - 'null'
@@ -4559,8 +4714,9 @@ entries:
   location: response
   field: pvc_notice_period_months
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[pvc_notice_period_months]
   spec:
     type:
     - integer
@@ -4579,8 +4735,9 @@ entries:
   location: response
   field: pvc_released_at
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[pvc_released_at]
   spec:
     type:
     - 'null'
@@ -4599,8 +4756,9 @@ entries:
   location: response
   field: pvc_retire_requested_at
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[pvc_retire_requested_at]
   spec:
     type:
     - 'null'
@@ -4619,8 +4777,9 @@ entries:
   location: response
   field: pvc_retire_effective_at
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[pvc_retire_effective_at]
   spec:
     type:
     - 'null'
@@ -4639,8 +4798,9 @@ entries:
   location: response
   field: quality
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[quality]
   spec:
     type:
     - 'null'
@@ -4659,8 +4819,9 @@ entries:
   location: response
   field: like_count
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: integer
     enum: null
@@ -4675,8 +4836,9 @@ entries:
   location: response
   field: mark_count
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[mark_count]
   spec:
     type: integer
     enum: null
@@ -4691,8 +4853,9 @@ entries:
   location: response
   field: shared_count
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[shared_count]
   spec:
     type: integer
     enum: null
@@ -4707,8 +4870,9 @@ entries:
   location: response
   field: task_count
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: integer
     enum: null
@@ -4723,8 +4887,9 @@ entries:
   location: response
   field: unliked
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[unliked]
   spec:
     type: boolean
     enum: null
@@ -4739,8 +4904,9 @@ entries:
   location: response
   field: liked
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[liked]
   spec:
     type: boolean
     enum: null
@@ -4755,8 +4921,9 @@ entries:
   location: response
   field: marked
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_private_fields_dropped[marked]
   spec:
     type: boolean
     enum: null
@@ -4771,8 +4938,9 @@ entries:
   location: response
   field: author
   surface: Voice details allowlist projection; other metadata is dropped
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_detail_public_fields_projected
   spec:
     type: object
     enum: null
@@ -4787,8 +4955,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-get]
   spec:
     type: integer
     enum: null
@@ -4807,8 +4976,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-get]
   spec:
     type: string
     enum: null
@@ -4827,8 +4997,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-get]
   spec:
     type:
     - 'null'
@@ -4926,8 +5097,9 @@ entries:
   location: form
   field: title
   surface: fish_voices update title
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_tools.py::test_voice_mutation_status_and_no_retry[204-update]
   spec:
     type:
     - 'null'
@@ -4939,8 +5111,9 @@ entries:
   location: form
   field: description
   surface: fish_voices update description
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_form_fields_sent[update]
   spec:
     type:
     - 'null'
@@ -4988,8 +5161,9 @@ entries:
   location: form
   field: tags
   surface: fish_voices update tags
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_voice_form_fields_sent[update]
   spec:
     type:
     - array
@@ -5074,8 +5248,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-update]
   spec:
     type: integer
     enum: null
@@ -5094,8 +5269,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-update]
   spec:
     type: string
     enum: null
@@ -5114,8 +5290,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-update]
   spec:
     type:
     - 'null'
@@ -5140,8 +5317,9 @@ entries:
   location: response
   field: status
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[status-delete]
   spec:
     type: integer
     enum: null
@@ -5160,8 +5338,9 @@ entries:
   location: response
   field: message
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[message-delete]
   spec:
     type: string
     enum: null
@@ -5180,8 +5359,9 @@ entries:
   location: response
   field: reason
   surface: Safe FishAudioError projection; raw message/reason not echoed
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_w2.py::test_endpoint_error_fields_safely_projected[reason-delete]
   spec:
     type:
     - 'null'
