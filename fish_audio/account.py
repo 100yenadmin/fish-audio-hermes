@@ -66,7 +66,8 @@ def get_package(key, base_url) -> dict | None:
         data = _get("/wallet/self/package", key, base_url)
         if data is None:
             return None
-        fields = {"type", "total", "balance", "extra_balance", "finished_at", "billing_period", "subscription_status"}
+        fields = {"type", "total", "balance", "extra_balance", "finished_at", "billing_period", "subscription_status",
+                  "cancel_at_period_end"}
         return {k: v for k, v in data.items() if k in fields}
     except Exception:
         return None

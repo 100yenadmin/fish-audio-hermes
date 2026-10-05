@@ -1,5 +1,6 @@
 """Voice library operations and opaque, short-lived design receipts."""
 import base64
+import hashlib
 from collections import OrderedDict
 from pathlib import Path
 import threading
@@ -15,6 +16,10 @@ MIMES = {"mp3": "audio/mpeg", "wav": "audio/wav", "ogg": "audio/ogg",
 _DESIGNS = OrderedDict()
 _lock = threading.Lock()
 _clock = time.monotonic
+
+
+def _owner(key, base):
+    return hashlib.sha256(f"{key}\0{base}".encode()).hexdigest()
 
 
 def _prune():
@@ -116,30 +121,39 @@ def execute(args, key, base, session):
         body = {"instruction": instruction, "n": n}
         body.update({name: args[name] for name in ("reference_text", "language", "seed", "speed") if name in args})
         response = client.post_json("/v1/voice-design", body, key, base, 600)
-        candidates = []
+        decoded, candidates, written = [], [], []
         for i, item in enumerate(response.get("candidates", [])[:n]):
             signature = item.get("signature")
             require(isinstance(signature, str) and bool(signature), "Fish Audio returned no design signature; design again.")
-            path = media.audio_output_dir() / f"fish-design-{uuid4().hex}-{i}.wav"
-            audio = base64.b64decode(item["audio_base64"], validate=True)
-            media.atomic_write(path, [audio])
-            token = uuid4().hex
-            with _lock:
-                _prune()
-                _DESIGNS[token] = {"signature": signature, "text": item.get("text") or args.get("reference_text", ""),
-                                   "file_path": str(path), "audio": audio, "created": _clock()}
-                while len(_DESIGNS) > 64:
-                    _DESIGNS.popitem(last=False)
-            hooks.record(session, path, False)
-            candidates.append({"index": item.get("index", i), "file_path": str(path), "media_tag": f"MEDIA:{path}",
-                               "duration_ms": item.get("duration_ms"), "features": _features(item.get("features"), signature),
-                               "design_token": token})
+            decoded.append((i, item, signature, base64.b64decode(item["audio_base64"], validate=True)))
+        try:
+            for i, item, signature, audio in decoded:
+                path = media.audio_output_dir() / f"fish-design-{uuid4().hex}-{i}.wav"
+                token = uuid4().hex
+                written.append((path, token))
+                media.atomic_write(path, [audio])
+                with _lock:
+                    _prune()
+                    _DESIGNS[token] = {"signature": signature, "text": item.get("text") or args.get("reference_text", ""),
+                                       "file_path": str(path), "audio": audio, "created": _clock(), "owner": _owner(key, base)}
+                    while len(_DESIGNS) > 64:
+                        _DESIGNS.popitem(last=False)
+                hooks.record(session, path, False)
+                candidates.append({"index": item.get("index", i), "file_path": str(path), "media_tag": f"MEDIA:{path}",
+                                   "duration_ms": item.get("duration_ms"), "features": _features(item.get("features"), signature),
+                                   "design_token": token})
+        except Exception:
+            for path, token in written:
+                path.unlink(missing_ok=True)
+                with _lock:
+                    _DESIGNS.pop(token, None)
+            raise
         return {"candidates": candidates}
     if action == "save":
         with _lock:
             _prune()
             receipt = _DESIGNS.get(args.get("design_token"))
-        require(receipt is not None, "Unknown or expired design token; design again.")
+        require(receipt is not None and receipt.get("owner") == _owner(key, base), "Unknown or expired design token; design again.")
         data = _form(args)
         data.update(texts=[receipt["text"]], voice_design_signatures=[receipt["signature"]])
         files = [("voices", (Path(receipt["file_path"]).name, receipt["audio"], MIMES["wav"]))]

@@ -27,8 +27,9 @@ read-aloud and voice notes go through it.
 | **Expressive speech** | Fish Audio S2 models follow emotion and delivery cues such as `[excited]`, `[whispering]` and `[laughing]`. Multi-speaker dialogue and custom pronunciations are supported too. |
 | **Streaming voice** | CLI voice mode and Desktop voice replies stream each sentence as it is ready. In our tests the first audio bytes arrived 0.24–0.38 s after a sentence was sent (see [Streaming voice](#configuration) for how this was measured). |
 | **Voice library** | Search Fish Audio's community voices from chat (`/fish voices narrator`) and switch with `/fish use <id>`. |
-| **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting go through Hermes's approval gate, so by default Hermes asks you first. |
+| **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting from chat go through Hermes's approval gate, so by default Hermes asks you first. |
 | **Speech-to-text** | Voice notes and Desktop dictation are transcribed by `transcribe-1-pro`. `fish_transcribe` adds speaker turns, timestamps and SRT subtitles. |
+| **Desktop Voices page** | In Hermes Desktop: browse and preview voices, pick one for the agent, clone or design your own, and check your credit. |
 | **Account at a glance** | `/fish balance` shows your API credit and plan. When credits run out, tools and `/fish` commands reply with a top-up link; for voice replies, `/fish status` shows the last error. |
 
 ## Setup
@@ -79,6 +80,39 @@ Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
 through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`
 and `fish-audio:fish-audio-voice-studio`.
+
+## Hermes Desktop
+
+![The Voices page in Hermes Desktop: the Fish Audio voice library searched for "narrator", with Preview, Use and favourite on each voice](docs/media/screenshot-desktop-library.png)
+
+The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
+
+- **Library:** search Fish Audio's voices by name and language, preview them (a short billed sample), star
+  favourites, and choose **Use** to make a voice the agent's voice.
+- **My voices:** the voices you cloned or designed; delete one by typing its name.
+- **Create:** clone a voice from 1–3 recordings (up to 10 MB each, with the speaker's permission), or describe a
+  voice and save the candidate you like.
+- **Account:** API credit, plan credits and top-up links. The status bar shows your API credit, in orange when it
+  runs low.
+
+| Create | Account |
+|---|---|
+| ![Create: design a voice from a description and save a candidate, or clone one from recordings with the speaker's consent](docs/media/screenshot-desktop-create.png) | ![Account: API credit, plan credits, top-up and plan links](docs/media/screenshot-desktop-account.png) |
+
+The page has two halves in one package: routes that run **on the agent's gateway** and screens that run **in
+Hermes Desktop**. To install from Desktop:
+
+1. Open **Capabilities → Plugins → Install from Git**, enter `https://github.com/100yenadmin/fish-audio-hermes`,
+   choose **Review repository**, then **Install**. Desktop installs the agent half into the connected agent and
+   the desktop half on this computer.
+2. In **Capabilities → Plugins**, open **Fish Audio** and switch on **Desktop**. Desktop plugins stay off until
+   you turn them on.
+3. **Restart the agent's gateway** once. Hermes mounts plugin routes only at startup.
+
+If you installed the plugin with `hermes plugins install` on the gateway machine, do steps 1 and 2 on each
+computer that runs Desktop, and restart the gateway once after upgrading to 0.3.0. The **Voices** row appears only
+for agents whose gateway has the plugin; an agent without a Fish Audio key shows a card that links to the key page
+and the plugin's settings.
 
 ## Configuration
 
@@ -133,8 +167,9 @@ both providers still work. Config changes apply to the active profile; managed i
   never logged or put in error messages.
 - **Files** the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be regular audio
   files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
-- **Approvals:** cloning and deleting voices go through Hermes's approval gate and follow your Hermes approval
-  settings. By default Hermes asks you, and refuses when no one is there to answer.
+- **Approvals:** cloning and deleting voices from chat or the model tools go through Hermes's approval gate and
+  follow your Hermes approval settings. By default Hermes asks you, and refuses when no one is there to answer. The
+  Desktop Voices page confirms them on the page instead (see [Disclosure](#disclosure)).
 - Report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
 ## Disclosure
@@ -144,6 +179,16 @@ both providers still work. Config changes apply to the active profile; managed i
 - Fish Audio may use free-model requests to improve its models.
 - Streaming uses a small bridge into Hermes's streaming-voice registry until Hermes ships a public plugin streaming
   API. `FISH_AUDIO_HERMES_NO_BRIDGE=1` turns it off.
+- The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
+  existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a
+  designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a
+  speaker-consent box, a typed voice name) instead of through Hermes's approval gate; and Use sets the
+  profile's Fish voice, and its speech provider when none is set. Preview and design audio files are deleted
+  from the gateway once returned; a design's audio is held in gateway memory so you can save it, until it is
+  saved, a later design or save finds it over an hour old, or the gateway stops; clone uploads are deleted
+  after the clone, or by the next upload once idle for 15 minutes. With a key set, Desktop reads your Fish
+  wallet when an agent is selected and about every five minutes, for the status-bar credit; favourites stay in
+  Desktop's plugin storage on that computer, and fetched previews stay in the window's memory until it closes.
 
 ## Compatibility
 

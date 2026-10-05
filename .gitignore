@@ -9,3 +9,5 @@ dist-tmp/
 .hermes-pin/
 .pytest-tmp/
 .test-home/
+pinned/
+coverage/
