@@ -2,8 +2,18 @@
 
 ## 1.1.0 — 2026-10-06
 
-- Operator-managed keys hide account billing, plans and key links from agent users.
-- Desktop retries an unanswered first availability probe after 5, 15 and 30 seconds.
+- **Operator-managed keys.** When the Fish account behind an agent's key belongs to whoever runs the agent (for example
+  a managed evaOS agent), set `plugins.entries.fish-audio.settings.operator_account: true`. People using the agent then
+  never see that account: no balance or plan, no top-up, plan or API-key links, and no "billed to your Fish Audio
+  account" notes. This covers `/fish balance` and `/fish status`, tool descriptions, error messages, the gateway's
+  `/account` route and the Desktop Voices page (no Account tab or credit chip). Errors keep the same `error_kind`
+  values, so nothing that branches on them changes. Without the setting, everything works as before.
+- **Use never competes with a managed provider.** `/fish use` and the Voices page's **Use** now decide from the
+  effective configuration. Where a managed layer already sets the speech provider (such as evaOS's `evaos-fishaudio`),
+  they save only the voice, and never write a provider to the profile.
+- **Voices appears sooner after a slow start.** When an agent's gateway doesn't answer the first availability check
+  (a timeout or a server error), Hermes Desktop now retries after 5, 15 and 30 seconds, instead of waiting a minute.
+  An agent without the plugin still shows nothing. (#16)
 
 ## 1.0.4 — 2026-10-06
 
