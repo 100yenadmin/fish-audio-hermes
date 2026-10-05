@@ -48,7 +48,8 @@ import {
 } from './api'
 import { $playing, cachedPreview, play, playbackEpoch, releasePlayback, rememberPreview, stop } from './audio'
 import { CreateTab } from './create'
-import { LANGUAGES, LINKS, S } from './strings'
+import { $favouritesRevision, forgetFavourite, readFavourites, writeFavourites } from './favourites'
+import { LANGUAGES, LINKS, S, useAccountText } from './strings'
 import { BilledNote, card, LoadError, muted, Rows } from './ui'
 
 const pad = '0 24px'
@@ -101,7 +102,7 @@ export function VoicesPage() {
   if (!available.key) {
     return (
       <Frame profile={profile}>
-        <Onboarding profile={profile} />
+        <Onboarding profile={profile} operator={available.account === false} />
       </Frame>
     )
   }
@@ -125,22 +126,22 @@ function Frame({ children, profile, tabs }: { children: ReactNode; profile: stri
   )
 }
 
-function Onboarding({ profile }: { profile: string }) {
+function Onboarding({ profile, operator }: { profile: string; operator: boolean }) {
   const open = (url: string) => void pluginCtx().os.openExternal(url)
   return (
     <div style={{ padding: pad }}>
       <div style={{ ...card, maxWidth: 560 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{S.onboardTitle}</h2>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{S.onboardBody(profile)}</p>
-        <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingLeft: 20 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{operator ? S.operatorOnboardTitle : S.onboardTitle}</h2>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{operator ? S.operatorOnboardBody : S.onboardBody(profile)}</p>
+        {!operator && <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingLeft: 20 }}>
           <li>{S.onboardStep1}</li>
           <li>{S.onboardStep2}</li>
-        </ol>
+        </ol>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button onClick={() => open(LINKS.keys)}>{S.getKey}</Button>
+          {!operator && <><Button onClick={() => open(LINKS.keys)}>{S.getKey}</Button>
           <Button onClick={() => host.navigate('/capabilities?tab=plugins')} variant="secondary">
             {S.openPlugins}
-          </Button>
+          </Button></>}
           <Button onClick={() => void refreshAvailability()} variant="ghost">
             {S.checkAgain}
           </Button>
@@ -151,11 +152,17 @@ function Onboarding({ profile }: { profile: string }) {
 }
 
 function Body({ pin }: { pin: AgentPin }) {
-  const tab = useValue($tab)
+  const selected = useValue($tab)
+  const available = useValue($available)
+  const operator = available && available.account === false
+  // An operator's account spans its agents: its balance and its own voices are not this agent's to show.
+  const hidden = operator && (selected === 'account' || selected === 'mine')
+  const tab = hidden ? 'library' : selected
+  useEffect(() => { if (hidden) $tab.set('library') }, [hidden])
   const tabs = (
     <SegmentedControl
       onChange={(id: typeof tab) => $tab.set(id)}
-      options={(['library', 'mine', 'create', 'account'] as const).map(id => ({ id, label: S.tabs[id] }))}
+      options={(['library', 'mine', 'create', 'account'] as const).filter(id => !operator || (id !== 'account' && id !== 'mine')).map(id => ({ id, label: S.tabs[id] }))}
       value={tab}
     />
   )
@@ -179,30 +186,12 @@ function useDebounced<T>(value: T, ms: number): T {
   return settled
 }
 
-type Favourite = Pick<Voice, 'author' | 'id' | 'languages' | 'title'>
-
-const favouritesKey = (pin: AgentPin) => `favourites:${agentKey(pin)}`
-
-/** Storage holds the favourites; this changes on every write, so a mounted Library re-reads them. */
-const $favouritesRevision = atom(0)
-
-function writeFavourites(pin: AgentPin, list: Favourite[]) {
-  pluginCtx().storage.set(favouritesKey(pin), list)
-  $favouritesRevision.set($favouritesRevision.get() + 1)
-}
-
-/** A voice deleted from the account can no longer be previewed or used, so it leaves that agent's favourites too. */
-function forgetFavourite(pin: AgentPin, id: string) {
-  const list = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
-  if (list.some(f => f.id === id)) writeFavourites(pin, list.filter(f => f.id !== id))
-}
-
 function useFavourites(pin: AgentPin) {
   useValue($favouritesRevision)
-  const list = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
+  const list = readFavourites(pin)
   const toggle = (voice: Voice) => {
     // Read storage again: a delete may have changed it since this render.
-    const current = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
+    const current = readFavourites(pin)
     writeFavourites(
       pin,
       current.some(f => f.id === voice.id)
@@ -214,6 +203,7 @@ function useFavourites(pin: AgentPin) {
 }
 
 function Library({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
   const [text, setText] = useState('')
   const [language, setLanguage] = useState('any')
   const [page, setPage] = useState(1)
@@ -256,7 +246,7 @@ function Library({ pin }: { pin: AgentPin }) {
           {S.favouritesOnly}
         </Button>
       </div>
-      <BilledNote text={S.billedNote} />
+      <BilledNote text={billedNote} />
       {!favouritesOnly && voices.error ? (
         <LoadError error={voices.error} onRetry={() => void voices.refetch()} />
       ) : !list ? (
@@ -330,6 +320,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   favourites?: ReturnType<typeof useFavourites>
   onDelete?: (voice: Voice) => void
 }) {
+  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
   const playing = useValue($playing)
   const [busy, setBusy] = useState<null | string>(null)
   const [used, setUsed] = useState<null | string>(null)
@@ -396,7 +387,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 loading={busy === `play:${voice.id}`}
                 onClick={() => void run(`play:${voice.id}`, () => previewVoice(pin, voice.id))}
                 size="xs"
-                title={S.billedNote}
+                title={billedNote}
                 variant="secondary"
               >
                 <Codicon name={playing === key ? 'debug-stop' : 'play'} />
@@ -459,6 +450,7 @@ function Avatar({ title }: { title: string }) {
 }
 
 function MyVoices({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.billedNote, S.operatorBilledNote)
   const client = useQueryClient()
   const [page, setPage] = useState(1)
   const queryKey = ['fish-audio', agentKey(pin), 'mine']
@@ -471,7 +463,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
   const [target, setTarget] = useState<null | Voice>(null)
   return (
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
-      <BilledNote text={S.billedNote} />
+      <BilledNote text={billedNote} />
       {voices.error ? (
         <LoadError error={voices.error} onRetry={() => void voices.refetch()} />
       ) : !voices.data ? (

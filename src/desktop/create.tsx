@@ -2,9 +2,10 @@
 import { Button, Checkbox, Codicon, host, Input, Textarea, useQueryClient, useValue } from '@hermes/plugin-sdk'
 import { type ChangeEvent, useRef, useState } from 'react'
 
-import { type AgentPin, agentKey, type Candidate, currentAgentEpoch, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
+import { $available, type AgentPin, agentKey, type Candidate, currentAgentEpoch, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
 import { $playing, play, stop } from './audio'
-import { S } from './strings'
+import { keepCreated } from './favourites'
+import { S, useAccountText } from './strings'
 import { BilledNote, card, muted } from './ui'
 import { AgentChanged, cloneVoice, MAX_FILE_BYTES, MAX_FILES } from './upload'
 
@@ -20,6 +21,7 @@ export function CreateTab({ pin }: { pin: AgentPin }) {
 }
 
 function CloneCard({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.cloneBilled, S.operatorCloneBilled)
   const client = useQueryClient()
   const input = useRef<HTMLInputElement>(null)
   const [files, setFiles] = useState<File[]>([])
@@ -54,7 +56,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
         (n, sent, total) => setStatus(S.uploading(n, files.length, Math.round((sent / Math.max(1, total)) * 100)))
       )
       if (!samePin(currentPin(), pin)) return
-      setStatus(S.cloned(voice.title))
+      setStatus(keepCreated(pin, voice) ? S.operatorCloned(voice.title) : S.cloned(voice.title))
       setFiles([])
       setTitle('')
       setDescription('')
@@ -103,7 +105,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
           />
           <span>{S.consent}</span>
         </label>
-        <BilledNote text={S.cloneBilled} />
+        <BilledNote text={billedNote} />
         <div style={{ alignItems: 'center', display: 'flex', gap: 10 }}>
           <Button disabled={!ready} loading={busy} onClick={() => void submit()}>
             {S.clone}
@@ -120,6 +122,9 @@ function CloneCard({ pin }: { pin: AgentPin }) {
 }
 
 function DesignCard({ pin }: { pin: AgentPin }) {
+  const billedNote = useAccountText(S.designBilled, S.operatorDesignBilled)
+  const available = useValue($available)
+  const savedText = available && available.account === false ? S.operatorSaved : S.saved
   const client = useQueryClient()
   const playing = useValue($playing)
   const [instruction, setInstruction] = useState('')
@@ -160,7 +165,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
       const res = await post<{ voice: { id: string; title: string } }>('/design/save', { design_token: candidate.design_token, title }, 120_000)
       if (!samePin(currentPin(), pin)) return
       setSaved({ ...saved, [candidate.design_token]: res.voice.title })
-      host.notify({ kind: 'success', message: S.saved(res.voice.title) })
+      host.notify({ kind: 'success', message: keepCreated(pin, res.voice) ? S.operatorSaved(res.voice.title) : S.saved(res.voice.title) })
       void client.invalidateQueries({ queryKey: ['fish-audio', agentKey(pin), 'mine'] })
     } catch (error) {
       if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
@@ -184,7 +189,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
           rows={3}
           value={instruction}
         />
-        <BilledNote text={S.designBilled} />
+        <BilledNote text={billedNote} />
         <div>
           <Button disabled={!instruction.trim() || busy !== null} loading={busy === 'design'} onClick={() => void design()}>
             {busy === 'design' ? S.designing : S.design}
@@ -207,7 +212,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
                 {S.candidate(i + 1)}
               </Button>
               {saved[candidate.design_token] ? (
-                <span style={{ ...muted, fontSize: 12 }}>{S.saved(saved[candidate.design_token])}</span>
+                <span style={{ ...muted, fontSize: 12 }}>{savedText(saved[candidate.design_token])}</span>
               ) : (
                 <>
                   <div style={{ flex: 1, minWidth: 140 }}>

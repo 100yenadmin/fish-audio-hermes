@@ -139,6 +139,10 @@ def transport_settings():
     return _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
 
 
+def operator_account() -> bool:
+    return transport_settings().get("operator_account") is True
+
+
 def resolve_model(call_model, *, key, base_url, prefer_call: bool = False):
     config = _config()
     nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))

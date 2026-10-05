@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0 — 2026-10-06
+
+- **Operator-managed keys.** When the Fish account behind an agent's key belongs to whoever runs the agent (for example
+  a managed evaOS agent), set `plugins.entries.fish-audio.settings.operator_account: true`. People using the agent then
+  never see that account: no balance or plan, no top-up, plan or API-key links, and no "billed to your Fish Audio
+  account" notes. This covers `/fish balance` and `/fish status`, tool descriptions, error messages, the gateway's
+  `/account` route and the Desktop Voices page (no Account tab or credit chip). Because one operator account can serve
+  many agents, its own voices aren't listed either: there is no My voices tab, and listing, editing or deleting the
+  account's voices is refused on the Voices page, the gateway routes and `fish_voices`. Cloning and designing a voice
+  still work, and a voice created on the Voices page goes into that agent's Favourites, where Preview and Use reach it. Errors keep the same `error_kind` values, so nothing that branches on them changes. Without the
+  setting, everything works as before.
+- **Use never competes with a managed provider.** Where a managed layer already sets the speech provider (such as
+  evaOS's `evaos-fishaudio`), `/fish use` and the Voices page's **Use** save only the voice, and never write a provider
+  to the profile. Elsewhere they work as before: they select Fish Audio when the profile has no provider of its own.
+- **Voices appears sooner after a slow start.** When an agent's gateway doesn't answer the first availability check
+  (a timeout or a server error), Hermes Desktop now retries after 5, 15 and 30 seconds, instead of waiting a minute.
+  An agent without the plugin still shows nothing. (#16)
+
 ## 1.0.4 — 2026-10-06
 
 Hermes Desktop Voices page fixes, from a review of the evaOS Agent app's copy of the plugin (#13):

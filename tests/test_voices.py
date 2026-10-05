@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import respx
 
-from fish_audio import media, voices
+from fish_audio import media, settings, voices
 from fish_audio.tool_support import ToolInputError
 
 BASE = "https://api.fish.audio"
@@ -63,3 +63,21 @@ def test_partial_design_write_failure_removes_only_its_files_and_receipts(tmp_pa
             voices.execute({"action": "design", "instruction": "warm", "n": 2}, "synthetic-A", BASE, "")
     assert list(tmp_path.glob("fish-design-*.wav")) == [other]
     assert other.read_bytes() == b"keep" and set(voices._DESIGNS) == {"existing"}
+
+
+@pytest.mark.parametrize("args", [{"action": "mine"}, {"action": "update", "voice_id": "a" * 32, "title": "x"},
+                                  {"action": "delete", "voice_id": "a" * 32}])
+def test_operator_account_refuses_account_wide_voice_management(monkeypatch, args):
+    # One operator key can serve many agents: its own voices, edits and deletes span all of them.
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    with respx.mock(assert_all_called=False) as mock:
+        with pytest.raises(ToolInputError, match="managed by its operator"):
+            voices.execute(args, "synthetic-A", BASE, "")
+        assert not mock.calls
+    monkeypatch.setattr(settings, "operator_account", lambda: False)
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(BASE + "/model").respond(json={"items": [], "total": 0})
+        mock.patch(BASE + "/model/" + "a" * 32).respond(json={})
+        mock.delete(BASE + "/model/" + "a" * 32).respond(json={})
+        voices.execute(args, "synthetic-A", BASE, "")
+        assert len(mock.calls) == 1

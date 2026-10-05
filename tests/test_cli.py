@@ -245,3 +245,10 @@ def test_cli_status_without_key_matches_chat_setup(config, monkeypatch, capsys):
         assert run("status") == 0
         assert capsys.readouterr().out.strip() == commands.NO_KEY
         assert not mock.calls
+
+
+def test_cli_status_is_the_operator_view_in_operator_mode(config, monkeypatch, capsys):
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    assert run("status") == 0
+    assert capsys.readouterr().out.strip() == commands.NO_KEY

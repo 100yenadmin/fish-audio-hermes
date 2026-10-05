@@ -118,7 +118,7 @@ def upload(env, data, chunk=None):
 
 
 def test_available_reports_version_and_key_state(env, monkeypatch):
-    assert env.get("/available") == {"ok": True, "plugin": "fish-audio", "version": env.api.VERSION, "key": True}
+    assert env.get("/available") == {"ok": True, "plugin": "fish-audio", "version": env.api.VERSION, "key": True, "account": True}
     monkeypatch.setattr(env.api._fa("secrets"), "fish_api_key", lambda: "")
     assert env.get("/available")["key"] is False
 
@@ -775,3 +775,26 @@ def test_w1_preview_sends_configured_knobs(env):
         assert body["format"] == "mp3" and body["reference_id"] == VOICE
         assert body["text"] == "Configured preview" and body["temperature"] == 0.4
         assert body["prosody"]["volume"] == 0.7
+
+
+def test_operator_available_and_account_never_read_wallet(env, monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("operator REST route read the account")
+    module = env.api._fa("account")
+    monkeypatch.setattr(module, "get_wallet", forbidden)
+    monkeypatch.setattr(module, "get_package", forbidden)
+    settings = env.active().config["plugins"]["entries"]["fish-audio"]["settings"]
+    settings["operator_account"] = True
+    assert env.get("/available")["account"] is False
+    assert env.get("/account") == {"ok": False, "kind": "operator_account",
+        "message": "Billing for this agent's voice service is handled by its operator."}
+    # One operator key can serve many agents: the account's own voices and deletes span all of them.
+    with respx.mock(assert_all_called=False) as mock:
+        refused(env.get("/voices", self="true"), "operator_account")
+        refused(env.delete(f"/voices/{VOICE}"), "operator_account")
+        assert not mock.calls
+    monkeypatch.setattr(env.api._fa("secrets"), "fish_api_key", lambda: "")
+    assert env.get("/account")["kind"] == "operator_account"
+    assert env.get("/voices")["message"] == "Ask the operator of this agent to finish the Fish Audio setup."
+    settings["operator_account"] = False
+    assert env.get("/available")["account"] is True

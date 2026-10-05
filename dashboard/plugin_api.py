@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.0.4"
+VERSION = "1.1.0"
 
 _HOST_SCOPES = False
 
@@ -166,7 +166,7 @@ def _scope():
     """The requesting profile's key and API base URL, read fresh for this call."""
     key = _fa("secrets").fish_api_key()
     if not key:
-        raise Refusal("no_key", NO_KEY)
+        raise Refusal("no_key", "Ask the operator of this agent to finish the Fish Audio setup." if _fa("settings").operator_account() else NO_KEY)
     return key, _fa("commands").base_url()
 
 
@@ -191,12 +191,14 @@ def available() -> dict:
         key = bool(_fa("secrets").fish_api_key())
     except Exception:
         key = False
-    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key}
+    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key, "account": not _fa("settings").operator_account()}
 
 
 @router.get("/voices")
 @_protocol
 def list_voices(q: str = "", mine: bool = Query(False, alias="self"), page: int = 1, language: str = ""):
+    if mine and _fa("settings").operator_account():
+        raise Refusal("operator_account", _fa("voices").ACCOUNT_VOICES)
     key, base = _scope()
     if len(q) > 100 or (language and not LANGUAGE_RE.fullmatch(language)) or not 1 <= page <= 50:
         raise Refusal("invalid", "Use a shorter search, a language code like en or ja, and a page from 1 to 50.")
@@ -282,6 +284,8 @@ def _author_owned(ident: str, key: str, base: str) -> bool:
 @_protocol
 def delete_voice(voice_id: str):
     """Delete one of the account's own voices; anything else is refused before the delete request."""
+    if _fa("settings").operator_account():
+        raise Refusal("operator_account", _fa("voices").ACCOUNT_VOICES)
     key, base = _scope()
     ident = _voice_id(voice_id)
     if not _author_owned(ident, key, base):
@@ -293,6 +297,9 @@ def delete_voice(voice_id: str):
 @router.get("/account")
 @_protocol
 def account():
+    if _fa("settings").operator_account():
+        return {"ok": False, "kind": "operator_account",
+                "message": "Billing for this agent's voice service is handled by its operator."}
     key, base = _scope()
     module = _fa("account")
     wallet = module.get_wallet(key, base, strict=True)

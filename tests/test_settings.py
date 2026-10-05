@@ -148,3 +148,11 @@ def test_load_failure_defaults(config, monkeypatch):
         raise RuntimeError("synthetic config failure")
     monkeypatch.setattr(sys.modules["hermes_cli.config"], "load_config", fail)
     assert resolve()[0]["model"] == "s2.1-pro"
+
+
+@pytest.mark.parametrize("value,expected", [(True, True), (False, False), (None, False), (1, False), ("true", False)])
+def test_operator_account_strict_boolean(monkeypatch, value, expected):
+    monkeypatch.setattr(settings, "_config", lambda: {"plugins": {"entries": {"fish-audio": {"settings": {"operator_account": value}}}}})
+    assert settings.operator_account() is expected
+    monkeypatch.setattr(settings, "_config", lambda: {})
+    assert settings.operator_account() is False

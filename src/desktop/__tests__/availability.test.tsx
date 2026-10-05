@@ -56,7 +56,7 @@ describe('availability gate', () => {
     expect($availableError.get()).toBeNull() // loading again, not the last failure
     await retry
     await flush()
-    expect($available.get()).toEqual({ key: true, version: '1.0.4' })
+    expect($available.get()).toEqual({ key: true, version: '1.0.4', account: true })
     expect($availableError.get()).toBeNull()
     t.dispose()
   })
@@ -71,7 +71,7 @@ describe('availability gate', () => {
     }
     t.tickIntervals()
     await flush()
-    expect($available.get()).toEqual({ key: true, version: '1.0.4' })
+    expect($available.get()).toEqual({ key: true, version: '1.0.4', account: true })
     expect($availableError.get()).toBeNull()
     t.dispose()
   })
@@ -89,7 +89,9 @@ describe('availability gate', () => {
     expect(t.live.get('credit')?.area).toBe('statusBar.right')
     expect(t.live.get('palette-voices')?.data.label).toBe('Fish Audio: Voices')
     expect(t.live.get('palette-account')?.data.label).toBe('Fish Audio: Account')
-    expect($available.get()).toEqual({ key: true, version: '0.3.0' })
+    // Registration order is the palette order for entries without an explicit order: Voices first, as in 1.0.4.
+    expect([...t.live.keys()].filter(id => id.startsWith('palette-'))).toEqual(['palette-voices', 'palette-account'])
+    expect($available.get()).toEqual({ key: true, version: '0.3.0', account: true })
     expect($account.get()?.credit).toBe('0.40')
     t.dispose()
   })
@@ -174,7 +176,7 @@ describe('availability gate', () => {
 
   it('a re-enable starts unknown, not with the state left by the previous lifecycle', async () => {
     const { t } = backend({ '/available': () => new Promise(() => undefined) })
-    $available.set({ key: true, version: '1.0.1' }) // left by an earlier enable, possibly for another agent
+    $available.set({ key: true, version: '1.0.1', account: true }) // left by an earlier enable, possibly for another agent
     $account.set(ACCOUNT as any)
     plugin.register(t.ctx as any)
     expect($available.get()).toBeNull()
@@ -190,11 +192,11 @@ describe('availability gate', () => {
     pending[1].resolve({ ok: true, version: '0.3.0', key: false })
     await flush()
     expect(t.live.has('nav')).toBe(true)
-    expect($available.get()).toEqual({ key: false, version: '0.3.0' })
+    expect($available.get()).toEqual({ key: false, version: '0.3.0', account: true })
     pending[0].reject(ipc('404: {"detail":"Plugin not found"}')) // stale: about the previous agent
     await flush()
     expect(t.live.has('nav')).toBe(true)
-    expect($available.get()).toEqual({ key: false, version: '0.3.0' })
+    expect($available.get()).toEqual({ key: false, version: '0.3.0', account: true })
     t.dispose()
   })
 
@@ -277,5 +279,110 @@ describe('HTTP status parse', () => {
     expect(httpStatus(new Error('500: {"detail":"Error: 404: nested"}'))).toBe(500)
     expect(isNotFoundError(new Error('connect ECONNREFUSED 10.0.0.1:404'))).toBe(false)
     expect(isNotFoundError(new Error('timeout after 4040ms'))).toBe(false)
+  })
+})
+
+
+describe('operator account gate and first-probe backoff', () => {
+  it('hides account contributions and reads, and flips just those entries for the same agent', async () => {
+    let account = false
+    const { t, calls } = backend({ '/available': async () => ({ key: true, account }) })
+    plugin.register(t.ctx as any)
+    try {
+      await flush()
+      const nav = t.live.get('nav')
+      const voices = t.live.get('palette-voices')
+      expect(nav).toBeTruthy()
+      expect(voices).toBeTruthy()
+      expect(t.live.has('credit')).toBe(false)
+      expect(t.live.has('palette-account')).toBe(false)
+      expect($account.get()).toBeNull()
+      expect(calls).toEqual(['/available'])
+      account = true
+      t.tickIntervals()
+      await flush()
+      expect(t.live.has('credit')).toBe(true)
+      expect(t.live.has('palette-account')).toBe(true)
+      expect($account.get()).not.toBeNull()
+      account = false
+      t.tickIntervals()
+      await flush()
+      expect(t.live.get('nav')).toBe(nav)
+      expect(t.live.get('palette-voices')).toBe(voices)
+      expect(t.live.has('credit')).toBe(false)
+      expect(t.live.has('palette-account')).toBe(false)
+      expect($account.get()).toBeNull()
+      expect(calls.filter(p => p === '/account')).toHaveLength(1)
+    } finally { t.dispose() }
+  })
+
+  it('retries an unknown agent at 5/15/30 seconds, then leaves the normal interval running', async () => {
+    const { t, calls } = backend({ '/available': async () => { throw new Error('503: unavailable') } })
+    plugin.register(t.ctx as any)
+    try {
+      await flush()
+      for (const [index, ms] of [5_000, 15_000, 30_000].entries()) {
+        expect(t.timeouts[index].ms).toBe(ms)
+        expect(gated.some(id => t.live.has(id))).toBe(false)
+        t.fireTimeout(index)
+        await flush()
+      }
+      expect(t.timeouts).toHaveLength(3)
+      expect(calls).toHaveLength(4)
+      t.tickIntervals()
+      await flush()
+      expect(calls).toHaveLength(5)
+      expect(t.timeouts).toHaveLength(3)
+      expect(gated.some(id => t.live.has(id))).toBe(false)
+    } finally { t.dispose() }
+  })
+
+  it.each(['success', '404'])('stops scheduled backoff after %s', async result => {
+    let fail = true
+    const { t, calls } = backend({ '/available': async () => {
+      if (fail) throw new Error('500: failed')
+      if (result === '404') throw new Error('404: missing')
+      return { key: false }
+    } })
+    plugin.register(t.ctx as any)
+    try {
+      await flush()
+      fail = false
+      await refreshAvailability()
+      const before = calls.length
+      t.fireTimeout(0)
+      // Also invoke the callback despite cancellation to prove its state guard.
+      t.timeouts[0].fn()
+      await flush()
+      expect(calls).toHaveLength(before)
+      expect($available.get()).not.toBeNull()
+    } finally { t.dispose() }
+  })
+
+  it('a definite first 404 schedules no backoff', async () => {
+    const { t } = backend({ '/available': async () => { throw new Error('404: missing') } })
+    plugin.register(t.ctx as any)
+    try {
+      await flush()
+      expect(t.timeouts).toHaveLength(0)
+      expect(gated.some(id => t.live.has(id))).toBe(false)
+    } finally { t.dispose() }
+  })
+
+  it('skips retries scheduled before an agent change or disposal', async () => {
+    const { t, calls } = backend({ '/available': async () => { throw new Error('timeout') } })
+    plugin.register(t.ctx as any)
+    await flush()
+    host.state.profile.set('new-agent')
+    await flush()
+    const before = calls.length
+    t.timeouts[0].fn() // old agent, including a cancelled callback that was already queued
+    await flush()
+    expect(calls).toHaveLength(before)
+    expect(t.timeouts[1].ms).toBe(5_000)
+    t.dispose()
+    t.timeouts[1].fn()
+    await flush()
+    expect(calls).toHaveLength(before)
   })
 })

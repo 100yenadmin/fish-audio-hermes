@@ -39,7 +39,7 @@ def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_
     client = TestClient(server.app, headers={server._SESSION_HEADER_NAME: server._SESSION_TOKEN})
     available = client.get(PREFIX + "/available")
     assert available.status_code == 200
-    assert available.json() == {"ok": True, "plugin": "fish-audio", "version": module.VERSION, "key": True}
+    assert available.json() == {"ok": True, "plugin": "fish-audio", "version": module.VERSION, "key": True, "account": True}
     # The routes load the plugin's own package under a private name, beside (not inside) the agent loader's.
     assert module._PACKAGE in sys.modules and not module._PACKAGE.startswith("hermes_plugins")
     assert Path(sys.modules[module._PACKAGE].__file__).is_relative_to(home / "plugins" / "fish-audio")

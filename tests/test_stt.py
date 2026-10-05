@@ -263,3 +263,12 @@ def test_unreadable_local_file_is_invalid_request_not_availability(tmp_path, kin
         assert not mock.calls
     assert not result["success"] and result["error_kind"] == "invalid_request"
     assert "Could not read the audio file" in result["error"] and str(tmp_path) not in result["error"]
+
+
+def test_operator_stt_missing_key_presentation(monkeypatch):
+    from fish_audio import settings
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    monkeypatch.setattr(stt, "fish_api_key", lambda: "")
+    result = stt.FishAudioTranscriptionProvider().transcribe("unused.ogg")
+    assert result["error_kind"] == "credential"
+    assert result["error"] == "Ask the operator of this agent to finish the Fish Audio setup."

@@ -157,6 +157,16 @@ Under host plugin isolation (`plugins.isolation: host`, newer Hermes builds), th
 unavailable and voice replies use whole-file speech instead of streaming; `/fish`, the tools, the hooks and
 both providers still work. Config changes apply to the active profile; managed installs may refuse writes.
 
+### Operator-managed keys
+
+Set `plugins.entries.fish-audio.settings.operator_account: true` when the Fish account belongs to
+the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
+setup or credit problems to the operator. Because one operator account can serve many agents, the account's own
+voices aren't listed, edited or deleted from an agent (no My voices tab; `fish_voices` refuses `mine`, `update` and
+`delete`); cloning and designing still work, and a voice created on the Voices page goes into that agent's Favourites. It defaults to false. Tool descriptions update after a gateway restart.
+Operators should also pin `tts.fish-audio.model` or set `allow_free_model: false`, so the model never depends on
+the wallet that users can't see.
+
 ## Privacy and security
 
 - **No telemetry.** The plugin talks only to Fish Audio's API (`api.fish.audio`, or the `base_url` you configure),

@@ -9,7 +9,7 @@ from . import client
 from .errors import FishAudioError
 from .secrets import fish_api_key, redact
 from .settings import DEFAULT_BASE_URL, _base_url, transport_settings
-from .tts import FishAudioTTSProvider, SETUP_MESSAGE
+from .tts import FishAudioTTSProvider, setup_message
 from .state import record_failure
 
 MODEL_PRO = "transcribe-1-pro"
@@ -49,7 +49,7 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
         try:
             key = fish_api_key()
             if not key:
-                result.update(error=SETUP_MESSAGE, error_kind="credential")
+                result.update(error=setup_message(), error_kind="credential")
                 return result
             path = Path(file_path).expanduser()
             chosen = MODEL_PRO if model is None else str(model).strip().lower()

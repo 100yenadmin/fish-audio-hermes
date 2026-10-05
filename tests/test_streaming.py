@@ -386,3 +386,12 @@ def test_plugin_register_reaches_the_bridge(plugin, fake_ctx, hermes_streaming, 
     assert [p.name for p in fake_ctx.stt_providers] == ["fish-audio"]
     assert list(hermes_streaming._REGISTRY) == ["fish-audio"]
     assert hermes_streaming._REGISTRY["fish-audio"].__name__ == "FishStreamer"
+
+
+def test_operator_streaming_missing_key_presentation(monkeypatch):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    monkeypatch.setattr(streaming, "fish_api_key", lambda: "")
+    with pytest.raises(FishAudioError) as exc:
+        speak()
+    assert exc.value.kind == "credential"
+    assert exc.value.message == "Ask the operator of this agent to finish the Fish Audio setup."

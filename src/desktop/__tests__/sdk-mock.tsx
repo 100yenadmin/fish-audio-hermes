@@ -178,6 +178,7 @@ export interface TestContextOptions {
 export function createTestContext(options: TestContextOptions = {}) {
   const live = new Map<string, any>()
   const intervals: Array<() => void> = []
+  const timeouts: Array<{ fn: () => void; ms: number; cancelled: boolean }> = []
   const disposers: Array<() => void> = []
   const stored = new Map<string, unknown>()
   const ctx = {
@@ -186,7 +187,11 @@ export function createTestContext(options: TestContextOptions = {}) {
       return () => live.delete(contribution.id)
     },
     onDispose: (fn: () => void) => disposers.push(fn),
-    setTimeout: (fn: () => void) => (fn(), () => undefined),
+    setTimeout: (fn: () => void, ms: number) => {
+      const timer = { fn, ms, cancelled: false }
+      timeouts.push(timer)
+      return () => { timer.cancelled = true }
+    },
     setInterval: (fn: () => void) => (intervals.push(fn), () => undefined),
     rest: options.rest ?? (async () => ({ ok: true })),
     os: { writeClipboard: async (_text: string) => true, openExternal: async () => true },
@@ -201,6 +206,8 @@ export function createTestContext(options: TestContextOptions = {}) {
     live,
     tickIntervals: () => intervals.forEach(fn => fn()),
     stored,
+    timeouts,
+    fireTimeout: (index: number) => { const timer = timeouts[index]; if (!timer.cancelled) timer.fn() },
     dispose: () => disposers.forEach(fn => fn())
   }
 }

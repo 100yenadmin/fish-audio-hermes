@@ -73,6 +73,38 @@ def test_use_keeps_fish_provider_and_only_sets_unset(config, provider, expected)
     assert ("Switch with" in result) == (provider == "elevenlabs")
 
 
+def managed_layer(monkeypatch, layer):
+    module = ModuleType("hermes_cli.managed_scope")
+    module.load_managed_config = lambda: copy.deepcopy(layer)
+    sys.modules["hermes_cli"].managed_scope = module
+    monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", module)
+
+
+@pytest.mark.parametrize("pinned,reply", [("evaos-fishaudio", "Saved."), ("elevenlabs", "provider is elevenlabs")])
+def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch, pinned, reply):
+    data, saves, _ = config
+    # The profile layer has no provider; the managed layer (the evaOS overlay) pins one.
+    managed_layer(monkeypatch, {"tts": {"provider": pinned}})
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": pinned}})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model/" + VOICE).respond(json={"_id": VOICE})
+        result = commands.handle("use " + VOICE)
+    assert reply in result
+    assert len(saves) == 1 and "provider" not in saves[0]["tts"] and saves[0]["tts"]["fish-audio"]["voice"] == VOICE
+
+
+@pytest.mark.parametrize("layer", [{}, {"tts": {"voice": "x"}}, {"tts": {"provider": ""}}, {"tts": {"provider": 3}}])
+def test_use_sets_fish_when_only_hermes_default_is_in_effect(config, monkeypatch, layer):
+    data, saves, _ = config
+    # Hermes's merged config always carries its default provider; with no managed pin Use still selects Fish.
+    managed_layer(monkeypatch, layer)
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": "edge"}})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model/" + VOICE).respond(json={"_id": VOICE})
+        assert commands.handle("use " + VOICE) == "Saved."
+    assert saves[0]["tts"]["provider"] == "fish-audio"
+
+
 @pytest.mark.parametrize("status", [400, 404])
 def test_use_not_found_or_managed_does_not_write(config, status):
     _, saves, _ = config
@@ -172,3 +204,53 @@ def test_status_model_reason(config, monkeypatch, nested, managed, wallet, expec
     monkeypatch.setattr(settings, "cached_wallet", lambda *a: wallet)
     monkeypatch.setattr(account, "get_package", lambda *a: None)
     assert f"({expected})" in commands.status("test-key")
+
+
+def test_operator_chat_hides_account_without_wallet_reads(config, monkeypatch):
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    def forbidden(*args, **kwargs):
+        pytest.fail("operator chat read the account")
+    for name in ("get_wallet", "cached_wallet", "get_package"):
+        monkeypatch.setattr(account, name, forbidden)
+    monkeypatch.setattr(settings, "cached_wallet", forbidden)
+    assert commands.handle("balance") == "Voice billing for this agent is handled by its operator."
+    state.record_failure("quota", "Top up https://fish.audio/app/developers/billing")
+    output = commands.status()
+    assert "Top up" not in output and "fish.audio/app" not in output
+    assert "quota" in output
+    assert "Account: managed by the operator" in output
+    assert "API credit" not in output and "Plan:" not in output and "paid account" not in output
+    # The unpinned default follows the operator's wallet, which status doesn't read: it names no model.
+    assert "Model: Fish default (operator managed)" in output and "s2.1-pro" not in output
+    config[0]["tts"]["fish-audio"] = {"model": "s1"}
+    assert "Model: s1 (operator managed)" in commands.status()
+    assert commands.handle("model s2.1-pro-free") == "Saved."
+    assert "http" not in commands.handle("sk-" + "x" * 30)
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    assert commands.handle("balance") == "Voice billing for this agent is handled by its operator."
+    assert commands.handle("status") == "Ask the operator of this agent to finish the Fish Audio setup."
+    config[0]["plugins"]["entries"]["fish-audio"]["settings"]["operator_account"] = False
+    assert commands.handle("balance") == commands.NO_KEY
+
+
+def test_operator_terminal_status_keeps_the_account_view(config, monkeypatch):
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    with respx.mock(assert_all_called=True) as mock:
+        wallet_routes(mock)
+        output = commands.handle("status", end_user=False)
+    assert "API credit: 2.5" in output and "Plan: plus" in output and "operator" not in output
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    assert commands.handle("status", end_user=False) == commands.NO_KEY
+    assert commands.handle("status") == "Ask the operator of this agent to finish the Fish Audio setup."
+
+
+def test_model_notice_reads_the_operator_setting_after_the_write(config):
+    data, _, module = config
+    data["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": False}}}}
+    save = module.save_config
+    def save_then_turn_on_operator_mode(cfg, **kwargs):
+        save(cfg, **kwargs)
+        data["plugins"]["entries"]["fish-audio"]["settings"]["operator_account"] = True
+    module.save_config = save_then_turn_on_operator_mode
+    assert commands.handle("model s2.1-pro-free") == "Saved."
+    assert commands.handle("model s2.1-pro-free", end_user=False).startswith("Saved.\n")

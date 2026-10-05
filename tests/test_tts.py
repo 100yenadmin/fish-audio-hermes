@@ -103,3 +103,20 @@ def test_static_surfaces_never_query_wallet(monkeypatch):
     assert provider.is_available()
     assert provider.default_model() == "s2.1-pro"
     assert provider.get_setup_schema() and provider.list_models()
+
+
+def test_operator_provider_setup_and_notice_are_private(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    monkeypatch.setattr(tts, "fish_api_key", lambda: "")
+    provider = tts.FishAudioTTSProvider()
+    with pytest.raises(ValueError, match="Ask the operator") as exc:
+        provider.synthesize("hello", str(tmp_path / "out.mp3"))
+    assert "http" not in str(exc.value)
+    assert provider.get_setup_schema()["env_vars"][0]["url"] == "https://fish.audio/app/api-keys"
+    monkeypatch.setattr(tts, "fish_api_key", lambda: "test-key")
+    monkeypatch.setattr(settings, "_config", lambda: {})
+    monkeypatch.setattr(settings, "cached_wallet", lambda *args: Wallet(Decimal(0), Decimal(0), False))
+    monkeypatch.setattr(tts.client, "tts_to_file", lambda *args: None)
+    metadata = {}
+    provider.synthesize("hello", str(tmp_path / "out.mp3"), result_metadata=metadata)
+    assert "fish_audio_notice" not in metadata
