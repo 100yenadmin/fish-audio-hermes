@@ -118,12 +118,6 @@ and the plugin's settings.
 
 All settings are per profile.
 
-### Operator-managed keys
-
-Set `plugins.entries.fish-audio.settings.operator_account: true` when the Fish account belongs to
-the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
-setup or credit problems to the operator. It defaults to false. Tool descriptions update after a gateway restart.
-
 ```yaml
 tts:
   provider: fish-audio
@@ -162,6 +156,14 @@ WebSocket for diagnosis. Reviewers and packagers can turn the registration off w
 Under host plugin isolation (`plugins.isolation: host`, newer Hermes builds), the `hermes fish` terminal command is
 unavailable and voice replies use whole-file speech instead of streaming; `/fish`, the tools, the hooks and
 both providers still work. Config changes apply to the active profile; managed installs may refuse writes.
+
+### Operator-managed keys
+
+Set `plugins.entries.fish-audio.settings.operator_account: true` when the Fish account belongs to
+the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
+setup or credit problems to the operator. It defaults to false. Tool descriptions update after a gateway restart.
+Operators should also pin `tts.fish-audio.model` or set `allow_free_model: false`, so the model never depends on
+the wallet that users can't see.
 
 ## Privacy and security
 

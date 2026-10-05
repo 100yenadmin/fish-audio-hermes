@@ -8,9 +8,9 @@
   account" notes. This covers `/fish balance` and `/fish status`, tool descriptions, error messages, the gateway's
   `/account` route and the Desktop Voices page (no Account tab or credit chip). Errors keep the same `error_kind`
   values, so nothing that branches on them changes. Without the setting, everything works as before.
-- **Use never competes with a managed provider.** `/fish use` and the Voices page's **Use** now decide from the
-  effective configuration. Where a managed layer already sets the speech provider (such as evaOS's `evaos-fishaudio`),
-  they save only the voice, and never write a provider to the profile.
+- **Use never competes with a managed provider.** Where a managed layer already sets the speech provider (such as
+  evaOS's `evaos-fishaudio`), `/fish use` and the Voices page's **Use** save only the voice, and never write a provider
+  to the profile. Elsewhere they work as before: they select Fish Audio when the profile has no provider of its own.
 - **Voices appears sooner after a slow start.** When an agent's gateway doesn't answer the first availability check
   (a timeout or a server error), Hermes Desktop now retries after 5, 15 and 30 seconds, instead of waiting a minute.
   An agent without the plugin still shows nothing. (#16)

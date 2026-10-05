@@ -79,16 +79,6 @@ export function registerAvailabilityGate(ctx: PluginContext) {
 
   const show = (available: boolean, account = false) => {
     if (disposed) return
-    if (available && account && !accountRemovers) {
-      accountRemovers = [
-        ctx.register({ id: 'credit', area: STATUSBAR_AREAS.right, order: 70, render: () => <CreditChip /> }),
-        ctx.register({ id: 'palette-account', area: PALETTE_AREA,
-          data: { id: 'fish-audio.account', keywords: ['fish', 'credit', 'balance'], label: S.paletteAccount, run: () => openTab('account') } satisfies PaletteContribution })
-      ]
-    } else if ((!available || !account) && accountRemovers) {
-      accountRemovers.forEach(remove => remove())
-      accountRemovers = null
-    }
     if (available && !removers) {
       removers = [
         ctx.register({
@@ -106,6 +96,17 @@ export function registerAvailabilityGate(ctx: PluginContext) {
     } else if (!available && removers) {
       removers.forEach(remove => remove())
       removers = null
+    }
+    // After the nav block, so the palette lists Voices before Account as in 1.0.4.
+    if (available && account && !accountRemovers) {
+      accountRemovers = [
+        ctx.register({ id: 'credit', area: STATUSBAR_AREAS.right, order: 70, render: () => <CreditChip /> }),
+        ctx.register({ id: 'palette-account', area: PALETTE_AREA,
+          data: { id: 'fish-audio.account', keywords: ['fish', 'credit', 'balance'], label: S.paletteAccount, run: () => openTab('account') } satisfies PaletteContribution })
+      ]
+    } else if ((!available || !account) && accountRemovers) {
+      accountRemovers.forEach(remove => remove())
+      accountRemovers = null
     }
   }
 

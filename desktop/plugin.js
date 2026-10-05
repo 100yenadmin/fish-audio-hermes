@@ -1034,19 +1034,6 @@ function registerAvailabilityGate(ctx) {
   $availableError.set(null);
   const show = (available, account = false) => {
     if (disposed) return;
-    if (available && account && !accountRemovers) {
-      accountRemovers = [
-        ctx.register({ id: "credit", area: STATUSBAR_AREAS.right, order: 70, render: () => /* @__PURE__ */ jsx4(CreditChip, {}) }),
-        ctx.register({
-          id: "palette-account",
-          area: PALETTE_AREA,
-          data: { id: "fish-audio.account", keywords: ["fish", "credit", "balance"], label: S.paletteAccount, run: () => openTab("account") }
-        })
-      ];
-    } else if ((!available || !account) && accountRemovers) {
-      accountRemovers.forEach((remove) => remove());
-      accountRemovers = null;
-    }
     if (available && !removers) {
       removers = [
         ctx.register({
@@ -1064,6 +1051,19 @@ function registerAvailabilityGate(ctx) {
     } else if (!available && removers) {
       removers.forEach((remove) => remove());
       removers = null;
+    }
+    if (available && account && !accountRemovers) {
+      accountRemovers = [
+        ctx.register({ id: "credit", area: STATUSBAR_AREAS.right, order: 70, render: () => /* @__PURE__ */ jsx4(CreditChip, {}) }),
+        ctx.register({
+          id: "palette-account",
+          area: PALETTE_AREA,
+          data: { id: "fish-audio.account", keywords: ["fish", "credit", "balance"], label: S.paletteAccount, run: () => openTab("account") }
+        })
+      ];
+    } else if ((!available || !account) && accountRemovers) {
+      accountRemovers.forEach((remove) => remove());
+      accountRemovers = null;
     }
   };
   const probe = (force = false) => {

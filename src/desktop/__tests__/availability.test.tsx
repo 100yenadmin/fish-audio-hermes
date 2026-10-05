@@ -89,6 +89,8 @@ describe('availability gate', () => {
     expect(t.live.get('credit')?.area).toBe('statusBar.right')
     expect(t.live.get('palette-voices')?.data.label).toBe('Fish Audio: Voices')
     expect(t.live.get('palette-account')?.data.label).toBe('Fish Audio: Account')
+    // Registration order is the palette order for entries without an explicit order: Voices first, as in 1.0.4.
+    expect([...t.live.keys()].filter(id => id.startsWith('palette-'))).toEqual(['palette-voices', 'palette-account'])
     expect($available.get()).toEqual({ key: true, version: '0.3.0', account: true })
     expect($account.get()?.credit).toBe('0.40')
     t.dispose()
