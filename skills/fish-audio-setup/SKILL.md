@@ -7,7 +7,9 @@ required_environment_variables:
     help: https://fish.audio/app/api-keys
 ---
 
-Set up Fish Audio for the active Hermes profile.
+Set up Fish Audio for the active Hermes profile. If `/fish balance` says billing is handled by the operator, the
+account belongs to this agent's operator: never send the user to Fish's key, billing or plan pages; ask them to
+contact the operator.
 
 1. Create a key at https://fish.audio/app/api-keys. Never ask the user to paste it into chat.
    Use Desktop ▸ Plugins ▸ Fish Audio, `hermes tools`, or `hermes fish login` on the Hermes machine.

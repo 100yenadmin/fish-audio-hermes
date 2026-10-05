@@ -239,7 +239,7 @@ def preview(body: Preview):
     finally:
         path.unlink(missing_ok=True)
     return {"ok": True, "audio": base64.b64encode(audio).decode("ascii"), "mime": "audio/mpeg",
-            "model": result["model"], "billed": True}
+            **({"model": result["model"]} if "model" in result else {}), "billed": True}
 
 
 class Use(BaseModel):

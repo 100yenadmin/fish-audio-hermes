@@ -3,13 +3,13 @@ name: fish-audio-voice-studio
 description: Find, clone, design and manage a Fish Audio voice for this agent
 ---
 
-Use `fish_voices` for the voice library and voice creation. Calls are billed to the user's Fish Audio account.
+Use `fish_voices` for the voice library and voice creation. Calls are billed to the Fish Audio account behind this agent's key.
 Never ask for an API key in chat; use the setup skill or `hermes fish login` on the Hermes machine.
 
 Search public voices with `action: search`, a query/language/tags, and at most 20 results per page.
 Search also accepts `author_id`, `title_language` (one code or 1–10 codes) and boolean `licensed`;
 these filters apply only to search. Results include `has_more` when Fish returns a boolean.
-Use `action: mine` for voices in the user's Fish account. Search windows end at 1,000 results;
+Use `action: mine` for voices in that account; it is refused when the agent's operator manages the account. Search windows end at 1,000 results;
 "1000+" is a lower bound. Use `action: get` with a voice id to inspect text-only sample descriptions.
 
 For cloning, ask the user to confirm the speaker's permission. Set `consent: true` only after that confirmation.

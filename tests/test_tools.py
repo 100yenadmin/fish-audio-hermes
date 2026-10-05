@@ -315,6 +315,11 @@ def test_operator_tool_notice_and_missing_key(monkeypatch):
         mock.post(BASE + "/v1/tts").respond(content=b"audio")
         result = call(tools.fish_speak, text="hello")
     assert result["success"] and "notice" not in result
+    # The unpinned default follows the operator's wallet, so the result names no model; a requested one is shown.
+    assert "model" not in result
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/v1/tts").respond(content=b"audio")
+        assert call(tools.fish_speak, text="hello", model="s1")["model"] == "s1"
     monkeypatch.setattr("fish_audio.tool_support.fish_api_key", lambda: "")
     result = call(tools.fish_speak, text="hello")
     assert result["error"] == "Ask the operator of this agent to finish the Fish Audio setup."

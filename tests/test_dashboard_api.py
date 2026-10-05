@@ -798,3 +798,14 @@ def test_operator_available_and_account_never_read_wallet(env, monkeypatch):
     assert env.get("/voices")["message"] == "Ask the operator of this agent to finish the Fish Audio setup."
     settings["operator_account"] = False
     assert env.get("/available")["account"] is True
+
+
+def test_operator_preview_names_no_wallet_chosen_model(env):
+    settings = env.active().config["plugins"]["entries"]["fish-audio"]["settings"]
+    for operator, named in ((False, True), (True, False)):
+        settings["operator_account"] = operator
+        with respx.mock(assert_all_called=True) as mock:
+            mock.post(env.active().base + "/v1/tts").respond(content=MP3)
+            body = env.post("/preview", voice=VOICE, text="Hello there")
+        assert body["ok"] and ("model" in body) is named
+    settings["operator_account"] = False

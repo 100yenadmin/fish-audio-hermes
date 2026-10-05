@@ -72,10 +72,15 @@ def on_pre_tool_call(tool_name="", args=None, **kwargs):
             title = json.dumps(_approval_string(args.get("title", "")))
             paths = args.get("sample_paths")
             count = len(paths) if isinstance(paths, list) else "?"
+            from . import settings  # Lazy, like errors.py: settings imports modules that import this one.
+            account = "this agent's voice account" if settings.operator_account() else "your Fish account"
             message = (f'Fish Audio: clone a voice named {title} from '
-                       f'{count} sample file(s) to your Fish account')
+                       f'{count} sample file(s) to {account}')
             rule = "fish-audio:clone"
         elif args.get("action") == "delete":
+            from . import settings
+            if settings.operator_account():
+                return None  # fish_voices refuses it before any request; asking the user to approve would mislead.
             voice = _approval_string(args.get("voice_id", ""))
             message, rule = f"Fish Audio: permanently delete voice {json.dumps(voice)}", f"fish-audio:delete:{voice}"
         else:
