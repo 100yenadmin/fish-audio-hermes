@@ -24,6 +24,7 @@ export interface Account {
   cumulative_top_up: string
   has_free_credit: boolean | null
   low: boolean
+  package_unavailable?: boolean
   package: null | {
     type?: string
     total?: number

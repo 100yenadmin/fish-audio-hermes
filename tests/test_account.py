@@ -7,6 +7,7 @@ import pytest
 import respx
 
 from fish_audio import account, client
+from fish_audio.errors import FishAudioError
 
 BASE = "https://api.fish.audio"
 WALLET = BASE + "/wallet/self/api-credit?check_free_credit=true"
@@ -71,6 +72,28 @@ def test_package_failure_never_raises(status, body):
     with respx.mock(assert_all_called=True) as mock:
         mock.get(BASE + "/wallet/self/package").respond(status, content=body)
         assert account.get_package("test-key", BASE) is None
+
+
+@pytest.mark.parametrize("failure", ["500", "timeout", "invalid_json"])
+def test_package_strict_failure_raises_but_default_returns_none(failure):
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.get(BASE + "/wallet/self/package")
+        if failure == "500":
+            route.respond(500)
+        elif failure == "timeout":
+            route.mock(side_effect=httpx.ReadTimeout("synthetic failure"))
+        else:
+            route.respond(content=b"not JSON")
+        assert account.get_package("test-key", BASE) is None
+        with pytest.raises(FishAudioError):
+            account.get_package("test-key", BASE, strict=True)
+
+
+@pytest.mark.parametrize("status,body", [(200, b"null"), (404, b'{"status": 404, "message": "Not Found"}')])
+def test_package_strict_no_plan_returns_none(status, body):
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/wallet/self/package").respond(status, content=body)
+        assert account.get_package("test-key", BASE, strict=True) is None
 
 
 @pytest.mark.parametrize("wallet,ttl", [(account.Wallet(Decimal(0), Decimal(0), None), 300), (None, 30)])

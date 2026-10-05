@@ -17,6 +17,7 @@ import time
 import threading
 from types import ModuleType, SimpleNamespace
 
+import httpx
 import pytest
 import respx
 
@@ -271,6 +272,64 @@ def test_delete_own_voice(env):
         deleted = mock.delete(base + f"/model/{VOICE}").respond(204)
         assert env.delete(f"/voices/{VOICE}") == {"ok": True, "id": VOICE}
         assert deleted.call_count == 1
+
+
+@pytest.mark.parametrize("found", [True, False])
+def test_delete_pages_owned_list_to_exact_total(env, found):
+    base = env.active().base
+    seen = []
+    def listing(request):
+        params = request.url.params
+        assert (params["self"], params["page_size"], params["title"]) == ("true", "100", "Mine")
+        page = int(params["page_number"])
+        seen.append(page)
+        assert page <= 2
+        items = [{"_id": OTHER}] * (100 if page == 1 else 50)
+        if found and page == 2:
+            items[-1] = {"_id": VOICE}
+        return httpx.Response(200, json={"items": items, "total": 150})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(base + f"/model/{VOICE}").respond(json={"_id": VOICE, "title": "Mine"})
+        mock.get(base + "/model").mock(side_effect=listing)
+        if found:
+            deleted = mock.delete(base + f"/model/{VOICE}").respond(204)
+            assert env.delete(f"/voices/{VOICE}")["ok"]
+            assert deleted.call_count == 1
+        else:
+            refused(env.delete(f"/voices/{VOICE}"), "not_owner")
+            assert not [c for c in mock.calls if c.request.method == "DELETE"]
+        assert seen == [1, 2]
+
+
+@pytest.mark.parametrize("ending", ["empty", "short", "ceiling"])
+def test_delete_owned_paging_stops_without_exact_total(env, ending):
+    base = env.active().base
+    seen = []
+    def listing(request):
+        page = int(request.url.params["page_number"])
+        seen.append(page)
+        count = 100 if page == 1 or ending == "ceiling" else (0 if ending == "empty" else 50)
+        return httpx.Response(200, json={"items": [{"_id": OTHER}] * count})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(base + f"/model/{VOICE}").respond(json={"_id": VOICE, "title": "Mine"})
+        mock.get(base + "/model").mock(side_effect=listing)
+        refused(env.delete(f"/voices/{VOICE}"), "not_owner")
+        assert seen == (list(range(1, 11)) if ending == "ceiling" else [1, 2])
+        assert not [c for c in mock.calls if c.request.method == "DELETE"]
+
+
+@pytest.mark.parametrize("status", [200, 404, 500])
+def test_account_package_unavailability_preserves_wallet(env, status):
+    base = env.active().base
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(base + "/wallet/self/api-credit").respond(json={
+            "credit": "2.54", "cumulative_top_up": "10", "has_free_credit": False})
+        mock.get(base + "/wallet/self/package").respond(status, json={"type": "plus"})
+        body = env.get("/account")
+    assert body["ok"] and body["credit"] == "2.54" and body["cumulative_top_up"] == "10"
+    assert body["has_free_credit"] is False and body["low"] is False
+    assert body["package_unavailable"] is (status == 500)
+    assert body["package"] == ({"type": "plus"} if status == 200 else None)
 
 
 @pytest.mark.parametrize("credit,low", [("0.5", True), ("12.25", False)])

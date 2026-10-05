@@ -66,6 +66,7 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   let disposed = false
   let generation = 0
   let accountAt = 0
+  let forcePending = false
 
   const show = (available: boolean) => {
     if (disposed) return
@@ -96,6 +97,7 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   }
 
   const probe = (force = false) => {
+    if (force) forcePending = true
     const mine = ++generation
     return ctx.rest<{ key?: boolean; version?: string }>('/available').then(
       res => {
@@ -107,11 +109,14 @@ export function registerAvailabilityGate(ctx: PluginContext) {
           return
         }
         // Throttle only once this agent's wallet is known: a forced read dropped as stale must not hide it for 5 min.
-        if (!force && $account.get() !== null && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return
+        if (!forcePending && $account.get() !== null && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return
         accountAt = Date.now()
         return ctx.rest<Account | { ok: false }>('/account').then(
           account => {
-            if (mine === generation && !disposed) $account.set(account?.ok ? (account as Account) : null)
+            if (mine === generation && !disposed) {
+              forcePending = false
+              $account.set(account?.ok ? (account as Account) : null)
+            }
           },
           () => undefined
         )

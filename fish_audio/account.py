@@ -61,15 +61,18 @@ def get_wallet(key, base_url, *, timeout=5.0, strict=False) -> Wallet | None:
         return None
 
 
-def get_package(key, base_url) -> dict | None:
+def get_package(key, base_url, strict=False) -> dict | None:
     try:
-        data = _get("/wallet/self/package", key, base_url)
+        data = _get("/wallet/self/package", key, base_url, strict=strict)
         if data is None:
             return None
         fields = {"type", "total", "balance", "extra_balance", "finished_at", "billing_period", "subscription_status",
                   "cancel_at_period_end"}
         return {k: v for k, v in data.items() if k in fields}
-    except Exception:
+    except Exception as exc:
+        # A 404 means "no plan" (the OpenAPI documents no absence shape), so only real failures raise.
+        if strict and getattr(exc, "status", None) != 404:
+            raise
         return None
 
 

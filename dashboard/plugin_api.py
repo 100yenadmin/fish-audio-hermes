@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 _HOST_SCOPES = False
 
@@ -259,8 +259,18 @@ def _author_owned(ident: str, key: str, base: str) -> bool:
     params = {"self": "true", "page_size": 100, "page_number": 1}
     if isinstance(detail.get("title"), str) and detail["title"]:
         params["title"] = detail["title"]
-    mine = client.get_json("/model", params, key, base)
-    return any(isinstance(item, dict) and item.get("_id", item.get("id")) == ident for item in mine.get("items", []))
+    for page_number in range(1, 11):
+        params["page_number"] = page_number
+        mine = client.get_json("/model", params, key, base)
+        items = mine.get("items", [])
+        if any(isinstance(item, dict) and item.get("_id", item.get("id")) == ident for item in items):
+            return True
+        total = mine.get("total")
+        if not items or (type(total) is int and page_number * 100 >= total):
+            break
+        if type(total) is not int and len(items) < 100:
+            break
+    return False
 
 
 @router.delete("/voices/{voice_id}")
@@ -283,14 +293,18 @@ def account():
     wallet = module.get_wallet(key, base, strict=True)
     if wallet is None:
         raise Refusal("availability", "Fish Audio returned an unreadable wallet. Try again later.")
-    package = module.get_package(key, base) or {}
+    package_unavailable = False
+    try:
+        package = module.get_package(key, base, strict=True) or {}
+    except Exception:
+        package, package_unavailable = {}, True
     package = {k: v for k, v in package.items() if
                (k in {"type", "finished_at", "subscription_status"} and isinstance(v, str)) or
                (k in {"total", "balance"} and type(v) in (int, float)) or
                (k == "cancel_at_period_end" and type(v) is bool)}
     return {"ok": True, "credit": str(wallet.credit), "cumulative_top_up": str(wallet.cumulative_top_up),
             "has_free_credit": wallet.has_free_credit, "low": wallet.credit < LOW_CREDIT,
-            "package": package or None, "links": LINKS}
+            "package": package or None, "package_unavailable": package_unavailable, "links": LINKS}
 
 
 class Design(BaseModel):

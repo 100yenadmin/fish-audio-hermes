@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 2026-10-06
+
+- Voices page polish:
+  - the credit chip always reflects a billed preview or design;
+  - Next stops at the last page when the total is known;
+  - deleting finds your voice even past the first 100 with the same name;
+  - a temporary plan-service failure shows "Plan details are unavailable" instead of "No app plan".
+
 ## 0.3.0 — 2026-10-05
 
 - **Voices page in Hermes Desktop.** A sidebar page for the selected agent with four tabs: **Library** (search by

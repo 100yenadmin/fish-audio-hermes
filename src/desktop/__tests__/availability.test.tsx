@@ -1,5 +1,5 @@
 import { createTestContext, host, resetHost } from './sdk-mock'
-import { $account, $available, httpStatus } from '../api'
+import { $account, $available, httpStatus, refreshAvailability } from '../api'
 import plugin, { isNotFoundError } from '../plugin'
 
 const flush = async (rounds = 5) => {
@@ -134,6 +134,35 @@ describe('availability gate', () => {
 })
 
 describe('wallet refresh', () => {
+  it('inherits a pending forced refresh when an interval overtakes a known wallet', async () => {
+    const pending: Array<(value: unknown) => void> = []
+    let known = false
+    const { t, calls } = backend({ '/account': () => known ? new Promise(resolve => pending.push(resolve)) : Promise.resolve(ACCOUNT) })
+    plugin.register(t.ctx as any)
+    await flush()
+    expect($account.get()?.credit).toBe('0.40')
+    known = true
+    const forced = refreshAvailability()
+    await flush()
+    expect(pending).toHaveLength(1)
+    t.tickIntervals()
+    await flush()
+    try {
+      expect(calls.filter(path => path === '/account')).toHaveLength(3) // initial + forced + interval
+      pending[0]({ ...ACCOUNT, credit: '8.00' }) // superseded forced answer
+      await forced
+      expect($account.get()?.credit).toBe('0.40')
+      pending[1]({ ...ACCOUNT, credit: '7.00' })
+      await flush()
+      expect($account.get()?.credit).toBe('7.00')
+      t.tickIntervals()
+      await flush()
+      expect(pending).toHaveLength(2) // a successfully applied result clears the pending force
+    } finally {
+      t.dispose()
+    }
+  })
+
   it('an interval probe that overtakes the first wallet read still reads the unknown wallet', async () => {
     const pending: Array<(value: unknown) => void> = []
     const { t, calls } = backend({ '/account': () => new Promise(resolve => pending.push(resolve)) })
