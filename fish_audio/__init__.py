@@ -2,4 +2,4 @@
 
 PLUGIN_ID = "fish-audio"
 PROVIDER_NAME = "fish-audio"
-PLUGIN_VERSION = "0.3.1"
+PLUGIN_VERSION = "1.0.0"

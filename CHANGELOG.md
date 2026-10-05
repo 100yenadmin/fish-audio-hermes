@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.0.0 — 2026-10-05
+
+- **Every field of Fish Audio's voice API the plugin claims is now sent and tested.** The parity map has no planned
+  fields left: each one is verified by a test, sent through an equivalent encoding, or excluded with a stated reason.
+- **`fish_speak` uses your configured voice settings.** Temperature, top_p, latency, chunk length, bitrates,
+  volume and the rest of `tts.fish-audio.*` now apply to `fish_speak` (including timestamped speech), as they
+  already did for voice replies. Call arguments still win. Call `pronunciations` merge with a configured inline
+  dictionary.
+- **Voice design:** `num_step`, `guidance_scale` and `instruct_guidance_scale`.
+- **Voice search:** `author_id`, `title_language` and `licensed` filters. Results report `has_more`.
+- **Your voices:**
+  - clone and update accept `visibility` (`private` or `unlist`; publish publicly from the Fish Audio website);
+  - clone accepts `generate_sample`;
+  - clone and update accept a `cover_image_path` (PNG, JPEG or WebP, checked like audio samples).
+- **Transcription** returns the language Fish detected.
+- **Account tab:** an unreadable plan response shows "Plan details are unavailable right now". An empty response
+  still means no plan.
+- **Tested live** on Hermes 0.21.5, through the gateway and Desktop audio routes:
+  - read-aloud;
+  - WebM dictation;
+  - streaming voice mode (first audio in 0.26 s);
+  - design → save → delete;
+  - clone → delete;
+  - per-profile keys on one dashboard.
+
 ## 0.3.1 — 2026-10-05
 
 - Voices page polish:
