@@ -273,3 +273,21 @@ def test_title_language_rejects_malformed_tags(code):
         with pytest.raises(ToolInputError, match="Invalid title_language"):
             voices.execute({"action": "search", "title_language": code}, "synthetic", BASE, "")
         assert not mock.calls
+
+
+@pytest.mark.parametrize("new_keys, sent", [(0, True), (1, False)])
+def test_pronunciation_merge_limit_names_the_counts(monkeypatch, new_keys, sent):
+    configured = [{"items": [{"key": f"g{g}k{i}", "value": "v"} for i in range(5000)]} for g in range(3)]
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"model": "s2.1-pro",
+                                                                             "pronunciation_dictionary": configured}}})
+    call = {"g0k0": "new", **{f"extra{i}": "x" for i in range(new_keys)}}
+    with respx.mock(assert_all_called=sent) as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"ID3")
+        if sent:
+            tools._speak({"text": "hi", "pronunciations": call}, "synthetic", BASE, "")
+            groups = json.loads(route.calls.last.request.content)["pronunciation_dictionary"]
+            assert [len(g["items"]) for g in groups] == [5000, 5000, 5000]
+        else:
+            with pytest.raises(ToolInputError, match=r"15,001 entries after merging .* Fish allows 15,000"):
+                tools._speak({"text": "hi", "pronunciations": call}, "synthetic", BASE, "")
+            assert not mock.calls

@@ -49,7 +49,7 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
         try:
             key = fish_api_key()
             if not key:
-                result["error"] = SETUP_MESSAGE
+                result.update(error=SETUP_MESSAGE, error_kind="credential")
                 return result
             path = Path(file_path).expanduser()
             chosen = MODEL_PRO if model is None else str(model).strip().lower()
@@ -77,9 +77,10 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
             result.update(success=True, transcript=" ".join(transcript.split()))
         except FishAudioError as exc:
             record_failure(exc.kind, str(exc))
-            result["error"] = redact(str(exc))
+            result.update(error=redact(str(exc)), error_kind=exc.kind)
         except Exception:
             # Unknown exception messages may contain file contents, paths or credentials.
+            result["error_kind"] = "availability"
             result["error"] = str(FishAudioError("availability", None, None,
                                                 "Fish Audio transcription failed. Check the audio file and try again."))
         return result
