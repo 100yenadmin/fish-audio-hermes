@@ -43,7 +43,8 @@ Never paste a key into chat; enter it locally with `hermes fish login` or Deskto
 Doctor's synthesis check is billed and deletes its temporary audio; use `--no-synth` to skip it.
 Config changes apply to the active profile; managed installs may refuse writes.
 Under host plugin isolation (`plugins.isolation: host`, newer Hermes builds), the `hermes fish` terminal command is
-unavailable; `/fish`, the tools, the hooks and both providers still work.
+unavailable and voice replies use whole-file speech instead of streaming; `/fish`, the tools, the hooks and
+both providers still work.
 
 Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
 and `fish-audio:fish-audio-voice-studio`. The parity map tracks implemented, tested and deferred API fields.

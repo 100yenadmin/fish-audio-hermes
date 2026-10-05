@@ -41,4 +41,4 @@ Troubleshooting by error kind:
 - `too_large` / `unsupported_media`: reduce the input or use supported audio.
 - `availability`: retry later. Include only the Fish-supplied request/trace id when reporting a problem.
 
-Under host plugin isolation only the `hermes fish` terminal command is unavailable; `/fish`, the tools, the hooks and both providers still work.
+Under host plugin isolation the `hermes fish` terminal command is unavailable and voice replies use whole-file speech instead of streaming; `/fish`, the tools, the hooks and both providers still work.
