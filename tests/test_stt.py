@@ -211,3 +211,55 @@ def test_adjacent_speaker_markers_preserve_word_boundary(tmp_path):
     with respx.mock(assert_all_called=True) as mock:
         mock.post(URL).respond(json={"text": "Hi.<|speaker:1|>Yo"})
         assert stt.FishAudioTranscriptionProvider().transcribe(path)["transcript"] == "Hi. Yo"
+
+
+@pytest.mark.parametrize("status, kind", [
+    (401, "credential"), (403, "credential"), (402, "quota"), (429, "rate_limit"),
+    (400, "invalid_request"), (404, "not_found"), (413, "too_large"), (415, "unsupported_media"),
+    (503, "availability")])
+def test_failure_reports_error_kind(tmp_path, status, kind):
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock() as mock:
+        mock.post(URL).respond(status, json={"message": "private test-key"})
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+    assert not result["success"] and result["error_kind"] == kind and "test-key" not in result["error"]
+
+
+@pytest.mark.parametrize("failure, kind", [("no_key", "credential"), ("transport", "availability"),
+                                           ("unexpected", "availability")])
+def test_failure_without_status_reports_error_kind(tmp_path, monkeypatch, failure, kind):
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock() as mock:
+        if failure == "no_key":
+            monkeypatch.setattr(stt, "fish_api_key", lambda: "")
+        elif failure == "transport":
+            mock.post(URL).mock(side_effect=httpx.ConnectError("private test-key"))
+        else:
+            def failed(*args, **kwargs):
+                raise RuntimeError("private test-key")
+            monkeypatch.setattr(client, "transcribe_audio", failed)
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+    assert not result["success"] and result["error_kind"] == kind
+
+
+def test_success_has_no_error_kind(tmp_path):
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock() as mock:
+        mock.post(URL).respond(json={"text": "hello"})
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+    assert result["success"] and "error_kind" not in result
+
+
+@pytest.mark.parametrize("kind_of_path", ["missing", "directory"])
+def test_unreadable_local_file_is_invalid_request_not_availability(tmp_path, kind_of_path):
+    path = tmp_path / ("missing.ogg" if kind_of_path == "missing" else "folder.ogg")
+    if kind_of_path == "directory":
+        path.mkdir()
+    with respx.mock() as mock:
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+        assert not mock.calls
+    assert not result["success"] and result["error_kind"] == "invalid_request"
+    assert "Could not read the audio file" in result["error"] and str(tmp_path) not in result["error"]

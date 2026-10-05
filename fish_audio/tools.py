@@ -54,6 +54,8 @@ def _speak(args, key, base, session, *, record_media=True):
         merged = {item["key"]: item for group in configured for item in group.get("items", [])}
         merged.update({item["key"]: item for item in dictionary[0]["items"]})
         items = list(merged.values())  # Fish allows at most 5000 items per group (and 3 groups)
+        require(len(items) <= 15000, f"Pronunciations: {len(items):,} entries after merging with the configured "
+                "dictionary; Fish allows 15,000. Remove configured entries or pass fewer.")
         dictionary = [{"items": items[i:i + 5000]} for i in range(0, len(items), 5000)]
         require(settings._dictionary(dictionary), "Invalid pronunciation entry.")
         params["pronunciation_dictionary"] = dictionary

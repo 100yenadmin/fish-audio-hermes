@@ -49,7 +49,7 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
         try:
             key = fish_api_key()
             if not key:
-                result["error"] = SETUP_MESSAGE
+                result.update(error=SETUP_MESSAGE, error_kind="credential")
                 return result
             path = Path(file_path).expanduser()
             chosen = MODEL_PRO if model is None else str(model).strip().lower()
@@ -70,16 +70,24 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
                 if re.fullmatch(r"[a-z]{2,3}", primary):
                     fields["language"] = primary
             base_url = _base_url(transport_settings().get("base_url", DEFAULT_BASE_URL))
-            data = client.transcribe_audio(path.read_bytes(), path.name,
+            try:
+                audio = path.read_bytes()
+            except OSError:
+                # A missing or unreadable local file is the caller's input, not a Fish outage.
+                result.update(error_kind="invalid_request", error=str(FishAudioError(
+                    "invalid_request", None, None, "Could not read the audio file. Check the path and try again.")))
+                return result
+            data = client.transcribe_audio(audio, path.name,
                                            MIMES.get(path.suffix.lower(), "application/octet-stream"),
                                            fields, key=key, base_url=base_url, model=chosen)
             transcript = re.sub(r"<\|speaker:\d+\|>", " ", data["text"])
             result.update(success=True, transcript=" ".join(transcript.split()))
         except FishAudioError as exc:
             record_failure(exc.kind, str(exc))
-            result["error"] = redact(str(exc))
+            result.update(error=redact(str(exc)), error_kind=exc.kind)
         except Exception:
             # Unknown exception messages may contain file contents, paths or credentials.
+            result["error_kind"] = "availability"
             result["error"] = str(FishAudioError("availability", None, None,
                                                 "Fish Audio transcription failed. Check the audio file and try again."))
         return result
