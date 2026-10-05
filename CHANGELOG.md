@@ -4,7 +4,20 @@
 
 - **Desktop UI translations.** The Voices page, sidebar row, credit chip and command palette follow Hermes
   Desktop’s display language in Simplified Chinese, Traditional Chinese, Japanese, Arabic, Russian, French, German
-  and Spanish. Language changes take effect without a reload; English text stays unchanged. (#15)
+  and Spanish. Language changes take effect without a reload; English text stays unchanged. The translations are
+  machine-authored and checked by a second model against Hermes Desktop's own wording; corrections from native
+  speakers are welcome. (#15)
+- **Operator-managed keys, finished** (#18). With `operator_account: true`:
+  - every `hermes fish` terminal command (`status`, `login`, `doctor`, `use`) keeps the operator's full view,
+    including key and billing links in its errors;
+  - results from `fish_speak` and the Voices page preview no longer name a model that the operator's wallet chose,
+    though a configured model is still shown;
+  - the skills describe billing as going to the Fish Audio account behind the agent's key, and the setup skill tells
+    the agent not to send users to Fish's key, billing or plan pages;
+  - the clone approval prompt names "this agent's voice account";
+  - deleting a voice from chat is refused at once, with no approval prompt.
+- **Use under a managed provider.** When a managed layer pins a speech provider other than Fish Audio, Use saves the
+  voice and says that the agent's operator sets its provider, instead of pointing to `hermes tools`. (#18)
 
 ## 1.1.0 — 2026-10-06
 

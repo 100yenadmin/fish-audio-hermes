@@ -38,7 +38,7 @@ export const fr = {
   inUse: 'Utilisée',
   favourite: 'Ajouter aux favoris',
   unfavourite: 'Retirer des favoris',
-  uses: (n: number) => `${compact(n)} ${n === 1 ? 'utilisation' : 'utilisations'}`,
+  uses: (n: number) => `${compact(n)} ${n < 2 ? 'utilisation' : 'utilisations'}`,
   noVoices: 'Aucune voix correspondante',
   noFavourites: 'Aucun favori pour le moment',
   noFavouritesHint: 'Ajoutez une voix aux favoris dans la bibliothèque pour la retrouver ici.',

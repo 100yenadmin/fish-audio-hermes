@@ -24,7 +24,7 @@ export const es = {
   onboardStep1: 'Crea una clave API gratuita en fish.audio',
   onboardStep2: 'Pégala en Plugins ▸ Fish Audio y reinicia el gateway',
   getKey: 'Obtener una clave API',
-  openPlugins: 'Abrir plugins',
+  openPlugins: 'Abrir Plugins',
   checkAgain: 'Volver a comprobar',
   unreachable: (profile: string) => `No se pudo acceder a Fish Audio en ${agentName(profile)}`,
   search: 'Buscar voces',

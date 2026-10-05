@@ -9,7 +9,7 @@ export const ar = {
   paletteVoices: 'Fish Audio: الأصوات',
   paletteAccount: 'Fish Audio: الحساب',
   poweredBy: 'Fish Audio',
-  forAgent: (profile: string) => `لـ ${agentName(profile)}`,
+  forAgent: (profile: string) => (profile && profile !== 'default' ? `للوكيل ${profile}` : 'لهذا الوكيل'),
   notSetUp: (profile: string) =>
     `لم يتم إعداد Fish Audio على جهاز ${agentName(profile)} بعد. ثبّت الإضافة هناك، وفعّلها، ثم أعد تشغيل البوابة.`,
   tabs: { library: 'المكتبة', mine: 'أصواتي', create: 'إنشاء', account: 'الحساب' },
@@ -52,7 +52,7 @@ export const ar = {
   mineEmptyHint: 'استنسخ صوتك أو صمّم صوتًا جديدًا في «إنشاء».',
   delete: 'حذف',
   deleteTitle: (title: string) => `حذف «${title}»؟`,
-  deleteBody: 'سيؤدي هذا إلى إزالة الصوت من حسابك في Fish Audio. ستحتاج الوكلاء التي تستخدم هذا الصوت إلى اختيار صوت آخر لها.',
+  deleteBody: 'سيؤدي هذا إلى إزالة الصوت من حسابك في Fish Audio. سيحتاج الوكلاء الذين يستخدمون هذا الصوت إلى اختيار صوت آخر لهم.',
   deleteConfirmLabel: (title: string) => `اكتب «${title}» للتأكيد`,
   cancel: 'إلغاء',
   deleted: (title: string) => `تم حذف ${title}`,
