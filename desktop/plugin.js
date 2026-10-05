@@ -1022,6 +1022,7 @@ function registerAvailabilityGate(ctx) {
     if (disposed) return;
     $account.set(null);
     $available.set(null);
+    show(false);
     void probe(true);
   };
   const stops = [host4.state.profile.listen(onAgentChange), host4.state.connectionId.listen(onAgentChange)];
