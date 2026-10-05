@@ -73,15 +73,36 @@ def test_use_keeps_fish_provider_and_only_sets_unset(config, provider, expected)
     assert ("Switch with" in result) == (provider == "elevenlabs")
 
 
-def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch):
+def managed_layer(monkeypatch, layer):
+    module = ModuleType("hermes_cli.managed_scope")
+    module.load_managed_config = lambda: copy.deepcopy(layer)
+    sys.modules["hermes_cli"].managed_scope = module
+    monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", module)
+
+
+@pytest.mark.parametrize("pinned,reply", [("evaos-fishaudio", "Saved."), ("elevenlabs", "provider is elevenlabs")])
+def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch, pinned, reply):
     data, saves, _ = config
-    # The profile layer has no provider; the merged config (managed layer) uses the evaOS overlay.
-    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": "evaos-fishaudio"}})
+    # The profile layer has no provider; the managed layer (the evaOS overlay) pins one.
+    managed_layer(monkeypatch, {"tts": {"provider": pinned}})
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": pinned}})
     with respx.mock(assert_all_called=True) as mock:
         mock.get(BASE + "/model/" + VOICE).respond(json={"_id": VOICE})
         result = commands.handle("use " + VOICE)
-    assert result == "Saved."
+    assert reply in result
     assert len(saves) == 1 and "provider" not in saves[0]["tts"] and saves[0]["tts"]["fish-audio"]["voice"] == VOICE
+
+
+@pytest.mark.parametrize("layer", [{}, {"tts": {"voice": "x"}}, {"tts": {"provider": ""}}, {"tts": {"provider": 3}}])
+def test_use_sets_fish_when_only_hermes_default_is_in_effect(config, monkeypatch, layer):
+    data, saves, _ = config
+    # Hermes's merged config always carries its default provider; with no managed pin Use still selects Fish.
+    managed_layer(monkeypatch, layer)
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": "edge"}})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model/" + VOICE).respond(json={"_id": VOICE})
+        assert commands.handle("use " + VOICE) == "Saved."
+    assert saves[0]["tts"]["provider"] == "fish-audio"
 
 
 @pytest.mark.parametrize("status", [400, 404])

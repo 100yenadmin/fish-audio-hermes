@@ -62,6 +62,15 @@ def status(key=None):
         "Docs: https://docs.fish.audio"))
 
 
+def _managed_provider():
+    try:
+        from hermes_cli.managed_scope import load_managed_config
+        provider = settings._mapping(settings._mapping(load_managed_config()).get("tts")).get("provider")
+    except Exception:
+        return None
+    return provider if isinstance(provider, str) and provider else None
+
+
 def use(ident, key, base):
     require(voice_id(ident), "Use a valid Fish Audio voice id.")
     try:
@@ -70,16 +79,16 @@ def use(ident, key, base):
         if exc.status in {400, 404}:
             raise response_error(exc.status, body=b'{"code":"voice_not_found"}', key=key) from None
         raise
-    # Decide on the effective config: a managed layer (the evaOS overlay) may set the provider that this
-    # profile's own config.yaml leaves unset, and Use must never compete with it.
-    effective = settings._mapping(settings._config().get("tts")).get("provider")
+    # A managed layer (such as the evaOS overlay) may pin the provider this profile's config.yaml leaves unset;
+    # Use never competes with it. The merged config can't tell: Hermes's own default ("edge") is always there.
+    pinned = _managed_provider()
     def change(cfg):
         tts = cfg.setdefault("tts", {})
         tts.setdefault("fish-audio", {})["voice"] = ident
-        if not effective and not tts.get("provider"):
+        if not pinned and not tts.get("provider"):
             tts["provider"] = "fish-audio"
     cfg = write_config(change)
-    provider = effective or cfg["tts"].get("provider") or "fish-audio"
+    provider = pinned or cfg["tts"].get("provider") or "fish-audio"
     if "fishaudio" in provider.casefold() or "fish-audio" in provider.casefold():
         return "Saved."
     return f"Saved. Your current TTS provider is {provider}. Switch with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio."
