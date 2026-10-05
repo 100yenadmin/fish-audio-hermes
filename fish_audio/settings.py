@@ -165,6 +165,19 @@ def resolve_model(call_model, *, key, base_url, prefer_call: bool = False):
     return "s2.1-pro-free", True
 
 
+def apply_knobs(params, nested):
+    for key in KNOBS:
+        if key not in nested:
+            continue
+        value = nested[key]
+        if not _valid(key, value):
+            _warn(key)
+        elif key in {"volume", "normalize_loudness"}:
+            params["prosody"][key] = value
+        else:
+            params[key] = value
+
+
 def resolve_tts(call_voice, call_model, call_speed, call_format, output_path, *, key=""):
     config = _config()
     nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))
@@ -191,14 +204,5 @@ def resolve_tts(call_voice, call_model, call_speed, call_format, output_path, *,
               "prosody": {"speed": max(0.5, min(2.0, speed))}, "base_url": base_url}
     if voice is not None:
         params["reference_id"] = voice
-    for key in KNOBS:
-        if key not in nested:
-            continue
-        value = nested[key]
-        if not _valid(key, value):
-            _warn(key)
-        elif key in {"volume", "normalize_loudness"}:
-            params["prosody"][key] = value
-        else:
-            params[key] = value
+    apply_knobs(params, nested)
     return params, str(path)

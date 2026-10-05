@@ -762,3 +762,16 @@ def test_clone_refuses_non_directory_upload_components(env, component):
         path.mkdir()
     refused(env.post("/clone/start", size=4), "io_error")
     assert path.read_bytes() == b"keep"
+
+
+def test_w1_preview_sends_configured_knobs(env):
+    profile = env.active()
+    profile.config["tts"]["fish-audio"].update(temperature=0.4, volume=0.7)
+    with respx.mock() as mock:
+        route = mock.post(profile.base + "/v1/tts").respond(content=MP3)
+        result = env.post("/preview", voice=VOICE, text="Configured preview")
+        assert result["ok"], result
+        body = json.loads(route.calls.last.request.content)
+        assert body["format"] == "mp3" and body["reference_id"] == VOICE
+        assert body["text"] == "Configured preview" and body["temperature"] == 0.4
+        assert body["prosody"]["volume"] == 0.7

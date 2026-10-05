@@ -14,7 +14,7 @@ from .errors import FishAudioError, response_error
 from .media import atomic_write
 from .models import MODEL_IDS
 
-PLUGIN_VERSION = "0.3.1"
+PLUGIN_VERSION = "1.0.0"
 MODEL_HEADER = "model"
 _client = None
 _lock = threading.Lock()
@@ -377,6 +377,10 @@ def post_json(path, body, key, base_url, timeout):
 
 def patch_form(path, data, key, base_url):
     return _json_request("PATCH", path, key, base_url, data=data)
+
+
+def patch_multipart(path, data, files, key, base_url):
+    return _json_request("PATCH", path, key, base_url, data=data, files=files)
 
 
 def delete(path, key, base_url):

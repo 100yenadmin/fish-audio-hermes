@@ -23,7 +23,8 @@ def _get(path, key, base_url, timeout=5.0, *, strict=False, empty=False):
         response = client._http_client().get(base_url.rstrip("/") + path,
                                              headers=client.request_headers(key), timeout=timeout)
         try:
-            # ``empty``: a 204, or a 200 with no body, is an answer (nothing there), not a failure.
+            # ``empty``: a 204, a 200 with no body, or JSON null is an answer (nothing there), not a failure;
+            # any other non-object body still fails in strict mode.
             if empty and (response.status_code == 204 or response.status_code == 200 and not response.content.strip()):
                 return None
             if response.status_code != 200:
@@ -31,6 +32,8 @@ def _get(path, key, base_url, timeout=5.0, *, strict=False, empty=False):
                     raise response_error(response.status_code, response.headers, response.content[:65536], key=key)
                 return None
             data = response.json()
+            if strict and empty and data is not None and not isinstance(data, dict):
+                raise response_error(None, key=key)
             return data if isinstance(data, dict) else None
         finally:
             response.close()

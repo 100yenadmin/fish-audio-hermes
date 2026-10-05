@@ -44,10 +44,17 @@ def _speak(args, key, base, session, *, record_media=True):
               "format": "opus" if fmt == "ogg" else fmt, "prosody": {"speed": speed}}
     if voice is not None:
         params["reference_id"] = voice
+    settings.apply_knobs(params, nested)
     if "pronunciations" in args:
         entries = args["pronunciations"]
         require(isinstance(entries, dict) and len(entries) <= 200, "pronunciations allows at most 200 entries.")
         dictionary = [{"items": [{"key": k, "value": v} for k, v in entries.items()]}]
+        require(settings._dictionary(dictionary), "Invalid pronunciation entry.")
+        configured = params.get("pronunciation_dictionary", [])
+        merged = {item["key"]: item for group in configured for item in group.get("items", [])}
+        merged.update({item["key"]: item for item in dictionary[0]["items"]})
+        items = list(merged.values())  # Fish allows at most 5000 items per group (and 3 groups)
+        dictionary = [{"items": items[i:i + 5000]} for i in range(0, len(items), 5000)]
         require(settings._dictionary(dictionary), "Invalid pronunciation entry.")
         params["pronunciation_dictionary"] = dictionary
     path = media.audio_output_dir() / f"fish-{uuid4().hex[:12]}.{fmt}"
@@ -102,11 +109,17 @@ SCHEMAS = {
         "pronunciations": _field("object", additionalProperties=S, maxProperties=200)},
     "fish_voices": {"action": _field("string", enum=["search", "mine", "get", "clone", "design", "save", "update", "delete"]),
         "query": S, "language": S, "tags": STRINGS, "sort": _field("string", enum=["score", "task_count", "created_at"]),
+        "author_id": _field("string", pattern="^[A-Za-z0-9_-]{1,64}$"),
+        "title_language": {"oneOf": [S, _field("array", items=S, minItems=1, maxItems=10)]}, "licensed": B,
         "page": _field("integer", minimum=1), "page_size": _field("integer", minimum=1, maximum=20),
         "voice_id": VOICE, "title": S, "description": S,
         "sample_paths": _field("array", items=S, minItems=1, maxItems=20), "texts": STRINGS,
+        "visibility": _field("string", enum=["private", "unlist"]),
+        "generate_sample": B, "cover_image_path": S,
         "enhance_audio_quality": _field("boolean", default=True), "consent": B,
         "instruction": _field("string", minLength=1, maxLength=500), "reference_text": S,
+        "num_step": _field("integer", minimum=1, maximum=128),
+        "guidance_scale": _field("number", minimum=0), "instruct_guidance_scale": _field("number", minimum=0),
         "n": _field("integer", minimum=1, maximum=4, default=2), "seed": _field("integer"),
         "speed": _field("number", exclusiveMinimum=0, maximum=3), "design_token": S},
     "fish_transcribe": {"file_path": S, "model": _field("string", enum=["transcribe-1-pro", "transcribe-1"], default="transcribe-1-pro"),

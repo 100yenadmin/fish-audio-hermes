@@ -14,7 +14,8 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
   whatever host you configure receives your API key and the requests below. The plugin sends nothing anywhere
   else and collects no telemetry.
 - **What requests carry.** Your API key; the text you ask it to speak; the audio you ask it to transcribe or clone,
-  with the uploaded file names; voice titles, tags, descriptions and design instructions for voice-library actions;
+  with the uploaded file names; voice titles, tags, descriptions, cover images and design instructions for
+  voice-library actions;
   and wallet and plan reads for balance and model choice. Headers name the plugin and its version, and pass on an
   OpenTelemetry trace context when one is active.
 - **Billing.** Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish
@@ -25,7 +26,7 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
   also read `FISH_API_KEY` from the process environment. Keys are never logged or included in error messages, tool
   results or command output.
 - **Files.** Files the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be
-  regular audio files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
+  regular audio files, and `fish_voices` cover images (`cover_image_path`) regular PNG, JPEG or WebP files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
   Audio that Hermes itself hands to the speech-to-text provider (voice notes, dictation) is read as given.
 - **Approvals.** Cloning and deleting voices from chat or the model tools go through Hermes's approval gate and
   follow your Hermes approval settings. By default Hermes asks you, and refuses when no one is there to answer.

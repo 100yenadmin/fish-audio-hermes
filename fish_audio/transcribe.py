@@ -152,6 +152,8 @@ def execute(args, key, base, session):
     segments = data.get("segments", [])
     result = {"text": data["text"], "language_code": data.get("language_code"), "duration": data.get("duration"),
               "segments": segments[:500], "speaker_turns": data.get("speaker_turns", [])}
+    if isinstance(data.get("language"), str):
+        result["language"] = data["language"]
     if len(segments) > 500:
         result.update(segments_truncated=True, segments_total=len(segments))
     if data.get("request_id"):
