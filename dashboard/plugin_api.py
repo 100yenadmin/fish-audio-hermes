@@ -131,7 +131,7 @@ def _failure(exc: Exception) -> dict:
 
 
 # Token-shaped only, so ordinary voice titles ("Ring Bearer Narrator", "task-oriented-…") pass through untouched.
-_BEARER_RE = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/-]{16,}=*")
+_BEARER_RE = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/-]{16,}=*", re.I)
 _SK_RE = re.compile(r"(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}")
 
 

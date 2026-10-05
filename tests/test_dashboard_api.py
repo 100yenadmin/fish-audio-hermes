@@ -634,6 +634,15 @@ def test_scrub_leaves_ordinary_voice_text_alone(env):
     assert env.api._scrub(text, "") == text
 
 
+@pytest.mark.parametrize("scheme", ["bearer", "bEaReR", "BEARER"])
+def test_scrub_redacts_bearer_tokens_in_any_case(env, scheme):
+    # A credential other than the active key: a JWT and an opaque token, under any casing of the scheme name.
+    jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJlLXZhbHVl"
+    opaque = "Z" * 40
+    out = env.api._scrub({"title": f"Authorization: {scheme} {jwt}", "description": f"{scheme} {opaque}"}, "")
+    assert out == {"title": "Authorization: Bearer [redacted]", "description": "Bearer [redacted]"}
+
+
 def test_gateway_partial_design_leaves_no_files_or_receipts(env):
     candidate = {"signature": "synthetic-signature", "audio_base64": base64.b64encode(WAV).decode()}
     voices = env.api._fa("voices")
