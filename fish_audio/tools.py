@@ -51,7 +51,9 @@ def _speak(args, key, base, session, *, record_media=True):
         require(settings._dictionary(dictionary), "Invalid pronunciation entry.")
         params["pronunciation_dictionary"] = dictionary
     path = media.audio_output_dir() / f"fish-{uuid4().hex[:12]}.{fmt}"
-    client.tts_to_file(params, key, base, str(path))
+    require("timestamps" not in args or type(args["timestamps"]) is bool, "timestamps must be boolean.")
+    events = [] if args.get("timestamps") else None
+    client.tts_to_file(params, key, base, str(path), events=events)
     as_voice = fmt in {"ogg", "mp3"}
     tag = ("[[audio_as_voice]]\n" if as_voice else "") + f"MEDIA:{path}"
     if record_media:
@@ -60,8 +62,13 @@ def _speak(args, key, base, session, *, record_media=True):
               "note": "Include media_tag verbatim in your reply so the user receives the audio."}
     if defaulted and model == "s2.1-pro-free":
         result["notice"] = settings.FREE_MODEL_NOTICE
-    if args.get("timestamps"):
-        result["note"] += " Timestamps are coming in v0.2; audio was synthesized."
+    if events is not None:
+        from .transcribe import speech_timestamps
+        # The billed audio is already saved: a subtitle failure must not hide it.
+        try:
+            result.update(speech_timestamps(events, path))
+        except Exception as exc:
+            result["timestamps_error"] = f"The audio is ready, but its timestamps could not be processed ({type(exc).__name__})."
     return result
 
 

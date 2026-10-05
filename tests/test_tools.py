@@ -48,15 +48,15 @@ def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, voice):
         assert hooks.take("s1")[0][:2] == (str(path), voice)
 
 
-def test_speak_multi_pronunciations_and_timestamp_note():
+def test_speak_multi_pronunciations():
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
         result = call(tools.fish_speak, text="hello", speakers=[VOICE, "b" * 32],
-                      pronunciations={"Codex": "code ex"}, timestamps=True)
+                      pronunciations={"Codex": "code ex"}, timestamps=False)
         body = json.loads(route.calls.last.request.content)
         assert body["reference_id"] == [VOICE, "b" * 32]
         assert body["pronunciation_dictionary"] == [{"items": [{"key": "Codex", "value": "code ex"}]}]
-        assert "coming in v0.2" in result["note"] and result["success"]
+        assert result["success"] and "segments" not in result and "v0.2" not in result["note"]
     with respx.mock(assert_all_called=True) as mock:
         result = call(tools.fish_speak, text="hello", speakers=[VOICE, VOICE], model="s1")
         assert not result["success"] and "s2.1-pro" in result["error"]

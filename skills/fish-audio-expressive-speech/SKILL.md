@@ -27,7 +27,8 @@ Use **at most 3 cues per sentence**. Cues direct performance and should not be s
 For multiple speakers, pass `speakers` as 2–4 Fish voice ids and label the text with zero-based
 `<|speaker:N|>` markers. Use a multi-speaker model; S1 refuses this mode. Avoid core text normalization
 by calling `fish_speak` directly. `pronunciations` is a map of words to spoken forms, at most 200 entries.
-Native `.ogg` is the default voice reply; use `format: wav` for a file. Speech timestamps are coming in v0.2.
+Native `.ogg` is the default voice reply; use `format: wav` for a file. Pass `timestamps: true` for word
+timings (`segments`) and subtitle files (`srt_path`, `vtt_path`).
 
 Worked examples (replace the voice ids with voices the user selected):
 

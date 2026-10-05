@@ -1516,9 +1516,10 @@ entries:
   method: post
   location: header
   field: model
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: true (model header from the one resolver)'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
   spec:
     type: string
     enum:
@@ -1532,9 +1533,10 @@ entries:
   method: post
   location: json
   field: text
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: true request'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
   spec:
     type: string
     enum: null
@@ -1543,7 +1545,7 @@ entries:
   method: post
   location: json
   field: temperature
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1554,7 +1556,7 @@ entries:
   method: post
   location: json
   field: top_p
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1565,7 +1567,7 @@ entries:
   method: post
   location: json
   field: references
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1578,9 +1580,10 @@ entries:
   method: post
   location: json
   field: reference_id
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: true request'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
   spec:
     type:
     - array
@@ -1592,9 +1595,10 @@ entries:
   method: post
   location: json
   field: prosody
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: true request'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
   spec:
     type:
     - 'null'
@@ -1605,7 +1609,7 @@ entries:
   method: post
   location: json
   field: chunk_length
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1616,7 +1620,7 @@ entries:
   method: post
   location: json
   field: normalize
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1627,9 +1631,10 @@ entries:
   method: post
   location: json
   field: format
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: true request'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
   spec:
     type: string
     enum:
@@ -1642,7 +1647,7 @@ entries:
   method: post
   location: json
   field: sample_rate
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1655,7 +1660,7 @@ entries:
   method: post
   location: json
   field: mp3_bitrate
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1669,7 +1674,7 @@ entries:
   method: post
   location: json
   field: opus_bitrate
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1685,7 +1690,7 @@ entries:
   method: post
   location: json
   field: latency
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1699,7 +1704,7 @@ entries:
   method: post
   location: json
   field: max_new_tokens
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1710,7 +1715,7 @@ entries:
   method: post
   location: json
   field: repetition_penalty
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1721,7 +1726,7 @@ entries:
   method: post
   location: json
   field: min_chunk_length
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1732,7 +1737,7 @@ entries:
   method: post
   location: json
   field: condition_on_previous_chunks
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1743,7 +1748,7 @@ entries:
   method: post
   location: json
   field: early_stop_threshold
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1754,7 +1759,7 @@ entries:
   method: post
   location: json
   field: features
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1765,9 +1770,10 @@ entries:
   method: post
   location: json
   field: pronunciation_dictionary
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: true request'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
   spec:
     type:
     - array
@@ -1778,7 +1784,7 @@ entries:
   method: post
   location: msgpack
   field: text
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1789,7 +1795,7 @@ entries:
   method: post
   location: msgpack
   field: temperature
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1800,7 +1806,7 @@ entries:
   method: post
   location: msgpack
   field: top_p
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1811,7 +1817,7 @@ entries:
   method: post
   location: msgpack
   field: references
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1824,7 +1830,7 @@ entries:
   method: post
   location: msgpack
   field: reference_id
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1838,7 +1844,7 @@ entries:
   method: post
   location: msgpack
   field: prosody
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1851,7 +1857,7 @@ entries:
   method: post
   location: msgpack
   field: chunk_length
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1862,7 +1868,7 @@ entries:
   method: post
   location: msgpack
   field: normalize
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1873,7 +1879,7 @@ entries:
   method: post
   location: msgpack
   field: format
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1888,7 +1894,7 @@ entries:
   method: post
   location: msgpack
   field: sample_rate
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1901,7 +1907,7 @@ entries:
   method: post
   location: msgpack
   field: mp3_bitrate
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1915,7 +1921,7 @@ entries:
   method: post
   location: msgpack
   field: opus_bitrate
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1931,7 +1937,7 @@ entries:
   method: post
   location: msgpack
   field: latency
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1945,7 +1951,7 @@ entries:
   method: post
   location: msgpack
   field: max_new_tokens
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1956,7 +1962,7 @@ entries:
   method: post
   location: msgpack
   field: repetition_penalty
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1967,7 +1973,7 @@ entries:
   method: post
   location: msgpack
   field: min_chunk_length
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1978,7 +1984,7 @@ entries:
   method: post
   location: msgpack
   field: condition_on_previous_chunks
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -1989,7 +1995,7 @@ entries:
   method: post
   location: msgpack
   field: early_stop_threshold
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -2000,7 +2006,7 @@ entries:
   method: post
   location: msgpack
   field: features
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -2011,7 +2017,7 @@ entries:
   method: post
   location: msgpack
   field: pronunciation_dictionary
-  surface: M2 SSE/WebSocket streaming and alignment
+  surface: Not sent by fish_speak timestamps (Fish defaults apply; inline references are never sent)
   status: planned
   tests: []
   spec:
@@ -2024,9 +2030,11 @@ entries:
   method: post
   location: response
   field: audio_base64
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: audio concatenated; last alignment per chunk_seq, shifted by chunk_audio_offset_sec'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
+  - tests/test_speech_timestamps.py::test_chunk_offsets_shift_segments_and_later_snapshots_win
   spec:
     type: string
     enum: null
@@ -2040,9 +2048,11 @@ entries:
   method: post
   location: response
   field: content
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: audio concatenated; last alignment per chunk_seq, shifted by chunk_audio_offset_sec'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
+  - tests/test_speech_timestamps.py::test_chunk_offsets_shift_segments_and_later_snapshots_win
   spec:
     type: string
     enum: null
@@ -2056,9 +2066,11 @@ entries:
   method: post
   location: response
   field: alignment
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: audio concatenated; last alignment per chunk_seq, shifted by chunk_audio_offset_sec'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
+  - tests/test_speech_timestamps.py::test_chunk_offsets_shift_segments_and_later_snapshots_win
   spec:
     type:
     - 'null'
@@ -2076,9 +2088,11 @@ entries:
   method: post
   location: response
   field: chunk_seq
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: audio concatenated; last alignment per chunk_seq, shifted by chunk_audio_offset_sec'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
+  - tests/test_speech_timestamps.py::test_chunk_offsets_shift_segments_and_later_snapshots_win
   spec:
     type: integer
     enum: null
@@ -2092,9 +2106,11 @@ entries:
   method: post
   location: response
   field: chunk_audio_offset_sec
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: 'fish_speak timestamps: audio concatenated; last alignment per chunk_seq, shifted by chunk_audio_offset_sec'
+  status: verified
+  tests:
+  - tests/test_speech_timestamps.py::test_s3_events_merge_last_alignment_and_write_audio
+  - tests/test_speech_timestamps.py::test_chunk_offsets_shift_segments_and_later_snapshots_win
   spec:
     type: number
     enum: null
@@ -2108,8 +2124,8 @@ entries:
   method: post
   location: response
   field: status
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
   tests: []
   spec:
     type: integer
@@ -2132,8 +2148,8 @@ entries:
   method: post
   location: response
   field: message
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
   tests: []
   spec:
     type: string
@@ -2156,8 +2172,8 @@ entries:
   method: post
   location: response
   field: reason
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: Safe FishAudioError projection; raw message/reason not echoed
+  status: implemented
   tests: []
   spec:
     type:
@@ -2188,9 +2204,10 @@ entries:
   method: get
   location: header
   field: model
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: Streaming voice model header (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
   spec:
     type: string
     enum:
@@ -2204,9 +2221,10 @@ entries:
   method: get
   location: response
   field: event
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: Streaming voice audio events, int16-aligned PCM (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
   spec:
     type: string
     enum:
@@ -2222,9 +2240,10 @@ entries:
   method: get
   location: response
   field: audio
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: Streaming voice audio events, int16-aligned PCM (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
   spec:
     type: string
     enum: null
@@ -2238,8 +2257,8 @@ entries:
   method: get
   location: response
   field: content
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  status: implemented
   tests: []
   spec:
     type: string
@@ -2254,8 +2273,8 @@ entries:
   method: get
   location: response
   field: alignment
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  status: implemented
   tests: []
   spec:
     type:
@@ -2274,8 +2293,8 @@ entries:
   method: get
   location: response
   field: chunk_seq
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  status: implemented
   tests: []
   spec:
     type: integer
@@ -2290,8 +2309,8 @@ entries:
   method: get
   location: response
   field: chunk_audio_offset_sec
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  status: implemented
   tests: []
   spec:
     type: number
@@ -2306,8 +2325,8 @@ entries:
   method: get
   location: response
   field: time
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  status: implemented
   tests: []
   spec:
     type:
@@ -2326,9 +2345,11 @@ entries:
   method: get
   location: response
   field: reason
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: finish reason stop ends the sentence; error raises (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  - tests/test_streaming.py::test_ws_error_events_raise_mapped_errors[events1]
   spec:
     type:
     - 'null'
@@ -2366,8 +2387,8 @@ entries:
   method: get
   location: response
   field: message
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  status: implemented
   tests: []
   spec:
     type:
@@ -2398,9 +2419,10 @@ entries:
   method: get
   location: response
   field: error
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: error event raises a safe FishAudioError; raw text not echoed (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_error_events_raise_mapped_errors[events0]
   spec:
     type: string
     enum: null
@@ -2414,8 +2436,8 @@ entries:
   method: get
   location: response
   field: max_concurrency
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
+  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  status: implemented
   tests: []
   spec:
     type:
@@ -2434,9 +2456,10 @@ entries:
   method: get
   location: response
   field: status
-  surface: M2 SSE/WebSocket streaming and alignment
-  status: planned
-  tests: []
+  surface: error event raises a safe FishAudioError; raw text not echoed (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_error_event_status_maps_to_kind
   spec:
     type: integer
     enum: null
@@ -5054,32 +5077,32 @@ entries:
         required: false
 doc_only:
 - field: start
-  surface: M2 /v1/tts/live events
-  status: planned
+  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: text
-  surface: M2 /v1/tts/live events
-  status: planned
+  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: flush
-  surface: M2 /v1/tts/live events
-  status: planned
+  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: stop
-  surface: M2 /v1/tts/live events
-  status: planned
+  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: audio
-  surface: M2 /v1/tts/live events
-  status: planned
+  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: finish
-  surface: M2 /v1/tts/live events
-  status: planned
+  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: error
-  surface: M2 /v1/tts/live events
-  status: planned
+  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: diarize
   surface: fish_transcribe / pro ASR

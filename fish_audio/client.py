@@ -1,6 +1,9 @@
 """Lazy shared transport; authentication belongs only to individual requests."""
+import base64
+import itertools
 import json
 import random
+import re
 import threading
 import time
 from contextlib import contextmanager
@@ -11,7 +14,7 @@ from .errors import FishAudioError, response_error
 from .media import atomic_write
 from .models import MODEL_IDS
 
-PLUGIN_VERSION = "0.1.0"
+PLUGIN_VERSION = "0.2.0"
 MODEL_HEADER = "model"
 _client = None
 _lock = threading.Lock()
@@ -104,15 +107,70 @@ def _transport_retry(exc, progress):
     return not progress.get("sent") or isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout))
 
 
-def tts_to_file(params, key, base_url, out_path, *, sleep=None):
+def _tts_body(params):
+    return {k: v for k, v in params.items() if k not in {"model", "model_defaulted", "base_url", "streaming"}}
+
+
+# Base64 audio (4/3 of the 64 MiB audio cap) plus alignment metadata.
+SSE_CAP = 2 * RESPONSE_CAP
+_LINE_BREAK = re.compile(rb"\r\n|\r|\n")
+
+
+def _bounded_lines(response, limit):
+    """Split a response into lines on CR, LF or CRLF (as SSE allows), failing once more than ``limit`` bytes
+    arrive, before any decoding."""
+    pending, total, after_cr = [], 0, False
+    for chunk in response.iter_bytes():
+        total += len(chunk)
+        if total > limit:
+            raise FishAudioError("too_large", None, None, "Fish Audio timestamp stream exceeds the size cap.")
+        if not chunk:
+            continue
+        if after_cr and chunk[:1] == b"\n":  # the LF of a CRLF split across chunks
+            chunk = chunk[1:]
+        after_cr = chunk.endswith(b"\r")
+        *complete, rest = _LINE_BREAK.split(chunk)
+        for piece in complete:
+            pending.append(piece)
+            yield b"".join(pending).decode("utf-8", "replace")
+            pending = []
+        pending.append(rest)
+    if any(pending):
+        yield b"".join(pending).decode("utf-8", "replace")
+
+
+def _sse_audio(response, events):
+    """Decode a with-timestamp SSE body: yield each event's audio and keep the rest in ``events``."""
+    data = []
+    # A final empty line dispatches an event the server did not terminate.
+    for line in itertools.chain(_bounded_lines(response, SSE_CAP), [""]):
+        if line.startswith("data:"):
+            data.append(line[6:] if line.startswith("data: ") else line[5:])
+        elif not line and data:
+            payload, data = "\n".join(data), []
+            if payload.strip() == "[DONE]":
+                return
+            try:
+                event = json.loads(payload)
+                audio = base64.b64decode(event.pop("audio_base64", None) or b"", validate=True)
+            except (ValueError, TypeError, AttributeError):
+                raise FishAudioError("availability", None, None, "Fish Audio sent an unreadable timestamp stream.") from None
+            events.append(event)
+            if audio:
+                yield audio
+
+
+def tts_to_file(params, key, base_url, out_path, *, sleep=None, events=None):
+    """Whole-file synthesis; with an ``events`` list, the SSE with-timestamp endpoint fills it."""
     if not isinstance(params.get("text"), str) or not params["text"].strip():
         raise ValueError("Nothing to say: the text is empty.")
     model = params.get("model")
     if not isinstance(model, str) or model not in MODEL_IDS:
         raise ValueError("Unknown Fish Audio TTS model.")
     sleep = time.sleep if sleep is None else sleep
-    body = {k: v for k, v in params.items() if k not in {"model", "model_defaulted", "base_url", "streaming"}}
+    body = _tts_body(params)
     headers = request_headers(key, model)
+    endpoint = "/v1/tts" if events is None else "/v1/tts/stream/with-timestamp"
     if _has_bytes(body.get("references")):
         import msgpack
         headers["Content-Type"] = "application/msgpack"
@@ -123,8 +181,10 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
         written = False
         progress = {}
         response_headers = None
+        if events is not None:
+            events.clear()
         try:
-            with _stream("POST", base_url.rstrip("/") + "/v1/tts", progress, headers=headers, **payload) as response:
+            with _stream("POST", base_url.rstrip("/") + endpoint, progress, headers=headers, **payload) as response:
                 response_headers = response.headers
                 if not 200 <= response.status_code < 300:
                     try:
@@ -137,7 +197,7 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
 
                 def chunks():
                     nonlocal written
-                    for chunk in response.iter_bytes():
+                    for chunk in response.iter_bytes() if events is None else _sse_audio(response, events):
                         if chunk:
                             written = True
                             yield chunk
@@ -152,6 +212,66 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
         if written or not retryable or attempt == 2:
             raise error from None
         sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))
+
+
+def tts_pcm(params, key, base_url):
+    """Chunked PCM over one unretried POST /v1/tts: a spoken sentence is never billed twice."""
+    model = params["model"]
+    response_headers = None
+    try:
+        with _http_client().stream("POST", base_url.rstrip("/") + "/v1/tts", headers=request_headers(key, model),
+                                   json=_tts_body(params)) as response:
+            response_headers = response.headers
+            if not 200 <= response.status_code < 300:
+                try:
+                    body = _error_body(response)
+                except httpx.TransportError:
+                    body = b""
+                raise response_error(response.status_code, response.headers, body, model, key,
+                                     defaulted=params.get("model_defaulted", False))
+            yield from response.iter_bytes()
+    except httpx.TransportError:
+        raise response_error(None, response_headers, model=model, key=key) from None
+
+
+def tts_live(params, key, base_url, *, timeout=30):
+    """One /v1/tts/live WebSocket session per sentence (start, text, flush, stop); yields each audio event."""
+    import msgpack
+    from websockets.exceptions import InvalidStatus, WebSocketException
+    from websockets.sync.client import connect
+
+    model = params["model"]
+    headers = request_headers(key, model)
+    agent = headers.pop("User-Agent")
+    request = _tts_body(params)
+    text, request["text"] = request["text"], ""
+    url = re.sub(r"^http", "ws", base_url.rstrip("/")) + "/v1/tts/live"
+    socket = None
+    try:
+        # A short close timeout keeps barge-in (the consumer closing this generator) prompt.
+        socket = connect(url, additional_headers=headers, user_agent_header=agent, open_timeout=10,
+                         close_timeout=1, max_size=16 * 1024 * 1024)
+        for event in ({"event": "start", "request": request}, {"event": "text", "text": text},
+                      {"event": "flush"}, {"event": "stop"}):
+            socket.send(msgpack.packb(event, use_bin_type=True))
+        while True:
+            message = msgpack.unpackb(socket.recv(timeout=timeout), raw=False)
+            kind = message.get("event")
+            if kind == "audio" and isinstance(message.get("audio"), bytes):
+                yield message["audio"]
+            elif kind == "finish" and message.get("reason") != "error":
+                return
+            elif kind in {"finish", "error"}:
+                status = message.get("status")
+                raise response_error(status if type(status) is int else None, model=model, key=key)
+    except InvalidStatus as exc:
+        raise response_error(exc.response.status_code, exc.response.headers, exc.response.body or b"", model, key,
+                             defaulted=params.get("model_defaulted", False)) from None
+    except (OSError, TimeoutError, WebSocketException, ValueError, TypeError, AttributeError):
+        raise response_error(None, model=model, key=key) from None
+    finally:
+        if socket is not None:
+            socket.close()
 
 
 def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sleep=None, read_timeout=300):
