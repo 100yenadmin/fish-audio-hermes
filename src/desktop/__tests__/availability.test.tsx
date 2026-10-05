@@ -1,5 +1,5 @@
 import { createTestContext, host, resetHost } from './sdk-mock'
-import { $account, $available, httpStatus, refreshAvailability } from '../api'
+import { $account, $available, $availableError, currentAgentEpoch, httpStatus, refreshAvailability } from '../api'
 import plugin, { isNotFoundError } from '../plugin'
 
 const flush = async (rounds = 5) => {
@@ -25,9 +25,57 @@ afterEach(() => {
   resetHost()
   $available.set(null)
   $account.set(null)
+  $availableError.set(null)
 })
 
 describe('availability gate', () => {
+  it('agent changes and a disable end operations in flight, even when the same agent comes back', async () => {
+    const { t } = backend()
+    plugin.register(t.ctx as any)
+    await flush()
+    const start = currentAgentEpoch()
+    host.state.profile.set('other')
+    host.state.profile.set('default')
+    expect(currentAgentEpoch()).toBeGreaterThanOrEqual(start + 2)
+    const beforeDisable = currentAgentEpoch()
+    t.dispose()
+    expect(currentAgentEpoch()).toBeGreaterThan(beforeDisable)
+  })
+
+  it('a failing probe while the agent is unknown records the failure; Check again retries and clears it', async () => {
+    let answer: () => Promise<unknown> = async () => {
+      throw ipc('500: {"detail":"boom"}')
+    }
+    const { t } = backend({ '/available': () => answer() })
+    plugin.register(t.ctx as any)
+    await flush()
+    expect($available.get()).toBeNull()
+    expect($availableError.get()).toBeInstanceOf(Error)
+    answer = async () => ({ ok: true, version: '1.0.4', key: true })
+    const retry = refreshAvailability()
+    expect($availableError.get()).toBeNull() // loading again, not the last failure
+    await retry
+    await flush()
+    expect($available.get()).toEqual({ key: true, version: '1.0.4' })
+    expect($availableError.get()).toBeNull()
+    t.dispose()
+  })
+
+  it('a transient error for an agent that already answered records no failure', async () => {
+    let answer: () => Promise<unknown> = async () => ({ ok: true, version: '1.0.4', key: true })
+    const { t } = backend({ '/available': () => answer() })
+    plugin.register(t.ctx as any)
+    await flush()
+    answer = async () => {
+      throw ipc('503: {"detail":"busy"}')
+    }
+    t.tickIntervals()
+    await flush()
+    expect($available.get()).toEqual({ key: true, version: '1.0.4' })
+    expect($availableError.get()).toBeNull()
+    t.dispose()
+  })
+
   it('always registers the route; nav, chip and palette only after /available answers 200', async () => {
     let release: (value: unknown) => void = () => undefined
     const { t } = backend({ '/available': () => new Promise(resolve => (release = resolve)) })

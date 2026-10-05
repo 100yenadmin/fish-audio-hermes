@@ -49,6 +49,17 @@ export const $available = atom<null | false | { version: string; key: boolean }>
 /** The selected agent's wallet (status-bar chip, Account tab); null when unknown or without a key. */
 export const $account = atom<Account | null>(null)
 /** Which tab the page shows; palette commands set it before navigating. */
+/** Why the availability probe failed while the agent's state is still unknown (a timeout, an auth error or a 5xx). */
+export const $availableError = atom<unknown>(null)
+
+/** Bumped on every agent change and when the plugin is turned off. An operation spanning awaits (a clone upload)
+ *  stops when it changes, even if the same agent is selected again (A→B→A). */
+let agentEpoch = 0
+export const currentAgentEpoch = () => agentEpoch
+export const endAgentOperations = () => {
+  agentEpoch++
+}
+
 export const $tab = atom<'account' | 'create' | 'library' | 'mine'>('library')
 
 /** An in-band `{ok:false, kind, message}` answer, raised so callers can show it. */

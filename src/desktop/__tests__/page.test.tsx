@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import { createTestContext, host, resetHost, resetQueryCache } from './sdk-mock'
-import { $available, $tab, bindContext } from '../api'
+import { $available, $availableError, $tab, bindContext, setRefresher } from '../api'
 import { previewVoice, VoicesPage } from '../page'
 import plugin from '../plugin'
 import * as audio from '../audio'
@@ -25,6 +25,7 @@ afterEach(() => {
   resetHost()
   resetQueryCache()
   $available.set(null)
+  $availableError.set(null)
   $tab.set('library')
 })
 
@@ -376,5 +377,66 @@ describe('list reads stay with the captured agent', () => {
     release(full('other'))
     await flush()
     expect(screen.queryByText('other voice 0')).toBeNull()
+  })
+})
+
+describe('#13 follow-ups', () => {
+  const NARRATOR = 'a'.repeat(32)
+  const TWO = {
+    ok: true,
+    page: 1,
+    total: 2,
+    items: [
+      { id: NARRATOR, title: 'Narrator', author: 'fish', languages: ['en'] },
+      { id: 'b'.repeat(32), title: 'Storyteller', author: 'fish', languages: ['en'] }
+    ]
+  }
+  const deferred = () => {
+    let resolve!: (value: any) => void
+    const promise = new Promise<any>(yes => (resolve = yes))
+    return { promise, resolve }
+  }
+
+  beforeEach(() => $available.set({ key: true, version: '1.0.4' }))
+  afterEach(() => vi.restoreAllMocks())
+
+  it('one Use per agent at a time: a second Use waits, so only one write is sent', async () => {
+    const answer = deferred()
+    const { calls } = mount(async path => (path.startsWith('/voices') ? TWO : path === '/use' ? answer.promise : { ok: true }))
+    await flush()
+    const [first, second] = screen.getAllByRole('button', { name: 'Use' })
+    fireEvent.click(first)
+    await flush()
+    fireEvent.click(second)
+    await flush()
+    expect(calls.filter(c => c.path === '/use').map(c => c.body)).toEqual([{ voice: NARRATOR }])
+    answer.resolve({ ok: true, message: 'Saved.' })
+    await flush()
+    expect(screen.getByRole('button', { name: 'In use' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Use' }).hasAttribute('disabled')).toBe(false)
+  })
+
+  it("deleting a voice also removes it from that agent's favourites", async () => {
+    $tab.set('mine')
+    const { t } = mount(async (path, opts) => (opts?.method === 'DELETE' ? { ok: true } : path.startsWith('/voices') ? VOICES : { ok: true }))
+    t.stored.set('favourites:conn-1::default', [{ id: NARRATOR, title: 'Narrator' }, { id: 'keep', title: 'Other' }])
+    await flush()
+    fireEvent.click(screen.getByLabelText('Delete Narrator'))
+    fireEvent.change(screen.getByLabelText(S.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await flush()
+    expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'keep', title: 'Other' }])
+  })
+
+  it('a failed probe for an unknown agent shows the failure and Check again, not a skeleton', () => {
+    const retry = vi.fn(async () => undefined)
+    setRefresher(retry)
+    $available.set(null)
+    $availableError.set(new Error('The request timed out.'))
+    mount(async () => ({ ok: true }))
+    expect(screen.getByRole('alert').textContent).toContain(S.unreachable('default'))
+    expect(screen.getByText('The request timed out.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: S.checkAgain }))
+    expect(retry).toHaveBeenCalledWith(true)
   })
 })

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.4 — 2026-10-06
+
+Hermes Desktop Voices page fixes, from a review of the evaOS Agent app's copy of the plugin (#13):
+- **Switching agents and back stops a voice-clone upload.** Before, if you switched from agent A to B and back to A
+  during an upload, it carried on to A. Now any agent switch, or turning the plugin off, stops it.
+- **One Use at a time.** Before, clicking Use on two voices quickly sent both, and either could end up as the agent's
+  voice. Now the other Use buttons wait until the first one finishes.
+- **Deleting a voice removes it from Favourites.** A deleted voice used to stay starred, but could no longer be
+  previewed or used.
+- **A Voices page that can't reach the agent says so.** When the agent's gateway timed out or returned an error
+  before it had ever answered, the page showed a loading skeleton forever. Now it shows the error and a Check again
+  button.
+
 ## 1.0.3 — 2026-10-06
 
 - **A voice preview no longer plays after you leave the Voices page.** If you started a preview and then left the page

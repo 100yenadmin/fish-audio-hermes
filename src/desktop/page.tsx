@@ -1,5 +1,6 @@
 // The Voices page: header, tabs (Library, My voices, Create, Account) and the no-key onboarding card.
 import {
+  atom,
   Badge,
   Button,
   Codicon,
@@ -9,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   EmptyState,
+  ErrorState,
   host,
   Input,
   SearchField,
@@ -27,6 +29,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import {
   $account,
   $available,
+  $availableError,
   $tab,
   type Account,
   type AgentPin,
@@ -67,6 +70,7 @@ const renews = (plan: NonNullable<Account['package']>) =>
 
 export function VoicesPage() {
   const available = useValue($available)
+  const availableError = useValue($availableError)
   const profile = useValue(host.state.profile)
   const connectionId = useValue(host.state.connectionId)
   const pin: AgentPin = { connectionId, profile }
@@ -80,7 +84,17 @@ export function VoicesPage() {
   if (available === null) {
     return (
       <Frame profile={profile}>
-        <Rows />
+        {availableError ? (
+          <div style={{ padding: pad }}>
+            <ErrorState description={errorText(availableError)} title={S.unreachable(profile)}>
+              <Button onClick={() => void refreshAvailability()} size="xs" variant="secondary">
+                {S.checkAgain}
+              </Button>
+            </ErrorState>
+          </div>
+        ) : (
+          <Rows />
+        )}
       </Frame>
     )
   }
@@ -167,8 +181,17 @@ function useDebounced<T>(value: T, ms: number): T {
 
 type Favourite = Pick<Voice, 'author' | 'id' | 'languages' | 'title'>
 
+const favouritesKey = (pin: AgentPin) => `favourites:${agentKey(pin)}`
+
+/** A voice deleted from the account can no longer be previewed or used, so it leaves that agent's favourites too. */
+function forgetFavourite(pin: AgentPin, id: string) {
+  const storage = pluginCtx().storage
+  const list = storage.get<Favourite[]>(favouritesKey(pin), [])
+  if (list.some(f => f.id === id)) storage.set(favouritesKey(pin), list.filter(f => f.id !== id))
+}
+
 function useFavourites(pin: AgentPin) {
-  const storageKey = `favourites:${agentKey(pin)}`
+  const storageKey = favouritesKey(pin)
   const [list, setList] = useState<Favourite[]>(() => pluginCtx().storage.get<Favourite[]>(storageKey, []))
   const toggle = (voice: Voice) => {
     const next = list.some(f => f.id === voice.id)
@@ -265,6 +288,10 @@ function Pager({ page, more, setPage }: { page: number; more: boolean; setPage: 
 
 const inFlightPreviews = new Set<string>()
 
+/** The voice whose Use is in flight, per agent. One at a time: two in flight could land in either order, on the
+ *  gateway and on the page. */
+const $usePending = atom<Record<string, string>>({})
+
 /** Play a billed preview of a voice, or replay one already fetched in this window. */
 export async function previewVoice(pin: AgentPin, voiceId: string) {
   if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
@@ -296,6 +323,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   const playing = useValue($playing)
   const [busy, setBusy] = useState<null | string>(null)
   const [used, setUsed] = useState<null | string>(null)
+  const pendingUse = useValue($usePending)[agentKey(pin)]
   const run = async (id: string, action: () => Promise<unknown>) => {
     if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
     setBusy(id)
@@ -307,14 +335,23 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
       if (samePin(currentPin(), pin)) setBusy(null)
     }
   }
-  const use = (voice: Voice) =>
-    run(`use:${voice.id}`, async () => {
-      const res = await post<{ message: string }>('/use', { voice: voice.id })
-      if (!samePin(currentPin(), pin)) return
-      setUsed(voice.id)
-      const note = res.message && res.message !== 'Saved.' ? ` ${res.message.replace(/^Saved\.\s*/, '')}` : ''
-      host.notify({ kind: 'success', message: S.usedVoice(voice.title, pin.profile) + note })
-    })
+  const use = async (voice: Voice) => {
+    const agent = agentKey(pin)
+    if ($usePending.get()[agent]) return
+    $usePending.set({ ...$usePending.get(), [agent]: voice.id })
+    try {
+      await run(`use:${voice.id}`, async () => {
+        const res = await post<{ message: string }>('/use', { voice: voice.id })
+        if (!samePin(currentPin(), pin)) return
+        setUsed(voice.id)
+        const note = res.message && res.message !== 'Saved.' ? ` ${res.message.replace(/^Saved\.\s*/, '')}` : ''
+        host.notify({ kind: 'success', message: S.usedVoice(voice.title, pin.profile) + note })
+      })
+    } finally {
+      const { [agent]: mine, ...rest } = $usePending.get()
+      if (mine === voice.id) $usePending.set(rest)
+    }
+  }
   return (
     <div style={{ border: '1px solid var(--ui-stroke-tertiary)', borderRadius: 6 }}>
       {voices.map((voice, i) => {
@@ -356,8 +393,8 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 {playing === key ? S.stop : S.preview}
               </Button>
               <Button
-                disabled={used === voice.id}
-                loading={busy === `use:${voice.id}`}
+                disabled={used === voice.id || (pendingUse !== undefined && pendingUse !== voice.id)}
+                loading={pendingUse === voice.id}
                 onClick={() => void use(voice)}
                 size="xs"
                 variant={used === voice.id ? 'ghost' : 'default'}
@@ -450,6 +487,7 @@ function DeleteDialog({ pin, voice, onClose, onDeleted }: { pin: AgentPin; voice
     setBusy(true)
     try {
       await call(`/voices/${encodeURIComponent(voice.id)}`, { method: 'DELETE', timeoutMs: 60_000 })
+      forgetFavourite(pin, voice.id)  // gone from that agent's account, whichever agent is selected now
       if (!samePin(currentPin(), pin)) return
       host.notify({ kind: 'success', message: S.deleted(voice.title) })
       onDeleted()

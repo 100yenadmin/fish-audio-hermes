@@ -13,7 +13,7 @@ import {
 } from '@hermes/plugin-sdk'
 
 import { releasePlayback } from './audio'
-import { $account, $available, $tab, type Account, bindContext, isNotFoundError, setRefresher } from './api'
+import { $account, $available, $availableError, $tab, type Account, bindContext, endAgentOperations, isNotFoundError, setRefresher } from './api'
 import { VoicesPage } from './page'
 import { S } from './strings'
 
@@ -72,6 +72,7 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   // The stores outlive a disable: a re-enable may face another agent, so start unknown, never with the last answer.
   $available.set(null)
   $account.set(null)
+  $availableError.set(null)
 
   const show = (available: boolean) => {
     if (disposed) return
@@ -102,11 +103,15 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   }
 
   const probe = (force = false) => {
-    if (force) forcePending = true
+    if (force) {
+      forcePending = true
+      $availableError.set(null)  // a forced probe (Check again, a new agent) shows loading, not the last failure
+    }
     const mine = ++generation
     return ctx.rest<{ key?: boolean; version?: string }>('/available').then(
       res => {
         if (mine !== generation || disposed) return
+        $availableError.set(null)
         $available.set({ key: res?.key === true, version: String(res?.version ?? '') })
         show(true)
         if (res?.key !== true) {
@@ -127,7 +132,14 @@ export function registerAvailabilityGate(ctx: PluginContext) {
         )
       },
       error => {
-        if (mine !== generation || disposed || !isNotFoundError(error)) return
+        if (mine !== generation || disposed) return
+        if (!isNotFoundError(error)) {
+          // Still unknown with no answer: the page shows the failure and Check again, not an endless skeleton.
+          // A known agent keeps its entries: a transient error never hides them.
+          if ($available.get() === null) $availableError.set(error)
+          return
+        }
+        $availableError.set(null)
         $available.set(false)
         $account.set(null)
         show(false)
@@ -141,6 +153,7 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   // A new agent starts unknown and hidden: one agent's entries, wallet or key state never carry over to another.
   const onAgentChange = () => {
     if (disposed) return
+    endAgentOperations()
     $account.set(null)
     $available.set(null)
     show(false)
@@ -168,6 +181,7 @@ const plugin: HermesPlugin = {
     })
     setRefresher(registerAvailabilityGate(ctx).probe)
     ctx.onDispose(releasePlayback)
+    ctx.onDispose(endAgentOperations)
   }
 }
 

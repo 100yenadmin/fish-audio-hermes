@@ -2,7 +2,7 @@
 import { Button, Checkbox, Codicon, host, Input, Textarea, useQueryClient, useValue } from '@hermes/plugin-sdk'
 import { type ChangeEvent, useRef, useState } from 'react'
 
-import { type AgentPin, agentKey, type Candidate, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
+import { type AgentPin, agentKey, type Candidate, currentAgentEpoch, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
 import { $playing, play, stop } from './audio'
 import { S } from './strings'
 import { BilledNote, card, muted } from './ui'
@@ -50,7 +50,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
         files,
         { consent, description: description.trim(), title: title.trim() },
         pin,
-        { current: currentPin, rest: (path, opts) => pluginCtx().rest(path, opts) },
+        { current: currentPin, epoch: currentAgentEpoch, rest: (path, opts) => pluginCtx().rest(path, opts) },
         (n, sent, total) => setStatus(S.uploading(n, files.length, Math.round((sent / Math.max(1, total)) * 100)))
       )
       if (!samePin(currentPin(), pin)) return
