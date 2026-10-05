@@ -139,7 +139,7 @@ def test_no_key_and_surface(monkeypatch):
         assert not result["success"] and "hermes tools" in result["error"] and not mock.calls
 
 
-@pytest.mark.parametrize("status", [429, 500])
+@pytest.mark.parametrize("status", [429, 500, 503])
 def test_asr_retries_before_response_bytes(tmp_path, status):
     path = tmp_path / "sample.ogg"
     path.write_bytes(b"OggSsynthetic")
@@ -158,6 +158,19 @@ def test_asr_gateway_errors_are_not_retried(tmp_path, status):
         route = mock.post(URL).mock(return_value=httpx.Response(status))
         assert not stt.FishAudioTranscriptionProvider().transcribe(path)["success"]
         assert route.call_count == 1
+
+
+def test_asr_success_body_is_capped(tmp_path):
+    class Huge(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b'{"text":"' + b"a" * (64 * 1024 * 1024)
+            yield b'"}'
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(URL).mock(return_value=httpx.Response(200, stream=Huge()))
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+        assert not result["success"] and route.call_count == 1
 
 
 def test_asr_no_retry_after_partial_success_response(tmp_path):

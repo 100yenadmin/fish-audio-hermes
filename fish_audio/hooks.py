@@ -70,8 +70,10 @@ def on_pre_tool_call(tool_name="", args=None, **kwargs):
             return None
         if args.get("action") == "clone":
             title = json.dumps(_approval_string(args.get("title", "")))
+            paths = args.get("sample_paths")
+            count = len(paths) if isinstance(paths, list) else "?"
             message = (f'Fish Audio: clone a voice named {title} from '
-                       f'{len(args.get("sample_paths", []))} sample file(s) to your Fish account')
+                       f'{count} sample file(s) to your Fish account')
             rule = "fish-audio:clone"
         elif args.get("action") == "delete":
             voice = _approval_string(args.get("voice_id", ""))

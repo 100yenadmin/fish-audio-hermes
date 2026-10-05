@@ -107,3 +107,10 @@ def test_approval_model_strings_are_bounded_json_literals(action, field):
     assert "x" * 81 not in result["message"]
     if action == "delete":
         assert result["rule_key"] == "fish-audio:delete:" + clean
+
+
+@pytest.mark.parametrize("paths, count", [(5, "?"), (None, "?"), ("a.wav", "?"), (["a.wav"], "1")])
+def test_clone_approval_survives_malformed_sample_paths(paths, count):
+    # Approval must still be requested; the count is shown only for a real list.
+    result = hooks.on_pre_tool_call("fish_voices", {"action": "clone", "title": "t", "sample_paths": paths})
+    assert result["action"] == "approve" and f"from {count} sample file(s)" in result["message"]

@@ -172,13 +172,15 @@ def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sle
                     except httpx.TransportError:
                         body = b""
                     raise response_error(response.status_code, response.headers, body, model, key)
-                chunks = []
+                body = bytearray()
                 for chunk in response.iter_bytes():
                     if chunk:
                         received = True
-                        chunks.append(chunk)
+                        body.extend(chunk)
+                        if len(body) > 64 * 1024 * 1024:
+                            raise FishAudioError("too_large", None, None, "Fish Audio response exceeds the size cap.")
                 try:
-                    data = json.loads(b"".join(chunks))
+                    data = json.loads(body)
                     if not isinstance(data, dict) or not isinstance(data.get("text"), str):
                         raise ValueError("invalid ASR response")
                 except (ValueError, UnicodeError):
