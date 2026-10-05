@@ -4,4 +4,7 @@ from __future__ import annotations
 
 
 def register_all(ctx) -> None:
-    """Lanes (b)-(d) add providers, tools, hooks, commands and skills here."""
+    """Register without reading credentials or opening a transport."""
+    from .tts import FishAudioTTSProvider
+
+    ctx.register_tts_provider(FishAudioTTSProvider())
