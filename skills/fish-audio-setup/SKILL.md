@@ -11,8 +11,10 @@ Set up Fish Audio for the active Hermes profile.
 
 1. Create a key at https://fish.audio/app/api-keys. Never ask the user to paste it into chat.
    Use Desktop ▸ Plugins ▸ Fish Audio, `hermes tools`, or `hermes fish login` on the Hermes machine.
-2. Select Fish Audio for Text-to-Speech and Speech-to-Text in `hermes tools`. Login asks before
-   changing existing providers; `hermes fish login --yes` permits those switches.
+2. `hermes fish login` selects Fish Audio for both Text-to-Speech and Speech-to-Text. It asks before
+   changing existing providers; `hermes fish login --yes` permits those switches. Otherwise pick Fish Audio
+   for Text-to-Speech in `hermes tools`, and for Speech-to-Text in Desktop settings or with
+   `hermes config set stt.provider fish-audio` (`hermes tools` has no plugin speech-to-text rows).
    If a Hermes gateway or the desktop app is already running for this profile, restart it to pick up the new key.
 3. Run `/fish voices <description>` and choose `/fish use <id>`. An existing provider is preserved.
    Browse more voices at https://fish.audio/discovery.
@@ -39,4 +41,4 @@ Troubleshooting by error kind:
 - `too_large` / `unsupported_media`: reduce the input or use supported audio.
 - `availability`: retry later. Include only the Fish-supplied request/trace id when reporting a problem.
 
-Host plugin isolation disables these commands and hooks; use in-process mode for this plugin's full surface.
+Under host plugin isolation only the `hermes fish` terminal command is unavailable; `/fish`, the tools, the hooks and both providers still work.

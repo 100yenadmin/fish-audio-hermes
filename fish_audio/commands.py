@@ -9,7 +9,7 @@ from .secrets import fish_api_key, redact
 from .tool_support import require, voice_id, ToolInputError
 
 _LOCK = threading.RLock()
-HELP = "/fish status · voices [query] · use <id> · model <id> · preview <id> [text] · balance · help"
+HELP = "/fish status · voices [query] · use <id> · model <id> · preview <id> [text] (billed) · balance · help"
 NO_KEY = ("Fish Audio isn't set up for this profile yet. Get a key at https://fish.audio/app/api-keys, then finish "
           "setup in the Desktop app (Plugins ▸ Fish Audio) or run `hermes fish login` on the machine running Hermes. "
           "For safety, never paste API keys into chat.")

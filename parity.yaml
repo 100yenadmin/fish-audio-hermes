@@ -159,7 +159,7 @@ entries:
   method: get
   location: response
   field: billing_period
-  surface: account /fish balance billing_period
+  surface: account package projection billing_period (not shown by /fish balance)
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -300,7 +300,7 @@ entries:
   method: get
   location: response
   field: subscription_status
-  surface: account /fish balance subscription_status
+  surface: account package projection subscription_status (not shown by /fish balance)
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -321,7 +321,7 @@ entries:
   method: get
   location: response
   field: extra_balance
-  surface: account /fish balance extra_balance
+  surface: account package projection extra_balance (not shown by /fish balance)
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -659,7 +659,7 @@ entries:
   method: post
   location: form
   field: audio
-  surface: STT provider / fish_transcribe audio
+  surface: fish_transcribe audio (verified); STT provider shares the request builder (implemented)
   status: verified
   tests:
   - tests/test_transcribe_tool.py::test_transcription_uses_validated_fd_bytes
@@ -684,7 +684,7 @@ entries:
   method: post
   location: form
   field: ignore_timestamps
-  surface: STT provider / fish_transcribe ignore_timestamps
+  surface: fish_transcribe ignore_timestamps (verified); STT provider shares the request builder (implemented)
   status: verified
   tests:
   - tests/test_transcribe_tool.py::test_srt_forces_timestamps_even_when_disabled

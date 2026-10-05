@@ -149,6 +149,17 @@ def test_asr_retries_before_response_bytes(tmp_path, status):
         assert route.call_count == 2
 
 
+@pytest.mark.parametrize("status", [502, 504])
+def test_asr_gateway_errors_are_not_retried(tmp_path, status):
+    # A proxy 502/504 may follow a request Fish already processed and billed.
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(URL).mock(return_value=httpx.Response(status))
+        assert not stt.FishAudioTranscriptionProvider().transcribe(path)["success"]
+        assert route.call_count == 1
+
+
 def test_asr_no_retry_after_partial_success_response(tmp_path):
     class Stream(httpx.SyncByteStream):
         def __iter__(self):

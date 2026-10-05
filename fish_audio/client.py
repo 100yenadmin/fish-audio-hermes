@@ -51,6 +51,12 @@ def _retryable(error):
     return error.status == 429 or error.status is not None and 500 <= error.status < 600
 
 
+def _billed_retryable(error):
+    """Billed POSTs retry only where Fish cannot have done the work: 502/504 come from a proxy that may have
+    let the request through, so retrying them could bill twice."""
+    return error.status in (429, 500, 503)
+
+
 def _has_bytes(value):
     if isinstance(value, (bytes, bytearray)):
         return True
@@ -139,7 +145,7 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None):
             retryable = _transport_retry(exc, progress)
         except FishAudioError as exc:
             error = exc
-            retryable = _retryable(exc)
+            retryable = _billed_retryable(exc)
         if written or not retryable or attempt == 2:
             raise error from None
         sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))
@@ -184,7 +190,7 @@ def transcribe_audio(audio, filename, mime, fields, *, key, base_url, model, sle
             error = response_error(None, response_headers, key=key)
             retryable = _transport_retry(exc, progress)
         except FishAudioError as exc:
-            error, retryable = exc, _retryable(exc)
+            error, retryable = exc, _billed_retryable(exc)
         if received or not retryable or attempt == 2:
             raise error from None
         sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))

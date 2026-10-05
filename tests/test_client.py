@@ -77,7 +77,7 @@ def test_retry_before_bytes(tmp_path, failure):
         assert route.call_count == 3 and delays == [0.5, 1]
 
 
-@pytest.mark.parametrize("status", [400, 401, 402, 403, 404, 413, 415, 302])
+@pytest.mark.parametrize("status", [400, 401, 402, 403, 404, 413, 415, 302, 502, 504])
 def test_nonretryable_status(tmp_path, status):
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(URL).respond(status, content=b"private test-key", headers={"x-request-id": "fish-id"})

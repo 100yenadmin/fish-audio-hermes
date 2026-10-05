@@ -188,7 +188,6 @@ def test_cli_status_and_login_name_effective_model(config, monkeypatch, capsys, 
 def test_doctor_no_synth_exit_and_no_tts(config, monkeypatch, capsys, missing):
     data, _, _ = config
     data["tts"]["provider"] = data["stt"]["provider"] = "fish-audio"
-    data["plugins"] = {"isolation": "host"}
     if missing:
         monkeypatch.setattr(cli, "fish_api_key", lambda: "")
     with respx.mock(assert_all_called=True) as mock:
@@ -197,7 +196,7 @@ def test_doctor_no_synth_exit_and_no_tts(config, monkeypatch, capsys, missing):
         assert run("doctor", "--no-synth") == int(missing)
         assert all(r.request.method == "GET" for r in mock.calls)
     output = capsys.readouterr().out
-    assert "round trip skipped" in output and "Host isolation" in output
+    assert "round trip skipped" in output
     assert all(line.startswith(("ok:", "warn:", "fail:")) for line in output.splitlines())
 
 

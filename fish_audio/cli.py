@@ -116,8 +116,6 @@ def _doctor(args):
     except ImportError:
         registered = False
     line("ok" if registered else "fail", "STT registered" if registered else "STT absent; enable the Fish Audio plugin")
-    if cfg.get("plugins", {}).get("isolation") == "host":
-        line("warn", "Host isolation: hermes fish and hooks are unavailable; use in-process plugin mode")
     return int(failed)
 
 

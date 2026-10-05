@@ -9,8 +9,11 @@ messaging gateway and the Desktop app.
 ## Install (preview)
 
 ```bash
-hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable --yes-deps
+hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable
 ```
+
+Hermes 0.21.5 installs the plugin's Python dependencies automatically. Newer Hermes builds ask first;
+add `--yes-deps` there to answer yes.
 
 You need a Fish Audio API key — create one free at <https://fish.audio/app/api-keys>.
 
@@ -31,14 +34,15 @@ All these calls are billed to your Fish Audio account. Setting `allow_free_model
 ## Commands (preview)
 
 Use `/fish help` in chat for `status`, `voices`, `use`, `model`, `preview`, and `balance`.
-`/fish preview <voice_id> [text]` returns a voice reply through Hermes's media delivery.
+`/fish preview <voice_id> [text]` returns a voice reply through Hermes's media delivery; it is a billed synthesis.
 Never paste a key into chat; enter it locally with `hermes fish login` or Desktop ▸ Plugins ▸ Fish Audio.
 
 `hermes fish` prints help. It supports `login [--key-stdin] [--yes]`, `status`,
 `doctor [--no-synth]`, and `use <voice_id>`. Login asks before changing existing providers.
 Doctor's synthesis check is billed and deletes its temporary audio; use `--no-synth` to skip it.
 Config changes apply to the active profile; managed installs may refuse writes.
-Host plugin isolation does not expose `hermes fish` or these hooks.
+Under host plugin isolation (`plugins.isolation: host`, newer Hermes builds), the `hermes fish` terminal command is
+unavailable; `/fish`, the tools, the hooks and both providers still work.
 
 Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
 and `fish-audio:fish-audio-voice-studio`. The parity map tracks implemented, tested and deferred API fields.
