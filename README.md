@@ -16,8 +16,9 @@ hermes fish login        # paste your key from https://fish.audio/app/api-keys
 
 Hermes 0.21.5 installs the plugin's Python dependencies automatically. Newer Hermes builds ask first;
 add `--yes-deps` there to answer yes. `hermes fish login` checks the key against your Fish account, saves it to the
-active profile and selects Fish Audio for speech and transcription, asking first before it replaces another
-provider. From then on, voice replies, read-aloud and voice notes go through Fish Audio.
+active profile. It makes Fish Audio the speech and transcription provider where none is set, and replaces another
+provider only if you confirm at the prompt or pass `--yes`. Once Fish Audio is the provider, voice replies,
+read-aloud and voice notes go through it.
 
 ## What you get
 
@@ -35,8 +36,8 @@ provider. From then on, voice replies, read-aloud and voice notes go through Fis
 1. **Get a key** at <https://fish.audio/app/api-keys>. New accounts can start on the free `s2.1-pro-free` model.
 2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop ▸ Plugins ▸ Fish Audio, or in
    `hermes tools` ▸ Text-to-Speech ▸ Fish Audio. `login` checks the key against your Fish wallet and saves it to the
-   active profile. It selects Fish Audio for speech and transcription where no provider is set yet, and asks before
-   replacing another provider (`--yes` accepts both; `--key-stdin` reads the key from standard input).
+   active profile. It makes Fish Audio the speech and transcription provider where none is set; it replaces another
+   provider only if you confirm at the prompt or pass `--yes`. `--key-stdin` reads the key from standard input.
 3. **Check it** with `hermes fish doctor`, which makes one short billed synthesis (`--no-synth` skips it). Restart a
    running gateway or the Desktop app to pick up a new key.
 
@@ -103,7 +104,7 @@ plugins:
 
 **Which model?** A valid `tts.fish-audio.model` is used as set (for `fish_speak`, a model named in the call comes
 first); invalid ids are ignored. Otherwise the plugin uses `s2.1-pro`, and picks `s2.1-pro-free` only when Fish
-reports a wallet with no API credit, no past top-ups and no free credit. If the wallet can't be read, it uses
+reports a wallet with no API credit and no past top-ups that doesn't carry Fish's free-credit flag. If the wallet can't be read, it uses
 `s2.1-pro`. When it picks the free model it tells you once that the model is free until 30 November 2026 and that
 Fish Audio may use free-tier requests to improve its models. `allow_free_model: false` replaces `s2.1-pro-free`
 with `s2.1-pro` everywhere, even when you name the free model yourself.
