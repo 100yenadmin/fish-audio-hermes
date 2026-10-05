@@ -1,6 +1,7 @@
 """Real Hermes loader -> registry -> ordinary TTS tool, with only HTTP mocked."""
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -10,6 +11,7 @@ import respx
 # Collection in the standalone unit venv must not import Hermes.
 pytestmark = pytest.mark.skipif(importlib.util.find_spec("hermes_cli") is None, reason="requires the real Hermes venv")
 ROOT = Path(__file__).resolve().parents[2]
+PLUGIN_VERSION = re.search(r"^version: (\S+)$", (ROOT / "plugin.yaml").read_text(), re.M).group(1)
 VOICE = "b" * 32
 
 
@@ -49,7 +51,7 @@ def test_ordinary_tts_delivers_mocked_fish_audio(installed, monkeypatch):
         request = route.calls.last.request
         assert request.headers["authorization"] == "Bearer test-key"
         assert dict(request.headers)["model"] == "s2.1-pro-free"
-        assert request.headers["user-agent"] == f"fish-audio-hermes/0.0.1 (hermes-agent/{__version__})"
+        assert request.headers["user-agent"] == f"fish-audio-hermes/{PLUGIN_VERSION} (hermes-agent/{__version__})"
         payload = json.loads(request.content)
         assert payload["reference_id"] == VOICE and payload["text"] == "hello"
         assert payload["format"] == "mp3"

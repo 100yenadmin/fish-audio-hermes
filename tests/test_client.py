@@ -1,5 +1,7 @@
 import json
+import re
 import sys
+from pathlib import Path
 from types import ModuleType
 
 import httpx
@@ -38,7 +40,7 @@ def test_json_headers_ua_and_output(tmp_path, transport, monkeypatch):
         request = route.calls.last.request
         assert request.headers["Authorization"] == "Bearer test-key"
         assert dict(request.headers)["model"] == "s2.1-pro"
-        assert request.headers["User-Agent"] == "fish-audio-hermes/0.0.1 (hermes-agent/0.21.5)"
+        assert request.headers["User-Agent"] == f"fish-audio-hermes/{client.PLUGIN_VERSION} (hermes-agent/0.21.5)"
         assert request.headers["Content-Type"] == "application/json"
         assert json.loads(request.content) == {k: v for k, v in PARAMS.items() if k != "model"}
         assert "authorization" not in transport.headers
@@ -194,7 +196,7 @@ def test_atomic_failure_preserves_destination(tmp_path, monkeypatch):
 def test_lazy_timeout_and_unknown_ua(monkeypatch):
     monkeypatch.setattr(client, "_client", None)
     monkeypatch.setitem(sys.modules, "hermes_cli", None)
-    assert client._user_agent() == "fish-audio-hermes/0.0.1 (hermes-agent/unknown)"
+    assert client._user_agent() == f"fish-audio-hermes/{client.PLUGIN_VERSION} (hermes-agent/unknown)"
     http = client._http_client()
     try:
         assert http.timeout == httpx.Timeout(connect=10, read=60, write=60, pool=10)
@@ -294,3 +296,11 @@ def test_read_timeout_after_upload_never_retries(tmp_path, endpoint):
             else:
                 client.post_json("/v1/voice-design", {"instruction": "warm"}, "test-key", "https://api.fish.audio", 60)
         assert route.call_count == 1 and "test-key" not in str(exc.value)
+
+
+def test_plugin_versions_agree():
+    import fish_audio
+    root = Path(__file__).resolve().parents[1]
+    manifest = re.search(r"^version: (\S+)$", (root / "plugin.yaml").read_text(), re.M).group(1)
+    project = re.search(r'^version = "([^"]+)"$', (root / "pyproject.toml").read_text(), re.M).group(1)
+    assert manifest == project == client.PLUGIN_VERSION == fish_audio.PLUGIN_VERSION
