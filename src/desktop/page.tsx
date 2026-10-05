@@ -183,22 +183,32 @@ type Favourite = Pick<Voice, 'author' | 'id' | 'languages' | 'title'>
 
 const favouritesKey = (pin: AgentPin) => `favourites:${agentKey(pin)}`
 
+/** Storage holds the favourites; this changes on every write, so a mounted Library re-reads them. */
+const $favouritesRevision = atom(0)
+
+function writeFavourites(pin: AgentPin, list: Favourite[]) {
+  pluginCtx().storage.set(favouritesKey(pin), list)
+  $favouritesRevision.set($favouritesRevision.get() + 1)
+}
+
 /** A voice deleted from the account can no longer be previewed or used, so it leaves that agent's favourites too. */
 function forgetFavourite(pin: AgentPin, id: string) {
-  const storage = pluginCtx().storage
-  const list = storage.get<Favourite[]>(favouritesKey(pin), [])
-  if (list.some(f => f.id === id)) storage.set(favouritesKey(pin), list.filter(f => f.id !== id))
+  const list = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
+  if (list.some(f => f.id === id)) writeFavourites(pin, list.filter(f => f.id !== id))
 }
 
 function useFavourites(pin: AgentPin) {
-  const storageKey = favouritesKey(pin)
-  const [list, setList] = useState<Favourite[]>(() => pluginCtx().storage.get<Favourite[]>(storageKey, []))
+  useValue($favouritesRevision)
+  const list = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
   const toggle = (voice: Voice) => {
-    const next = list.some(f => f.id === voice.id)
-      ? list.filter(f => f.id !== voice.id)
-      : [...list, { author: voice.author, id: voice.id, languages: voice.languages, title: voice.title }]
-    pluginCtx().storage.set(storageKey, next)
-    setList(next)
+    // Read storage again: a delete may have changed it since this render.
+    const current = pluginCtx().storage.get<Favourite[]>(favouritesKey(pin), [])
+    writeFavourites(
+      pin,
+      current.some(f => f.id === voice.id)
+        ? current.filter(f => f.id !== voice.id)
+        : [...current, { author: voice.author, id: voice.id, languages: voice.languages, title: voice.title }]
+    )
   }
   return { has: (id: string) => list.some(f => f.id === id), list, toggle }
 }

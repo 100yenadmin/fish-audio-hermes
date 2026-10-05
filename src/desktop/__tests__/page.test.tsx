@@ -428,6 +428,25 @@ describe('#13 follow-ups', () => {
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'keep', title: 'Other' }])
   })
 
+  it('a delete that settles after you open Library is not undone by the next star', async () => {
+    const answer = deferred()
+    $tab.set('mine')
+    const { t } = mount(async (path, opts) => (opts?.method === 'DELETE' ? answer.promise : path.startsWith('/voices') ? TWO : { ok: true }))
+    t.stored.set('favourites:conn-1::default', [{ id: NARRATOR, title: 'Narrator' }])
+    await flush()
+    fireEvent.click(screen.getByLabelText('Delete Narrator'))
+    fireEvent.change(screen.getByLabelText(S.deleteConfirmLabel('Narrator')), { target: { value: 'Narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    act(() => $tab.set('library')) // the DELETE is still pending; Library mounts with Narrator starred
+    await flush()
+    answer.resolve({ ok: true })
+    await flush()
+    const stars = screen.getAllByRole('button', { name: new RegExp(`^(${S.favourite}|${S.unfavourite})$`) })
+    expect(stars.map(b => b.getAttribute('aria-label'))).toEqual([S.favourite, S.favourite])
+    fireEvent.click(stars[1]) // star Storyteller
+    expect(t.stored.get('favourites:conn-1::default')).toEqual([{ author: 'fish', id: 'b'.repeat(32), languages: ['en'], title: 'Storyteller' }])
+  })
+
   it('a failed probe for an unknown agent shows the failure and Check again, not a skeleton', () => {
     const retry = vi.fn(async () => undefined)
     setRefresher(retry)

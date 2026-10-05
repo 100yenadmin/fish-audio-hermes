@@ -644,18 +644,24 @@ function useDebounced(value, ms) {
   return settled;
 }
 var favouritesKey = (pin) => `favourites:${agentKey(pin)}`;
+var $favouritesRevision = atom3(0);
+function writeFavourites(pin, list) {
+  pluginCtx().storage.set(favouritesKey(pin), list);
+  $favouritesRevision.set($favouritesRevision.get() + 1);
+}
 function forgetFavourite(pin, id) {
-  const storage = pluginCtx().storage;
-  const list = storage.get(favouritesKey(pin), []);
-  if (list.some((f) => f.id === id)) storage.set(favouritesKey(pin), list.filter((f) => f.id !== id));
+  const list = pluginCtx().storage.get(favouritesKey(pin), []);
+  if (list.some((f) => f.id === id)) writeFavourites(pin, list.filter((f) => f.id !== id));
 }
 function useFavourites(pin) {
-  const storageKey = favouritesKey(pin);
-  const [list, setList] = useState2(() => pluginCtx().storage.get(storageKey, []));
+  useValue2($favouritesRevision);
+  const list = pluginCtx().storage.get(favouritesKey(pin), []);
   const toggle = (voice) => {
-    const next = list.some((f) => f.id === voice.id) ? list.filter((f) => f.id !== voice.id) : [...list, { author: voice.author, id: voice.id, languages: voice.languages, title: voice.title }];
-    pluginCtx().storage.set(storageKey, next);
-    setList(next);
+    const current = pluginCtx().storage.get(favouritesKey(pin), []);
+    writeFavourites(
+      pin,
+      current.some((f) => f.id === voice.id) ? current.filter((f) => f.id !== voice.id) : [...current, { author: voice.author, id: voice.id, languages: voice.languages, title: voice.title }]
+    );
   };
   return { has: (id) => list.some((f) => f.id === id), list, toggle };
 }
