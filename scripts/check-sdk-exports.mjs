@@ -18,10 +18,17 @@ function walk(dir) {
   })
 }
 
+const NAMESPACE_RE = /(?:import|export)\s*\*\s*(?:as\s+[\w$]+\s*)?from\s*['"]@hermes\/plugin-sdk['"]/
+const DEFAULT_RE = /import\s+(?!type\b)[\w$]+\s*(?:,\s*\{[^}]*\}\s*)?from\s*['"]@hermes\/plugin-sdk['"]/
 const used = new Set()
 for (const file of walk('src/desktop')) {
   const src = readFileSync(file, 'utf8')
-  for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@hermes\/plugin-sdk['"]/g)) {
+  // Only named imports/re-exports can be checked name by name; refuse default and namespace forms.
+  if (NAMESPACE_RE.test(src) || DEFAULT_RE.test(src)) {
+    console.error(`${file}: default or namespace import/re-export of @hermes/plugin-sdk cannot be checked; use named imports`)
+    process.exit(1)
+  }
+  for (const m of src.matchAll(/(?:import|export)\s*\{([^}]*)\}\s*from\s*['"]@hermes\/plugin-sdk['"]/g)) {
     for (const part of m[1].split(',')) {
       const name = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim()
       if (name && !part.trim().startsWith('type ')) used.add(name)

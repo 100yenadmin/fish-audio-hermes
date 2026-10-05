@@ -55,6 +55,7 @@ export async function cloneVoice(
     for (const [index, file] of files.entries()) {
       const start = await send<{ chunk_bytes: number; upload_id: string }>('/clone/start', { size: file.size }, 30_000)
       uploaded.push({ upload_id: start.upload_id, size: file.size })
+      if (!Number.isInteger(start.chunk_bytes) || start.chunk_bytes <= 0) throw new ApiError('error', 'The gateway sent an invalid upload chunk size.')
       for (let offset = 0; offset < file.size; offset += start.chunk_bytes) {
         const data = await read(file.slice(offset, offset + start.chunk_bytes))
         await send('/clone/chunk', { upload_id: start.upload_id, offset, data }, 120_000)

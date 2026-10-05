@@ -133,6 +133,24 @@ describe('availability gate', () => {
   })
 })
 
+describe('wallet refresh', () => {
+  it('an interval probe that overtakes the first wallet read still reads the unknown wallet', async () => {
+    const pending: Array<(value: unknown) => void> = []
+    const { t, calls } = backend({ '/account': () => new Promise(resolve => pending.push(resolve)) })
+    plugin.register(t.ctx as any)
+    await flush() // forced probe: /available answered, its /account read is still pending
+    t.tickIntervals() // the 60 s probe starts before that read answers, so the read becomes stale
+    await flush()
+    pending[0](ACCOUNT) // dropped as stale
+    await flush()
+    expect(calls.filter(path => path === '/account')).toHaveLength(2)
+    pending[1]({ ...ACCOUNT, credit: '7.00' })
+    await flush()
+    expect($account.get()?.credit).toBe('7.00')
+    t.dispose()
+  })
+})
+
 describe('HTTP status parse', () => {
   it('reads both shapes: the IPC wrapper and a bare leading status', () => {
     expect(httpStatus(ipc('404: {"detail":"Plugin not found"}'))).toBe(404)

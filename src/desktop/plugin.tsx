@@ -106,7 +106,8 @@ export function registerAvailabilityGate(ctx: PluginContext) {
           $account.set(null)
           return
         }
-        if (!force && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return
+        // Throttle only once this agent's wallet is known: a forced read dropped as stale must not hide it for 5 min.
+        if (!force && $account.get() !== null && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return
         accountAt = Date.now()
         return ctx.rest<Account | { ok: false }>('/account').then(
           account => {

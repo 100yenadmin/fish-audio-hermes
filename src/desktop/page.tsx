@@ -49,6 +49,10 @@ import { BilledNote, card, LoadError, muted, Rows } from './ui'
 
 const pad = '0 24px'
 
+/** A plan renews only when Fish reports an active (or trial) subscription that is not set to cancel. */
+const renews = (plan: NonNullable<Account['package']>) =>
+  plan.cancel_at_period_end === false && ['active', 'trialing'].includes(plan.subscription_status ?? '')
+
 export function VoicesPage() {
   const available = useValue($available)
   const profile = useValue(host.state.profile)
@@ -180,7 +184,7 @@ function Library({ pin }: { pin: AgentPin }) {
     staleTime: 60_000
   })
   const list = favouritesOnly ? favourites.list : voices.data?.items
-  const more = !favouritesOnly && (voices.data?.items.length ?? 0) >= 20
+  const more = !favouritesOnly && hasMore(voices.data?.items.length, page)
   return (
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -217,20 +221,32 @@ function Library({ pin }: { pin: AgentPin }) {
       ) : (
         <VoiceList favourites={favourites} pin={pin} voices={list} />
       )}
-      {!favouritesOnly && (page > 1 || more) && (
-        <div style={{ alignItems: 'center', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button disabled={page <= 1} onClick={() => setPage(page - 1)} size="xs" variant="ghost">
-            {S.prev}
-          </Button>
-          <span style={{ ...muted, fontSize: 12 }}>{S.pageOf(page)}</span>
-          <Button disabled={!more} onClick={() => setPage(page + 1)} size="xs" variant="ghost">
-            {S.next}
-          </Button>
-        </div>
-      )}
+      {!favouritesOnly && <Pager more={more} page={page} setPage={setPage} />}
     </div>
   )
 }
+
+/** The gateway serves pages 1–50 of 20 voices. */
+const PAGE_SIZE = 20
+const LAST_PAGE = 50
+const hasMore = (items: number | undefined, page: number) => (items ?? 0) >= PAGE_SIZE && page < LAST_PAGE
+
+function Pager({ page, more, setPage }: { page: number; more: boolean; setPage: (page: number) => void }) {
+  if (page <= 1 && !more) return null
+  return (
+    <div style={{ alignItems: 'center', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+      <Button disabled={page <= 1} onClick={() => setPage(page - 1)} size="xs" variant="ghost">
+        {S.prev}
+      </Button>
+      <span style={{ ...muted, fontSize: 12 }}>{S.pageOf(page)}</span>
+      <Button disabled={!more} onClick={() => setPage(page + 1)} size="xs" variant="ghost">
+        {S.next}
+      </Button>
+    </div>
+  )
+}
+
+const inFlightPreviews = new Set<string>()
 
 /** Play a billed preview of a voice, or replay one already fetched in this window. */
 export async function previewVoice(pin: AgentPin, voiceId: string) {
@@ -239,10 +255,17 @@ export async function previewVoice(pin: AgentPin, voiceId: string) {
   if ($playing.get() === key) return stop()
   const cached = cachedPreview(key)
   if (cached) return play(key, cached.audio, cached.mime)
-  const res = await post<{ audio: string; mime: string }>('/preview', { voice: voiceId })
-  if (!samePin(currentPin(), pin)) return
-  rememberPreview(key, res)
-  if (samePin(currentPin(), pin)) play(key, res.audio, res.mime)
+  if (inFlightPreviews.has(key)) return  // one billed preview per voice at a time
+  inFlightPreviews.add(key)
+  try {
+    const res = await post<{ audio: string; mime: string }>('/preview', { voice: voiceId })
+    if (!samePin(currentPin(), pin)) return
+    rememberPreview(key, res)
+    play(key, res.audio, res.mime)
+    void refreshAvailability()
+  } finally {
+    inFlightPreviews.delete(key)
+  }
 }
 
 function VoiceList({ voices, pin, favourites, onDelete }: {
@@ -371,10 +394,11 @@ function Avatar({ title }: { title: string }) {
 
 function MyVoices({ pin }: { pin: AgentPin }) {
   const client = useQueryClient()
+  const [page, setPage] = useState(1)
   const queryKey = ['fish-audio', agentKey(pin), 'mine']
   const voices = useQuery({
-    queryFn: () => call<VoicesResponse>(query('/voices', { self: 'true' })),
-    queryKey,
+    queryFn: () => call<VoicesResponse>(query('/voices', { page, self: 'true' })),
+    queryKey: [...queryKey, page],
     retry: false,
     staleTime: 30_000
   })
@@ -391,6 +415,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
       ) : (
         <VoiceList onDelete={setTarget} pin={pin} voices={voices.data.items} />
       )}
+      <Pager more={hasMore(voices.data?.items.length, page)} page={page} setPage={setPage} />
       <DeleteDialog pin={pin} onClose={() => setTarget(null)} onDeleted={() => void client.invalidateQueries({ queryKey })} voice={target} />
     </div>
   )
@@ -482,7 +507,11 @@ function AccountTab({ pin }: { pin: AgentPin }) {
         {plan && (
           <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
             {typeof plan.total === 'number' && <div>{S.planBalance(Number(plan.balance ?? 0), plan.total)}</div>}
-            {plan.finished_at && <div>{S.renews(String(plan.finished_at).slice(0, 10))}</div>}
+            {plan.finished_at && (
+              <div>
+                {(renews(plan) ? S.renews : S.periodEnds)(String(plan.finished_at).slice(0, 10))}
+              </div>
+            )}
           </div>
         )}
         <p style={{ ...muted, fontSize: 12, lineHeight: 1.5 }}>{S.creditsSeparate}</p>

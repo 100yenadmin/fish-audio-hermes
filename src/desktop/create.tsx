@@ -39,8 +39,11 @@ function CloneCard({ pin }: { pin: AgentPin }) {
     setFiles(chosen)
   }
 
+  const inFlight = useRef(false)
   const submit = async () => {
+    if (inFlight.current) return  // a second click in the same tick, before `busy` re-renders
     if (!samePin(currentPin(), pin)) return setStatus(S.agentChangedNothingSent)
+    inFlight.current = true
     setBusy(true)
     try {
       const voice = await cloneVoice(
@@ -62,6 +65,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
       if (!samePin(currentPin(), pin)) return
       setStatus(error instanceof AgentChanged ? S.agentChanged : errorText(error))
     } finally {
+      inFlight.current = false
       if (samePin(currentPin(), pin)) setBusy(false)
     }
   }
@@ -123,9 +127,12 @@ function DesignCard({ pin }: { pin: AgentPin }) {
   const [names, setNames] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<null | string>(null)
+  const inFlight = useRef(false)
 
   const design = async () => {
+    if (inFlight.current) return
     if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
+    inFlight.current = true
     setBusy('design')
     stop()
     try {
@@ -134,16 +141,20 @@ function DesignCard({ pin }: { pin: AgentPin }) {
       setCandidates(res.candidates)
       setNames({})
       setSaved({})
+      void refreshAvailability()
     } catch (error) {
       if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
     } finally {
+      inFlight.current = false
       if (samePin(currentPin(), pin)) setBusy(null)
     }
   }
 
   const save = async (candidate: Candidate) => {
+    if (inFlight.current) return
     if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: S.agentChangedNothingSent })
     const title = (names[candidate.design_token] ?? '').trim()
+    inFlight.current = true
     setBusy(candidate.design_token)
     try {
       const res = await post<{ voice: { id: string; title: string } }>('/design/save', { design_token: candidate.design_token, title }, 120_000)
@@ -154,6 +165,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
     } catch (error) {
       if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
     } finally {
+      inFlight.current = false
       if (samePin(currentPin(), pin)) setBusy(null)
     }
   }

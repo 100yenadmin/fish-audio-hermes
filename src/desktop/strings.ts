@@ -91,6 +91,7 @@ export const S = {
   plan: 'Plan',
   planBalance: (balance: number, total: number) => `${balance.toLocaleString()} of ${total.toLocaleString()} credits left`,
   renews: (date: string) => `Renews ${date}`,
+  periodEnds: (date: string) => `Current period ends ${date}`,
   noPlan: 'No app plan',
   creditsSeparate: 'App plan credits and API credits are separate. Voice replies use API credit.',
   topUp: 'Top up API credit',

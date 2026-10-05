@@ -221,6 +221,7 @@ var S = {
   plan: "Plan",
   planBalance: (balance, total) => `${balance.toLocaleString()} of ${total.toLocaleString()} credits left`,
   renews: (date) => `Renews ${date}`,
+  periodEnds: (date) => `Current period ends ${date}`,
   noPlan: "No app plan",
   creditsSeparate: "App plan credits and API credits are separate. Voice replies use API credit.",
   topUp: "Top up API credit",
@@ -299,6 +300,7 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
     for (const [index, file] of files.entries()) {
       const start = await send("/clone/start", { size: file.size }, 3e4);
       uploaded.push({ upload_id: start.upload_id, size: file.size });
+      if (!Number.isInteger(start.chunk_bytes) || start.chunk_bytes <= 0) throw new ApiError("error", "The gateway sent an invalid upload chunk size.");
       for (let offset = 0; offset < file.size; offset += start.chunk_bytes) {
         const data = await read(file.slice(offset, offset + start.chunk_bytes));
         await send("/clone/chunk", { upload_id: start.upload_id, offset, data }, 12e4);
@@ -351,8 +353,11 @@ function CloneCard({ pin }) {
     setStatus(null);
     setFiles(chosen);
   };
+  const inFlight = useRef(false);
   const submit = async () => {
+    if (inFlight.current) return;
     if (!samePin(currentPin(), pin)) return setStatus(S.agentChangedNothingSent);
+    inFlight.current = true;
     setBusy(true);
     try {
       const voice = await cloneVoice(
@@ -374,6 +379,7 @@ function CloneCard({ pin }) {
       if (!samePin(currentPin(), pin)) return;
       setStatus(error instanceof AgentChanged ? S.agentChanged : errorText(error));
     } finally {
+      inFlight.current = false;
       if (samePin(currentPin(), pin)) setBusy(false);
     }
   };
@@ -427,8 +433,11 @@ function DesignCard({ pin }) {
   const [names, setNames] = useState({});
   const [saved, setSaved] = useState({});
   const [busy, setBusy] = useState(null);
+  const inFlight = useRef(false);
   const design = async () => {
+    if (inFlight.current) return;
     if (!samePin(currentPin(), pin)) return host2.notify({ kind: "error", message: S.agentChangedNothingSent });
+    inFlight.current = true;
     setBusy("design");
     stop();
     try {
@@ -437,15 +446,19 @@ function DesignCard({ pin }) {
       setCandidates(res.candidates);
       setNames({});
       setSaved({});
+      void refreshAvailability();
     } catch (error) {
       if (samePin(currentPin(), pin)) host2.notify({ kind: "error", message: errorText(error) });
     } finally {
+      inFlight.current = false;
       if (samePin(currentPin(), pin)) setBusy(null);
     }
   };
   const save = async (candidate) => {
+    if (inFlight.current) return;
     if (!samePin(currentPin(), pin)) return host2.notify({ kind: "error", message: S.agentChangedNothingSent });
     const title = (names[candidate.design_token] ?? "").trim();
+    inFlight.current = true;
     setBusy(candidate.design_token);
     try {
       const res = await post("/design/save", { design_token: candidate.design_token, title }, 12e4);
@@ -456,6 +469,7 @@ function DesignCard({ pin }) {
     } catch (error) {
       if (samePin(currentPin(), pin)) host2.notify({ kind: "error", message: errorText(error) });
     } finally {
+      inFlight.current = false;
       if (samePin(currentPin(), pin)) setBusy(null);
     }
   };
@@ -530,6 +544,7 @@ function DesignCard({ pin }) {
 // src/desktop/page.tsx
 import { jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 var pad = "0 24px";
+var renews = (plan) => plan.cancel_at_period_end === false && ["active", "trialing"].includes(plan.subscription_status ?? "");
 function VoicesPage() {
   const available = useValue2($available);
   const profile = useValue2(host3.state.profile);
@@ -627,7 +642,7 @@ function Library({ pin }) {
     staleTime: 6e4
   });
   const list = favouritesOnly ? favourites.list : voices.data?.items;
-  const more = !favouritesOnly && (voices.data?.items.length ?? 0) >= 20;
+  const more = !favouritesOnly && hasMore(voices.data?.items.length, page);
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }, children: [
       /* @__PURE__ */ jsx3("div", { style: { width: 280 }, children: /* @__PURE__ */ jsx3(SearchField, { "aria-label": S.search, onChange: setText, placeholder: S.search, value: text }) }),
@@ -645,23 +660,38 @@ function Library({ pin }) {
     ] }),
     /* @__PURE__ */ jsx3(BilledNote, { text: S.billedNote }),
     !favouritesOnly && voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !list ? /* @__PURE__ */ jsx3(Rows, {}) : list.length === 0 ? favouritesOnly ? /* @__PURE__ */ jsx3(EmptyState, { description: S.noFavouritesHint, title: S.noFavourites }) : /* @__PURE__ */ jsx3(EmptyState, { title: S.noVoices }) : /* @__PURE__ */ jsx3(VoiceList, { favourites, pin, voices: list }),
-    !favouritesOnly && (page > 1 || more) && /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
-      /* @__PURE__ */ jsx3(Button3, { disabled: page <= 1, onClick: () => setPage(page - 1), size: "xs", variant: "ghost", children: S.prev }),
-      /* @__PURE__ */ jsx3("span", { style: { ...muted, fontSize: 12 }, children: S.pageOf(page) }),
-      /* @__PURE__ */ jsx3(Button3, { disabled: !more, onClick: () => setPage(page + 1), size: "xs", variant: "ghost", children: S.next })
-    ] })
+    !favouritesOnly && /* @__PURE__ */ jsx3(Pager, { more, page, setPage })
   ] });
 }
+var PAGE_SIZE = 20;
+var LAST_PAGE = 50;
+var hasMore = (items, page) => (items ?? 0) >= PAGE_SIZE && page < LAST_PAGE;
+function Pager({ page, more, setPage }) {
+  if (page <= 1 && !more) return null;
+  return /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
+    /* @__PURE__ */ jsx3(Button3, { disabled: page <= 1, onClick: () => setPage(page - 1), size: "xs", variant: "ghost", children: S.prev }),
+    /* @__PURE__ */ jsx3("span", { style: { ...muted, fontSize: 12 }, children: S.pageOf(page) }),
+    /* @__PURE__ */ jsx3(Button3, { disabled: !more, onClick: () => setPage(page + 1), size: "xs", variant: "ghost", children: S.next })
+  ] });
+}
+var inFlightPreviews = /* @__PURE__ */ new Set();
 async function previewVoice(pin, voiceId) {
   if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: S.agentChangedNothingSent });
   const key = `preview:${agentKey(pin)}:${voiceId}`;
   if ($playing.get() === key) return stop();
   const cached = cachedPreview(key);
   if (cached) return play(key, cached.audio, cached.mime);
-  const res = await post("/preview", { voice: voiceId });
-  if (!samePin(currentPin(), pin)) return;
-  rememberPreview(key, res);
-  if (samePin(currentPin(), pin)) play(key, res.audio, res.mime);
+  if (inFlightPreviews.has(key)) return;
+  inFlightPreviews.add(key);
+  try {
+    const res = await post("/preview", { voice: voiceId });
+    if (!samePin(currentPin(), pin)) return;
+    rememberPreview(key, res);
+    play(key, res.audio, res.mime);
+    void refreshAvailability();
+  } finally {
+    inFlightPreviews.delete(key);
+  }
 }
 function VoiceList({ voices, pin, favourites, onDelete }) {
   const playing = useValue2($playing);
@@ -775,10 +805,11 @@ function Avatar({ title }) {
 }
 function MyVoices({ pin }) {
   const client = useQueryClient2();
+  const [page, setPage] = useState2(1);
   const queryKey = ["fish-audio", agentKey(pin), "mine"];
   const voices = useQuery({
-    queryFn: () => call(query("/voices", { self: "true" })),
-    queryKey,
+    queryFn: () => call(query("/voices", { page, self: "true" })),
+    queryKey: [...queryKey, page],
     retry: false,
     staleTime: 3e4
   });
@@ -786,6 +817,7 @@ function MyVoices({ pin }) {
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsx3(BilledNote, { text: S.billedNote }),
     voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !voices.data ? /* @__PURE__ */ jsx3(Rows, { n: 3 }) : voices.data.items.length === 0 ? /* @__PURE__ */ jsx3(EmptyState, { description: S.mineEmptyHint, title: S.mineEmpty }) : /* @__PURE__ */ jsx3(VoiceList, { onDelete: setTarget, pin, voices: voices.data.items }),
+    /* @__PURE__ */ jsx3(Pager, { more: hasMore(voices.data?.items.length, page), page, setPage }),
     /* @__PURE__ */ jsx3(DeleteDialog, { pin, onClose: () => setTarget(null), onDeleted: () => void client.invalidateQueries({ queryKey }), voice: target })
   ] });
 }
@@ -860,7 +892,7 @@ function AccountTab({ pin }) {
       /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: "capitalize" }, children: plan?.type ?? S.noPlan }),
       plan && /* @__PURE__ */ jsxs3("div", { style: { ...muted, fontSize: 12, lineHeight: 1.7 }, children: [
         typeof plan.total === "number" && /* @__PURE__ */ jsx3("div", { children: S.planBalance(Number(plan.balance ?? 0), plan.total) }),
-        plan.finished_at && /* @__PURE__ */ jsx3("div", { children: S.renews(String(plan.finished_at).slice(0, 10)) })
+        plan.finished_at && /* @__PURE__ */ jsx3("div", { children: (renews(plan) ? S.renews : S.periodEnds)(String(plan.finished_at).slice(0, 10)) })
       ] }),
       /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 12, lineHeight: 1.5 }, children: S.creditsSeparate }),
       /* @__PURE__ */ jsx3(Button3, { onClick: () => open(data.links.plans), variant: "secondary", children: S.plans })
@@ -948,7 +980,7 @@ function registerAvailabilityGate(ctx) {
           $account.set(null);
           return;
         }
-        if (!force && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return;
+        if (!force && $account.get() !== null && Date.now() - accountAt < ACCOUNT_REFRESH_MS) return;
         accountAt = Date.now();
         return ctx.rest("/account").then(
           (account) => {

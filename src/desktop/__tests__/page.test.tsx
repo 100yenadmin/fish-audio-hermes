@@ -215,3 +215,69 @@ describe('selected-agent dispatch and completion guards', () => {
     expect(S.deleteBody).toBe('This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.')
   })
 })
+
+describe('review follow-ups', () => {
+  beforeEach(() => $available.set({ key: true, version: '0.3.0' }))
+  afterEach(() => vi.restoreAllMocks())
+  const pin = { connectionId: 'conn-1', profile: 'default' }
+  const page = (n: number) => ({ ok: true, page: n, total: 5000, items: Array.from({ length: 20 }, (_, i) => ({ id: `${n}x${i}`.padEnd(32, 'a'), title: `Voice ${n}-${i}` })) })
+
+  it('stops paging at the gateway\'s last page (50)', async () => {
+    const { calls } = mount(async path => page(Number(new URLSearchParams(path.split('?')[1] ?? '').get('page') ?? 1)))
+    await flush()
+    for (let n = 1; n < 50; n++) {
+      fireEvent.click(screen.getByRole('button', { name: S.next }))
+      await flush()
+    }
+    expect(screen.getByText(S.pageOf(50))).toBeTruthy()
+    expect((screen.getByRole('button', { name: S.next }) as HTMLButtonElement).disabled).toBe(true)
+    expect(calls.some(c => c.path.includes('page=51'))).toBe(false)
+  })
+
+  it('pages through My voices', async () => {
+    $tab.set('mine')
+    const { calls } = mount(async path => page(Number(new URLSearchParams(path.split('?')[1] ?? '').get('page') ?? 1)))
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: S.next }))
+    await flush()
+    expect(calls.map(c => c.path)).toContain('/voices?page=2&self=true')
+    expect(screen.getByText('Voice 2-0')).toBeTruthy()
+  })
+
+  it('sends one billed preview per voice at a time, then refreshes the wallet', async () => {
+    let release!: (value: unknown) => void
+    const rest = vi.fn((path: string) => (path === '/preview' ? new Promise(resolve => (release = resolve)) : Promise.resolve({ ok: true, key: true })))
+    bindContext(createTestContext({ rest }).ctx as any)
+    vi.spyOn(audio, 'play').mockImplementation(() => undefined)
+    const first = previewVoice(pin, 'single-flight')
+    const second = previewVoice(pin, 'single-flight')
+    release({ ok: true, audio: 'SUQz', mime: 'audio/mpeg' })
+    await Promise.all([first, second])
+    expect(rest.mock.calls.filter(([path]) => path === '/preview')).toHaveLength(1)
+  })
+
+  it.each([
+    [{ subscription_status: 'active', cancel_at_period_end: false }, 'Renews 2026-10-30'],
+    [{ subscription_status: 'active', cancel_at_period_end: true }, 'Current period ends 2026-10-30'],
+    [{}, 'Current period ends 2026-10-30']
+  ])('labels the plan date by renewal state %o', async (state, label) => {
+    $tab.set('account')
+    mount(async () => ({ ok: true, credit: '2.54', cumulative_top_up: '10', has_free_credit: false, low: false,
+      package: { type: 'plus', total: 250000, balance: 250000, finished_at: '2026-10-30T00:00:00Z', ...state }, links: {} }))
+    await flush()
+    expect(screen.getByText(label)).toBeTruthy()
+  })
+
+  it('a double click on Design sends one billed design', async () => {
+    $tab.set('create')
+    let release!: (value: unknown) => void
+    const { calls } = mount(path => (path === '/design' ? new Promise(resolve => (release = resolve)) : Promise.resolve({ ok: true, key: true })))
+    fireEvent.change(screen.getByLabelText(S.designTitle), { target: { value: 'Warm narrator' } })
+    const button = screen.getByRole('button', { name: S.design })
+    fireEvent.click(button)
+    fireEvent.click(button)
+    release({ ok: true, candidates: [] })
+    await flush()
+    expect(calls.filter(c => c.path === '/design')).toHaveLength(1)
+  })
+})

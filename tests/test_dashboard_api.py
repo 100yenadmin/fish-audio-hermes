@@ -616,6 +616,13 @@ def test_account_drops_non_scalar_package_fields_and_scrubs_text(env):
         assert body["package"] == {"type": "Bearer [redacted]", "finished_at": "[redacted]"}
         package.respond(json={"type": {}, "total": True, "balance": [], "finished_at": 123})
         assert env.get("/account")["package"] is None
+        # Renewal state is kept so Desktop labels a cancelled plan's end date correctly.
+        package.respond(json={"type": "plus", "subscription_status": "active", "cancel_at_period_end": True,
+                              "finished_at": "2026-10-30T00:00:00Z", "stripe_subscription_id": "sub_x"})
+        assert env.get("/account")["package"] == {"type": "plus", "subscription_status": "active",
+                                                  "cancel_at_period_end": True, "finished_at": "2026-10-30T00:00:00Z"}
+        package.respond(json={"type": "plus", "cancel_at_period_end": "no"})
+        assert env.get("/account")["package"] == {"type": "plus"}
 
 
 def test_scrub_leaves_preview_audio_unchanged(env, monkeypatch):

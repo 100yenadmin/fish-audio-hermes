@@ -119,3 +119,10 @@ it('does not return a clone completion received after an agent switch', async ()
   expect(h.of('/clone/finish')).toHaveLength(1)
   expect(h.of('/clone/abort')).toEqual([])
 })
+
+it.each([0, -1, 1.5, undefined])('refuses a chunk size of %s instead of looping forever', async chunk => {
+  const h = harness({ '/clone/start': () => ({ ok: true, upload_id: 'u1', chunk_bytes: chunk }) })
+  await expect(cloneVoice([blob(10)], { title: 'Me', consent: true }, A, h.deps)).rejects.toBeInstanceOf(ApiError)
+  expect(h.of('/clone/chunk')).toEqual([])
+  expect(h.of('/clone/abort').map(c => c.body)).toEqual([{ upload_id: 'u1' }])
+})

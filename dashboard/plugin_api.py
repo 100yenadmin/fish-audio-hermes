@@ -285,8 +285,9 @@ def account():
         raise Refusal("availability", "Fish Audio returned an unreadable wallet. Try again later.")
     package = module.get_package(key, base) or {}
     package = {k: v for k, v in package.items() if
-               (k in {"type", "finished_at"} and isinstance(v, str)) or
-               (k in {"total", "balance"} and type(v) in (int, float))}
+               (k in {"type", "finished_at", "subscription_status"} and isinstance(v, str)) or
+               (k in {"total", "balance"} and type(v) in (int, float)) or
+               (k == "cancel_at_period_end" and type(v) is bool)}
     return {"ok": True, "credit": str(wallet.credit), "cumulative_top_up": str(wallet.cumulative_top_up),
             "has_free_credit": wallet.has_free_credit, "low": wallet.credit < LOW_CREDIT,
             "package": package or None, "links": LINKS}

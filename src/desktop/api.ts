@@ -24,7 +24,14 @@ export interface Account {
   cumulative_top_up: string
   has_free_credit: boolean | null
   low: boolean
-  package: null | { type?: string; total?: number; balance?: number; finished_at?: string }
+  package: null | {
+    type?: string
+    total?: number
+    balance?: number
+    finished_at?: string
+    subscription_status?: string
+    cancel_at_period_end?: boolean
+  }
   links: { top_up: string; plans: string; keys: string }
 }
 
