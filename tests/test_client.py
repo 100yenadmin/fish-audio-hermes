@@ -306,6 +306,16 @@ def test_plugin_versions_agree():
     assert manifest == project == client.PLUGIN_VERSION == fish_audio.PLUGIN_VERSION
 
 
+def test_desktop_disclosure_worded_identically():
+    # SECURITY.md, the README and plugin.yaml carry the same Desktop-routes disclosure sentence.
+    root = Path(__file__).resolve().parents[1]
+    texts = [" ".join((root / name).read_text().split()) for name in ("SECURITY.md", "README.md", "plugin.yaml")]
+    start = "The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/"
+    sentence = texts[0][texts[0].index(start):].split(" after 15 minutes.")[0]
+    assert "approval gate" in sentence and "billed" in sentence
+    assert all(sentence + " after 15 minutes." in text for text in texts)
+
+
 @pytest.mark.parametrize("tail, ok", [(b'}', True), (b'} ', False)])
 def test_json_body_cap_boundary(monkeypatch, tail, ok):
     # A JSON body of exactly the cap is read; one byte more is refused before it is buffered.

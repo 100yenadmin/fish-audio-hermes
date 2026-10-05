@@ -19,7 +19,7 @@ entries:
   method: get
   location: response
   field: type
-  surface: account /fish balance type
+  surface: account /fish balance type; Desktop Voices Account
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -36,7 +36,7 @@ entries:
   method: get
   location: response
   field: total
-  surface: account /fish balance total
+  surface: account /fish balance total; Desktop Voices Account
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -53,7 +53,7 @@ entries:
   method: get
   location: response
   field: balance
-  surface: account /fish balance balance
+  surface: account /fish balance balance; Desktop Voices Account
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -102,7 +102,7 @@ entries:
   method: get
   location: response
   field: finished_at
-  surface: account /fish balance finished_at
+  surface: account /fish balance finished_at; Desktop Voices Account
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -480,7 +480,7 @@ entries:
   method: get
   location: response
   field: credit
-  surface: account /fish balance credit
+  surface: account /fish balance credit; Desktop Voices Account
   status: implemented
   tests: []
   spec:
@@ -496,7 +496,7 @@ entries:
   method: get
   location: response
   field: cumulative_top_up
-  surface: account /fish balance cumulative_top_up
+  surface: account /fish balance cumulative_top_up; Desktop Voices Account
   status: implemented
   tests: []
   spec:
@@ -560,7 +560,7 @@ entries:
   method: get
   location: response
   field: has_free_credit
-  surface: account /fish balance has_free_credit
+  surface: account /fish balance has_free_credit; Desktop Voices Account
   status: implemented
   tests: []
   spec:
@@ -2494,7 +2494,7 @@ entries:
   method: post
   location: json
   field: instruction
-  surface: fish_voices design instruction, asserted in the JSON request body
+  surface: fish_voices design instruction, asserted in the JSON request body; Desktop Voices Create (design)
   status: verified
   tests:
   - tests/test_tools.py::test_design_save_signature_stays_server_side
@@ -2506,7 +2506,7 @@ entries:
   method: post
   location: json
   field: reference_text
-  surface: fish_voices design reference_text
+  surface: fish_voices design reference_text; Desktop Voices Create (design)
   status: implemented
   tests: []
   spec:
@@ -2519,7 +2519,7 @@ entries:
   method: post
   location: json
   field: language
-  surface: fish_voices design language
+  surface: fish_voices design language; Desktop Voices Create (design)
   status: implemented
   tests: []
   spec:
@@ -2532,7 +2532,7 @@ entries:
   method: post
   location: json
   field: n
-  surface: fish_voices design n, asserted in the JSON request body
+  surface: fish_voices design n, asserted in the JSON request body; Desktop Voices Create (design)
   status: verified
   tests:
   - tests/test_tools.py::test_design_save_signature_stays_server_side
@@ -2700,7 +2700,7 @@ entries:
   method: get
   location: query
   field: page_size
-  surface: fish_voices search/mine page_size
+  surface: fish_voices search/mine page_size; Desktop Voices Library and My voices
   status: implemented
   tests: []
   spec:
@@ -2711,7 +2711,7 @@ entries:
   method: get
   location: query
   field: page_number
-  surface: fish_voices search/mine page_number
+  surface: fish_voices search/mine page_number; Desktop Voices Library and My voices
   status: implemented
   tests: []
   spec:
@@ -2722,7 +2722,7 @@ entries:
   method: get
   location: query
   field: title
-  surface: fish_voices search/mine title
+  surface: fish_voices search/mine title; Desktop Voices Library and My voices
   status: implemented
   tests: []
   spec:
@@ -2749,7 +2749,7 @@ entries:
   method: get
   location: query
   field: self
-  surface: fish_voices search/mine self
+  surface: fish_voices search/mine self; Desktop Voices Library and My voices
   status: implemented
   tests: []
   spec:
@@ -2773,7 +2773,7 @@ entries:
   method: get
   location: query
   field: language
-  surface: fish_voices search/mine language
+  surface: fish_voices search/mine language; Desktop Voices Library and My voices
   status: implemented
   tests: []
   spec:
@@ -2898,7 +2898,7 @@ entries:
   method: get
   location: response
   field: total
-  surface: Voice library projection total
+  surface: Voice library projection total; Desktop Voices Library and My voices
   status: implemented
   tests: []
   spec:
@@ -2914,7 +2914,7 @@ entries:
   method: get
   location: response
   field: items
-  surface: Voice library projection items
+  surface: Voice library projection items; Desktop Voices Library and My voices
   status: implemented
   tests: []
   spec:
@@ -3130,7 +3130,7 @@ entries:
   method: post
   location: form
   field: title
-  surface: fish_voices clone/save title
+  surface: fish_voices clone/save title; Desktop Voices Create (clone, save design)
   status: implemented
   tests: []
   spec:
@@ -3141,7 +3141,7 @@ entries:
   method: post
   location: form
   field: description
-  surface: fish_voices clone/save description
+  surface: fish_voices clone/save description; Desktop Voices Create (clone, save design)
   status: implemented
   tests: []
   spec:
@@ -3180,7 +3180,7 @@ entries:
   method: post
   location: form
   field: voices
-  surface: fish_voices clone/save voices
+  surface: fish_voices clone/save voices; Desktop Voices Create (clone, save design)
   status: verified
   tests:
   - tests/test_tools.py::test_clone_private_fast_and_never_retried
@@ -3211,7 +3211,7 @@ entries:
   method: post
   location: form
   field: voice_design_signatures
-  surface: fish_voices clone/save voice_design_signatures
+  surface: fish_voices clone/save voice_design_signatures; Desktop Voices Create (clone, save design)
   status: verified
   tests:
   - tests/test_tools.py::test_design_save_signature_stays_server_side

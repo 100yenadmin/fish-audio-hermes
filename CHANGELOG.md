@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0 — 2026-10-05
+
+- **Voices page in Hermes Desktop.** A sidebar page for the selected agent with four tabs: **Library** (search by
+  name and language, billed previews, favourites, **Use** to set the agent's voice), **My voices** (with delete
+  after typing the voice's name), **Create** (clone from 1–3 recordings with the speaker's consent, or design a
+  voice and save a candidate) and **Account** (API credit, plan and top-up links). The status bar shows API
+  credit, in orange when it runs low, and the command palette opens the page. Agents without the plugin keep
+  their sidebar unchanged; agents without a key get an onboarding card.
+- **Gateway routes** under `/api/plugins/fish-audio/`, behind the Hermes dashboard's existing authentication. They
+  resolve the key and settings for the profile Desktop has selected on every request, and return errors in the
+  response body without the key. Clone uploads arrive in JSON chunks into owner-only temp files that are removed
+  after the clone or after 15 minutes. See SECURITY.md for what the page bypasses (Hermes's approval gate) and
+  what it bills.
+- Install both halves from **Capabilities → Plugins → Install from Git**, switch on **Desktop**, and restart the
+  gateway once.
+
 ## 0.2.0 — 2026-10-05
 
 - **Streaming voice.** CLI voice mode and Desktop voice replies stream sentence by sentence. The plugin streams

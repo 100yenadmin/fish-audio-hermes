@@ -27,8 +27,26 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
 - **Files.** Files the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be
   regular audio files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
   Audio that Hermes itself hands to the speech-to-text provider (voice notes, dictation) is read as given.
-- **Approvals.** Cloning and deleting voices go through Hermes's approval gate and follow your Hermes approval
-  settings. By default Hermes asks you, and refuses when no one is there to answer.
+- **Approvals.** Cloning and deleting voices from chat or the model tools go through Hermes's approval gate and
+  follow your Hermes approval settings. By default Hermes asks you, and refuses when no one is there to answer.
+
+## Desktop Voices page
+
+The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's existing
+authentication. There, previews and voice designs are billed; cloning and deleting are confirmed on the page (a
+speaker-consent box, a typed voice name) instead of through Hermes's approval gate; preview and design audio files
+are deleted from the gateway once returned (a design's audio stays in gateway memory for up to an hour so you can
+save it); and clone uploads are deleted once the clone finishes or after 15 minutes.
+
+- The routes use the same key, settings and Fish Audio requests as the tools, for the profile Desktop has
+  selected; with no key they refuse without calling Fish Audio. Responses never carry the key, and a voice-design
+  signature stays on the gateway behind a token that expires within an hour.
+- **Use** writes the voice into the selected profile's `config.yaml` only, with the same writer as `/fish use`.
+- Clone uploads arrive in chunks of JSON and base64, never as multipart forms. The gateway names each upload
+  itself (a random id, never a client path), writes it with owner-only permissions under the profile's
+  `cache/fish-audio/uploads`, refuses symlinks, caps it at 10 MB per file and 3 files, and checks that it is audio
+  before sending it to Fish Audio. A clone is refused unless the consent box is ticked.
+- Deleting checks that the voice belongs to your Fish account first.
 
 ## Streaming bridge
 
