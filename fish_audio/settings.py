@@ -139,12 +139,13 @@ def transport_settings():
     return _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
 
 
-def resolve_model(call_model, *, key, base_url):
+def resolve_model(call_model, *, key, base_url, prefer_call: bool = False):
     config = _config()
     nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))
     transport = _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
     allow_free = transport.get("allow_free_model", True) is not False
-    for model in (nested.get("model"), call_model):
+    candidates = (call_model, nested.get("model")) if prefer_call else (nested.get("model"), call_model)
+    for model in candidates:
         if isinstance(model, str) and model in MODEL_IDS:
             if model == "s2.1-pro-free" and not allow_free:
                 if not getattr(_notice_logger, "_fish_policy_logged", False):

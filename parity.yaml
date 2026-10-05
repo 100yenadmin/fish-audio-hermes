@@ -685,8 +685,9 @@ entries:
   location: form
   field: ignore_timestamps
   surface: STT provider / fish_transcribe ignore_timestamps
-  status: implemented
-  tests: []
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_srt_forces_timestamps_even_when_disabled
   spec:
     type: boolean
     enum: null
@@ -905,6 +906,10 @@ entries:
   status: verified
   tests:
   - tests/test_client.py::test_json_headers_ua_and_output
+  - tests/test_tools.py::test_speak_explicit_model_overrides_nested[s2.1-pro-True-s2.1-pro-None]
+  - tests/test_tools.py::test_speak_explicit_model_overrides_nested[s2-pro-True-s2-pro-speakers1]
+  - tests/test_tools.py::test_speak_explicit_model_overrides_nested[s2.1-pro-free-False-s2.1-pro-None]
+  - tests/integration/test_multiprofile_isolation.py::test_two_profile_scope_isolation_and_unscoped_fail_closed
   spec:
     type: string
     enum:
@@ -986,6 +991,8 @@ entries:
   status: verified
   tests:
   - tests/test_settings.py::test_speed_precedence_and_clamp
+  - tests/test_tools.py::test_speak_configured_speed_clamped[0.1-0.5]
+  - tests/test_tools.py::test_speak_configured_speed_clamped[3-2]
   spec:
     type:
     - 'null'
@@ -2571,10 +2578,12 @@ entries:
   method: post
   location: response
   field: candidates
-  surface: Private signatures with opaque candidate tokens
+  surface: Private signatures and candidate WAV bytes with opaque, single-save receipt tokens
   status: verified
   tests:
   - tests/test_tools.py::test_design_save_signature_stays_server_side
+  - tests/test_tools.py::test_design_save_uses_receipt_bytes_and_consumes_only_after_success
+  - tests/test_tools.py::test_design_receipt_expiry_and_memory_cap
   spec:
     type: array
     enum: null
@@ -3152,6 +3161,7 @@ entries:
   status: verified
   tests:
   - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  - tests/test_tools.py::test_design_save_uses_receipt_bytes_and_consumes_only_after_success
   spec:
     type:
     - array
@@ -3166,6 +3176,7 @@ entries:
   status: verified
   tests:
   - tests/test_tools.py::test_clone_private_fast_and_never_retried
+  - tests/test_tools.py::test_design_save_signature_stays_server_side
   spec:
     type:
     - array
@@ -3181,6 +3192,7 @@ entries:
   status: verified
   tests:
   - tests/test_tools.py::test_design_save_signature_stays_server_side
+  - tests/test_tools.py::test_design_save_uses_receipt_bytes_and_consumes_only_after_success
   spec:
     type:
     - array
@@ -5090,8 +5102,13 @@ doc_only:
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
 - field: speaker_turns
-  surface: fish_transcribe / pro ASR
-  status: implemented
+  surface: fish_transcribe / pro ASR, numbered speaker labels and positive-duration SRT cues
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_srt_prefers_turns_and_preserves_text
+  - tests/test_transcribe_tool.py::test_srt_repairs_zero_and_backwards_cues_with_next_start_bound
+  - tests/test_transcribe_tool.py::test_srt_omits_cue_when_next_start_leaves_no_positive_interval[1]
+  - tests/test_transcribe_tool.py::test_srt_omits_cue_when_next_start_leaves_no_positive_interval[1.0001]
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-turns
 - field: request_id
   surface: fish_transcribe / pro ASR

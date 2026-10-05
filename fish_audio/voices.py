@@ -1,6 +1,7 @@
 """Voice library operations and opaque, short-lived design receipts."""
 import base64
 from collections import OrderedDict
+from pathlib import Path
 import threading
 import time
 from uuid import uuid4
@@ -120,12 +121,13 @@ def execute(args, key, base, session):
             signature = item.get("signature")
             require(isinstance(signature, str) and bool(signature), "Fish Audio returned no design signature; design again.")
             path = media.audio_output_dir() / f"fish-design-{uuid4().hex}-{i}.wav"
-            media.atomic_write(path, [base64.b64decode(item["audio_base64"], validate=True)])
+            audio = base64.b64decode(item["audio_base64"], validate=True)
+            media.atomic_write(path, [audio])
             token = uuid4().hex
             with _lock:
                 _prune()
                 _DESIGNS[token] = {"signature": signature, "text": item.get("text") or args.get("reference_text", ""),
-                                   "file_path": str(path), "created": _clock()}
+                                   "file_path": str(path), "audio": audio, "created": _clock()}
                 while len(_DESIGNS) > 64:
                     _DESIGNS.popitem(last=False)
             hooks.record(session, path, False)
@@ -140,6 +142,10 @@ def execute(args, key, base, session):
         require(receipt is not None, "Unknown or expired design token; design again.")
         data = _form(args)
         data.update(texts=[receipt["text"]], voice_design_signatures=[receipt["signature"]])
-        item = client.post_multipart("/model", data, _upload([receipt["file_path"]]), key, base, 600)
+        files = [("voices", (Path(receipt["file_path"]).name, receipt["audio"], MIMES["wav"]))]
+        item = client.post_multipart("/model", data, files, key, base, 600)
+        with _lock:
+            if _DESIGNS.get(args.get("design_token")) is receipt:
+                del _DESIGNS[args["design_token"]]
         return _summary(item, ("title", "source"))
     require(False, "Unknown fish_voices action.")

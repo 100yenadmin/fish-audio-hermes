@@ -1,8 +1,10 @@
 """Session-local audio delivery and explicit approval for clone/delete."""
 from collections import OrderedDict
+import json
 from pathlib import Path
 import threading
 import time
+import unicodedata
 
 from .media import audio_output_dir
 
@@ -45,15 +47,21 @@ def on_transform_llm_output(response_text="", session_id="", turn_id="", **kwarg
         if not path.is_file() or not path.resolve().is_relative_to(root):
             continue
         tag = f"MEDIA:{path}"
+        voice = voice or is_voice
         if tag not in response_text and tag not in additions:
             additions.append(tag)
-            voice = voice or is_voice
-    if not additions:
+    needs_marker = voice and "[[audio_as_voice]]" not in response_text
+    if not additions and not needs_marker:
         return None
     tail = "\n".join(additions)
-    if voice and "[[audio_as_voice]]" not in response_text:
-        tail = "[[audio_as_voice]]\n" + tail
+    if needs_marker:
+        tail = "\n".join(part for part in ("[[audio_as_voice]]", tail) if part)
     return "\n".join(part for part in (response_text.rstrip(), tail) if part)
+
+
+def _approval_string(value):
+    text = "".join(" " if unicodedata.category(char) in {"Cc", "Cf"} else char for char in str(value))
+    return " ".join(text.split())[:80]
 
 
 def on_pre_tool_call(tool_name="", args=None, **kwargs):
@@ -61,12 +69,13 @@ def on_pre_tool_call(tool_name="", args=None, **kwargs):
         if tool_name != "fish_voices":
             return None
         if args.get("action") == "clone":
-            message = (f'Fish Audio: clone a voice named "{args.get("title", "")}" from '
+            title = json.dumps(_approval_string(args.get("title", "")))
+            message = (f'Fish Audio: clone a voice named {title} from '
                        f'{len(args.get("sample_paths", []))} sample file(s) to your Fish account')
             rule = "fish-audio:clone"
         elif args.get("action") == "delete":
-            voice = args.get("voice_id", "")
-            message, rule = f"Fish Audio: permanently delete voice {voice}", f"fish-audio:delete:{voice}"
+            voice = _approval_string(args.get("voice_id", ""))
+            message, rule = f"Fish Audio: permanently delete voice {json.dumps(voice)}", f"fish-audio:delete:{voice}"
         else:
             return None
         return {"action": "approve", "message": message, "rule_key": rule}

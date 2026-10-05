@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import respx
 
-from fish_audio import media, settings, tools
+from fish_audio import media, settings, tools, transcribe
 
 BASE = "https://api.fish.audio"
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -75,8 +75,35 @@ def test_srt_prefers_turns_and_preserves_text(tmp_path):
         assert result["request_id"] == "body-id"
         path = Path(result["srt_path"])
         assert path.parent == tmp_path and path.suffix == ".srt"
-        assert path.read_text() == "1\n00:00:00,250 --> 00:00:01,500\nspeaker:0: [happy] Hello!\n"
+        assert path.read_text() == "1\n00:00:00,250 --> 00:00:01,500\nSpeaker 1: [happy] Hello!\n"
         assert result["text"] == data["text"]
+
+
+def test_srt_forces_timestamps_even_when_disabled():
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/asr").respond(json={"text": "hi", "segments": [{"text": "hi", "start": 0, "end": 1}]})
+        result = call(srt=True, timestamps=False)
+        assert result["success"] and Path(result["srt_path"]).read_text()
+        assert b'name="ignore_timestamps"\r\n\r\nfalse' in route.calls.last.request.content
+
+
+def test_srt_repairs_zero_and_backwards_cues_with_next_start_bound():
+    turns = [{"speaker": "speaker:0", "text": "Hi there.", "start": 1, "end": 1},
+             {"speaker": "speaker:1", "text": "Next.", "start": 1.2, "end": 1.1},
+             {"speaker": "speaker:2", "text": "Last.", "start": 3, "end": 3}]
+    assert transcribe._srt({"speaker_turns": turns}) == (
+        "1\n00:00:01,000 --> 00:00:01,200\nSpeaker 1: Hi there.\n\n"
+        "2\n00:00:01,200 --> 00:00:01,700\nSpeaker 2: Next.\n\n"
+        "3\n00:00:03,000 --> 00:00:03,500\nSpeaker 3: Last.\n")
+    assert transcribe._srt({"segments": [{"text": "hi", "start": 0, "end": 0}]}) == (
+        "1\n00:00:00,000 --> 00:00:00,500\nhi\n")
+
+
+@pytest.mark.parametrize("next_start", [1, 1.0001])
+def test_srt_omits_cue_when_next_start_leaves_no_positive_interval(next_start):
+    turns = [{"speaker": "speaker:0", "text": "impossible", "start": 1, "end": 1},
+             {"speaker": "speaker:1", "text": "hi", "start": next_start, "end": 2}]
+    assert transcribe._srt({"speaker_turns": turns}) == "1\n00:00:01,000 --> 00:00:02,000\nSpeaker 2: hi\n"
 
 
 def test_srt_groups_segments_to_seven_seconds():

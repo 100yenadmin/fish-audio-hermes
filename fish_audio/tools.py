@@ -14,7 +14,7 @@ SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio
 def _speak(args, key, base, session, *, record_media=True):
     text = args.get("text")
     require(isinstance(text, str) and bool(text.strip()), "Nothing to say: the text is empty.")
-    model, defaulted = settings.resolve_model(args.get("model"), key=key, base_url=base)
+    model, defaulted = settings.resolve_model(args.get("model"), key=key, base_url=base, prefer_call=True)
     row = next(row for row in MODELS if row["id"] == model)
     nested = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio"))
     voice = args.get("voice")
@@ -31,8 +31,15 @@ def _speak(args, key, base, session, *, record_media=True):
         voice = speakers
     fmt = args.get("format", "ogg")
     require(fmt in {"ogg", "mp3", "wav"}, "format must be ogg, mp3 or wav.")
-    speed = args.get("speed", nested.get("speed", 1.0))
-    require(settings._number(speed) and 0.5 <= speed <= 2, "speed must be between 0.5 and 2.0.")
+    if "speed" in args:
+        speed = args["speed"]
+        require(settings._number(speed) and 0.5 <= speed <= 2, "speed must be between 0.5 and 2.0.")
+    else:
+        speed = nested.get("speed", 1.0)
+        if not settings._number(speed):
+            settings._warn("speed")
+            speed = 1.0
+        speed = max(0.5, min(2.0, speed))
     params = {"text": tags.adapt_tags(text, row["family"]), "model": model, "model_defaulted": defaulted,
               "format": "opus" if fmt == "ogg" else fmt, "prosody": {"speed": speed}}
     if voice is not None:

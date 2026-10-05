@@ -75,6 +75,39 @@ def test_speak_voice_precedence_and_free_notice(monkeypatch):
         assert result["voice"] == "b" * 32
 
 
+@pytest.mark.parametrize("model,allow,expected,speakers", [
+    ("s2.1-pro", True, "s2.1-pro", None),
+    ("s2-pro", True, "s2-pro", [VOICE, "b" * 32]),
+    ("s2.1-pro-free", False, "s2.1-pro", None),
+])
+def test_speak_explicit_model_overrides_nested(monkeypatch, model, allow, expected, speakers):
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"model": "s1"}},
+        "plugins": {"entries": {"fish-audio": {"settings": {"allow_free_model": allow}}}}})
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
+        args = {"text": "<|speaker:0|> Hi. <|speaker:1|> Yo.", "model": model}
+        if speakers:
+            args["speakers"] = speakers
+        result = call(tools.fish_speak, **args)
+        assert result["success"] and result["model"] == expected
+        request = route.calls.last.request
+        assert request.headers["model"] == expected
+        assert json.loads(request.content)["text"] == args["text"]
+        if speakers:
+            assert json.loads(request.content)["reference_id"] == speakers
+
+
+@pytest.mark.parametrize("configured,expected", [(0.1, 0.5), (3, 2), (1.2, 1.2), ("invalid", 1.0)])
+def test_speak_configured_speed_clamped(monkeypatch, configured, expected):
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"speed": configured}}})
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
+        assert call(tools.fish_speak, text="hello")["success"]
+        assert json.loads(route.calls.last.request.content)["prosody"]["speed"] == expected
+        assert call(tools.fish_speak, text="hello", speed=0.8)["success"]
+        assert json.loads(route.calls.last.request.content)["prosody"]["speed"] == 0.8
+
+
 @pytest.mark.parametrize("args", [{"text": " "}, {"text": "hi", "voice": "bad"},
     {"text": "hi", "speed": 3}, {"text": "hi", "pronunciations": {"x": 1}},
     {"text": "hi", "pronunciations": {str(i): "a" for i in range(201)}}])
@@ -172,10 +205,46 @@ def test_design_save_signature_stays_server_side(monkeypatch):
         assert signature not in raw_save and json.loads(raw_save)["source"] == "voice_design"
         body = save.calls.last.request.content
         assert signature.encode() in body and b'name="voice_design_signatures"' in body and b'preview text' in body
-        monkeypatch.setattr(voices, "_clock", lambda: 1e20)
+        assert candidate["design_token"] not in voices._DESIGNS
         assert "design again" in call(tools.fish_voices, action="save", design_token=candidate["design_token"], title="Saved")["error"]
         assert save.call_count == 1
         assert "design again" in call(tools.fish_voices, action="save", design_token="unknown", title="Saved")["error"]
+
+
+def test_design_save_uses_receipt_bytes_and_consumes_only_after_success():
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/v1/voice-design").respond(json={"candidates": [{"signature": "synthetic-signature",
+            "audio_base64": base64.b64encode(WAV).decode(), "text": "original preview"}]})
+        save = mock.post(BASE + "/model").respond(503)
+        candidate = call(tools.fish_voices, action="design", instruction="warm", n=1)["candidates"][0]
+        token = candidate["design_token"]
+        assert voices._DESIGNS[token]["audio"] == WAV
+        Path(candidate["file_path"]).write_bytes(b"RIFFreplacement")
+        args = {"action": "save", "design_token": token, "title": "Saved"}
+        assert not call(tools.fish_voices, **args)["success"]
+        assert token in voices._DESIGNS and save.call_count == 1
+        Path(candidate["file_path"]).unlink()
+        save.respond(201, json={"_id": VOICE, "source": "voice_design"})
+        assert call(tools.fish_voices, **args)["success"]
+        for request_call in save.calls:
+            assert WAV in request_call.request.content and b"replacement" not in request_call.request.content
+        assert token not in voices._DESIGNS
+        assert not call(tools.fish_voices, **args)["success"] and save.call_count == 2
+
+
+def test_design_receipt_expiry_and_memory_cap(monkeypatch):
+    monkeypatch.setattr(voices, "_clock", lambda: 100)
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/v1/voice-design").respond(json={"candidates": [{"signature": "synthetic-signature",
+            "audio_base64": base64.b64encode(WAV).decode()}]})
+        tokens = [call(tools.fish_voices, action="design", instruction="warm", n=1)["candidates"][0]["design_token"]
+                  for _ in range(65)]
+        assert len(voices._DESIGNS) == 64 and tokens[0] not in voices._DESIGNS
+        assert all(receipt["audio"] == WAV for receipt in voices._DESIGNS.values())
+        monkeypatch.setattr(voices, "_clock", lambda: 3700)
+        result = call(tools.fish_voices, action="save", design_token=tokens[-1], title="Expired")
+        assert not result["success"] and "expired" in result["error"]
+        assert not voices._DESIGNS and len(mock.calls) == 65
 
 
 @pytest.mark.parametrize("action", ["update", "delete"])

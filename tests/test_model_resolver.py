@@ -80,3 +80,17 @@ def test_explicit_nested_free_is_forbidden_once_per_process(config, monkeypatch,
         assert settings.resolve_model("s1", key="test-key", base_url=BASE) == ("s2.1-pro", False)
     assert [r.message for r in caplog.records] == [
         "allow_free_model is false; using s2.1-pro instead of s2.1-pro-free"]
+
+
+@pytest.mark.parametrize("call,allow,expected", [
+    ("s2.1-pro", True, "s2.1-pro"), ("s2-pro", True, "s2-pro"),
+    ("s2.1-pro-free", False, "s2.1-pro"), ("invalid", True, "s1"),
+])
+def test_explicit_model_preference_preserves_policy(config, monkeypatch, call, allow, expected):
+    config[0]["model"] = "s1"
+    config[1]["allow_free_model"] = allow
+    monkeypatch.setattr(settings, "cached_wallet", lambda *args: pytest.fail("explicit model queried wallet"))
+    assert settings.resolve_model(call, key="test-key", base_url=BASE, prefer_call=True) == (expected, False)
+    # Ordinary Hermes TTS keeps nested precedence over its legacy top-level model.
+    params, _ = settings.resolve_tts(None, call, None, "mp3", "out.mp3", key="test-key")
+    assert params["model"] == "s1"

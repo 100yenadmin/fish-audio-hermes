@@ -43,6 +43,16 @@ Host plugin isolation does not expose `hermes fish` or these hooks.
 Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
 and `fish-audio:fish-audio-voice-studio`. The parity map tracks implemented, tested and deferred API fields.
 
+## Known limitations
+
+The auto-append fallback is per session. Mid-turn context compression can drop that fallback;
+the model normally includes the returned `media_tag` itself.
+
+Core gives plugins a `.mp3` path for plain `text_to_speech` and re-encodes it to Opus for voice bubbles
+([upstream #133133](https://github.com/NousResearch/hermes-agent/issues/133133)). Core's text normaliser
+also alters `<|speaker:N|>` markup on that path: use `fish_speak` for multi-speaker speech
+([upstream #133131](https://github.com/NousResearch/hermes-agent/issues/133131)).
+
 ## License
 
 Apache-2.0. Fish Audio is a trademark of Hanabi AI Inc.

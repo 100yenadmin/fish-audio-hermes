@@ -1,5 +1,6 @@
 """Rich ASR preserves Fish speaker markers and can write local subtitles."""
 import math
+import re
 from uuid import uuid4
 
 from . import client, media
@@ -19,7 +20,12 @@ def _stamp(seconds):
 def _srt(data):
     turns = data.get("speaker_turns")
     if turns:
-        cues = [{**turn, "text": f'{turn["speaker"]}: {turn["text"]}'} for turn in turns]
+        cues = []
+        for turn in turns:
+            speaker = str(turn["speaker"])
+            match = re.fullmatch(r"speaker:(\d+)", speaker)
+            label = f"Speaker {int(match[1]) + 1}" if match else speaker
+            cues.append({**turn, "text": f'{label}: {turn["text"]}'})
     else:
         cues = []
         for segment in data.get("segments", []):
@@ -37,8 +43,17 @@ def _srt(data):
                     cues[-1]["end"] = right
                 else:
                     cues.append({"start": left, "end": right, "text": text})
+    timed = []
+    for i, cue in enumerate(cues):
+        start, end = float(cue["start"]), float(cue["end"])
+        if end <= start or _stamp(end) == _stamp(start):
+            end = min(start + 0.5, float(cues[i + 1]["start"])) if i + 1 < len(cues) else start + 0.5
+        # A coincident/backwards next start leaves no positive interval within the bound.
+        if end <= start or _stamp(end) == _stamp(start):
+            continue
+        timed.append({**cue, "start": start, "end": end})
     return "\n\n".join(f'{i}\n{_stamp(c["start"])} --> {_stamp(c["end"])}\n{c["text"]}'
-                         for i, c in enumerate(cues, 1)) + "\n"
+                         for i, c in enumerate(timed, 1)) + "\n"
 
 
 def execute(args, key, base, session):
@@ -56,7 +71,7 @@ def execute(args, key, base, session):
     require(not ("num_speakers" in hints and len(hints) > 1), "num_speakers cannot be combined with min/max_speakers.")
     require(hints.get("min_speakers", 1) <= hints.get("max_speakers", float("inf")), "min_speakers cannot exceed max_speakers.")
     require(not hints or model == MODEL_PRO and diarize != "false", "Speaker hints require transcribe-1-pro and diarize != false.")
-    fields = {"ignore_timestamps": str(not args.get("timestamps", True)).lower()}
+    fields = {"ignore_timestamps": str(not (args.get("srt", False) or args.get("timestamps", True))).lower()}
     if model == MODEL_PRO:
         fields.update(diarize=diarize, tag_audio_events=str(args.get("tag_audio_events", True)).lower())
         fields.update({name: str(value) for name, value in hints.items()})

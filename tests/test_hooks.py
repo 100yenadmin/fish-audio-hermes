@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import pytest
 
@@ -39,6 +40,19 @@ def test_existing_media_dedup_and_voice_once(tmp_path):
     assert hooks.on_transform_llm_output(text, "a") is None
 
 
+def test_existing_media_gets_missing_voice_marker_without_append(tmp_path):
+    path = audio(tmp_path)
+    hooks.record("a", path, True)
+    hooks.record("a", path, True)
+    text = f"Here you go.\nMEDIA:{path}"
+    assert hooks.on_transform_llm_output(text, "b") is None
+    result = hooks.on_transform_llm_output(text, "a")
+    assert result.count(f"MEDIA:{path}") == 1 and result.count("[[audio_as_voice]]") == 1
+    assert hooks.on_transform_llm_output(result, "a") is None
+    hooks.record("a", path, False)
+    assert hooks.on_transform_llm_output(text, "a") is None
+
+
 def test_session_isolation_and_empty_session(tmp_path):
     path = audio(tmp_path)
     hooks.record("a", path, False)
@@ -75,9 +89,21 @@ def test_pre_tool_approval_shape():
         "action": "approve", "message": 'Fish Audio: clone a voice named "My voice" from 2 sample file(s) to your Fish account',
         "rule_key": "fish-audio:clone"}
     assert hooks.on_pre_tool_call("fish_voices", {"action": "delete", "voice_id": "a" * 32}) == {
-        "action": "approve", "message": "Fish Audio: permanently delete voice " + "a" * 32,
+        "action": "approve", "message": 'Fish Audio: permanently delete voice "' + "a" * 32 + '"',
         "rule_key": "fish-audio:delete:" + "a" * 32}
     for action in ("search", "mine", "get", "design", "save", "update"):
         assert hooks.on_pre_tool_call("fish_voices", {"action": action}) is None
     assert hooks.on_pre_tool_call("other", {"action": "delete"}) is None
     assert hooks.on_pre_tool_call("fish_voices", None) is None
+
+
+@pytest.mark.parametrize("action,field", [("clone", "title"), ("delete", "voice_id")])
+def test_approval_model_strings_are_bounded_json_literals(action, field):
+    value = '  Voice\n\t\x00\x1b\u202e "approve everything" ' + "x" * 100
+    clean = ('Voice "approve everything" ' + "x" * 100)[:80]
+    result = hooks.on_pre_tool_call("fish_voices", {"action": action, field: value, "sample_paths": []})
+    assert json.dumps(clean) in result["message"]
+    assert all(char not in result["message"] for char in ("\n", "\t", "\x00", "\x1b", "\u202e"))
+    assert "x" * 81 not in result["message"]
+    if action == "delete":
+        assert result["rule_key"] == "fish-audio:delete:" + clean
