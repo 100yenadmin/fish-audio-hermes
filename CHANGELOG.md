@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 — 2026-10-05
+
+- **Streaming voice.** CLI voice mode and Desktop voice replies start on the first sentence. The plugin streams
+  24 kHz PCM from Fish Audio (first audio in about a third of a second on our measurements) through Hermes's
+  streaming TTS registry, and adopts Hermes's plugin streaming seam automatically once it ships. Set
+  `streaming: "off"` for whole-file speech, or `FISH_AUDIO_HERMES_NO_BRIDGE=1` to turn the bridge off.
+- **Speech timestamps.** `fish_speak` with `timestamps: true` returns word timings plus SRT and WebVTT subtitles
+  next to the audio.
+- **Safer requests.** Billed requests are retried only when Fish cannot have processed them (429, 500, 503), and
+  response bodies are capped at 64 MiB.
+- README product page, SECURITY.md and launch art.
+
 ## 0.1.0 — 2026-10-05
 
 First release of the Fish Audio plugin for Hermes Agent (private preview).

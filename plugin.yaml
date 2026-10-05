@@ -1,6 +1,6 @@
 name: fish-audio
-version: 0.1.0
-description: "Fish Audio voices for Hermes: expressive text-to-speech, speech-to-text, a searchable voice library, voice cloning and voice design, in the CLI, every messaging gateway and the Desktop app. Disclosure — every synthesis, transcription, clone or design call is a paid Fish Audio API request billed to your Fish account (the free s2.1-pro-free model excepted, which Fish may use to improve its models); the plugin sends only the text and audio you ask it to process to api.fish.audio, stores your key in Hermes's .env, and collects no telemetry."
+version: 0.2.0
+description: "Fish Audio voices for Hermes: expressive text-to-speech, speech-to-text, a searchable voice library, voice cloning and voice design, in the CLI, every messaging gateway and the Desktop app. Disclosure — every synthesis, transcription, clone or design call is a paid Fish Audio API request billed to your Fish account (the free s2.1-pro-free model excepted, which Fish may use to improve its models); the plugin sends only the text and audio you ask it to process to api.fish.audio, stores your key in Hermes's .env, and collects no telemetry. Streaming voice registers through Hermes's public tools.tts_streaming.register call; set FISH_AUDIO_HERMES_NO_BRIDGE=1 to turn it off."
 author: Electric Sheep
 kind: standalone
 manifest_version: 2

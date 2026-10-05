@@ -201,5 +201,4 @@ def resolve_tts(call_voice, call_model, call_speed, call_format, output_path, *,
             params["prosody"][key] = value
         else:
             params[key] = value
-    # Whole-file REST synthesis; the streaming bridge is a later stage.
     return params, str(path)
