@@ -346,3 +346,43 @@ def test_bridge_skips_without_module_and_never_raises(hermes_streaming, monkeypa
 def test_streams_pcm_is_off_without_the_seam(fake_registry, monkeypatch):
     monkeypatch.setattr(tts.FishAudioTTSProvider, "pcm_seam", False)
     assert tts.FishAudioTTSProvider().streams_pcm is False
+
+
+def test_seam_stream_forwards_call_voice_and_model(monkeypatch):
+    other = "b" * 32
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": "fish-audio"}})
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").respond(content=b"\x01\x02")
+        chunks = list(tts.FishAudioTTSProvider().stream("Hi there.", voice=other, model="s1", format="pcm"))
+    assert chunks == [b"\x01\x02"]
+    request = route.calls.last.request
+    assert json.loads(request.content)["reference_id"] == other and request.headers["model"] == "s1"
+    # Configured Fish settings still outrank per-call values.
+    monkeypatch.setattr(settings, "_config", lambda: config())
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").respond(content=b"\x01\x02")
+        list(tts.FishAudioTTSProvider().stream("Hi there.", voice=other, model="s1", format="pcm"))
+    request = route.calls.last.request
+    assert json.loads(request.content)["reference_id"] == VOICE and request.headers["model"] == "s2.1-pro"
+
+
+@pytest.mark.parametrize("body", [b"", b"\x01"])
+def test_successful_stream_without_a_whole_sample_raises_and_records(body):
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post("https://api.fish.audio/v1/tts").respond(content=body, headers={"content-type": "audio/pcm"})
+        with pytest.raises(FishAudioError, match="no audio") as exc:
+            speak()
+    assert exc.value.kind == "availability" and state.last_failure()[1] == "availability"
+
+
+def test_plugin_register_reaches_the_bridge(plugin, fake_ctx, hermes_streaming, monkeypatch):
+    def _no_network(*args, **kwargs):
+        raise AssertionError("register() must not open sockets")
+
+    monkeypatch.setattr(socket, "create_connection", _no_network)
+    monkeypatch.setattr(socket.socket, "connect", _no_network)
+    plugin.register(fake_ctx)
+    assert [p.name for p in fake_ctx.tts_providers] == ["fish-audio"]
+    assert [p.name for p in fake_ctx.stt_providers] == ["fish-audio"]
+    assert list(hermes_streaming._REGISTRY) == ["fish-audio"]
+    assert hermes_streaming._REGISTRY["fish-audio"].__name__ == "FishStreamer"

@@ -26,9 +26,9 @@ class FishAudioTTSProvider(TTSProvider):
         return self.pcm_seam and FishStreamer.available()
 
     def stream(self, text, *, voice=None, model=None, format="pcm", **extra):
-        """Seam contract: int16 mono PCM; voice and model come from the one settings resolver."""
+        """Seam contract: int16 mono PCM; per-call voice and model go through the one settings resolver."""
         from .streaming import FishStreamer
-        return FishStreamer({}, {}).stream(text)
+        return FishStreamer({}, {}).stream(text, voice=voice, model=model)
 
     def is_available(self):
         try:

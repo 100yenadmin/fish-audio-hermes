@@ -1,4 +1,5 @@
 """Rich ASR preserves Fish speaker markers and can write local subtitles."""
+from bisect import bisect_left
 import math
 import re
 from pathlib import Path
@@ -71,6 +72,17 @@ def _vtt(srt):
     return "WEBVTT\n\n" + re.sub(r"^\S+ --> \S+$", lambda m: m[0].replace(",", "."), srt, flags=re.M)
 
 
+def _folded(text):
+    """Lower-cased letters, digits and spaces of ``text``, with each kept character's index in ``text``."""
+    chars, index = [], []
+    for i, ch in enumerate(text):
+        if ch.isalnum() or ch.isspace():
+            for folded in ch.lower():
+                chars.append(folded)
+                index.append(i)
+    return "".join(chars), index
+
+
 def speech_timestamps(events, audio_path):
     """fish_speak timestamps: keep the last alignment per chunk_seq, shifted onto the audio timeline."""
     latest = {}
@@ -82,16 +94,19 @@ def speech_timestamps(events, audio_path):
         event = latest[seq]
         offset = float(event.get("chunk_audio_offset_sec") or 0)
         content = event.get("content") if isinstance(event.get("content"), str) else ""
+        # Fish's tokens drop punctuation and apostrophes ("I've" -> "Ive"): match folded text.
+        haystack, index = _folded(content)
         cursor = 0
         for segment in event["alignment"].get("segments") or []:
             text = str(segment["text"])
             start, end = float(segment["start"]) + offset, float(segment["end"]) + offset
             segments.append({"text": text, "start": round(start, 3), "end": round(end, 3)})
-            # Fish strips punctuation from segments; recover it from the content for captions.
-            found = content.find(text, cursor) if text else -1
+            # Recover the original spelling and punctuation from the content for captions.
+            needle = _folded(text)[0]
+            found = haystack.find(needle, bisect_left(index, cursor)) if needle else -1
             caption = text
             if found >= 0:
-                stop = found + len(text)
+                found, stop = index[found], index[found + len(needle) - 1] + 1
                 while stop < len(content) and content[stop] in _TRAILING:
                     stop += 1
                 caption, cursor = content[found:stop], stop

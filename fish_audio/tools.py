@@ -64,7 +64,11 @@ def _speak(args, key, base, session, *, record_media=True):
         result["notice"] = settings.FREE_MODEL_NOTICE
     if events is not None:
         from .transcribe import speech_timestamps
-        result.update(speech_timestamps(events, path))
+        # The billed audio is already saved: a subtitle failure must not hide it.
+        try:
+            result.update(speech_timestamps(events, path))
+        except Exception as exc:
+            result["timestamps_error"] = f"The audio is ready, but its timestamps could not be processed ({type(exc).__name__})."
     return result
 
 

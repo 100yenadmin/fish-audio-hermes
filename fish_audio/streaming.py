@@ -63,7 +63,7 @@ class FishStreamer(StreamingTTSProvider):
         except Exception:
             return False
 
-    def stream(self, text):
+    def stream(self, text, *, voice=None, model=None):
         # Resolved on the first chunk, inside the consumer's profile scope (Desktop's producer
         # thread enters it too), so the key and settings are the requesting profile's.
         chunks = None
@@ -71,7 +71,7 @@ class FishStreamer(StreamingTTSProvider):
             key = fish_api_key()
             if not key:
                 raise FishAudioError("credential", None, None, SETUP_MESSAGE)
-            params, _ = settings.resolve_tts(None, None, None, None, "stream.wav", key=key)
+            params, _ = settings.resolve_tts(voice, model, None, None, "stream.wav", key=key)
             base_url = params.pop("base_url")
             family = next(row["family"] for row in MODELS if row["id"] == params["model"])
             params.update(text=adapt_tags(text, family), format="pcm", sample_rate=self.sample_rate)
@@ -83,7 +83,13 @@ class FishStreamer(StreamingTTSProvider):
             transport = TRANSPORTS.get(settings.transport_settings().get("transport"), TRANSPORTS[DEFAULT_TRANSPORT])
             logger.debug("FishStreamer: %d characters over %s with %s", len(params["text"]), transport, params["model"])
             chunks = getattr(client, transport)(params, key, base_url)
-            yield from _capped(_aligned(chunks), "Fish Audio streaming TTS")
+            silent = True
+            for pcm in _capped(_aligned(chunks), "Fish Audio streaming TTS"):
+                silent = False
+                yield pcm
+            # A 2xx with no whole sample would otherwise play as silence with nothing recorded.
+            if silent:
+                raise FishAudioError("availability", None, None, "Fish Audio returned no audio for this sentence.")
         except FishAudioError as exc:
             record_failure(exc.kind, str(exc))
             raise

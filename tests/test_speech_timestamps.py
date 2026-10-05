@@ -144,3 +144,31 @@ def test_ogg_pages_concatenate_to_a_valid_stream(tmp_path):
     assert abs(float(info["format"]["duration"]) - 1.5) < 0.1
     decode = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "null", "-"], capture_output=True, text=True)
     assert decode.returncode == 0 and not decode.stderr
+
+
+def test_captions_keep_apostrophes_and_sentence_punctuation():
+    content = "I’ve said it’s fine. Don't worry!"
+    words = ["Ive", "said", "its", "fine", "Dont", "worry"]
+    segments = [{"text": w, "start": i * 0.4, "end": i * 0.4 + 0.3} for i, w in enumerate(words)]
+    events = [{"content": content, "chunk_seq": 0, "chunk_audio_offset_sec": 0.0,
+               "alignment": {"segments": segments, "audio_duration": 2.4}}]
+    result = transcribe.speech_timestamps(events, Path(media.audio_output_dir()) / "x.ogg")
+    assert [s["text"] for s in result["segments"]] == words  # raw alignment is unchanged
+    srt = Path(result["srt_path"]).read_text()
+    assert "\nI’ve said it’s fine.\n" in srt and srt.rstrip().endswith("Don't worry!")
+
+
+def test_subtitle_failure_keeps_the_billed_audio(tmp_path):
+    events = [{"content": "Hi.", "chunk_seq": 0, "chunk_audio_offset_sec": 0.0,
+               "alignment": {"segments": [{"text": "Hi"}]}, "audio_bytes": 4}]
+    result, _ = speak(sse(events, [b"OggS"]), format="ogg")
+    assert result["success"] and Path(result["file_path"]).read_bytes() == b"OggS"
+    assert "timestamps could not be processed" in result["timestamps_error"] and "srt_path" not in result
+
+
+def test_oversized_timestamp_stream_is_refused_before_decoding(monkeypatch):
+    from fish_audio import client
+    monkeypatch.setattr(client, "SSE_CAP", 2048)
+    events = [dict(FIXTURE[-1], audio_bytes=4096)]
+    result, _ = speak(sse(events, [b"\x00" * 4096]), format="mp3")
+    assert not result["success"] and "exceeds the size cap" in result["error"]

@@ -111,11 +111,32 @@ def _tts_body(params):
     return {k: v for k, v in params.items() if k not in {"model", "model_defaulted", "base_url", "streaming"}}
 
 
+# Base64 audio (4/3 of the 64 MiB audio cap) plus alignment metadata.
+SSE_CAP = 2 * RESPONSE_CAP
+
+
+def _bounded_lines(response, limit):
+    """Split a response into lines, failing once more than ``limit`` bytes arrive, before any decoding."""
+    pending, total = [], 0
+    for chunk in response.iter_bytes():
+        total += len(chunk)
+        if total > limit:
+            raise FishAudioError("too_large", None, None, "Fish Audio timestamp stream exceeds the size cap.")
+        *complete, rest = chunk.split(b"\n")
+        for piece in complete:
+            pending.append(piece)
+            yield b"".join(pending).rstrip(b"\r").decode("utf-8", "replace")
+            pending = []
+        pending.append(rest)
+    if any(pending):
+        yield b"".join(pending).rstrip(b"\r").decode("utf-8", "replace")
+
+
 def _sse_audio(response, events):
     """Decode a with-timestamp SSE body: yield each event's audio and keep the rest in ``events``."""
     data = []
     # A final empty line dispatches an event the server did not terminate.
-    for line in itertools.chain(response.iter_lines(), [""]):
+    for line in itertools.chain(_bounded_lines(response, SSE_CAP), [""]):
         if line.startswith("data:"):
             data.append(line[6:] if line.startswith("data: ") else line[5:])
         elif not line and data:
