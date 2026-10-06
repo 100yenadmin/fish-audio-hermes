@@ -51,7 +51,7 @@ def streaming_available():
         return False
 
 
-def stream_pcm(text, *, voice=None, model=None):
+def stream_pcm(text, *, voice=None, model=None, speed=None):
     # Resolved on the first chunk, inside the consumer's profile scope (Desktop's producer
     # thread enters it too), so the key and settings are the requesting profile's.
     chunks = None
@@ -59,7 +59,7 @@ def stream_pcm(text, *, voice=None, model=None):
         key = fish_api_key()
         if not key:
             raise FishAudioError("credential", None, None, setup_message())
-        params, _ = settings.resolve_tts(voice, model, None, None, "stream.wav", key=key)
+        params, _ = settings.resolve_tts(voice, model, speed, None, "stream.wav", key=key)
         base_url = params.pop("base_url")
         family = next(row["family"] for row in MODELS if row["id"] == params["model"])
         params.update(text=adapt_tags(text, family), format="pcm", sample_rate=SAMPLE_RATE)

@@ -30,10 +30,10 @@ class FishAudioTTSProvider(TTSProvider):
         from .streaming import streaming_available
         return streaming_available()
 
-    def stream(self, text, *, voice=None, model=None, format="pcm", **extra):
-        """Hook contract: int16 mono PCM; per-call voice and model go through the one settings resolver."""
+    def stream(self, text, *, voice=None, model=None, speed=None, format="pcm", **extra):
+        """Hook contract: int16 mono PCM; per-call voice, model and speed go through the one settings resolver."""
         from .streaming import stream_pcm
-        return stream_pcm(text, voice=voice, model=model)
+        return stream_pcm(text, voice=voice, model=model, speed=speed)
 
     def is_available(self):
         try:

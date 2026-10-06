@@ -297,6 +297,14 @@ def test_hook_stream_forwards_call_voice_and_model(monkeypatch):
     assert json.loads(request.content)["reference_id"] == VOICE and request.headers["model"] == "s2.1-pro"
 
 
+def test_hook_stream_applies_speed_like_synthesize():
+    """The hook passes tts.speed to stream() as it does to synthesize(); both must honour it."""
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").respond(content=b"\x01\x02")
+        list(tts.FishAudioTTSProvider().stream("Hi there.", voice=None, model=None, speed=1.25, format="pcm"))
+    assert json.loads(route.calls.last.request.content)["prosody"]["speed"] == 1.25
+
+
 @pytest.mark.parametrize("body", [b"", b"\x01"])
 def test_successful_stream_without_a_whole_sample_raises_and_records(body):
     with respx.mock(assert_all_called=True) as mock:
