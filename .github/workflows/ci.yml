@@ -12,7 +12,7 @@ env:
   # Hermes builds the plugin is checked against. Bump deliberately (README "Compatibility").
   HERMES_UPSTREAM_REPO: NousResearch/hermes-agent
   HERMES_RELEASE_SHA: f97608f178d1ffeca59860195ab7da295f7c8e5f    # v2026.9.24 (0.21.5) = requires_hermes floor
-  HERMES_MAIN_SHA: df81f543f8209b6d131449d98da7b0037cafedf4       # main, 2026-10-05
+  HERMES_MAIN_SHA: f9798bcf9bceca7f88a64a66aa652cf9e2b5cffa       # main, 2026-10-06: has the plugin streaming hook (#133723)
   HERMES_FORK_REPO: electricsheephq/evaOS-hermes-desktop-app-adapter
   HERMES_FORK_SHA: 9844ebe82d64080c4329c3747d16c74aa06c18c3        # evaos-runtime-es.12-v0.21.5-r34.4 = the managed fleet (S7)
 

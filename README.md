@@ -156,13 +156,14 @@ reports a wallet with no API credit and no past top-ups that doesn't carry Fish'
 Fish Audio may use free-tier requests to improve its models. `allow_free_model: false` replaces `s2.1-pro-free`
 with `s2.1-pro` everywhere, even when you name the free model yourself.
 
-**Streaming voice.** With `tts.provider: fish-audio`, the plugin registers a Fish streamer with Hermes's streaming
-TTS registry through its public `register` call, and streams 24 kHz PCM from `POST /v1/tts`. Each spoken sentence
-is one billed request and is not retried. Measured first audio bytes: Fish HTTP API p50 243 ms (3 samples, 238–356
+**Streaming voice.** With `tts.provider: fish-audio`, on a Hermes build that has the plugin streaming hook
+(Hermes `main` since 2026-10-06; the next release), the plugin streams 24 kHz PCM from `POST /v1/tts` to CLI and TUI
+voice playback, Desktop read-aloud and gateway streaming. Older Hermes builds, including 0.21.5, use whole-file
+synthesis instead: sentence by sentence in CLI voice mode, the whole reply in Desktop read-aloud and gateway voice.
+Each streamed sentence is one billed request and is not retried. Measured first audio bytes: Fish HTTP API p50 243 ms (3 samples, 238–356
 ms), CLI voice mode 373–381 ms, Desktop speak-stream handler 310 ms (in-process, not through the Electron UI);
 these exclude the model's own reply time. Set `streaming: "off"` for whole-file speech; `transport: ws` switches to Fish's live
-WebSocket for diagnosis. Reviewers and packagers can turn the registration off with
-`FISH_AUDIO_HERMES_NO_BRIDGE=1`. When Hermes gains its plugin PCM streaming seam, the plugin uses that instead.
+WebSocket for diagnosis.
 
 Under host plugin isolation (`plugins.isolation: host`, newer Hermes builds), the `hermes fish` terminal command is
 unavailable and voice replies use whole-file speech instead of streaming; `/fish`, the tools, the hooks and
@@ -202,8 +203,6 @@ the wallet that users can't see.
 - Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish account (the
   free `s2.1-pro-free` model excepted).
 - Fish Audio may use free-model requests to improve its models.
-- Streaming uses a small bridge into Hermes's streaming-voice registry until Hermes ships a public plugin streaming
-  API. `FISH_AUDIO_HERMES_NO_BRIDGE=1` turns it off.
 - The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
   existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a
   designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a

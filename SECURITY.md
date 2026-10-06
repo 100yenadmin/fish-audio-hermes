@@ -55,9 +55,9 @@ storage on that computer, and fetched previews stay in the window's memory until
   before sending it to Fish Audio. A clone is refused unless the consent box is ticked.
 - Deleting checks that the voice belongs to your Fish account first.
 
-## Streaming bridge
+## Streaming voice
 
-Until Hermes ships a public plugin streaming API, the plugin registers its streamer with Hermes's streaming-voice
-registry through the public `tools.tts_streaming.register` call. It never rebinds Hermes module attributes. Set
-`FISH_AUDIO_HERMES_NO_BRIDGE=1` to turn the bridge off. The bridge is skipped inside the plugin host process
-(`plugins.isolation: host`), where voice replies use whole-file speech.
+The plugin streams only through Hermes's plugin streaming hook: its TTS provider declares `streams_pcm` and
+`stream_sample_rate`, and Hermes calls its `stream()`. It registers nothing into Hermes's internal streaming registry
+and never rebinds Hermes module attributes. Hermes builds without the hook, and the plugin host process
+(`plugins.isolation: host`), use whole-file speech.

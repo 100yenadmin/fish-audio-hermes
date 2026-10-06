@@ -2330,7 +2330,7 @@ entries:
   method: get
   location: header
   field: model
-  surface: Streaming voice model header (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  surface: Streaming voice model header (streaming voice uses /v1/tts/live, the same event stream without alignment)
   status: excluded
   tests: []
   spec:
@@ -2347,7 +2347,7 @@ entries:
   method: get
   location: response
   field: event
-  surface: Streaming voice audio events, int16-aligned PCM (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  surface: Streaming voice audio events, int16-aligned PCM (streaming voice uses /v1/tts/live, the same event stream without alignment)
   status: excluded
   tests: []
   spec:
@@ -2366,7 +2366,7 @@ entries:
   method: get
   location: response
   field: audio
-  surface: Streaming voice audio events, int16-aligned PCM (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  surface: Streaming voice audio events, int16-aligned PCM (streaming voice uses /v1/tts/live, the same event stream without alignment)
   status: excluded
   tests: []
   spec:
@@ -2383,7 +2383,7 @@ entries:
   method: get
   location: response
   field: content
-  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  surface: 'Not read: streaming voice uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
   status: excluded
   tests: []
   spec:
@@ -2400,7 +2400,7 @@ entries:
   method: get
   location: response
   field: alignment
-  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  surface: 'Not read: streaming voice uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
   status: excluded
   tests: []
   spec:
@@ -2421,7 +2421,7 @@ entries:
   method: get
   location: response
   field: chunk_seq
-  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  surface: 'Not read: streaming voice uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
   status: excluded
   tests: []
   spec:
@@ -2438,7 +2438,7 @@ entries:
   method: get
   location: response
   field: chunk_audio_offset_sec
-  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  surface: 'Not read: streaming voice uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
   status: excluded
   tests: []
   spec:
@@ -2455,7 +2455,7 @@ entries:
   method: get
   location: response
   field: time
-  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  surface: 'Not read: streaming voice uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
   status: excluded
   tests: []
   spec:
@@ -2476,7 +2476,7 @@ entries:
   method: get
   location: response
   field: reason
-  surface: finish reason stop ends the sentence; error raises (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  surface: finish reason stop ends the sentence; error raises (streaming voice uses /v1/tts/live, the same event stream without alignment)
   status: excluded
   tests: []
   spec:
@@ -2517,7 +2517,7 @@ entries:
   method: get
   location: response
   field: message
-  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  surface: 'Not read: streaming voice uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
   status: excluded
   tests: []
   spec:
@@ -2550,7 +2550,7 @@ entries:
   method: get
   location: response
   field: error
-  surface: error event raises a safe FishAudioError; raw text not echoed (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  surface: error event raises a safe FishAudioError; raw text not echoed (streaming voice uses /v1/tts/live, the same event stream without alignment)
   status: excluded
   tests: []
   spec:
@@ -2567,7 +2567,7 @@ entries:
   method: get
   location: response
   field: max_concurrency
-  surface: 'Not read: streaming bridge uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
+  surface: 'Not read: streaming voice uses /v1/tts/live, the same event stream without alignment (fish_speak timestamps use the SSE endpoint)'
   status: excluded
   tests: []
   spec:
@@ -2588,7 +2588,7 @@ entries:
   method: get
   location: response
   field: status
-  surface: error event raises a safe FishAudioError; raw text not echoed (streaming bridge uses /v1/tts/live, the same event stream without alignment)
+  surface: error event raises a safe FishAudioError; raw text not echoed (streaming voice uses /v1/tts/live, the same event stream without alignment)
   status: excluded
   tests: []
   spec:
@@ -5382,31 +5382,31 @@ entries:
         required: false
 doc_only:
 - field: start
-  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: text
-  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: flush
-  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: stop
-  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: audio
-  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: finish
-  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: error
-  surface: 'Streaming voice bridge, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
+  surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: implemented
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
 - field: diarize

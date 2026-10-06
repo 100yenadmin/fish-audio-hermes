@@ -21,19 +21,19 @@ class FishAudioTTSProvider(TTSProvider):
     name = "fish-audio"
     display_name = "Fish Audio"
     voice_compatible = True
-    # Hermes's plugin PCM seam (#120398) reads these; registration turns the seam on when it exists.
-    pcm_seam = False
+    # Hermes's plugin streaming hook (#133723) reads these with is_available() whenever a reply picks
+    # its streamer; Hermes builds without the hook never read them.
     stream_sample_rate = 24000
 
     @property
     def streams_pcm(self):
-        from .streaming import FishStreamer
-        return self.pcm_seam and FishStreamer.available()
+        from .streaming import streaming_available
+        return streaming_available()
 
-    def stream(self, text, *, voice=None, model=None, format="pcm", **extra):
-        """Seam contract: int16 mono PCM; per-call voice and model go through the one settings resolver."""
-        from .streaming import FishStreamer
-        return FishStreamer({}, {}).stream(text, voice=voice, model=model)
+    def stream(self, text, *, voice=None, model=None, speed=None, format="pcm", **extra):
+        """Hook contract: int16 mono PCM; per-call voice, model and speed go through the one settings resolver."""
+        from .streaming import stream_pcm
+        return stream_pcm(text, voice=voice, model=model, speed=speed)
 
     def is_available(self):
         try:
