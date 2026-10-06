@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1 — 2026-10-06
+
+- **Settings ▸ Plugins.** Newer Hermes Desktop builds put plugin settings in Settings ▸ Plugins. The no-key card's
+  **Open Plugins** button now opens `/settings?tab=plugins&agent=fish-audio`, the Fish Audio form, and older
+  builds redirect it to Capabilities ▸ Plugins as before. Setup hints in Desktop (all nine languages), chat, the
+  terminal, the setup skill and the README name both places.
+- **Two more settings in the form.** `allow_free_model` (Allow the free model) and `operator_account`
+  (Operator-managed account) are declared in `config_schema`, so they appear in the plugin's settings form. Their
+  defaults and behaviour are unchanged, and admin-managed values stay locked.
+
 ## 1.2.0 — 2026-10-06
 
 - **Desktop UI translations.** The Voices page (including its language filter), sidebar row, credit chip and command palette follow Hermes

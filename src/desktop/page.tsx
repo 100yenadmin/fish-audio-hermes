@@ -143,7 +143,7 @@ function Onboarding({ profile, operator }: { profile: string; operator: boolean 
         </ol>}
         <div style={{ display: 'flex', gap: 8 }}>
           {!operator && <><Button onClick={() => open(LINKS.keys)}>{t('getKey')}</Button>
-          <Button onClick={() => host.navigate('/capabilities?tab=plugins')} variant="secondary">
+          <Button onClick={() => host.navigate('/settings?tab=plugins&agent=fish-audio')} variant="secondary">
             {t('openPlugins')}
           </Button></>}
           <Button onClick={() => void refreshAvailability()} variant="ghost">

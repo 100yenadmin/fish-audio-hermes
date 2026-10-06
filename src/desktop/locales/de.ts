@@ -22,7 +22,7 @@ export const de = {
   onboardBody: (profile: string) =>
     `Für ${agentName(profile)} wird ein Fish Audio API-Schlüssel benötigt. Neue Konten können mit dem kostenlosen Modell s2.1-pro-free beginnen.`,
   onboardStep1: 'Erstellen Sie einen kostenlosen API-Schlüssel auf fish.audio',
-  onboardStep2: 'Fügen Sie ihn unter Plugins ▸ Fish Audio ein und starten Sie dann das Gateway neu',
+  onboardStep2: 'Fügen Sie ihn unter Einstellungen ▸ Plugins ▸ Fish Audio ein (in älteren Versionen: Fähigkeiten ▸ Plugins) und starten Sie dann das Gateway neu',
   getKey: 'API-Schlüssel erhalten',
   openPlugins: 'Plugins öffnen',
   checkAgain: 'Erneut prüfen',

@@ -22,7 +22,7 @@ export const ru = {
   onboardBody: (profile: string) =>
     `Для голосов нужен API-ключ Fish Audio, настроенный для ${agentName(profile)}. Новые аккаунты могут начать с бесплатной модели s2.1-pro-free.`,
   onboardStep1: 'Создайте бесплатный API-ключ на fish.audio',
-  onboardStep2: 'Вставьте его в Плагины ▸ Fish Audio, затем перезапустите шлюз',
+  onboardStep2: 'Вставьте его в Настройки ▸ Плагины ▸ Fish Audio (в более ранних версиях: Возможности ▸ Плагины), затем перезапустите шлюз',
   getKey: 'Получить API-ключ',
   openPlugins: 'Открыть плагины',
   checkAgain: 'Проверить ещё раз',

@@ -22,7 +22,7 @@ export const ja = {
   onboardBody: (profile: string) =>
     `ボイスを使うには、${agentName(profile)}に Fish Audio API キーが必要です。新しいアカウントでは、無料の s2.1-pro-free モデルから始められます。`,
   onboardStep1: 'fish.audio で無料の API キーを作成',
-  onboardStep2: 'プラグイン ▸ Fish Audio にキーを貼り付け、ゲートウェイを再起動',
+  onboardStep2: '設定 ▸ プラグイン ▸ Fish Audio（旧バージョンでは スキルとツール ▸ プラグイン）にキーを貼り付け、ゲートウェイを再起動',
   getKey: 'API キーを取得',
   openPlugins: 'プラグインを開く',
   checkAgain: '再確認',

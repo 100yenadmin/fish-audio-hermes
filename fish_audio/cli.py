@@ -37,7 +37,8 @@ def _login(args):
     require(account.get_wallet(key, base, strict=True) is not None, "Fish Audio returned an invalid wallet; no key was saved.")
     from hermes_cli import config
     save = getattr(config, "save_env_value_secure", None) or getattr(config, "save_env_value", None)
-    require(save is not None, "Use hermes tools or Desktop ▸ Plugins ▸ Fish Audio to save the key.")
+    require(save is not None, "Use hermes tools or Desktop ▸ Settings ▸ Plugins ▸ Fish Audio"
+            " (Capabilities ▸ Plugins on older Desktop) to save the key.")
     saved = save("FISH_API_KEY", key)
     require(not isinstance(saved, dict) or saved.get("success", True), "Hermes could not save the key. Use hermes tools or Desktop.")
     read = getattr(config, "get_env_value", None)

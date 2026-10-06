@@ -38,7 +38,7 @@ def test_missing_key_setup(monkeypatch, tmp_path):
     monkeypatch.setattr(tts, "fish_api_key", lambda: "")
     with pytest.raises(ValueError) as exc:
         tts.FishAudioTTSProvider().synthesize("hello", str(tmp_path / "out.mp3"))
-    for hint in ("hermes tools", "Desktop ▸ Plugins ▸ Fish Audio", "https://fish.audio/app/api-keys"):
+    for hint in ("hermes tools", "Desktop ▸ Settings ▸ Plugins ▸ Fish Audio", "Capabilities ▸ Plugins on older Desktop", "https://fish.audio/app/api-keys"):
         assert hint in str(exc.value)
 
 

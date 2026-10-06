@@ -14,7 +14,7 @@ from .errors import FishAudioError, response_error
 from .media import atomic_write
 from .models import MODEL_IDS
 
-PLUGIN_VERSION = "1.2.0"
+PLUGIN_VERSION = "1.2.1"
 MODEL_HEADER = "model"
 _client = None
 _lock = threading.Lock()

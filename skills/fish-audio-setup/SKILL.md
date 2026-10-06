@@ -16,7 +16,7 @@ pages, and for key, credit or setup problems ask them to contact the operator of
 Otherwise, follow the whole skill.
 
 1. Create a key at https://fish.audio/app/api-keys. Never ask the user to paste it into chat.
-   Use Desktop ▸ Plugins ▸ Fish Audio, `hermes tools`, or `hermes fish login` on the Hermes machine.
+   Use Desktop ▸ Settings ▸ Plugins ▸ Fish Audio (Capabilities ▸ Plugins on older Desktop), `hermes tools`, or `hermes fish login` on the Hermes machine.
 2. `hermes fish login` selects Fish Audio for both Text-to-Speech and Speech-to-Text. It asks before
    changing existing providers; `hermes fish login --yes` permits those switches. Otherwise pick Fish Audio
    for Text-to-Speech in `hermes tools`, and for Speech-to-Text in Desktop settings or with
