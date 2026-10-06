@@ -4,7 +4,7 @@ description: Expressive Fish speech with emotion cues, multiple speakers and pro
 ---
 
 Use `fish_speak` when the user asks for expressive or multi-speaker speech. For plain read-aloud,
-use Hermes's `text_to_speech`. Calls are billed to the user's Fish Audio account. Include the returned
+use Hermes's `text_to_speech`. Calls are billed to the Fish Audio account behind this agent's key. Include the returned
 `media_tag` verbatim so the audio is delivered; the output hook can append missing audio tags.
 
 S2 models use square brackets. The documented groups are:

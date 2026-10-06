@@ -14,7 +14,8 @@ SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio
 def _speak(args, key, base, session, *, record_media=True):
     text = args.get("text")
     require(isinstance(text, str) and bool(text.strip()), "Nothing to say: the text is empty.")
-    model, defaulted = settings.resolve_model(args.get("model"), key=key, base_url=base, prefer_call=True)
+    model, source = settings.resolve_model_source(args.get("model"), key=key, base_url=base, prefer_call=True)
+    defaulted = source != "configured"
     row = next(row for row in MODELS if row["id"] == model)
     nested = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio"))
     voice = args.get("voice")
@@ -69,7 +70,9 @@ def _speak(args, key, base, session, *, record_media=True):
         hooks.record(session, path, as_voice)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
               "note": "Include media_tag verbatim in your reply so the user receives the audio."}
-    if defaulted and model == "s2.1-pro-free" and not settings.operator_account():
+    if source == "wallet" and settings.operator_account():
+        del result["model"]  # A wallet-chosen default follows the operator's wallet, which the agent's users don't see.
+    elif defaulted and model == "s2.1-pro-free":
         result["notice"] = settings.FREE_MODEL_NOTICE
     if events is not None:
         from .transcribe import speech_timestamps

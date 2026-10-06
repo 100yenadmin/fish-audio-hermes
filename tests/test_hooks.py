@@ -114,3 +114,13 @@ def test_clone_approval_survives_malformed_sample_paths(paths, count):
     # Approval must still be requested; the count is shown only for a real list.
     result = hooks.on_pre_tool_call("fish_voices", {"action": "clone", "title": "t", "sample_paths": paths})
     assert result["action"] == "approve" and f"from {count} sample file(s)" in result["message"]
+
+
+def test_operator_approval_names_no_user_account_and_skips_refused_delete(monkeypatch):
+    from fish_audio import settings
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    assert hooks.on_pre_tool_call("fish_voices", {"action": "clone", "title": "My voice", "sample_paths": ["a"]})["message"] == (
+        'Fish Audio: clone a voice named "My voice" from 1 sample file(s) to this agent\'s voice account')
+    # Blocked outright, never None: if operator mode were off again at execution, None would delete unapproved.
+    assert hooks.on_pre_tool_call("fish_voices", {"action": "delete", "voice_id": "a" * 32}) == {
+        "action": "block", "message": "Voices on this agent's account are managed by its operator."}

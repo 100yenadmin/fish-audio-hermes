@@ -85,6 +85,12 @@ and `fish-audio:fish-audio-voice-studio`.
 
 ![The Voices page in Hermes Desktop: the Fish Audio voice library searched for "narrator", with Preview, Use and favourite on each voice](docs/media/screenshot-desktop-library.png)
 
+The Voices page follows Hermes Desktop's display language: English, Simplified Chinese (`zh`), Traditional Chinese
+(`zh-hant`), Japanese (`ja`), Arabic (`ar`), Russian (`ru`), French (`fr`), German (`de`) and Spanish (`es`).
+Changing the display language updates the page, sidebar, status bar and command palette without a reload.
+The translations are machine-authored and checked against Hermes Desktop's own wording; native-speaker corrections
+are welcome as pull requests to `src/desktop/locales/`.
+
 The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
 
 - **Library:** search Fish Audio's voices by name and language, preview them (a short billed sample), star

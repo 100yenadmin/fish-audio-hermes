@@ -1,4 +1,6 @@
 """Resolve synthesis settings afresh for each active profile and call."""
+from contextlib import contextmanager
+from contextvars import ContextVar
 import ipaddress
 import logging
 import math
@@ -139,11 +141,31 @@ def transport_settings():
     return _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
 
 
+_OPERATOR_TERMINAL = ContextVar("fish_audio_operator_terminal", default=False)
+
+
 def operator_account() -> bool:
-    return transport_settings().get("operator_account") is True
+    """True when the people using this agent must not see its Fish account. The operator's own terminal always does."""
+    return not _OPERATOR_TERMINAL.get() and transport_settings().get("operator_account") is True
+
+
+@contextmanager
+def operator_terminal():
+    """`hermes fish` runs here: status, login, doctor and their errors keep the account view and its links."""
+    token = _OPERATOR_TERMINAL.set(True)
+    try:
+        yield
+    finally:
+        _OPERATOR_TERMINAL.reset(token)
 
 
 def resolve_model(call_model, *, key, base_url, prefer_call: bool = False):
+    model, source = resolve_model_source(call_model, key=key, base_url=base_url, prefer_call=prefer_call)
+    return model, source != "configured"
+
+
+def resolve_model_source(call_model, *, key, base_url, prefer_call: bool = False):
+    """The model and where it came from: "configured" (call or nested), "policy" (allow_free_model: false) or "wallet"."""
     config = _config()
     nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))
     transport = _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
@@ -155,18 +177,18 @@ def resolve_model(call_model, *, key, base_url, prefer_call: bool = False):
                 if not getattr(_notice_logger, "_fish_policy_logged", False):
                     _notice_logger._fish_policy_logged = True
                     logger.warning("allow_free_model is false; using s2.1-pro instead of s2.1-pro-free")
-                return "s2.1-pro", False
-            return model, False
+                return "s2.1-pro", "configured"
+            return model, "configured"
     if not allow_free:
-        return "s2.1-pro", True
+        return "s2.1-pro", "policy"
     # A resolver invoked without a synthesis key must never perform a wallet request.
     wallet = cached_wallet(key, base_url) if key else None
     if wallet is None or wallet.credit > 0 or wallet.cumulative_top_up > 0 or wallet.has_free_credit is True:
-        return "s2.1-pro", True
+        return "s2.1-pro", "wallet"
     if not getattr(_notice_logger, "_fish_notice_logged", False):
         _notice_logger._fish_notice_logged = True
         logger.warning(FREE_MODEL_NOTICE)
-    return "s2.1-pro-free", True
+    return "s2.1-pro-free", "wallet"
 
 
 def apply_knobs(params, nested):

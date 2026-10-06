@@ -3,6 +3,9 @@
 // hermes-cloud-file-manager and extended (palette/status-bar areas, SegmentedControl, Badge, storage with a fallback).
 import { createContext, createElement, type ReactNode, useContext, useEffect, useReducer, useRef, useSyncExternalStore } from 'react'
 
+import type { PluginLocaleBundles, PluginMessages } from '@hermes/plugin-sdk'
+import { en } from '../locales/en'
+
 type Listener<T> = (value: T) => void
 
 export function atom<T>(initial: T) {
@@ -32,6 +35,37 @@ export function useValue<T>(store: ReturnType<typeof atom<T>>): T {
   return useSyncExternalStore(store.subscribe, store.get, store.get)
 }
 
+// Plugin i18n: registered bundles, locale -> English -> key, plus reactive consumers.
+const $locale = atom('en')
+const $bundlesVersion = atom(0)
+const bundles = new Map<string, PluginLocaleBundles>([['fish-audio', { en }]])
+function leaf(messages: PluginMessages | undefined, key: string): unknown {
+  return key.split('.').reduce<unknown>((value, part) =>
+    value && typeof value === 'object' ? (value as Record<string, unknown>)[part] : undefined, messages)
+}
+export function translate(messages: PluginMessages, key: string, ...args: unknown[]): string {
+  const value = leaf(messages, key)
+  return typeof value === 'function' ? value(...args) : typeof value === 'string' ? value : key
+}
+export const tEn = (key: string, ...args: unknown[]) => translate(en, key, ...args)
+function translatePlugin(id: string, locale: string, key: string, ...args: unknown[]) {
+  const registered = bundles.get(id)
+  const value = leaf(registered?.[locale as keyof PluginLocaleBundles], key) ?? leaf(registered?.en, key)
+  return typeof value === 'function' ? value(...args) : typeof value === 'string' ? value : key
+}
+export function setLocale(locale: string) { if ($locale.get() !== locale) $locale.set(locale) }
+export function resetI18n() {
+  bundles.clear()
+  bundles.set('fish-audio', { en })
+  setLocale('en')
+  $bundlesVersion.set($bundlesVersion.get() + 1)
+}
+export function usePluginI18n(id: string) {
+  const locale = useValue($locale)
+  useValue($bundlesVersion)
+  return (key: string, ...args: unknown[]) => translatePlugin(id, locale, key, ...args)
+}
+
 export const host = {
   state: {
     connectionId: atom<null | string>('conn-1'),
@@ -45,6 +79,7 @@ export const host = {
 
 /** Put the host atoms back to the default agent (tests that switch agents call this in afterEach). */
 export function resetHost() {
+  resetI18n()
   host.state.connectionId.set('conn-1')
   host.state.profile.set('default')
   host.state.focusedSessionOwner.set({ connectionId: 'conn-1', profile: 'default' })
@@ -182,6 +217,21 @@ export function createTestContext(options: TestContextOptions = {}) {
   const disposers: Array<() => void> = []
   const stored = new Map<string, unknown>()
   const ctx = {
+    i18n: {
+      register(messages: PluginLocaleBundles) {
+        bundles.set('fish-audio', messages)
+        $bundlesVersion.set($bundlesVersion.get() + 1)
+        const remove = () => { bundles.delete('fish-audio'); $bundlesVersion.set($bundlesVersion.get() + 1) }
+        disposers.push(remove)
+        return remove
+      },
+      t: (key: string, ...args: unknown[]) => translatePlugin('fish-audio', $locale.get(), key, ...args),
+      onLocaleChange(listener: () => void) {
+        const stop = $locale.listen(listener)
+        disposers.push(stop)
+        return stop
+      }
+    },
     register(contribution: any) {
       live.set(contribution.id, contribution)
       return () => live.delete(contribution.id)

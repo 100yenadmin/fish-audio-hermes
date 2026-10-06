@@ -80,9 +80,12 @@ def managed_layer(monkeypatch, layer):
     monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", module)
 
 
-@pytest.mark.parametrize("pinned,reply", [("evaos-fishaudio", "Saved."), ("elevenlabs", "provider is elevenlabs")])
-def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch, pinned, reply):
+@pytest.mark.parametrize("pinned,operator,reply", [("evaos-fishaudio", False, "Saved."),
+    ("elevenlabs", False, "Switch with `hermes tools`"),
+    ("elevenlabs", True, "Saved. This agent's speech provider (elevenlabs) is set by its operator.")])
+def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch, pinned, operator, reply):
     data, saves, _ = config
+    monkeypatch.setattr(settings, "operator_account", lambda: operator)
     # The profile layer has no provider; the managed layer (the evaOS overlay) pins one.
     managed_layer(monkeypatch, {"tts": {"provider": pinned}})
     monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": pinned}})
@@ -178,12 +181,12 @@ def test_preview_native_voice_reply_and_bound(config):
 
 def test_preview_uses_explicit_tool_model_precedence(config, monkeypatch):
     config[0]["tts"]["fish-audio"] = {"model": "s1"}
-    resolve = settings.resolve_model
+    resolve = settings.resolve_model_source
     preferences = []
     def capture(model, **kwargs):
         preferences.append(kwargs.get("prefer_call"))
         return resolve(model, **kwargs)
-    monkeypatch.setattr(settings, "resolve_model", capture)
+    monkeypatch.setattr(settings, "resolve_model_source", capture)
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
         assert commands.handle("preview " + VOICE).startswith("[[audio_as_voice]]")
@@ -235,12 +238,13 @@ def test_operator_chat_hides_account_without_wallet_reads(config, monkeypatch):
 
 def test_operator_terminal_status_keeps_the_account_view(config, monkeypatch):
     config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
-    with respx.mock(assert_all_called=True) as mock:
+    with respx.mock(assert_all_called=True) as mock, settings.operator_terminal():
         wallet_routes(mock)
-        output = commands.handle("status", end_user=False)
+        output = commands.handle("status")
     assert "API credit: 2.5" in output and "Plan: plus" in output and "operator" not in output
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")
-    assert commands.handle("status", end_user=False) == commands.NO_KEY
+    with settings.operator_terminal():
+        assert commands.handle("status") == commands.NO_KEY
     assert commands.handle("status") == "Ask the operator of this agent to finish the Fish Audio setup."
 
 
@@ -253,4 +257,5 @@ def test_model_notice_reads_the_operator_setting_after_the_write(config):
         data["plugins"]["entries"]["fish-audio"]["settings"]["operator_account"] = True
     module.save_config = save_then_turn_on_operator_mode
     assert commands.handle("model s2.1-pro-free") == "Saved."
-    assert commands.handle("model s2.1-pro-free", end_user=False).startswith("Saved.\n")
+    with settings.operator_terminal():
+        assert commands.handle("model s2.1-pro-free").startswith("Saved.\n")

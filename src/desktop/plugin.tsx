@@ -4,21 +4,31 @@ import {
   PALETTE_AREA,
   type PaletteContribution,
   type PluginContext,
+  type PluginLocaleBundles,
   type RouteContribution,
   ROUTES_AREA,
   SIDEBAR_NAV_AREA,
   type SidebarNavContribution,
   STATUSBAR_AREAS,
+  usePluginI18n,
   useValue
 } from '@hermes/plugin-sdk'
 
 import { releasePlayback } from './audio'
 import { $account, $available, $availableError, $tab, type Account, bindContext, currentAgentEpoch, endAgentOperations, isNotFoundError, setRefresher } from './api'
 import { VoicesPage } from './page'
-import { S } from './strings'
+import { en } from './locales/en'
+import { zh } from './locales/zh'
+import { zhHant } from './locales/zh-hant'
+import { ja } from './locales/ja'
+import { ar } from './locales/ar'
+import { ru } from './locales/ru'
+import { fr } from './locales/fr'
+import { de } from './locales/de'
+import { es } from './locales/es'
+import { PAGE_PATH, PLUGIN_ID } from './strings'
+export { PAGE_PATH, PLUGIN_ID } from './strings'
 
-export const PLUGIN_ID = 'fish-audio'
-export const PAGE_PATH = '/fish-audio'
 const PROBE_INTERVAL_MS = 60_000
 const ACCOUNT_REFRESH_MS = 5 * 60_000
 
@@ -31,11 +41,12 @@ export function openTab(tab: ReturnType<typeof $tab.get>) {
 
 /** The status-bar credit chip: the selected agent's Fish API credit, in warning colour when low. */
 function CreditChip() {
+  const t = usePluginI18n(PLUGIN_ID)
   const account = useValue($account)
   if (!account) return null
   return (
     <button
-      aria-label={S.chipTip}
+      aria-label={t('chipTip')}
       onClick={() => openTab('account')}
       style={{
         alignItems: 'center',
@@ -50,10 +61,10 @@ function CreditChip() {
         height: '100%',
         padding: '0 6px'
       }}
-      title={account.low ? S.lowCredit : S.chipTip}
+      title={account.low ? t('lowCredit') : t('chipTip')}
       type="button"
     >
-      {S.chip(S.usd(account.credit))}
+      {t('chip', t('usd', account.credit))}
     </button>
   )
 }
@@ -85,12 +96,12 @@ export function registerAvailabilityGate(ctx: PluginContext) {
           id: 'nav',
           area: SIDEBAR_NAV_AREA,
           order: 46,
-          data: { codicon: 'unmute', label: S.navLabel, path: PAGE_PATH } satisfies SidebarNavContribution
+          data: { codicon: 'unmute', label: ctx.i18n.t('navLabel'), path: PAGE_PATH } satisfies SidebarNavContribution
         }),
         ctx.register({
           id: 'palette-voices',
           area: PALETTE_AREA,
-          data: { id: 'fish-audio.voices', keywords: ['fish', 'voice', 'tts'], label: S.paletteVoices, run: () => openTab('library') } satisfies PaletteContribution
+          data: { id: 'fish-audio.voices', keywords: ['fish', 'voice', 'tts'], label: ctx.i18n.t('paletteVoices'), run: () => openTab('library') } satisfies PaletteContribution
         })
       ]
     } else if (!available && removers) {
@@ -102,7 +113,7 @@ export function registerAvailabilityGate(ctx: PluginContext) {
       accountRemovers = [
         ctx.register({ id: 'credit', area: STATUSBAR_AREAS.right, order: 70, render: () => <CreditChip /> }),
         ctx.register({ id: 'palette-account', area: PALETTE_AREA,
-          data: { id: 'fish-audio.account', keywords: ['fish', 'credit', 'balance'], label: S.paletteAccount, run: () => openTab('account') } satisfies PaletteContribution })
+          data: { id: 'fish-audio.account', keywords: ['fish', 'credit', 'balance'], label: ctx.i18n.t('paletteAccount'), run: () => openTab('account') } satisfies PaletteContribution })
       ]
     } else if ((!available || !account) && accountRemovers) {
       accountRemovers.forEach(remove => remove())
@@ -182,7 +193,12 @@ export function registerAvailabilityGate(ctx: PluginContext) {
     show(false)
     void probe(true)
   }
-  const stops = [host.state.profile.listen(onAgentChange), host.state.connectionId.listen(onAgentChange)]
+  const stops = [host.state.profile.listen(onAgentChange), host.state.connectionId.listen(onAgentChange), ctx.i18n.onLocaleChange(() => {
+    if (disposed || !removers) return
+    const accountShown = accountRemovers !== null
+    show(false)
+    show(true, accountShown)
+  })]
   ctx.onDispose(() => {
     disposed = true
     cancelRetry?.()
@@ -196,6 +212,7 @@ const plugin: HermesPlugin = {
   name: 'Fish Audio',
   description: 'A Voices page for Fish Audio: search and preview the voice library, use a voice, clone or design voices, and see your account.',
   register(ctx) {
+    ctx.i18n.register({ en, zh, 'zh-hant': zhHant, ja, ar, ru, fr, de, es } satisfies PluginLocaleBundles)
     bindContext(ctx)
     ctx.register({
       id: 'page',

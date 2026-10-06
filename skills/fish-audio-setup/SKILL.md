@@ -9,6 +9,12 @@ required_environment_variables:
 
 Set up Fish Audio for the active Hermes profile.
 
+Operator-managed agents: when `/fish balance`, `/fish status` or a Fish result says the operator manages this
+agent's voice account or setup, the operator owns the key and billing. Then only steps 3 and 4 below apply. Skip
+every other step, link and troubleshooting note in this skill: never send the user to Fish's key, billing or plan
+pages, and for key, credit or setup problems ask them to contact the operator of this agent.
+Otherwise, follow the whole skill.
+
 1. Create a key at https://fish.audio/app/api-keys. Never ask the user to paste it into chat.
    Use Desktop ▸ Plugins ▸ Fish Audio, `hermes tools`, or `hermes fish login` on the Hermes machine.
 2. `hermes fish login` selects Fish Audio for both Text-to-Speech and Speech-to-Text. It asks before
@@ -28,7 +34,7 @@ Model defaults use the active account's API wallet: paid credit, a top-up histor
 
 Using Fish Audio's free s2.1-pro-free model (free until 30 November 2026; Fish may use free-tier requests to improve its models). Top up at https://fish.audio/app/developers/billing to use s2.1-pro.
 
-Calls are billed to the user's Fish Audio account. App plan credits are separate from API credits.
+Calls are billed to the Fish Audio account behind this agent's key. App plan credits are separate from API credits.
 `/fish balance` shows both; API billing is at https://fish.audio/app/developers/billing.
 
 Troubleshooting by error kind:
