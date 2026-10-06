@@ -22,7 +22,7 @@ export const ar = {
   onboardBody: (profile: string) =>
     `تحتاج الأصوات إلى مفتاح API لـ Fish Audio لدى ${agentName(profile)}. يمكن للحسابات الجديدة البدء بالنموذج المجاني s2.1-pro-free.`,
   onboardStep1: 'أنشئ مفتاح API مجانيًا على fish.audio',
-  onboardStep2: 'الصقه في الإضافات ▸ Fish Audio، ثم أعد تشغيل البوابة',
+  onboardStep2: 'الصقه في الإعدادات ▸ الإضافات ▸ Fish Audio (في الإصدارات الأقدم: المهارات ▸ الإضافات)، ثم أعد تشغيل البوابة',
   getKey: 'الحصول على مفتاح API',
   openPlugins: 'فتح الإضافات',
   checkAgain: 'التحقق مجددًا',

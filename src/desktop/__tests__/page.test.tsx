@@ -39,6 +39,16 @@ describe('Voices page', () => {
     expect(calls).toEqual([])
   })
 
+  it('opens the Fish Audio form in Settings ▸ Plugins from the onboarding card', () => {
+    $available.set({ key: false, version: '1.2.1', account: true })
+    const navigate = vi.spyOn(host, 'navigate')
+    mount(async () => ({ ok: true }))
+    fireEvent.click(screen.getByRole('button', { name: en.openPlugins }))
+    // A string literal, not the SDK's pluginSettingsHref: older hosts lack that export and redirect this URL.
+    expect(navigate).toHaveBeenCalledWith('/settings?tab=plugins&agent=fish-audio')
+    navigate.mockRestore()
+  })
+
   it('searches the library, previews with a billed note, uses and stars a voice', async () => {
     $available.set({ key: true, version: '0.3.0', account: true })
     const { calls, t } = mount(async path =>

@@ -68,7 +68,7 @@ def test_missing_profile_key_returns_setup_envelope(installed):
         with respx.mock(assert_all_called=True) as mock:
             result = json.loads(text_to_speech_tool(text="hello"))
             assert result["success"] is False
-            for hint in ("hermes tools", "Desktop ▸ Plugins ▸ Fish Audio", "https://fish.audio/app/api-keys"):
+            for hint in ("hermes tools", "Desktop ▸ Settings ▸ Plugins ▸ Fish Audio", "Capabilities ▸ Plugins on older Desktop", "https://fish.audio/app/api-keys"):
                 assert hint in result["error"]
             assert not mock.calls
     finally:

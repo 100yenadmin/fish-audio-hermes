@@ -22,7 +22,7 @@ export const zhHant = {
   onboardBody: (profile: string) =>
     `聲音功能需要在${agentName(profile)}上設定 Fish Audio API 金鑰。新帳戶可以先使用免費的 s2.1-pro-free 模型。`,
   onboardStep1: '在 fish.audio 建立免費 API 金鑰',
-  onboardStep2: '將金鑰貼到外掛 ▸ Fish Audio，然後重新啟動閘道',
+  onboardStep2: '將金鑰貼到設定 ▸ 外掛 ▸ Fish Audio（舊版本中為技能與工具 ▸ 外掛），然後重新啟動閘道',
   getKey: '取得 API 金鑰',
   openPlugins: '開啟外掛',
   checkAgain: '再次檢查',

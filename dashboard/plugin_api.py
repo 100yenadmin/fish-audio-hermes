@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 _HOST_SCOPES = False
 
@@ -81,7 +81,8 @@ LOW_CREDIT = Decimal("1")
 EXTENSIONS = {"mp3": "mp3", "wav": "wav", "ogg": "ogg", "webm": "webm", "flac": "flac", "mp4": "mp4"}
 LINKS = {"top_up": "https://fish.audio/app/developers/billing", "plans": "https://fish.audio/plan",
          "keys": "https://fish.audio/app/api-keys"}
-NO_KEY = ("Fish Audio isn't set up for this profile yet. Add a key in Plugins ▸ Fish Audio, "
+NO_KEY = ("Fish Audio isn't set up for this profile yet. Add a key in Settings ▸ Plugins ▸ Fish Audio"
+          " (Capabilities ▸ Plugins on older Desktop), "
           "or run `hermes fish login` on the machine running Hermes.")
 
 

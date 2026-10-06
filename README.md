@@ -35,7 +35,8 @@ read-aloud and voice notes go through it.
 ## Setup
 
 1. **Get a key** at <https://fish.audio/app/api-keys>. New accounts can start on the free `s2.1-pro-free` model.
-2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop ▸ Plugins ▸ Fish Audio, or in
+2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop ▸ Settings ▸ Plugins ▸ Fish Audio
+   (Capabilities ▸ Plugins on older Desktop), or in
    `hermes tools` ▸ Text-to-Speech ▸ Fish Audio. `login` checks the key against your Fish wallet and saves it to the
    active profile. It makes Fish Audio the speech and transcription provider where none is set; it replaces another
    provider only if you confirm at the prompt or pass `--yes`. `--key-stdin` reads the key from standard input.
@@ -144,6 +145,10 @@ plugins:
         allow_free_model: true # false = never use s2.1-pro-free
 ```
 
+The `plugins.entries.fish-audio.settings` keys (`base_url`, `streaming`, `transport`, `allow_free_model`,
+`operator_account`) and the API key also appear in Desktop ▸ Settings ▸ Plugins ▸ Fish Audio (Capabilities ▸
+Plugins on older Desktop). Set the voice and model from the Voices page, `/fish use` or `/fish model`.
+
 **Which model?** A valid `tts.fish-audio.model` is used as set (for `fish_speak`, a model named in the call comes
 first); invalid ids are ignored. Otherwise the plugin uses `s2.1-pro`, and picks `s2.1-pro-free` only when Fish
 reports a wallet with no API credit and no past top-ups that doesn't carry Fish's free-credit flag. If the wallet can't be read, it uses
@@ -165,8 +170,8 @@ both providers still work. Config changes apply to the active profile; managed i
 
 ### Operator-managed keys
 
-Set `plugins.entries.fish-audio.settings.operator_account: true` when the Fish account belongs to
-the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
+Set `plugins.entries.fish-audio.settings.operator_account: true` (Desktop: **Operator-managed account**) when the
+Fish account belongs to the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
 setup or credit problems to the operator. Because one operator account can serve many agents, the account's own
 voices aren't listed, edited or deleted from an agent (no My voices tab; `fish_voices` refuses `mine`, `update` and
 `delete`); cloning and designing still work, and a voice created on the Voices page goes into that agent's Favourites. It defaults to false. Tool descriptions update after a gateway restart.

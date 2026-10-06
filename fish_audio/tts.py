@@ -8,7 +8,8 @@ from .tags import adapt_tags
 from .errors import FishAudioError
 from .state import record_failure
 
-SETUP_MESSAGE = ("Set up Fish Audio with hermes tools or Desktop ▸ Plugins ▸ Fish Audio. "
+SETUP_MESSAGE = ("Set up Fish Audio with hermes tools or Desktop ▸ Settings ▸ Plugins ▸ Fish Audio"
+                 " (Capabilities ▸ Plugins on older Desktop). "
                  "Get an API key at https://fish.audio/app/api-keys")
 
 
