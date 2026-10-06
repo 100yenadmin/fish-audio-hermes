@@ -1,4 +1,7 @@
-"""Real Hermes streaming registry and the Desktop speak-stream WebSocket, with only Fish HTTP mocked."""
+"""Real Hermes streaming resolver and the Desktop speak-stream WebSocket, with only Fish HTTP mocked.
+
+Hermes with the plugin streaming hook (#133723) streams through it; older Hermes speaks sentence by sentence.
+"""
 import importlib.util
 import json
 from pathlib import Path
@@ -13,15 +16,24 @@ pytestmark = pytest.mark.skipif(importlib.util.find_spec("hermes_cli") is None, 
 PCM = bytes(range(256)) * 8
 
 
-def test_resolver_returns_fish_streamer_for_the_configured_provider(installed_fish_home):
+def _has_streaming_hook():
+    from tools import tts_streaming
+    return hasattr(tts_streaming, "_plugin_streamer")
+
+
+def test_resolver_streams_through_the_plugin_hook_or_falls_back(installed_fish_home):
     home, _, _ = installed_fish_home
     from tools.tts_streaming import _REGISTRY, resolve_streaming_provider
     from tools.tts_tool import _load_tts_config
-    cfg = _load_tts_config()
-    streamer = resolve_streaming_provider(cfg)
-    assert type(streamer).__name__ == "FishStreamer" and _REGISTRY["fish-audio"] is type(streamer)
-    assert Path(__import__(type(streamer).__module__, fromlist=["__file__"]).__file__).is_relative_to(home / "plugins")
-    assert streamer.section == cfg["fish-audio"] and (streamer.sample_rate, streamer.channels) == (24000, 1)
+    assert "fish-audio" not in _REGISTRY  # catalog rule 9: nothing registered into core internals
+    streamer = resolve_streaming_provider(_load_tts_config())
+    if not _has_streaming_hook():
+        assert streamer is None  # whole-file synthesis per sentence
+        return
+    provider = streamer._provider
+    assert type(streamer).__name__ == "_PluginPCMStreamer" and type(provider).__name__ == "FishAudioTTSProvider"
+    assert Path(__import__(type(provider).__module__, fromlist=["__file__"]).__file__).is_relative_to(home / "plugins")
+    assert (streamer.sample_rate, streamer.channels, streamer.sample_width) == (24000, 1, 2)
     (home / "config.yaml").write_text((home / "config.yaml").read_text().replace(
         "plugins:\n  enabled: [fish-audio]\n",
         "plugins:\n  enabled: [fish-audio]\n  entries:\n    fish-audio:\n      settings:\n        streaming: off\n"))
@@ -30,6 +42,8 @@ def test_resolver_returns_fish_streamer_for_the_configured_provider(installed_fi
 
 def test_speak_stream_websocket_uses_each_profiles_key(installed_fish_home):
     home, _, _ = installed_fish_home
+    if not _has_streaming_hook():
+        pytest.skip("this Hermes has no plugin streaming hook; Desktop speaks sentence by sentence")
     from agent.secret_scope import (build_profile_secret_scope, is_multiplex_active, reset_secret_scope,
                                     set_multiplex_active, set_secret_scope)
     from hermes_cli.plugins import discover_plugins, get_plugin_manager
@@ -66,7 +80,7 @@ def test_speak_stream_websocket_uses_each_profiles_key(installed_fish_home):
             for name in ("a", "b", "a"):
                 query = urlencode({"token": web_server._SESSION_TOKEN, "profile": name})
                 with client.websocket_connect(f"/api/audio/speak-stream?{query}") as ws:
-                    ws.send_text(json.dumps({"text": "Hello from the streaming bridge.", "done": True}))
+                    ws.send_text(json.dumps({"text": "Hello from the streaming hook.", "done": True}))
                     assert ws.receive_json() == {"type": "start", "sample_rate": 24000, "channels": 1}
                     frames = []
                     while (message := ws.receive()).get("bytes") is not None:
@@ -77,7 +91,7 @@ def test_speak_stream_websocket_uses_each_profiles_key(installed_fish_home):
                 assert request.headers["authorization"] == f"Bearer {profiles[name][0]}"
                 body = json.loads(request.content)
                 assert body["reference_id"] == name * 32 and body["format"] == "pcm" and body["sample_rate"] == 24000
-                assert body["text"] == "Hello from the streaming bridge."
+                assert body["text"] == "Hello from the streaming hook."
             assert routes["a"].call_count == 2 and routes["b"].call_count == 1
     finally:
         for manager in managers:

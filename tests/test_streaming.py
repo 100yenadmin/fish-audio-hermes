@@ -1,5 +1,6 @@
-"""Streaming bridge: FishStreamer over mocked HTTP and a loopback WebSocket, plus bridge registration."""
+"""Streaming voice through Hermes's plugin hook: stream_pcm over mocked HTTP and a loopback WebSocket."""
 import json
+from pathlib import Path
 import socket
 import sys
 import threading
@@ -11,7 +12,7 @@ import msgpack
 import pytest
 import respx
 
-from fish_audio import registration, settings, state, streaming, tts
+from fish_audio import settings, state, streaming, tts
 from fish_audio.errors import FishAudioError
 
 VOICE = "a" * 32
@@ -40,7 +41,7 @@ def isolated(monkeypatch):
 
 
 def speak(text="Hello there."):
-    return list(streaming.FishStreamer({}, {}).stream(text))
+    return list(streaming.stream_pcm(text))
 
 
 def test_pcm_alignment_with_odd_chunks():
@@ -64,8 +65,7 @@ def test_http_stream_yields_aligned_pcm_with_resolved_settings(monkeypatch):
     body = json.loads(request.content)
     assert body == {"text": "[excited] Hello there.", "reference_id": VOICE, "format": "pcm", "sample_rate": 24000,
                     "latency": "low", "temperature": 0.5, "prosody": {"speed": 1.0}}
-    streamer = streaming.FishStreamer({}, {})
-    assert (streamer.sample_rate, streamer.channels, streamer.sample_width) == (24000, 1, 2)
+    assert streaming.SAMPLE_RATE == tts.FishAudioTTSProvider.stream_sample_rate == 24000
 
 
 @pytest.mark.parametrize("model,expected", [("s2.1-pro-free", "s2.1-pro"), (None, "s2.1-pro")])
@@ -131,46 +131,34 @@ def test_consumer_close_closes_the_http_response():
 
     with respx.mock(assert_all_called=True) as mock:
         mock.post("https://api.fish.audio/v1/tts").mock(return_value=httpx.Response(200, stream=Body()))
-        stream = streaming.FishStreamer({}, {}).stream("Hello there.")
+        stream = streaming.stream_pcm("Hello there.")
         assert next(stream) == b"\x01\x02"
         stream.close()  # barge-in
     assert closed.is_set()
 
 
-@pytest.fixture
-def fake_registry(monkeypatch):
-    provider = tts.FishAudioTTSProvider()
-    module = ModuleType("agent.tts_registry")
-    module.get_provider = lambda name: provider if name == "fish-audio" else None
-    monkeypatch.setitem(sys.modules, "agent", ModuleType("agent"))
-    monkeypatch.setitem(sys.modules, "agent.tts_registry", module)
-    return module
-
-
-def test_available_is_offline_and_checks_registry_key_and_setting(monkeypatch, fake_registry):
+def test_streaming_available_is_offline_and_checks_key_setting_and_host(monkeypatch):
     def no_network(*args, **kwargs):
-        raise AssertionError("available() must not open sockets")
+        raise AssertionError("streaming_available() must not open sockets")
     monkeypatch.setattr(socket, "create_connection", no_network)
     monkeypatch.setattr(socket.socket, "connect", no_network)
-    assert streaming.FishStreamer.available() is True
+    monkeypatch.delenv("HERMES_PLUGIN_HOST_PROCESS", raising=False)
+    provider = tts.FishAudioTTSProvider()
+    assert streaming.streaming_available() is True and provider.streams_pcm is True
     for value in ("off", False):
         monkeypatch.setattr(settings, "_config", lambda value=value: config(streaming=value))
-        assert streaming.FishStreamer.available() is False
+        assert streaming.streaming_available() is False and provider.streams_pcm is False
     monkeypatch.setattr(settings, "_config", lambda: config(streaming="auto"))
-    assert streaming.FishStreamer.available() is True
     monkeypatch.setattr(streaming, "fish_api_key", lambda: "")
-    assert streaming.FishStreamer.available() is False
+    assert streaming.streaming_available() is False
     monkeypatch.setattr(streaming, "fish_api_key", lambda: KEY)
-    fake_registry.get_provider = lambda name: None
-    assert streaming.FishStreamer.available() is False
-    fake_registry.get_provider = lambda name: object()  # another plugin's provider under our name
-    assert streaming.FishStreamer.available() is False
-    def broken(name):
-        raise RuntimeError("registry failure")
-    fake_registry.get_provider = broken
-    assert streaming.FishStreamer.available() is False
-    monkeypatch.setitem(sys.modules, "agent.tts_registry", None)
-    assert streaming.FishStreamer.available() is False
+    monkeypatch.setenv("HERMES_PLUGIN_HOST_PROCESS", "1")
+    assert streaming.streaming_available() is False
+    monkeypatch.delenv("HERMES_PLUGIN_HOST_PROCESS")
+    def broken():
+        raise RuntimeError("secret scope failure")
+    monkeypatch.setattr(streaming, "fish_api_key", broken)
+    assert streaming.streaming_available() is False
 
 
 class LiveServer:
@@ -275,7 +263,7 @@ def test_ws_handshake_rejection_maps_status(live):
 def test_ws_consumer_close_is_prompt(live):
     server = live([{"event": "audio", "audio": b"\x01\x02", "time": 1.0}, "pause",
                    {"event": "finish", "reason": "stop", "time": 2.0}])
-    stream = streaming.FishStreamer({}, {}).stream("Hello there.")
+    stream = streaming.stream_pcm("Hello there.")
     assert next(stream) == b"\x01\x02"
     started = time.monotonic()
     stream.close()  # barge-in mid-sentence
@@ -283,72 +271,15 @@ def test_ws_consumer_close_is_prompt(live):
     assert server.closed.wait(5)
 
 
-@pytest.fixture
-def hermes_streaming(monkeypatch):
-    """A fake ``tools.tts_streaming`` exposing only the public ``register`` call."""
-    module = ModuleType("tools.tts_streaming")
-    module._REGISTRY = {}
-
-    def register(name):
-        def wrap(cls):
-            module._REGISTRY[name] = cls
-            return cls
-        return wrap
-    module.register = register
-    package = ModuleType("tools")
-    package.tts_streaming = module
-    monkeypatch.setitem(sys.modules, "tools", package)
-    monkeypatch.setitem(sys.modules, "tools.tts_streaming", module)
-    monkeypatch.delenv("HERMES_PLUGIN_HOST_PROCESS", raising=False)
-    monkeypatch.delenv("FISH_AUDIO_HERMES_NO_BRIDGE", raising=False)
-    monkeypatch.setattr(tts.FishAudioTTSProvider, "pcm_seam", False)
-    return module
-
-
-def test_bridge_registers_by_call_and_is_idempotent(hermes_streaming):
-    registration._register_streaming()
-    registration._register_streaming()
-    assert hermes_streaming._REGISTRY == {"fish-audio": streaming.FishStreamer}
-    assert not tts.FishAudioTTSProvider.pcm_seam
-
-
-def test_bridge_skips_when_the_seam_has_landed(hermes_streaming, fake_registry):
-    hermes_streaming._plugin_streamer = lambda name, cfg: None
-    registration._register_streaming()
-    assert hermes_streaming._REGISTRY == {}
+def test_provider_meets_the_hermes_streaming_hook_contract():
     provider = tts.FishAudioTTSProvider()
-    assert provider.pcm_seam and provider.streams_pcm and provider.stream_sample_rate == 24000
+    assert provider.streams_pcm is True and provider.stream_sample_rate == 24000
     with respx.mock(assert_all_called=True) as mock:
         mock.post("https://api.fish.audio/v1/tts").respond(content=b"\x01\x02\x03")
         assert list(provider.stream("Hello there.", voice=None, model=None, format="pcm")) == [b"\x01\x02"]
 
 
-@pytest.mark.parametrize("env", ["HERMES_PLUGIN_HOST_PROCESS", "FISH_AUDIO_HERMES_NO_BRIDGE"])
-def test_bridge_skips_in_host_process_and_with_the_build_switch(hermes_streaming, monkeypatch, env):
-    monkeypatch.setenv(env, "1")
-    registration._register_streaming()
-    assert hermes_streaming._REGISTRY == {} and not tts.FishAudioTTSProvider.pcm_seam
-
-
-def test_bridge_skips_without_module_and_never_raises(hermes_streaming, monkeypatch, caplog):
-    monkeypatch.setitem(sys.modules, "tools.tts_streaming", None)
-    monkeypatch.delattr(sys.modules["tools"], "tts_streaming")
-    registration._register_streaming()
-    def broken(name):
-        raise RuntimeError("registry is read-only")
-    hermes_streaming.register = broken
-    monkeypatch.setitem(sys.modules, "tools.tts_streaming", hermes_streaming)
-    monkeypatch.setattr(sys.modules["tools"], "tts_streaming", hermes_streaming, raising=False)
-    registration._register_streaming()
-    assert "streaming voice unavailable" in caplog.text
-
-
-def test_streams_pcm_is_off_without_the_seam(fake_registry, monkeypatch):
-    monkeypatch.setattr(tts.FishAudioTTSProvider, "pcm_seam", False)
-    assert tts.FishAudioTTSProvider().streams_pcm is False
-
-
-def test_seam_stream_forwards_call_voice_and_model(monkeypatch):
+def test_hook_stream_forwards_call_voice_and_model(monkeypatch):
     other = "b" * 32
     monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": "fish-audio"}})
     with respx.mock(assert_all_called=True) as mock:
@@ -375,17 +306,27 @@ def test_successful_stream_without_a_whole_sample_raises_and_records(body):
     assert exc.value.kind == "availability" and state.last_failure()[1] == "availability"
 
 
-def test_plugin_register_reaches_the_bridge(plugin, fake_ctx, hermes_streaming, monkeypatch):
+def test_plugin_register_leaves_core_streaming_alone(plugin, fake_ctx, monkeypatch):
+    """Catalog rule 9: listed plugins join streaming through the provider hook, never tools.tts_streaming."""
     def _no_network(*args, **kwargs):
         raise AssertionError("register() must not open sockets")
 
+    core = ModuleType("tools.tts_streaming")
+    def register(name):
+        raise AssertionError("the plugin must not register into tools.tts_streaming")
+    core.register, core._REGISTRY = register, {}
+    package = ModuleType("tools")
+    package.tts_streaming = core
+    monkeypatch.setitem(sys.modules, "tools", package)
+    monkeypatch.setitem(sys.modules, "tools.tts_streaming", core)
     monkeypatch.setattr(socket, "create_connection", _no_network)
     monkeypatch.setattr(socket.socket, "connect", _no_network)
     plugin.register(fake_ctx)
     assert [p.name for p in fake_ctx.tts_providers] == ["fish-audio"]
     assert [p.name for p in fake_ctx.stt_providers] == ["fish-audio"]
-    assert list(hermes_streaming._REGISTRY) == ["fish-audio"]
-    assert hermes_streaming._REGISTRY["fish-audio"].__name__ == "FishStreamer"
+    assert core._REGISTRY == {}
+    source = "".join(path.read_text(encoding="utf-8") for path in Path(streaming.__file__).parent.glob("*.py"))
+    assert "tts_streaming" not in source and "NO_BRIDGE" not in source
 
 
 def test_operator_streaming_missing_key_presentation(monkeypatch):
