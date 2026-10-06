@@ -369,9 +369,15 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
     <div style={{ border: '1px solid var(--ui-stroke-tertiary)', borderRadius: 6 }}>
       {voices.map((voice, i) => {
         const key = `preview:${agentKey(pin)}:${voice.id}`
-        const meta = [voice.author, (voice.languages ?? []).join(', '), voice.task_count ? t('uses', voice.task_count) : '']
+        // Each part is its own bidi island, so Latin names, counts and descriptions keep their order in Arabic.
+        const parts = [voice.author, (voice.languages ?? []).join(', '), voice.task_count ? t('uses', voice.task_count) : '', voice.description]
           .filter(Boolean)
-          .join(' · ')
+          .map((part, j, all) => (
+            <span key={j}>
+              {j ? (j === all.length - 1 && voice.description ? ' — ' : ' · ') : ''}
+              <bdi>{part}</bdi>
+            </span>
+          ))
         return (
           <div
             key={voice.id}
@@ -390,7 +396,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 {voice.title}
               </div>
               <div style={{ ...muted, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {[meta, voice.description].filter(Boolean).join(' — ')}
+                {parts}
               </div>
             </div>
             <div style={{ alignItems: 'center', display: 'flex', gap: 6 }}>

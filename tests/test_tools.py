@@ -4,6 +4,7 @@ from decimal import Decimal
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 import respx
 
@@ -328,3 +329,21 @@ def test_operator_tool_notice_and_missing_key(monkeypatch):
     monkeypatch.setattr("fish_audio.tool_support.fish_api_key", lambda: "")
     result = call(tools.fish_speak, text="hello")
     assert result["error"] == "Ask the operator of this agent to finish the Fish Audio setup."
+
+
+@pytest.mark.parametrize("allow_before,named", [(True, False), (False, True)])
+def test_operator_model_visibility_follows_how_the_model_was_chosen_not_a_later_policy(monkeypatch, allow_before, named):
+    # The model shown is decided by how it was resolved; a policy edit while the audio is made changes nothing.
+    policy = {"allow_free_model": allow_before}
+    monkeypatch.setattr(settings, "_config", lambda: {"plugins": {"entries": {"fish-audio": {"settings": policy}}}})
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    monkeypatch.setattr(settings, "cached_wallet", lambda *args: account.Wallet(Decimal(0), Decimal(0), False))
+
+    def flip(request):
+        policy["allow_free_model"] = not allow_before
+        return httpx.Response(200, content=b"audio")
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/v1/tts").mock(side_effect=flip)
+        result = call(tools.fish_speak, text="hello")
+    assert result["success"] and "notice" not in result
+    assert ("model" in result) is named and result.get("model", "s2.1-pro") == "s2.1-pro"

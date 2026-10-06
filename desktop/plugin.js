@@ -714,7 +714,10 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
   };
   return /* @__PURE__ */ jsx3("div", { style: { border: "1px solid var(--ui-stroke-tertiary)", borderRadius: 6 }, children: voices.map((voice, i) => {
     const key = `preview:${agentKey(pin)}:${voice.id}`;
-    const meta = [voice.author, (voice.languages ?? []).join(", "), voice.task_count ? t("uses", voice.task_count) : ""].filter(Boolean).join(" \xB7 ");
+    const parts = [voice.author, (voice.languages ?? []).join(", "), voice.task_count ? t("uses", voice.task_count) : "", voice.description].filter(Boolean).map((part, j, all) => /* @__PURE__ */ jsxs3("span", { children: [
+      j ? j === all.length - 1 && voice.description ? " \u2014 " : " \xB7 " : "",
+      /* @__PURE__ */ jsx3("bdi", { children: part })
+    ] }, j));
     return /* @__PURE__ */ jsxs3(
       "div",
       {
@@ -730,7 +733,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
           /* @__PURE__ */ jsx3(Avatar, { title: voice.title }),
           /* @__PURE__ */ jsxs3("div", { style: { minWidth: 0 }, children: [
             /* @__PURE__ */ jsx3("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: voice.title }),
-            /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: [meta, voice.description].filter(Boolean).join(" \u2014 ") })
+            /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: parts })
           ] }),
           /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", gap: 6 }, children: [
             /* @__PURE__ */ jsxs3(

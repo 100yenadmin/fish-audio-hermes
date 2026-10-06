@@ -181,12 +181,12 @@ def test_preview_native_voice_reply_and_bound(config):
 
 def test_preview_uses_explicit_tool_model_precedence(config, monkeypatch):
     config[0]["tts"]["fish-audio"] = {"model": "s1"}
-    resolve = settings.resolve_model
+    resolve = settings.resolve_model_source
     preferences = []
     def capture(model, **kwargs):
         preferences.append(kwargs.get("prefer_call"))
         return resolve(model, **kwargs)
-    monkeypatch.setattr(settings, "resolve_model", capture)
+    monkeypatch.setattr(settings, "resolve_model_source", capture)
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
         assert commands.handle("preview " + VOICE).startswith("[[audio_as_voice]]")

@@ -400,6 +400,15 @@ describe('#13 follow-ups', () => {
   beforeEach(() => $available.set({ key: true, version: '1.0.4', account: true }))
   afterEach(() => vi.restoreAllMocks())
 
+  it('keeps the voice details text and isolates each part, so right-to-left languages keep their order', async () => {
+    const voice = { ...VOICES.items[0], description: 'Warm narration' }
+    mount(async path => (path.startsWith('/voices') ? { ...VOICES, items: [voice] } : { ok: true }))
+    await flush()
+    const line = screen.getByText('Warm narration').parentElement!.parentElement!
+    expect(line.textContent).toBe('fish · en · 1.2k uses — Warm narration')
+    expect([...line.querySelectorAll('bdi')].map(b => b.textContent)).toEqual(['fish', 'en', '1.2k uses', 'Warm narration'])
+  })
+
   it('one Use per agent at a time: a second Use waits, so only one write is sent', async () => {
     const answer = deferred()
     const { calls } = mount(async path => (path.startsWith('/voices') ? TWO : path === '/use' ? answer.promise : { ok: true }))
