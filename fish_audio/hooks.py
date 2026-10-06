@@ -80,7 +80,8 @@ def on_pre_tool_call(tool_name="", args=None, **kwargs):
         elif args.get("action") == "delete":
             from . import settings
             if settings.operator_account():
-                return None  # fish_voices refuses it before any request; asking the user to approve would mislead.
+                from .voices import ACCOUNT_VOICES  # Lazy: voices imports this module.
+                return {"action": "block", "message": ACCOUNT_VOICES}  # Never an approval prompt for a refused delete.
             voice = _approval_string(args.get("voice_id", ""))
             message, rule = f"Fish Audio: permanently delete voice {json.dumps(voice)}", f"fish-audio:delete:{voice}"
         else:

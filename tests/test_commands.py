@@ -80,10 +80,12 @@ def managed_layer(monkeypatch, layer):
     monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", module)
 
 
-@pytest.mark.parametrize("pinned,reply", [("evaos-fishaudio", "Saved."),
-    ("elevenlabs", "Saved. This agent's speech provider (elevenlabs) is set by its operator.")])
-def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch, pinned, reply):
+@pytest.mark.parametrize("pinned,operator,reply", [("evaos-fishaudio", False, "Saved."),
+    ("elevenlabs", False, "Switch with `hermes tools`"),
+    ("elevenlabs", True, "Saved. This agent's speech provider (elevenlabs) is set by its operator.")])
+def test_use_never_writes_a_provider_when_a_managed_layer_sets_one(config, monkeypatch, pinned, operator, reply):
     data, saves, _ = config
+    monkeypatch.setattr(settings, "operator_account", lambda: operator)
     # The profile layer has no provider; the managed layer (the evaOS overlay) pins one.
     managed_layer(monkeypatch, {"tts": {"provider": pinned}})
     monkeypatch.setattr(settings, "_config", lambda: {"tts": {"provider": pinned}})

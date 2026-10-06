@@ -93,7 +93,7 @@ def use(ident, key, base):
     provider = pinned or cfg["tts"].get("provider") or "fish-audio"
     if "fishaudio" in provider.casefold() or "fish-audio" in provider.casefold():
         return "Saved."
-    if pinned:  # A managed pin overrides the profile, so hermes tools can't switch it.
+    if pinned and settings.operator_account():  # A managed pin overrides the profile; only its operator can switch it.
         return f"Saved. This agent's speech provider ({provider}) is set by its operator."
     return f"Saved. Your current TTS provider is {provider}. Switch with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio."
 
