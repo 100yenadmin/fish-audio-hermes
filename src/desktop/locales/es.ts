@@ -105,7 +105,7 @@ export const es = {
   topUps: 'Recargas acumuladas',
   freeCredit: 'Crédito gratuito disponible',
   plan: 'Plan',
-  planBalance: (balance: number, total: number) => `Quedan ${balance.toLocaleString()} de ${total.toLocaleString()} créditos`,
+  planBalance: (balance: number, total: number) => `Quedan ${balance.toLocaleString('es')} de ${total.toLocaleString('es')} créditos`,
   renews: (date: string) => `Se renueva el ${date}`,
   periodEnds: (date: string) => `El periodo actual termina el ${date}`,
   noPlan: 'Sin plan de la app',

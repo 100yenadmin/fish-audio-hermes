@@ -105,7 +105,7 @@ export const ru = {
   topUps: 'Пополнения за всё время',
   freeCredit: 'Доступный бесплатный баланс',
   plan: 'Тариф',
-  planBalance: (balance: number, total: number) => `Осталось ${balance.toLocaleString()} из ${total.toLocaleString()} кредитов`,
+  planBalance: (balance: number, total: number) => `Осталось ${balance.toLocaleString('ru')} из ${total.toLocaleString('ru')} кредитов`,
   renews: (date: string) => `Продление: ${date}`,
   periodEnds: (date: string) => `Текущий период заканчивается ${date}`,
   noPlan: 'Нет тарифа приложения',

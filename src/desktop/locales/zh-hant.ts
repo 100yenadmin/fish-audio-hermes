@@ -105,7 +105,7 @@ export const zhHant = {
   topUps: '累計儲值',
   freeCredit: '可用免費額度',
   plan: '方案',
-  planBalance: (balance: number, total: number) => `剩餘 ${balance.toLocaleString()} / ${total.toLocaleString()} 點數`,
+  planBalance: (balance: number, total: number) => `剩餘 ${balance.toLocaleString('zh-TW')} / ${total.toLocaleString('zh-TW')} 點數`,
   renews: (date: string) => `續訂日期：${date}`,
   periodEnds: (date: string) => `目前週期結束日期：${date}`,
   noPlan: '無應用程式方案',

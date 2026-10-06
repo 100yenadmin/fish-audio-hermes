@@ -105,7 +105,7 @@ export const ja = {
   topUps: '累計チャージ額',
   freeCredit: '利用可能な無料クレジット',
   plan: 'プラン',
-  planBalance: (balance: number, total: number) => `${total.toLocaleString()} クレジット中、残り ${balance.toLocaleString()}`,
+  planBalance: (balance: number, total: number) => `${total.toLocaleString('ja')} クレジット中、残り ${balance.toLocaleString('ja')}`,
   renews: (date: string) => `更新日：${date}`,
   periodEnds: (date: string) => `現在の期間の終了日：${date}`,
   noPlan: 'アプリのプランなし',

@@ -167,6 +167,19 @@ describe('localized rendering', () => {
 })
 
 describe('locale change and contribution gate', () => {
+  it('plugin.register ships every bundle, and non-English counts group digits in their own language', async () => {
+    const t = context(async () => ({ key: true, account: true }))
+    plugin.register(t.ctx as any)
+    await flush()
+    for (const [locale, messages] of Object.entries(locales)) {
+      if (locale !== 'en') expect(messages.navLabel, locale).not.toBe(en.navLabel)
+      setLocale(locale as keyof typeof locales)
+      expect(t.ctx.i18n.t('navLabel'), locale).toBe(messages.navLabel)
+      expect(t.ctx.i18n.t('planBalance', 1234567, 2000000), locale).toBe(messages.planBalance(1234567, 2000000))
+    }
+    expect(de.planBalance(1234567, 2000000)).toBe('1.234.567 von 2.000.000 Credits übrig')
+    expect(en.planBalance(1234567, 2000000)).toBe(`${(1234567).toLocaleString()} of ${(2000000).toLocaleString()} credits left`)
+  })
   it('re-registers visible nav/palette labels in order, updates the mounted chip, and makes no REST calls', async () => {
     const rest = vi.fn(async (path: string) => path === '/account' ? account : { key: true, account: true })
     const t = context(rest)

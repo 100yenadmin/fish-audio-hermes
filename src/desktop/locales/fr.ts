@@ -105,7 +105,7 @@ export const fr = {
   topUps: 'Recharges cumulées',
   freeCredit: 'Crédit gratuit disponible',
   plan: 'Forfait',
-  planBalance: (balance: number, total: number) => `${balance.toLocaleString()} crédits restants sur ${total.toLocaleString()}`,
+  planBalance: (balance: number, total: number) => `${balance.toLocaleString('fr')} crédits restants sur ${total.toLocaleString('fr')}`,
   renews: (date: string) => `Renouvellement le ${date}`,
   periodEnds: (date: string) => `La période actuelle se termine le ${date}`,
   noPlan: 'Aucun forfait pour l’application',

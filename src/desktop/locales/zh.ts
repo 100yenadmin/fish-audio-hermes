@@ -105,7 +105,7 @@ export const zh = {
   topUps: '累计充值',
   freeCredit: '可用免费额度',
   plan: '套餐',
-  planBalance: (balance: number, total: number) => `剩余 ${balance.toLocaleString()} / ${total.toLocaleString()} 积分`,
+  planBalance: (balance: number, total: number) => `剩余 ${balance.toLocaleString('zh-CN')} / ${total.toLocaleString('zh-CN')} 积分`,
   renews: (date: string) => `续订日期：${date}`,
   periodEnds: (date: string) => `当前周期结束日期：${date}`,
   noPlan: '无应用套餐',

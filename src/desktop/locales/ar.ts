@@ -105,7 +105,7 @@ export const ar = {
   topUps: 'إجمالي الشحنات منذ إنشاء الحساب',
   freeCredit: 'الرصيد المجاني المتاح',
   plan: 'الخطة',
-  planBalance: (balance: number, total: number) => `تبقّى ${balance.toLocaleString()} من ${total.toLocaleString()} وحدة رصيد`,
+  planBalance: (balance: number, total: number) => `تبقّى ${balance.toLocaleString('ar')} من ${total.toLocaleString('ar')} وحدة رصيد`,
   renews: (date: string) => `تتجدد في ${date}`,
   periodEnds: (date: string) => `تنتهي الفترة الحالية في ${date}`,
   noPlan: 'لا توجد خطة للتطبيق',
