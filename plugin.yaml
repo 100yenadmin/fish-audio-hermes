@@ -30,7 +30,7 @@ config_schema:
     choices: [auto, "off"]
     default: auto
     label: "Streaming voice"
-    description: "auto streams speech sentence by sentence in Desktop and CLI voice mode; off uses whole-file synthesis."
+    description: "auto streams speech sentence by sentence in Desktop and CLI voice mode on Hermes builds with the plugin streaming hook; off uses whole-file synthesis."
   transport:
     type: str
     choices: [http, ws]

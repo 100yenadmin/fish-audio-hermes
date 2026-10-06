@@ -6,8 +6,9 @@
   `streams_pcm` and `stream_sample_rate`, and Hermes builds with the hook (#133723, on `main` and in the next release)
   stream its 24 kHz PCM to CLI and TUI voice playback, Desktop read-aloud and gateway streaming.
 - **Removed:** the streaming bridge into Hermes's internal `tools.tts_streaming` registry, and the
-  `FISH_AUDIO_HERMES_NO_BRIDGE` switch. On Hermes 0.21.5 and other builds without the hook, voice replies are spoken
-  sentence by sentence with whole-file synthesis instead of streamed.
+  `FISH_AUDIO_HERMES_NO_BRIDGE` switch. On Hermes 0.21.5 and other builds without the hook, voice replies use
+  whole-file synthesis instead of streaming: sentence by sentence in CLI voice mode, the whole reply in Desktop
+  read-aloud and gateway voice.
 - `streaming: "off"`, `transport: ws` and the plugin host process behave as before.
 
 ## 1.2.1 — 2026-10-06
