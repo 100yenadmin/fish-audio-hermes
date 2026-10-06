@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1 — 2026-10-07
+
+- **Open Plugins lands on the Fish Audio row** (#23). The no-key card's button now opens
+  `/settings?tab=plugins&agent=fish-audio&plugin=fish-audio`. Desktop builds with Settings ▸ Plugins open the Fish
+  Audio form from `agent=`, as in 1.2.1. Builds that redirect that link to Capabilities ▸ Plugins (Hermes 0.21.5
+  and the evaOS fork) keep only `plugin=`, and now scroll to and highlight the Fish Audio row instead of showing the
+  plain list.
+
 ## 1.3.0 — 2026-10-06
 
 - **Streaming voice uses Hermes's plugin streaming hook only** (catalog review). The Fish Audio TTS provider declares

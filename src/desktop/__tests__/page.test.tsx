@@ -44,8 +44,9 @@ describe('Voices page', () => {
     const navigate = vi.spyOn(host, 'navigate')
     mount(async () => ({ ok: true }))
     fireEvent.click(screen.getByRole('button', { name: en.openPlugins }))
-    // A string literal, not the SDK's pluginSettingsHref: older hosts lack that export and redirect this URL.
-    expect(navigate).toHaveBeenCalledWith('/settings?tab=plugins&agent=fish-audio')
+    // A string literal, not the SDK's pluginSettingsHref: older hosts lack that export. Newer hosts open the form
+    // from agent=; hosts that redirect Settings ▸ Plugins to Capabilities keep only plugin= and highlight that row.
+    expect(navigate).toHaveBeenCalledWith('/settings?tab=plugins&agent=fish-audio&plugin=fish-audio')
     navigate.mockRestore()
   })
 

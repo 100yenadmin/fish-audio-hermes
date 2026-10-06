@@ -1,6 +1,6 @@
 [project]
 name = "fish-audio-hermes"
-version = "1.3.0"
+version = "1.3.1"
 description = "Fish Audio plugin for Hermes Agent"
 readme = "README.md"
 license = "Apache-2.0"
