@@ -74,6 +74,19 @@ def _managed_provider():
 
 
 def use(ident, key, base):
+    return use_message(*use_result(ident, key, base))
+
+
+def use_message(provider, by_operator):
+    if provider is None:
+        return "Saved."
+    if by_operator:  # A managed pin overrides the profile; only its operator can switch it.
+        return f"Saved. This agent's speech provider ({provider}) is set by its operator."
+    return f"Saved. Your current TTS provider is {provider}. Switch with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio."
+
+
+def use_result(ident, key, base):
+    """Saves the voice. Returns the non-Fish TTS provider still speaking (None when Fish speaks) and whether its operator pinned it."""
     require(voice_id(ident), "Use a valid Fish Audio voice id.")
     try:
         client.get_json(f"/model/{ident}", {}, key, base)
@@ -92,10 +105,8 @@ def use(ident, key, base):
     cfg = write_config(change)
     provider = pinned or cfg["tts"].get("provider") or "fish-audio"
     if "fishaudio" in provider.casefold() or "fish-audio" in provider.casefold():
-        return "Saved."
-    if pinned and settings.operator_account():  # A managed pin overrides the profile; only its operator can switch it.
-        return f"Saved. This agent's speech provider ({provider}) is set by its operator."
-    return f"Saved. Your current TTS provider is {provider}. Switch with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio."
+        return None, False
+    return provider, bool(pinned) and settings.operator_account()
 
 
 def handle(raw_args=""):

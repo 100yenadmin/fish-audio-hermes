@@ -49,16 +49,16 @@ afterEach(() => {
 })
 
 describe('locale completeness', () => {
-  it.each(Object.entries(locales))('%s has exactly 98 English keys, matching leaf types and arities, and no empty messages', (_locale, messages) => {
+  it.each(Object.entries(locales))('%s has exactly 113 English keys, matching leaf types and arities, and no empty messages', (_locale, messages) => {
     const english = leaves(en)
     const translated = leaves(messages)
-    expect(Object.keys(english)).toHaveLength(98)
+    expect(Object.keys(english)).toHaveLength(113)
     expect(Object.keys(translated).sort()).toEqual(Object.keys(english).sort())
     for (const [key, value] of Object.entries(translated)) {
       expect(typeof value, key).toBe(typeof english[key])
       if (typeof value === 'function') {
         expect(value.length, key).toBe((english[key] as Function).length)
-        const args = /Agent|SetUp|Body|unreachable|Voice|Title|Label|deleted|cloned|Cloned|saved|Saved|Large|renews|Ends|chip|usd/.test(key)
+        const args = /Agent|SetUp|Body|unreachable|Voice|Title|Label|deleted|cloned|Cloned|saved|Saved|Large|renews|Ends|chip|usd|Provider/.test(key)
           ? ['Test voice', 'Test agent'] : [2, 5, 40]
         expect(translate(messages, key, ...args).trim(), key).not.toBe('')
       } else expect(value.trim(), key).not.toBe('')
@@ -115,6 +115,37 @@ describe('localized rendering', () => {
     expect(screen.getByRole('status').textContent).toBe(ja.tooMany)
     expect(document.querySelector('input[type=file]')).toBe(input)
     expect(rest.mock.calls).toHaveLength(count)
+  })
+  it('names the voice-language filter options in the active locale', async () => {
+    mount('ja')
+    await flush()
+    for (const name of Object.values(ja.languages)) expect(screen.getByRole('option', { name })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: en.languages.ja })).toBeNull()
+    await act(() => setLocale('en'))
+    expect(Object.values(en.languages)).toEqual(['English', 'Chinese', 'Japanese', 'Korean', 'Spanish', 'French', 'German',
+      'Italian', 'Portuguese', 'Russian', 'Arabic', 'Dutch', 'Polish'])
+    for (const name of Object.values(en.languages)) expect(screen.getByRole('option', { name })).toBeTruthy()
+  })
+  it.each([
+    [{ ok: true, message: 'Saved.', provider: null, operator_pinned: false }, ''],
+    [{ ok: true, message: 'Saved. Your current TTS provider is edge.', provider: 'edge', operator_pinned: false }, ` ${ja.useOtherProvider('edge')}`],
+    [{ ok: true, message: "Saved. This agent's speech provider (edge) is set by its operator.", provider: 'edge', operator_pinned: true },
+      ` ${ja.useProviderByOperator('edge')}`],
+    // A gateway before 1.2.0 sends only its English message.
+    [{ ok: true, message: 'Saved. Your current TTS provider is edge.' }, ' Your current TTS provider is edge.'],
+  ])('words the Use note in the active locale from the gateway answer (%#)', async (answer, note) => {
+    const voice = { id: 'a'.repeat(32), title: 'Narrator' }
+    const t = context(async path => path === '/use' ? answer : { ...empty, items: [voice] })
+    t.ctx.i18n.register(locales)
+    bindContext(t.ctx as any)
+    $available.set({ key: true, version: '1.2.0', account: true })
+    const notify = vi.spyOn(host, 'notify')
+    setLocale('ja')
+    render(<VoicesPage />)
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: ja.use }))
+    await flush()
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: ja.usedVoice('Narrator', 'default') + note })
   })
   it('uses the current locale when an asynchronous handler finishes after a switch', async () => {
     let finish!: (value: any) => void

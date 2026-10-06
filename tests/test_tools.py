@@ -320,6 +320,11 @@ def test_operator_tool_notice_and_missing_key(monkeypatch):
     with respx.mock(assert_all_called=True) as mock:
         mock.post(BASE + "/v1/tts").respond(content=b"audio")
         assert call(tools.fish_speak, text="hello", model="s1")["model"] == "s1"
+    # allow_free_model: false fixes s2.1-pro by configuration without reading the wallet, so it stays visible.
+    monkeypatch.setattr(settings, "_config", lambda: {"plugins": {"entries": {"fish-audio": {"settings": {"allow_free_model": False}}}}})
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/v1/tts").respond(content=b"audio")
+        assert call(tools.fish_speak, text="hello")["model"] == "s2.1-pro"
     monkeypatch.setattr("fish_audio.tool_support.fish_api_key", lambda: "")
     result = call(tools.fish_speak, text="hello")
     assert result["error"] == "Ask the operator of this agent to finish the Fish Audio setup."

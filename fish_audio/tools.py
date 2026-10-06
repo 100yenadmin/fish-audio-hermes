@@ -69,8 +69,8 @@ def _speak(args, key, base, session, *, record_media=True):
         hooks.record(session, path, as_voice)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
               "note": "Include media_tag verbatim in your reply so the user receives the audio."}
-    if defaulted and settings.operator_account():
-        del result["model"]  # An unpinned default follows the operator's wallet, which the agent's users don't see.
+    if defaulted and settings.operator_account() and settings.transport_settings().get("allow_free_model", True) is not False:
+        del result["model"]  # A wallet-chosen default follows the operator's wallet, which the agent's users don't see.
     elif defaulted and model == "s2.1-pro-free":
         result["notice"] = settings.FREE_MODEL_NOTICE
     if events is not None:

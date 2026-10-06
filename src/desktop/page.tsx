@@ -239,9 +239,9 @@ function Library({ pin }: { pin: AgentPin }) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="any">{t('anyLanguage')}</SelectItem>
-              {LANGUAGES.map(([code, label]) => (
+              {LANGUAGES.map(code => (
                 <SelectItem key={code} value={code}>
-                  {label}
+                  {t(`languages.${code}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -350,11 +350,15 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
     $usePending.set({ ...$usePending.get(), [agent]: voice.id })
     try {
       await run(`use:${voice.id}`, async () => {
-        const res = await post<{ message: string }>('/use', { voice: voice.id })
+        const res = await post<{ message: string; provider?: string | null; operator_pinned?: boolean }>('/use', { voice: voice.id })
         if (!samePin(currentPin(), pin)) return
         setUsed(voice.id)
-        const note = res.message && res.message !== 'Saved.' ? ` ${res.message.replace(/^Saved\.\s*/, '')}` : ''
-        host.notify({ kind: 'success', message: pluginCtx().i18n.t('usedVoice', voice.title, pin.profile) + note })
+        const i18n = pluginCtx().i18n
+        // Gateways before 1.2.0 send only an English message.
+        const note = res.provider
+          ? ` ${i18n.t(res.operator_pinned ? 'useProviderByOperator' : 'useOtherProvider', res.provider)}`
+          : res.provider === undefined && res.message && res.message !== 'Saved.' ? ` ${res.message.replace(/^Saved\.\s*/, '')}` : ''
+        host.notify({ kind: 'success', message: i18n.t('usedVoice', voice.title, pin.profile) + note })
       })
     } finally {
       const { [agent]: mine, ...rest } = $usePending.get()

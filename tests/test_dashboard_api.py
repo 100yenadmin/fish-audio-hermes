@@ -215,8 +215,28 @@ def test_use_writes_only_the_active_profile(env):
         mock.get(a.base + f"/model/{VOICE}").respond(json={"_id": VOICE})
         body = env.post("/use", voice=VOICE)
     assert body["ok"] and body["voice"] == VOICE and body["message"] == "Saved."
+    assert body["provider"] is None and body["operator_pinned"] is False
     assert a.config["tts"]["fish-audio"]["voice"] == VOICE and a.saves == 1
     assert b.config == before and b.saves == 0
+
+
+def test_use_names_a_non_fish_provider_for_desktop_to_word(env, monkeypatch):
+    commands = env.api._fa("commands")
+    # (managed pin, profile provider, operator_account) -> (provider, operator_pinned)
+    for pinned, own, operator, by_operator in ((None, "elevenlabs", False, False), (None, "elevenlabs", True, False),
+                                               ("elevenlabs", None, False, False), ("elevenlabs", None, True, True)):
+        settings = env.active().config["plugins"]["entries"]["fish-audio"]["settings"]  # each save replaces the config
+        tts = env.active().config.setdefault("tts", {})
+        monkeypatch.setattr(commands, "_managed_provider", lambda pinned=pinned: pinned)
+        tts.pop("provider", None) if own is None else tts.__setitem__("provider", own)
+        settings["operator_account"] = operator
+        with respx.mock(assert_all_called=True) as mock:
+            mock.get(env.active().base + f"/model/{VOICE}").respond(json={"_id": VOICE})
+            body = env.post("/use", voice=VOICE)
+        assert body["ok"] and body["provider"] == "elevenlabs" and body["operator_pinned"] is by_operator
+        assert body["message"] == commands.use_message("elevenlabs", by_operator)
+        assert ("set by its operator" in body["message"]) is by_operator
+    env.active().config["plugins"]["entries"]["fish-audio"]["settings"]["operator_account"] = False
 
 
 def test_use_unknown_voice_writes_nothing(env):
@@ -804,12 +824,14 @@ def test_operator_preview_names_no_wallet_chosen_model(env, monkeypatch):
     settings = env.active().config["plugins"]["entries"]["fish-audio"]["settings"]
     nested = env.active().config["tts"]["fish-audio"]
     monkeypatch.setattr(env.api._fa("settings"), "cached_wallet", lambda *args: None)  # unknown wallet: s2.1-pro
-    # Only an unpinned default follows the wallet; a pinned model is configuration and stays visible.
-    for pinned, operator, named in ((None, False, True), (None, True, False), ("s1", True, True)):
+    # Only an unpinned default follows the wallet; a pinned model or a policy-fixed s2.1-pro stays visible.
+    for pinned, operator, allow_free, named in ((None, False, True, True), (None, True, True, False),
+                                                ("s1", True, True, True), (None, True, False, True)):
         nested.pop("model", None) if pinned is None else nested.__setitem__("model", pinned)
-        settings["operator_account"] = operator
+        settings["operator_account"], settings["allow_free_model"] = operator, allow_free
         with respx.mock(assert_all_called=True) as mock:
             mock.post(env.active().base + "/v1/tts").respond(content=MP3)
             body = env.post("/preview", voice=VOICE, text="Hello there")
         assert body["ok"] and ("model" in body) is named
     settings["operator_account"] = False
+    settings.pop("allow_free_model")

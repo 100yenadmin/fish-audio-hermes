@@ -15,18 +15,5 @@ export const LINKS = {
   discovery: 'https://fish.audio/discovery'
 }
 
-export const LANGUAGES: Array<[string, string]> = [
-  ['en', 'English'],
-  ['zh', 'Chinese'],
-  ['ja', 'Japanese'],
-  ['ko', 'Korean'],
-  ['es', 'Spanish'],
-  ['fr', 'French'],
-  ['de', 'German'],
-  ['it', 'Italian'],
-  ['pt', 'Portuguese'],
-  ['ru', 'Russian'],
-  ['ar', 'Arabic'],
-  ['nl', 'Dutch'],
-  ['pl', 'Polish']
-]
+// Voice-language filter codes; each locale bundle names them under `languages`.
+export const LANGUAGES = ['en', 'zh', 'ja', 'ko', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'ar', 'nl', 'pl'] as const

@@ -252,7 +252,11 @@ def use_voice(body: Use):
     """Write ``tts.fish-audio.voice`` for the requesting profile with the writer ``/fish use`` uses."""
     key, base = _scope()
     voice = _voice_id(body.voice)
-    return {"ok": True, "voice": voice, "message": _fa("commands").use(voice, key, base)}
+    commands = _fa("commands")
+    provider, by_operator = commands.use_result(voice, key, base)
+    # provider/operator_pinned let Desktop word the note in its own language; message stays for older clients.
+    return {"ok": True, "voice": voice, "message": commands.use_message(provider, by_operator),
+            "provider": provider, "operator_pinned": by_operator}
 
 
 def _author_owned(ident: str, key: str, base: str) -> bool:

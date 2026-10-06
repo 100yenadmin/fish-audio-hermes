@@ -6,10 +6,14 @@ description: Find, clone, design and manage a Fish Audio voice for this agent
 Use `fish_voices` for the voice library and voice creation. Calls are billed to the Fish Audio account behind this agent's key.
 Never ask for an API key in chat; use the setup skill or `hermes fish login` on the Hermes machine.
 
+When a Fish result or `/fish` reply says the operator manages this agent's voice account, `mine`, `update` and
+`delete` are refused: do not offer them, and skip the metadata and deletion steps at the end of this skill.
+Search, get, clone, design and save still work.
+
 Search public voices with `action: search`, a query/language/tags, and at most 20 results per page.
 Search also accepts `author_id`, `title_language` (one code or 1–10 codes) and boolean `licensed`;
 these filters apply only to search. Results include `has_more` when Fish returns a boolean.
-Use `action: mine` for voices in that account; it is refused when the agent's operator manages the account. Search windows end at 1,000 results;
+Use `action: mine` for voices in that account. Search windows end at 1,000 results;
 "1000+" is a lower bound. Use `action: get` with a voice id to inspect text-only sample descriptions.
 
 For cloning, ask the user to confirm the speaker's permission. Set `consent: true` only after that confirmation.
@@ -34,7 +38,8 @@ Persona-voice recipe:
 4. Play all candidates by including their `media_tag` values. Let the user choose.
 5. Save the chosen `design_token` with a descriptive title, then `/fish use <saved id>`.
 
-For metadata changes, ask the user to approve the update, then call `update` with the id and changed
+Skip the next two steps when the operator manages the account. For metadata changes, ask the user to approve
+the update, then call `update` with the id and changed
 `title`, `description`, `tags`, `visibility` (private or unlist), or `cover_image_path`. For permanent deletion, confirm the intended voice and call `delete`;
 Hermes's human approval gate must approve it. Update uses conversational user approval; the plugin's
 hard approval gate covers clone and delete. Avoid switching away from another Fish provider when selecting a voice.

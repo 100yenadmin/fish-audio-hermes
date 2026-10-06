@@ -185,21 +185,7 @@ var LINKS = {
   keys: "https://fish.audio/app/api-keys",
   discovery: "https://fish.audio/discovery"
 };
-var LANGUAGES = [
-  ["en", "English"],
-  ["zh", "Chinese"],
-  ["ja", "Japanese"],
-  ["ko", "Korean"],
-  ["es", "Spanish"],
-  ["fr", "French"],
-  ["de", "German"],
-  ["it", "Italian"],
-  ["pt", "Portuguese"],
-  ["ru", "Russian"],
-  ["ar", "Arabic"],
-  ["nl", "Dutch"],
-  ["pl", "Polish"]
-];
+var LANGUAGES = ["en", "zh", "ja", "ko", "es", "fr", "de", "it", "pt", "ru", "ar", "nl", "pl"];
 
 // src/desktop/ui.tsx
 import { Button, Codicon, ErrorState, Skeleton, usePluginI18n as usePluginI18n2 } from "@hermes/plugin-sdk";
@@ -639,7 +625,7 @@ function Library({ pin }) {
         /* @__PURE__ */ jsx3(SelectTrigger, { "aria-label": t("language"), children: /* @__PURE__ */ jsx3(SelectValue, {}) }),
         /* @__PURE__ */ jsxs3(SelectContent, { children: [
           /* @__PURE__ */ jsx3(SelectItem, { value: "any", children: t("anyLanguage") }),
-          LANGUAGES.map(([code, label2]) => /* @__PURE__ */ jsx3(SelectItem, { value: code, children: label2 }, code))
+          LANGUAGES.map((code) => /* @__PURE__ */ jsx3(SelectItem, { value: code, children: t(`languages.${code}`) }, code))
         ] })
       ] }) }),
       /* @__PURE__ */ jsxs3(Button3, { "aria-pressed": favouritesOnly, onClick: () => setFavouritesOnly(!favouritesOnly), size: "xs", variant: favouritesOnly ? "secondary" : "ghost", children: [
@@ -717,8 +703,9 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
         const res = await post("/use", { voice: voice.id });
         if (!samePin(currentPin(), pin)) return;
         setUsed(voice.id);
-        const note = res.message && res.message !== "Saved." ? ` ${res.message.replace(/^Saved\.\s*/, "")}` : "";
-        host3.notify({ kind: "success", message: pluginCtx().i18n.t("usedVoice", voice.title, pin.profile) + note });
+        const i18n = pluginCtx().i18n;
+        const note = res.provider ? ` ${i18n.t(res.operator_pinned ? "useProviderByOperator" : "useOtherProvider", res.provider)}` : res.provider === void 0 && res.message && res.message !== "Saved." ? ` ${res.message.replace(/^Saved\.\s*/, "")}` : "";
+        host3.notify({ kind: "success", message: i18n.t("usedVoice", voice.title, pin.profile) + note });
       });
     } finally {
       const { [agent]: mine, ...rest } = $usePending.get();
@@ -946,6 +933,21 @@ var en = {
   search: "Search voices",
   language: "Language",
   anyLanguage: "Any language",
+  languages: {
+    en: "English",
+    zh: "Chinese",
+    ja: "Japanese",
+    ko: "Korean",
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    it: "Italian",
+    pt: "Portuguese",
+    ru: "Russian",
+    ar: "Arabic",
+    nl: "Dutch",
+    pl: "Polish"
+  },
   favouritesOnly: "Favourites",
   billedNote: "Preview plays a short sample and is billed to your Fish Audio account.",
   preview: "Preview",
@@ -962,6 +964,8 @@ var en = {
   next: "Next",
   pageOf: (page) => `Page ${page}`,
   usedVoice: (title, profile) => `${title} is now ${agentName(profile)}'s voice`,
+  useOtherProvider: (provider) => `Your current TTS provider is ${provider}. Switch with \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio.`,
+  useProviderByOperator: (provider) => `This agent's speech provider (${provider}) is set by its operator.`,
   loadFailed: "Couldn't load voices",
   retry: "Retry",
   // My voices
@@ -1052,6 +1056,21 @@ var zh = {
   search: "\u641C\u7D22\u58F0\u97F3",
   language: "\u8BED\u8A00",
   anyLanguage: "\u6240\u6709\u8BED\u8A00",
+  languages: {
+    en: "\u82F1\u8BED",
+    zh: "\u4E2D\u6587",
+    ja: "\u65E5\u8BED",
+    ko: "\u97E9\u8BED",
+    es: "\u897F\u73ED\u7259\u8BED",
+    fr: "\u6CD5\u8BED",
+    de: "\u5FB7\u8BED",
+    it: "\u610F\u5927\u5229\u8BED",
+    pt: "\u8461\u8404\u7259\u8BED",
+    ru: "\u4FC4\u8BED",
+    ar: "\u963F\u62C9\u4F2F\u8BED",
+    nl: "\u8377\u5170\u8BED",
+    pl: "\u6CE2\u5170\u8BED"
+  },
   favouritesOnly: "\u6536\u85CF",
   billedNote: "\u8BD5\u542C\u4F1A\u64AD\u653E\u4E00\u5C0F\u6BB5\u6837\u672C\uFF0C\u8D39\u7528\u8BA1\u5165\u4F60\u7684 Fish Audio \u8D26\u6237\u3002",
   preview: "\u8BD5\u542C",
@@ -1068,6 +1087,8 @@ var zh = {
   next: "\u4E0B\u4E00\u9875",
   pageOf: (page) => `\u7B2C ${page} \u9875`,
   usedVoice: (title, profile) => `${agentName2(profile)}\u7684\u58F0\u97F3\u5DF2\u8BBE\u4E3A${title}\u3002`,
+  useOtherProvider: (provider) => `\u5F53\u524D\u7684\u6587\u5B57\u8F6C\u8BED\u97F3\u63D0\u4F9B\u65B9\u662F ${provider}\u3002\u53EF\u901A\u8FC7 \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio \u5207\u6362\u3002`,
+  useProviderByOperator: (provider) => `\u6B64\u667A\u80FD\u4F53\u7684\u6587\u5B57\u8F6C\u8BED\u97F3\u63D0\u4F9B\u65B9\uFF08${provider}\uFF09\u7531\u5176\u7BA1\u7406\u5458\u8BBE\u7F6E\u3002`,
   loadFailed: "\u65E0\u6CD5\u52A0\u8F7D\u58F0\u97F3",
   retry: "\u91CD\u8BD5",
   mineEmpty: "\u4F60\u5C1A\u672A\u521B\u5EFA\u4EFB\u4F55\u58F0\u97F3",
@@ -1155,6 +1176,21 @@ var zhHant = {
   search: "\u641C\u5C0B\u8072\u97F3",
   language: "\u8A9E\u8A00",
   anyLanguage: "\u6240\u6709\u8A9E\u8A00",
+  languages: {
+    en: "\u82F1\u6587",
+    zh: "\u4E2D\u6587",
+    ja: "\u65E5\u6587",
+    ko: "\u97D3\u6587",
+    es: "\u897F\u73ED\u7259\u6587",
+    fr: "\u6CD5\u6587",
+    de: "\u5FB7\u6587",
+    it: "\u7FA9\u5927\u5229\u6587",
+    pt: "\u8461\u8404\u7259\u6587",
+    ru: "\u4FC4\u6587",
+    ar: "\u963F\u62C9\u4F2F\u6587",
+    nl: "\u8377\u862D\u6587",
+    pl: "\u6CE2\u862D\u6587"
+  },
   favouritesOnly: "\u6536\u85CF",
   billedNote: "\u8A66\u807D\u6703\u64AD\u653E\u4E00\u5C0F\u6BB5\u7BC4\u4F8B\uFF0C\u8CBB\u7528\u8A08\u5165\u60A8\u7684 Fish Audio \u5E33\u6236\u3002",
   preview: "\u8A66\u807D",
@@ -1171,6 +1207,8 @@ var zhHant = {
   next: "\u4E0B\u4E00\u9801",
   pageOf: (page) => `\u7B2C ${page} \u9801`,
   usedVoice: (title, profile) => `${agentName3(profile)}\u7684\u8072\u97F3\u5DF2\u8A2D\u70BA${title}\u3002`,
+  useOtherProvider: (provider) => `\u76EE\u524D\u7684\u6587\u5B57\u8F49\u8A9E\u97F3\u63D0\u4F9B\u65B9\u662F ${provider}\u3002\u53EF\u900F\u904E \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio \u5207\u63DB\u3002`,
+  useProviderByOperator: (provider) => `\u6B64\u4EE3\u7406\u7684\u6587\u5B57\u8F49\u8A9E\u97F3\u63D0\u4F9B\u65B9\uFF08${provider}\uFF09\u7531\u5176\u7BA1\u7406\u54E1\u8A2D\u5B9A\u3002`,
   loadFailed: "\u7121\u6CD5\u8F09\u5165\u8072\u97F3",
   retry: "\u91CD\u8A66",
   mineEmpty: "\u60A8\u5C1A\u672A\u5EFA\u7ACB\u4EFB\u4F55\u8072\u97F3",
@@ -1258,6 +1296,21 @@ var ja = {
   search: "\u30DC\u30A4\u30B9\u3092\u691C\u7D22",
   language: "\u8A00\u8A9E",
   anyLanguage: "\u3059\u3079\u3066\u306E\u8A00\u8A9E",
+  languages: {
+    en: "\u82F1\u8A9E",
+    zh: "\u4E2D\u56FD\u8A9E",
+    ja: "\u65E5\u672C\u8A9E",
+    ko: "\u97D3\u56FD\u8A9E",
+    es: "\u30B9\u30DA\u30A4\u30F3\u8A9E",
+    fr: "\u30D5\u30E9\u30F3\u30B9\u8A9E",
+    de: "\u30C9\u30A4\u30C4\u8A9E",
+    it: "\u30A4\u30BF\u30EA\u30A2\u8A9E",
+    pt: "\u30DD\u30EB\u30C8\u30AC\u30EB\u8A9E",
+    ru: "\u30ED\u30B7\u30A2\u8A9E",
+    ar: "\u30A2\u30E9\u30D3\u30A2\u8A9E",
+    nl: "\u30AA\u30E9\u30F3\u30C0\u8A9E",
+    pl: "\u30DD\u30FC\u30E9\u30F3\u30C9\u8A9E"
+  },
   favouritesOnly: "\u304A\u6C17\u306B\u5165\u308A",
   billedNote: "\u8A66\u8074\u3067\u306F\u77ED\u3044\u30B5\u30F3\u30D7\u30EB\u304C\u518D\u751F\u3055\u308C\u3001Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u306B\u8AB2\u91D1\u3055\u308C\u307E\u3059\u3002",
   preview: "\u8A66\u8074",
@@ -1274,6 +1327,8 @@ var ja = {
   next: "\u6B21\u3078",
   pageOf: (page) => `${page} \u30DA\u30FC\u30B8`,
   usedVoice: (title, profile) => `${agentName4(profile)}\u306E\u30DC\u30A4\u30B9\u3092\u300C${title}\u300D\u306B\u8A2D\u5B9A\u3057\u307E\u3057\u305F\u3002`,
+  useOtherProvider: (provider) => `\u73FE\u5728\u306E\u97F3\u58F0\u5408\u6210\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC\u306F ${provider} \u3067\u3059\u3002\`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio \u3067\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u3059\u3002`,
+  useProviderByOperator: (provider) => `\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u97F3\u58F0\u5408\u6210\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC\uFF08${provider}\uFF09\u306F\u904B\u7528\u8005\u304C\u8A2D\u5B9A\u3057\u3066\u3044\u307E\u3059\u3002`,
   loadFailed: "\u30DC\u30A4\u30B9\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F",
   retry: "\u518D\u8A66\u884C",
   mineEmpty: "\u30DC\u30A4\u30B9\u306F\u307E\u3060\u4F5C\u6210\u3055\u308C\u3066\u3044\u307E\u305B\u3093",
@@ -1361,6 +1416,21 @@ var ar = {
   search: "\u0627\u0644\u0628\u062D\u062B \u0639\u0646 \u0623\u0635\u0648\u0627\u062A",
   language: "\u0627\u0644\u0644\u063A\u0629",
   anyLanguage: "\u0623\u064A \u0644\u063A\u0629",
+  languages: {
+    en: "\u0627\u0644\u0625\u0646\u062C\u0644\u064A\u0632\u064A\u0629",
+    zh: "\u0627\u0644\u0635\u064A\u0646\u064A\u0629",
+    ja: "\u0627\u0644\u064A\u0627\u0628\u0627\u0646\u064A\u0629",
+    ko: "\u0627\u0644\u0643\u0648\u0631\u064A\u0629",
+    es: "\u0627\u0644\u0625\u0633\u0628\u0627\u0646\u064A\u0629",
+    fr: "\u0627\u0644\u0641\u0631\u0646\u0633\u064A\u0629",
+    de: "\u0627\u0644\u0623\u0644\u0645\u0627\u0646\u064A\u0629",
+    it: "\u0627\u0644\u0625\u064A\u0637\u0627\u0644\u064A\u0629",
+    pt: "\u0627\u0644\u0628\u0631\u062A\u063A\u0627\u0644\u064A\u0629",
+    ru: "\u0627\u0644\u0631\u0648\u0633\u064A\u0629",
+    ar: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629",
+    nl: "\u0627\u0644\u0647\u0648\u0644\u0646\u062F\u064A\u0629",
+    pl: "\u0627\u0644\u0628\u0648\u0644\u0646\u062F\u064A\u0629"
+  },
   favouritesOnly: "\u0627\u0644\u0645\u0641\u0636\u0644\u0629",
   billedNote: "\u062A\u0634\u063A\u0651\u0644 \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629 \u0639\u064A\u0646\u0629 \u0642\u0635\u064A\u0631\u0629 \u0648\u062A\u064F\u062D\u062A\u0633\u0628 \u062A\u0643\u0644\u0641\u062A\u0647\u0627 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio.",
   preview: "\u0645\u0639\u0627\u064A\u0646\u0629",
@@ -1377,6 +1447,8 @@ var ar = {
   next: "\u0627\u0644\u062A\u0627\u0644\u064A",
   pageOf: (page) => `\u0627\u0644\u0635\u0641\u062D\u0629 ${page}`,
   usedVoice: (title, profile) => `\u0623\u0635\u0628\u062D ${title} \u0627\u0644\u0622\u0646 \u0635\u0648\u062A ${agentName5(profile)}`,
+  useOtherProvider: (provider) => `\u0645\u0632\u0648\u062F \u062A\u062D\u0648\u064A\u0644 \u0627\u0644\u0646\u0635 \u0625\u0644\u0649 \u0643\u0644\u0627\u0645 \u0627\u0644\u062D\u0627\u0644\u064A \u0647\u0648 ${provider}. \u0644\u0644\u062A\u0628\u062F\u064A\u0644 \u0627\u0633\u062A\u062E\u062F\u0645 \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio.`,
+  useProviderByOperator: (provider) => `\u064A\u062D\u062F\u0651\u062F \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0645\u0632\u0648\u062F \u062A\u062D\u0648\u064A\u0644 \u0627\u0644\u0646\u0635 \u0625\u0644\u0649 \u0643\u0644\u0627\u0645 (${provider}).`,
   loadFailed: "\u062A\u0639\u0630\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
   retry: "\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629",
   mineEmpty: "\u0644\u0645 \u062A\u0646\u0634\u0626 \u0623\u064A \u0623\u0635\u0648\u0627\u062A \u0628\u0639\u062F",
@@ -1464,6 +1536,21 @@ var ru = {
   search: "\u041F\u043E\u0438\u0441\u043A \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
   language: "\u042F\u0437\u044B\u043A",
   anyLanguage: "\u041B\u044E\u0431\u043E\u0439 \u044F\u0437\u044B\u043A",
+  languages: {
+    en: "\u0410\u043D\u0433\u043B\u0438\u0439\u0441\u043A\u0438\u0439",
+    zh: "\u041A\u0438\u0442\u0430\u0439\u0441\u043A\u0438\u0439",
+    ja: "\u042F\u043F\u043E\u043D\u0441\u043A\u0438\u0439",
+    ko: "\u041A\u043E\u0440\u0435\u0439\u0441\u043A\u0438\u0439",
+    es: "\u0418\u0441\u043F\u0430\u043D\u0441\u043A\u0438\u0439",
+    fr: "\u0424\u0440\u0430\u043D\u0446\u0443\u0437\u0441\u043A\u0438\u0439",
+    de: "\u041D\u0435\u043C\u0435\u0446\u043A\u0438\u0439",
+    it: "\u0418\u0442\u0430\u043B\u044C\u044F\u043D\u0441\u043A\u0438\u0439",
+    pt: "\u041F\u043E\u0440\u0442\u0443\u0433\u0430\u043B\u044C\u0441\u043A\u0438\u0439",
+    ru: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439",
+    ar: "\u0410\u0440\u0430\u0431\u0441\u043A\u0438\u0439",
+    nl: "\u041D\u0438\u0434\u0435\u0440\u043B\u0430\u043D\u0434\u0441\u043A\u0438\u0439",
+    pl: "\u041F\u043E\u043B\u044C\u0441\u043A\u0438\u0439"
+  },
   favouritesOnly: "\u0418\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435",
   billedNote: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0432\u043E\u0441\u043F\u0440\u043E\u0438\u0437\u0432\u043E\u0434\u0438\u0442 \u043A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u043E\u0431\u0440\u0430\u0437\u0435\u0446 \u0438 \u043E\u043F\u043B\u0430\u0447\u0438\u0432\u0430\u0435\u0442\u0441\u044F \u0441 \u0432\u0430\u0448\u0435\u0433\u043E \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430 Fish Audio.",
   preview: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440",
@@ -1480,6 +1567,8 @@ var ru = {
   next: "\u0414\u0430\u043B\u044C\u0448\u0435",
   pageOf: (page) => `\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 ${page}`,
   usedVoice: (title, profile) => `${title} \u0442\u0435\u043F\u0435\u0440\u044C \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u0442\u0441\u044F \u043A\u0430\u043A \u0433\u043E\u043B\u043E\u0441 ${agentName6(profile)}`,
+  useOtherProvider: (provider) => `\u0422\u0435\u043A\u0443\u0449\u0438\u0439 \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440 \u0441\u0438\u043D\u0442\u0435\u0437\u0430 \u0440\u0435\u0447\u0438 \u2014 ${provider}. \u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u043C\u043E\u0436\u043D\u043E \u0432 \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio.`,
+  useProviderByOperator: (provider) => `\u041F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440 \u0441\u0438\u043D\u0442\u0435\u0437\u0430 \u0440\u0435\u0447\u0438 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430 (${provider}) \u0437\u0430\u0434\u0430\u043D \u0435\u0433\u043E \u043E\u043F\u0435\u0440\u0430\u0442\u043E\u0440\u043E\u043C.`,
   loadFailed: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0433\u043E\u043B\u043E\u0441\u0430",
   retry: "\u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u044C",
   mineEmpty: "\u0412\u044B \u0435\u0449\u0451 \u043D\u0435 \u0441\u043E\u0437\u0434\u0430\u043B\u0438 \u043D\u0438 \u043E\u0434\u043D\u043E\u0433\u043E \u0433\u043E\u043B\u043E\u0441\u0430",
@@ -1567,6 +1656,21 @@ var fr = {
   search: "Rechercher des voix",
   language: "Langue",
   anyLanguage: "Toutes les langues",
+  languages: {
+    en: "Anglais",
+    zh: "Chinois",
+    ja: "Japonais",
+    ko: "Cor\xE9en",
+    es: "Espagnol",
+    fr: "Fran\xE7ais",
+    de: "Allemand",
+    it: "Italien",
+    pt: "Portugais",
+    ru: "Russe",
+    ar: "Arabe",
+    nl: "N\xE9erlandais",
+    pl: "Polonais"
+  },
   favouritesOnly: "Favoris",
   billedNote: "L\u2019aper\xE7u joue un court extrait et est factur\xE9 \xE0 votre compte Fish Audio.",
   preview: "\xC9couter",
@@ -1583,6 +1687,8 @@ var fr = {
   next: "Suivante",
   pageOf: (page) => `Page ${page}`,
   usedVoice: (title, profile) => `${title} est maintenant la voix de ${agentName7(profile)}`,
+  useOtherProvider: (provider) => `Votre fournisseur de synth\xE8se vocale actuel est ${provider}. Changez-le dans \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio.`,
+  useProviderByOperator: (provider) => `Le fournisseur de synth\xE8se vocale de cet agent (${provider}) est d\xE9fini par son op\xE9rateur.`,
   loadFailed: "Impossible de charger les voix",
   retry: "R\xE9essayer",
   mineEmpty: "Vous n\u2019avez pas encore cr\xE9\xE9 de voix",
@@ -1670,6 +1776,21 @@ var de = {
   search: "Stimmen suchen",
   language: "Sprache",
   anyLanguage: "Alle Sprachen",
+  languages: {
+    en: "Englisch",
+    zh: "Chinesisch",
+    ja: "Japanisch",
+    ko: "Koreanisch",
+    es: "Spanisch",
+    fr: "Franz\xF6sisch",
+    de: "Deutsch",
+    it: "Italienisch",
+    pt: "Portugiesisch",
+    ru: "Russisch",
+    ar: "Arabisch",
+    nl: "Niederl\xE4ndisch",
+    pl: "Polnisch"
+  },
   favouritesOnly: "Favoriten",
   billedNote: "Die Vorschau spielt eine kurze H\xF6rprobe ab und wird Ihrem Fish Audio-Konto berechnet.",
   preview: "Vorschau",
@@ -1686,6 +1807,8 @@ var de = {
   next: "Weiter",
   pageOf: (page) => `Seite ${page}`,
   usedVoice: (title, profile) => `${title} ist jetzt die Stimme f\xFCr ${agentName8(profile)}`,
+  useOtherProvider: (provider) => `Ihr aktueller Text-zu-Sprache-Anbieter ist ${provider}. Wechseln Sie mit \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio.`,
+  useProviderByOperator: (provider) => `Der Text-zu-Sprache-Anbieter dieses Agenten (${provider}) wird von seinem Betreiber festgelegt.`,
   loadFailed: "Stimmen konnten nicht geladen werden",
   retry: "Erneut versuchen",
   mineEmpty: "Sie haben noch keine Stimmen erstellt",
@@ -1773,6 +1896,21 @@ var es = {
   search: "Buscar voces",
   language: "Idioma",
   anyLanguage: "Todos los idiomas",
+  languages: {
+    en: "Ingl\xE9s",
+    zh: "Chino",
+    ja: "Japon\xE9s",
+    ko: "Coreano",
+    es: "Espa\xF1ol",
+    fr: "Franc\xE9s",
+    de: "Alem\xE1n",
+    it: "Italiano",
+    pt: "Portugu\xE9s",
+    ru: "Ruso",
+    ar: "\xC1rabe",
+    nl: "Neerland\xE9s",
+    pl: "Polaco"
+  },
   favouritesOnly: "Favoritos",
   billedNote: "La vista previa reproduce una muestra breve y se factura a tu cuenta de Fish Audio.",
   preview: "Vista previa",
@@ -1789,6 +1927,8 @@ var es = {
   next: "Siguiente",
   pageOf: (page) => `P\xE1gina ${page}`,
   usedVoice: (title, profile) => `${title} es ahora la voz de ${agentName9(profile)}`,
+  useOtherProvider: (provider) => `Tu proveedor de texto a voz actual es ${provider}. C\xE1mbialo con \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio.`,
+  useProviderByOperator: (provider) => `El proveedor de texto a voz de este agente (${provider}) lo establece su operador.`,
   loadFailed: "No se pudieron cargar las voces",
   retry: "Reintentar",
   mineEmpty: "A\xFAn no has creado ninguna voz",
