@@ -156,10 +156,11 @@ reports a wallet with no API credit and no past top-ups that doesn't carry Fish'
 Fish Audio may use free-tier requests to improve its models. `allow_free_model: false` replaces `s2.1-pro-free`
 with `s2.1-pro` everywhere, even when you name the free model yourself.
 
-**Streaming voice.** With `tts.provider: fish-audio`, on a Hermes build that has the plugin streaming hook
-(Hermes `main` since 2026-10-06; the next release), the plugin streams 24 kHz PCM from `POST /v1/tts` to CLI and TUI
-voice playback, Desktop read-aloud and gateway streaming. Older Hermes builds, including 0.21.5, use whole-file
-synthesis instead: sentence by sentence in CLI voice mode, the whole reply in Desktop read-aloud and gateway voice.
+**Streaming voice.** With `tts.provider: fish-audio` on Hermes 0.21.6 or later, which has the plugin streaming hook,
+the plugin streams 24 kHz PCM from `POST /v1/tts` to CLI and TUI voice playback, Desktop read-aloud and gateway
+streaming. Hermes 0.21.5 uses whole-file synthesis instead: sentence by sentence in CLI voice mode, and the whole reply
+in Desktop read-aloud and gateway voice. That includes the Desktop app and Termux builds still on 0.21.5. They stream
+once they update; the plugin needs no change.
 Each streamed sentence is one billed request and is not retried. Measured first audio bytes: Fish HTTP API p50 243 ms (3 samples, 238–356
 ms), CLI voice mode 373–381 ms, Desktop speak-stream handler 310 ms (in-process, not through the Electron UI);
 these exclude the model's own reply time. Set `streaming: "off"` for whole-file speech; `transport: ws` switches to Fish's live
@@ -216,8 +217,9 @@ the wallet that users can't see.
 
 ## Compatibility
 
-Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. CI tests it against the latest Hermes release, Hermes
-`main` and the Electric Sheep fork. Windows is untested.
+Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. Streaming voice needs 0.21.6 or newer. CI tests the
+plugin against Hermes 0.21.5 (the floor), the latest Hermes release, Hermes `main` and the Electric Sheep fork. Windows is
+untested.
 
 ## Troubleshooting
 

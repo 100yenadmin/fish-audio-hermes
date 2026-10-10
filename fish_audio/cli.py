@@ -64,6 +64,17 @@ def _login(args):
 
 
 def _version():
+    # Hermes 0.21.6+ gates requires_hermes on version_info's base version, "unknown" included (which loads); report
+    # exactly that. Its __version__ is "0.0.0" without an install stamp, so the fallbacks are for older builds only.
+    try:
+        from hermes_cli.version_info import get_version_info
+    except ImportError:
+        pass
+    else:
+        try:
+            return get_version_info().base_version
+        except Exception:
+            return "unknown"
     try:
         from hermes_cli import __version__
         version = __version__

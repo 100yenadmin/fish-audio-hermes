@@ -1,5 +1,5 @@
 name: fish-audio
-version: 1.3.1
+version: 1.3.2
 description: "Fish Audio voices for Hermes: expressive text-to-speech, speech-to-text, a searchable voice library, voice cloning and voice design, in the CLI, every messaging gateway and the Desktop app. Disclosure — every synthesis, transcription, clone or design call is a paid Fish Audio API request billed to your Fish account (the free s2.1-pro-free model excepted, which Fish may use to improve its models); the plugin sends your key and the text, audio, file names and voice details you ask it to process to api.fish.audio (or the base_url you configure), reads your wallet for balance and model choice, stores your key in Hermes's .env, and collects no telemetry. The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a speaker-consent box, a typed voice name) instead of through Hermes's approval gate; and Use sets the profile's Fish voice, and its speech provider when none is set. Preview and design audio files are deleted from the gateway once returned; a design's audio is held in gateway memory so you can save it, until it is saved, a later design or save finds it over an hour old, or the gateway stops; clone uploads are deleted after the clone, or by the next upload once idle for 15 minutes. With a key set, Desktop reads your Fish wallet when an agent is selected and about every five minutes, for the status-bar credit; favourites stay in Desktop's plugin storage on that computer, and fetched previews stay in the window's memory until it closes."
 author: Electric Sheep
 kind: standalone
@@ -30,7 +30,7 @@ config_schema:
     choices: [auto, "off"]
     default: auto
     label: "Streaming voice"
-    description: "auto streams speech sentence by sentence in Desktop and CLI voice mode on Hermes builds with the plugin streaming hook; off uses whole-file synthesis."
+    description: "auto streams speech sentence by sentence in Desktop and CLI voice mode on Hermes 0.21.6 or later; off uses whole-file synthesis."
   transport:
     type: str
     choices: [http, ws]

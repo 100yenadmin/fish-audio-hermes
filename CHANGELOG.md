@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.2 — 2026-10-10
+
+- **Streaming voice needs Hermes 0.21.6.** Hermes 0.21.6, released 2026-10-08, is the first release with the plugin
+  streaming hook (#133723). The README and the `streaming` setting now say so.
+- **The floor stays at Hermes 0.21.5.** On 0.21.5, including the Desktop app and Termux builds that stay on it until
+  their next bundled release, the plugin keeps working with whole-file speech. A 0.21.6 floor would stop it loading
+  there.
+- **`hermes fish doctor` reports the version Hermes checks `requires_hermes` against.** That version comes from
+  `version_info` on Hermes 0.21.6 and later. Before this, a source checkout without an install stamp showed
+  "Hermes version unknown".
+- **CI tests four Hermes builds:** the 0.21.5 floor, the latest release (0.21.6), `main` and the Electric Sheep fork.
+
 ## 1.3.1 — 2026-10-07
 
 - **Open Plugins lands on the Fish Audio row** (#23). The no-key card's button now opens
