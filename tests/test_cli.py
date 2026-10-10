@@ -200,18 +200,24 @@ def test_doctor_no_synth_exit_and_no_tts(config, monkeypatch, capsys, missing):
     assert all(line.startswith(("ok:", "warn:", "fail:")) for line in output.splitlines())
 
 
-@pytest.mark.parametrize("info,stamp,expected", [("0.21.6", "0.0.0", "0.21.6"), ("unknown", "0.21.5", "0.21.5"),
-    (None, "0.21.5", "0.21.5")])
-def test_version_prefers_the_loader_version_source(monkeypatch, info, stamp, expected):
-    # The doctor reads the version Hermes's requires_hermes gate compares, falling back to __version__ on older builds.
+def _raise():
+    raise RuntimeError("malformed install stamp")
+
+
+@pytest.mark.parametrize("info,stamp,expected", [("0.21.6", "0.0.0", "0.21.6"), ("unknown", "0.21.4", "unknown"),
+    (_raise, "0.21.4", "unknown"), (None, "0.21.5", "0.21.5")])
+def test_version_reports_what_the_requires_hermes_gate_compares(monkeypatch, info, stamp, expected):
+    # Hermes 0.21.6+: exactly version_info's base version, even "unknown" (the gate loads the plugin then); never a
+    # stale __version__ or package metadata. Older builds without version_info fall back to __version__.
     parent = ModuleType("hermes_cli")
     parent.__version__ = stamp
     monkeypatch.setitem(sys.modules, "hermes_cli", parent)
+    monkeypatch.setattr(cli.metadata, "version", lambda name: "0.21.4")
     if info is None:
         monkeypatch.setitem(sys.modules, "hermes_cli.version_info", None)
     else:
         version_info = ModuleType("hermes_cli.version_info")
-        version_info.get_version_info = lambda: SimpleNamespace(base_version=info)
+        version_info.get_version_info = info if callable(info) else (lambda: SimpleNamespace(base_version=info))
         monkeypatch.setitem(sys.modules, "hermes_cli.version_info", version_info)
     assert cli._version() == expected
 
