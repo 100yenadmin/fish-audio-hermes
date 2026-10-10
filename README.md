@@ -217,8 +217,8 @@ the wallet that users can't see.
 
 ## Compatibility
 
-Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. Streaming voice needs 0.21.6 or newer. CI tests it
-against Hermes 0.21.5 (the floor), the latest Hermes release, Hermes `main` and the Electric Sheep fork. Windows is
+Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. Streaming voice needs 0.21.6 or newer. CI tests the
+plugin against Hermes 0.21.5 (the floor), the latest Hermes release, Hermes `main` and the Electric Sheep fork. Windows is
 untested.
 
 ## Troubleshooting
