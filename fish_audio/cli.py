@@ -64,11 +64,18 @@ def _login(args):
 
 
 def _version():
+    # Hermes 0.21.6+ gates requires_hermes on version_info; its __version__ is "0.0.0" without an install stamp.
     try:
-        from hermes_cli import __version__
-        version = __version__
-    except ImportError:
+        from hermes_cli.version_info import get_version_info
+        version = get_version_info().base_version
+    except Exception:
         version = "unknown"
+    if version in {"unknown", "0.0.0"}:
+        try:
+            from hermes_cli import __version__
+            version = __version__
+        except ImportError:
+            pass
     if version in {"unknown", "0.0.0"}:
         try:
             version = metadata.version("hermes-agent")

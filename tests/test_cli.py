@@ -3,7 +3,7 @@ import copy
 import io
 from pathlib import Path
 import sys
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import httpx
 import pytest
@@ -198,6 +198,22 @@ def test_doctor_no_synth_exit_and_no_tts(config, monkeypatch, capsys, missing):
     output = capsys.readouterr().out
     assert "round trip skipped" in output
     assert all(line.startswith(("ok:", "warn:", "fail:")) for line in output.splitlines())
+
+
+@pytest.mark.parametrize("info,stamp,expected", [("0.21.6", "0.0.0", "0.21.6"), ("unknown", "0.21.5", "0.21.5"),
+    (None, "0.21.5", "0.21.5")])
+def test_version_prefers_the_loader_version_source(monkeypatch, info, stamp, expected):
+    # The doctor reads the version Hermes's requires_hermes gate compares, falling back to __version__ on older builds.
+    parent = ModuleType("hermes_cli")
+    parent.__version__ = stamp
+    monkeypatch.setitem(sys.modules, "hermes_cli", parent)
+    if info is None:
+        monkeypatch.setitem(sys.modules, "hermes_cli.version_info", None)
+    else:
+        version_info = ModuleType("hermes_cli.version_info")
+        version_info.get_version_info = lambda: SimpleNamespace(base_version=info)
+        monkeypatch.setitem(sys.modules, "hermes_cli.version_info", version_info)
+    assert cli._version() == expected
 
 
 @pytest.mark.parametrize("version,level,code", [("unknown", "warn", 0), ("0.0.0", "warn", 0),
