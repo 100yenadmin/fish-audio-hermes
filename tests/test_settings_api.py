@@ -117,7 +117,8 @@ def test_alias_refusals_wire(env):
         mock.get(env.active().base + "/model/" + OTHER).respond(404)
         failure = env.post("/aliases", name="voice0", voice=OTHER)
         assert failure == {"ok": False, "kind": "voice_not_found", "message": str(
-            env.api._fa("errors").response_error(404, body=b'{"code":"voice_not_found"}'))}
+            env.api._fa("errors").response_error(404, body=b'{"code":"voice_not_found"}')),
+            "detail": {"request_id": None, "trace_id": None, "code": "voice_not_found", "hint": None}}
     for route in ("/use", "/preview"):
         assert env.post(route, voice="??") == {"ok": False, "kind": "invalid",
             "message": "Unknown voice or name. See `/fish alias`."}

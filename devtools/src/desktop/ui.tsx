@@ -14,7 +14,6 @@ export const card: CSSProperties = {
 }
 
 export function Rows({ n = 4 }: { n?: number }) {
-  const t = usePluginI18n(PLUGIN_ID)
   return (
     <div aria-busy="true" style={{ display: 'grid', gap: 10, padding: '0 24px' }}>
       {Array.from({ length: n }, (_, i) => (
@@ -25,7 +24,6 @@ export function Rows({ n = 4 }: { n?: number }) {
 }
 
 export function BilledNote({ text }: { text: string }) {
-  const t = usePluginI18n(PLUGIN_ID)
   return (
     <p style={{ ...muted, alignItems: 'center', display: 'flex', fontSize: 12, gap: 6, margin: 0 }}>
       <Codicon name="info" />

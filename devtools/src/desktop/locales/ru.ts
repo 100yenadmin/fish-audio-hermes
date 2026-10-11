@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural, usd } from '../format'
+
+const tag = 'ru'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : ru.thisAgent)
 
@@ -51,9 +54,14 @@ export const ru = {
   stop: 'Остановить',
   use: 'Использовать',
   inUse: 'Используется',
-  favourite: 'В избранное',
-  unfavourite: 'Убрать из избранного',
-  uses: (n: number) => `Использований: ${compact(n)}`,
+  previewVoice: (title: string) => `Прослушать ${title}`,
+  stopVoice: (title: string) => `Остановить ${title}`,
+  deleteVoice: (title: string) => `Удалить ${title}`,
+  favouriteVoice: (title: string) => `Добавить ${title} в избранное`,
+  unfavouriteVoice: (title: string) => `Убрать ${title} из избранного`,
+  saveAsN: (n: number) => `Название варианта ${n}`,
+  emptyFile: (name: string) => `Файл ${name} пуст.`,
+  uses: (n: number) => `${compact(tag, n)} ${plural(tag, n, { one: 'использование', few: 'использования', many: 'использований', other: 'использования' })}`,
   noVoices: 'Подходящих голосов нет',
   noFavourites: 'Избранных голосов пока нет',
   noFavouritesHint: 'Отметьте голос звёздочкой в библиотеке, чтобы сохранить его здесь.',
@@ -102,10 +110,10 @@ export const ru = {
   operatorSaved: (title: string) => `Голос ${title} сохранён. Он доступен в библиотеке в разделе «Избранное».`,
   apiCredit: 'Баланс API',
   lowCredit: 'Низкий баланс — пополните его, чтобы голосовые ответы продолжали работать.',
-  topUps: 'Пополнения за всё время',
+  topUpsLine: (amount: string) => `Пополнения за всё время: ${usd(tag, amount)}`,
   freeCredit: 'Доступный бесплатный баланс',
   plan: 'Тариф',
-  planBalance: (balance: number, total: number) => `Осталось ${balance.toLocaleString('ru')} из ${total.toLocaleString('ru')} кредитов`,
+  planBalance: (balance: number, total: number) => `Осталось ${number(tag, balance)} из ${number(tag, total)} кредитов`,
   renews: (date: string) => `Продление: ${date}`,
   periodEnds: (date: string) => `Текущий период заканчивается ${date}`,
   noPlan: 'Нет тарифа приложения',
@@ -116,7 +124,41 @@ export const ru = {
   apiKeys: 'API-ключи',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Баланс API Fish Audio',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  usd: (value: string) => usd(tag, value),
+  errors: {
+    credential: (url: string) => `Укажите действительный API-ключ Fish Audio: ${url}`,
+    quota: (url: string) => `Пополните кредиты API Fish Audio: ${url}; кредиты тарифа приложения и API учитываются отдельно.`,
+    rate_limit: `Достигнут лимит одновременных запросов Fish Audio. По сумме пополнений: менее $100: 5, от $100: 15, от $1k: 50 одновременных запросов. Повторите позже.`,
+    availability: `Fish Audio недоступен. Повторите позже.`,
+    invalid_request: `Fish Audio отклонил запрос синтеза. Проверьте голос и настройки.`,
+    not_found: `Fish Audio не нашёл запрошенный голос или модель.`,
+    too_large: `Запрос Fish Audio слишком большой. Сократите текст или образцы.`,
+    unsupported_media: `Fish Audio не поддерживает этот аудиоформат.`,
+    voice_not_found: (url: string) => `ID голоса не найден или доступен только другому аккаунту. Каталог голосов: ${url}.`,
+    credentialOperator: `Сервис озвучивания отклонил учётные данные. Свяжитесь с оператором этого агента.`,
+    quotaOperator: `У сервиса озвучивания закончились кредиты. Свяжитесь с оператором этого агента.`,
+    rateLimitOperator: `Сервис озвучивания занят. Повторите через некоторое время.`,
+    error: `Произошла ошибка`,
+    badChunkSize: `Шлюз вернул неверный размер блока загрузки.`,
+    code: (code: string) => ` Код: ${code}.`,
+    paidModel: (url: string) => ` Переключитесь на s2.1-pro и пополните баланс: ${url}`,
+    requestId: (id: string) => ` (ID запроса ${id})`,
+    fishTrace: (id: string) => ` (трассировка Fish ${id})`,
+  },
+  refusals: {
+    no_key: `Fish Audio ещё не настроен для этого профиля. Добавьте ключ в Настройки ▸ Плагины ▸ Fish Audio (в более ранних версиях: Возможности ▸ Плагины) или выполните \`hermes fish login\` на машине, где работает Hermes.`,
+    no_keyOperator: `Попросите оператора этого агента завершить настройку Fish Audio.`,
+    not_owner: `Можно удалять только голоса, созданные вашим аккаунтом Fish Audio.`,
+    gone: `Загрузка больше недоступна; добавьте файл заново.`,
+    bad_upload_id: `Неверный идентификатор загрузки.`,
+    consent: `Подтвердите разрешение говорящего на клонирование его голоса.`,
+    managed: `Эта настройка задана оператором агента.`,
+    io_error: `Папка загрузок плагина не является обычной папкой.`,
+    chunk_too_large: `Блок загрузки слишком большой.`,
+    offset: `Смещение не совпадает с количеством загруженных байтов.`,
+    size_mismatch: `Образец загрузился не полностью; добавьте его заново.`,
+    limit: `Для профиля можно сохранить не более 50 имён голосов.`,
+  },
   settings: {
     restart: 'Перезапустите шлюз этого агента, чтобы завершить обновление Fish Audio.',
     voicesPage: 'Страница голосов',
@@ -139,6 +181,7 @@ export const ru = {
     voice: 'Голос',
     voicePlaceholder: 'ID голоса или сохранённое имя',
     add: 'Добавить',
+    removeAlias: (name: string) => `Удалить ${name}`,
     remove: 'Удалить',
     added: (name: string) => `Сохранено: ${name}`,
     updated: (name: string) => `Обновлено: ${name}`,
@@ -152,7 +195,3 @@ export const ru = {
     agentChangedAfterSend: (profile: string) => `Выбранный агент изменился до получения ответа. Изменение применено для ${agentName(profile)}.`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}

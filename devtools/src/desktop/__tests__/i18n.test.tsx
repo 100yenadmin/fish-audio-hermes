@@ -1,7 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { PluginMessages } from '@hermes/plugin-sdk'
 import { createTestContext, host, resetHost, resetQueryCache, setLocale, translate, tEn } from './sdk-mock'
-import { $account, $available, $availableError, $tab, bindContext } from '../api'
+import { $account, $available, $availableError, $tab, ApiError, bindContext, call, errorText } from '../api'
+import { LINKS } from '../strings'
+import { cloneVoice } from '../upload'
 import { VoicesPage } from '../page'
 import plugin from '../plugin'
 import { en } from '../locales/en'
@@ -49,10 +51,10 @@ afterEach(() => {
 })
 
 describe('locale completeness', () => {
-  it.each(Object.entries(locales))('%s has exactly 145 English keys, matching leaf types and arities, and no empty messages', (_locale, messages) => {
+  it.each(Object.entries(locales))('%s has exactly 181 English keys (151 baseline + 30 error keys), matching leaf types and arities, and no empty messages', (_locale, messages) => {
     const english = leaves(en)
     const translated = leaves(messages)
-    expect(Object.keys(english)).toHaveLength(145)
+    expect(Object.keys(english)).toHaveLength(151 + 30)
     expect(Object.keys(translated).sort()).toEqual(Object.keys(english).sort())
     for (const [key, value] of Object.entries(translated)) {
       expect(typeof value, key).toBe(typeof english[key])
@@ -178,7 +180,7 @@ describe('locale change and contribution gate', () => {
       expect(t.ctx.i18n.t('planBalance', 1234567, 2000000), locale).toBe(messages.planBalance(1234567, 2000000))
     }
     expect(de.planBalance(1234567, 2000000)).toBe('1.234.567 von 2.000.000 Credits übrig')
-    expect(en.planBalance(1234567, 2000000)).toBe(`${(1234567).toLocaleString()} of ${(2000000).toLocaleString()} credits left`)
+    expect(en.planBalance(1234567, 2000000)).toBe(`${(1234567).toLocaleString('en')} of ${(2000000).toLocaleString('en')} credits left`)
   })
   it('re-registers visible nav/palette labels in order, updates the mounted chip, and makes no REST calls', async () => {
     const rest = vi.fn(async (path: string) => path === '/account' ? account : { key: true, account: true })
@@ -227,4 +229,58 @@ describe('locale change and contribution gate', () => {
     expect(t.live.get('nav').data.label).toBe(ja.navLabel)
     expect(t.live.has('credit')).toBe(false)
   })
+})
+
+function errorLocale(locale: 'en' | 'ja', operator = false) {
+  const test = context()
+  test.ctx.i18n.register(locales)
+  bindContext(test.ctx as any)
+  setLocale(locale)
+  $available.set({ key: true, version: '1.5.0', account: !operator })
+  return test
+}
+it.each((['en', 'ja'] as const).flatMap(locale => Array.from({ length: 16 }, (_, mask) => ({ locale, mask }))))
+ ('localizes structured suffix combination $mask in $locale, in gateway order', ({ locale, mask }) => {
+    errorLocale(locale)
+    const detail = { code: mask & 1 ? 'custom_code' : null, hint: mask & 2 ? 'paid_model' : null,
+      request_id: mask & 4 ? 'req-1' : null, trace_id: mask & 8 ? 'trace-1' : null }
+    const base = locale === 'en' ? `Set a valid Fish Audio API key: ${LINKS.keys}` : `有効な Fish Audio API キーを設定してください：${LINKS.keys}`
+    const suffixes = locale === 'en' ? [' Code: custom_code.', ` Switch to s2.1-pro and top up: ${LINKS.account}`, ' (request id req-1)', ' (Fish trace trace-1)']
+      : [' コード：custom_code。', ` s2.1-pro に切り替えてチャージしてください：${LINKS.account}`, '（リクエスト ID：req-1）', '（Fish トレース：trace-1）']
+    expect(errorText(new ApiError('credential', 'Do not parse this message', detail)))
+      .toBe(base + suffixes.filter((_, i) => mask & (1 << i)).join(''))
+  })
+it.each(['en', 'ja'] as const)('%s selects operator variants for Fish errors and no_key', locale => {
+  errorLocale(locale, true)
+  for (const [kind, key] of [['credential', 'credentialOperator'], ['quota', 'quotaOperator'], ['rate_limit', 'rateLimitOperator']])
+    expect(errorText(new ApiError(kind, 'fallback', { code: null, hint: null, request_id: null, trace_id: null })))
+      .toBe(translate(locales[locale], `errors.${key}`))
+  expect(errorText(new ApiError('no_key', 'fallback'))).toBe(locales[locale].refusals.no_keyOperator)
+})
+it.each(['en', 'ja'] as const)('%s localizes every fixed refusal and standard Fish kind', locale => {
+  errorLocale(locale)
+  for (const kind of ['no_key', 'not_owner', 'gone', 'bad_upload_id', 'consent', 'managed', 'io_error', 'chunk_too_large', 'offset', 'size_mismatch', 'limit'])
+    expect(errorText(new ApiError(kind, 'fallback'))).toBe(translate(locales[locale], `refusals.${kind}`))
+  for (const kind of ['credential', 'quota', 'rate_limit', 'availability', 'invalid_request', 'not_found', 'too_large', 'unsupported_media', 'voice_not_found']) {
+    const url = kind === 'credential' ? LINKS.keys : kind === 'quota' ? LINKS.account : LINKS.discovery
+    expect(errorText(new ApiError(kind, 'fallback', { code: null, hint: null, request_id: null, trace_id: null })))
+      .toBe(translate(locales[locale], `errors.${kind}`, url))
+    expect(errorText(new ApiError(kind, 'Older gateway text'))).toBe('Older gateway text')
+  }
+})
+it('keeps excluded and unknown kinds and non-ApiErrors, and localizes empty messages', async () => {
+  const test = errorLocale('ja')
+  for (const kind of ['invalid', 'busy', 'operator_account', 'bad_data', 'bad_audio'])
+    expect(errorText(new ApiError(kind, 'Gateway text'))).toBe('Gateway text')
+  expect(errorText(new ApiError('future_kind', 'Gateway text', { code: null, hint: null, request_id: null, trace_id: null }))).toBe('Gateway text')
+  expect(errorText(new Error('Transport text'))).toBe('Transport text')
+  expect(errorText(123)).toBe('123')
+  expect(errorText(new ApiError('error', ''))).toBe(ja.errors.error)
+  vi.spyOn(test.ctx, 'rest').mockResolvedValue({ ok: false })
+  await expect(call('/preview').catch(error => errorText(error))).resolves.toBe(ja.errors.error)
+  const pin = { connectionId: 'test', profile: 'test' }
+  const deps = { current: () => pin, rest: test.ctx.rest }
+  await expect(cloneVoice([new Blob(['audio'])], { title: 'Test', consent: true }, pin, deps).catch(error => errorText(error))).resolves.toBe(ja.errors.error)
+  vi.mocked(test.ctx.rest).mockResolvedValue({ ok: true, chunk_bytes: 0, upload_id: 'test' })
+  await expect(cloneVoice([new Blob(['audio'])], { title: 'Test', consent: true }, pin, deps).catch(error => errorText(error))).resolves.toBe(ja.errors.badChunkSize)
 })

@@ -4,6 +4,7 @@ import { type ChangeEvent, useRef, useState } from 'react'
 
 import { $available, type AgentPin, agentKey, type Candidate, currentAgentEpoch, currentPin, errorText, pluginCtx, post, refreshAvailability, samePin } from './api'
 import { $playing, play, stop } from './audio'
+import { LIMITS } from './limits'
 import { keepCreated } from './favourites'
 import { PLUGIN_ID, useAccountText } from './strings'
 import { BilledNote, card, muted } from './ui'
@@ -12,7 +13,6 @@ import { AgentChanged, cloneVoice, MAX_FILE_BYTES, MAX_FILES } from './upload'
 const label = { display: 'grid', fontSize: 12, gap: 6 } as const
 
 export function CreateTab({ pin }: { pin: AgentPin }) {
-  const t = usePluginI18n(PLUGIN_ID)
   return (
     <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', padding: '0 24px' }}>
       <DesignCard pin={pin} />
@@ -39,6 +39,8 @@ function CloneCard({ pin }: { pin: AgentPin }) {
     event.target.value = ''
     const tooBig = chosen.find(file => file.size > MAX_FILE_BYTES)
     if (chosen.length > MAX_FILES) return setStatus({ key: 'tooMany', args: [] })
+    const empty = chosen.find(file => file.size === 0)
+    if (empty) return setStatus({ key: 'emptyFile', args: [empty.name] })
     if (tooBig) return setStatus({ key: 'tooLarge', args: [tooBig.name] })
     setStatus(null)
     setFiles(chosen)
@@ -91,11 +93,11 @@ function CloneCard({ pin }: { pin: AgentPin }) {
         </div>
         <label style={label}>
           {t('voiceTitle')}
-          <Input disabled={busy} onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} value={title} />
+          <Input maxLength={LIMITS.title} disabled={busy} onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} value={title} />
         </label>
         <label style={label}>
           {t('descriptionOptional')}
-          <Input disabled={busy} onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)} value={description} />
+          <Input maxLength={LIMITS.description} disabled={busy} onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)} value={description} />
         </label>
         <label style={{ alignItems: 'flex-start', display: 'flex', fontSize: 12, gap: 8, lineHeight: 1.4 }}>
           <Checkbox
@@ -187,7 +189,7 @@ function DesignCard({ pin }: { pin: AgentPin }) {
         <Textarea
           aria-label={t('designTitle')}
           disabled={busy !== null}
-          maxLength={500}
+          maxLength={LIMITS.instruction}
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setInstruction(e.target.value)}
           placeholder={t('designPlaceholder')}
           rows={3}
@@ -221,7 +223,8 @@ function DesignCard({ pin }: { pin: AgentPin }) {
                 <>
                   <div style={{ flex: 1, minWidth: 140 }}>
                     <Input
-                      aria-label={`${t('saveAs')} ${i + 1}`}
+                      aria-label={t('saveAsN', i + 1)}
+                      maxLength={LIMITS.title}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setNames({ ...names, [candidate.design_token]: e.target.value })}
                       placeholder={t('saveAs')}
                       value={names[candidate.design_token] ?? ''}

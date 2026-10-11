@@ -1,3 +1,4 @@
+import { LIMITS } from './limits'
 // The Voices page: header, tabs (Library, My voices, Create, Account) and the no-key onboarding card.
 import {
   atom,
@@ -137,7 +138,7 @@ export function Onboarding({ profile, operator }: { profile: string; operator: b
       <div style={{ ...card, maxWidth: 560 }}>
         <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{operator ? t('operatorOnboardTitle') : t('onboardTitle')}</h2>
         <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{operator ? t('operatorOnboardBody') : t('onboardBody', profile)}</p>
-        {!operator && <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingLeft: 20 }}>
+        {!operator && <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingInlineStart: 20 }}>
           <li>{t('onboardStep1')}</li>
           <li>{t('onboardStep2')}</li>
         </ol>}
@@ -230,7 +231,7 @@ function Library({ pin }: { pin: AgentPin }) {
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ width: 280 }}>
-          <SearchField aria-label={t('search')} onChange={setText} placeholder={t('search')} value={text} />
+          <SearchField maxLength={LIMITS.search} aria-label={t('search')} onChange={setText} placeholder={t('search')} value={text} />
         </div>
         <div style={{ width: 160 }}>
           <Select onValueChange={setLanguage} value={language}>
@@ -392,16 +393,16 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
           >
             <Avatar title={voice.title} />
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div dir="auto" style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {voice.title}
               </div>
-              <div style={{ ...muted, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ ...muted, fontSize: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 {parts}
               </div>
             </div>
             <div style={{ alignItems: 'center', display: 'flex', gap: 6 }}>
               <Button
-                aria-label={`${playing === key ? t('stop') : t('preview')} ${voice.title}`}
+                aria-label={t(playing === key ? 'stopVoice' : 'previewVoice', voice.title)}
                 loading={busy === `play:${voice.id}`}
                 onClick={() => void run(`play:${voice.id}`, () => previewVoice(pin, voice.id))}
                 size="xs"
@@ -422,7 +423,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
               </Button>
               {favourites && (
                 <Button
-                  aria-label={favourites.has(voice.id) ? t('unfavourite') : t('favourite')}
+                  aria-label={t(favourites.has(voice.id) ? 'unfavouriteVoice' : 'favouriteVoice', voice.title)}
                   onClick={() => favourites.toggle(voice)}
                   size="icon-xs"
                   style={{ color: favourites.has(voice.id) ? 'var(--ui-orange)' : undefined }}
@@ -432,7 +433,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                 </Button>
               )}
               {onDelete && (
-                <Button aria-label={`${t('delete')} ${voice.title}`} onClick={() => onDelete(voice)} size="icon-xs" variant="ghost">
+                <Button aria-label={t('deleteVoice', voice.title)} onClick={() => onDelete(voice)} size="icon-xs" variant="ghost">
                   <Codicon name="trash" />
                 </Button>
               )}
@@ -445,7 +446,6 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
 }
 
 function Avatar({ title }: { title: string }) {
-  const t = usePluginI18n(PLUGIN_ID)
   const hue = [...title].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360
   return (
     <div
@@ -571,7 +571,7 @@ function AccountTab({ pin }: { pin: AgentPin }) {
         {data.low && <p style={{ color: 'var(--ui-orange)', fontSize: 12, margin: '0 0 8px' }}>{t('lowCredit')}</p>}
         <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
           <div>
-            {t('topUps')}: {t('usd', data.cumulative_top_up)}
+            {t('topUpsLine', data.cumulative_top_up)}
           </div>
           {data.has_free_credit && <div>{t('freeCredit')}</div>}
         </div>
@@ -584,7 +584,7 @@ function AccountTab({ pin }: { pin: AgentPin }) {
       </div>
       <div style={card}>
         <div style={{ ...muted, fontSize: 12 }}>{t('plan')}</div>
-        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: data.package_unavailable ? 'none' : 'capitalize' }}>{data.package_unavailable ? t('planUnavailable') : plan?.type ?? t('noPlan')}</div>
+        <div style={{ fontSize: 20, fontWeight: 600, margin: '4px 0 8px', textTransform: !data.package_unavailable && plan?.type ? 'capitalize' : 'none' }}>{data.package_unavailable ? t('planUnavailable') : plan?.type ?? t('noPlan')}</div>
         {plan && (
           <div style={{ ...muted, fontSize: 12, lineHeight: 1.7 }}>
             {typeof plan.total === 'number' && <div>{t('planBalance', Number(plan.balance ?? 0), plan.total)}</div>}

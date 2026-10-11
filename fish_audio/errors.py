@@ -9,12 +9,15 @@ BILLING_URL = "https://fish.audio/app/developers/billing"
 
 
 class FishAudioError(Exception):
-    def __init__(self, kind, status, request_id, message, *, trace_id=None):
+    def __init__(self, kind, status, request_id, message, *, trace_id=None, code=None, hint=None, standard=False):
         self.kind = kind
         self.status = status
         self.request_id = redact(request_id) if request_id else None
         self.message = redact(message)
         self.trace_id = redact(trace_id) if trace_id else None
+        self.code = redact(code) if code else None
+        self.hint = hint
+        self.standard = standard
         super().__init__(self.message)
 
     def __str__(self):
@@ -72,7 +75,9 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         kind, message = "voice_not_found", by_kind["voice_not_found"]
     if code:
         message += f" Code: {code}."
+    hint = None
     if not operator and ((model == "s2.1-pro-free" and status in {402, 403, 429}) or (defaulted and status == 402 and model != "s2.1-pro")):
+        hint = "paid_model"
         message += f" Switch to s2.1-pro and top up: {BILLING_URL}"
     request_id = headers.get("x-request-id") or data.get("request_id")
     if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", request_id):
@@ -87,6 +92,7 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         trace_id = None
     if key:
         message = message.replace(key, "[redacted]")
+        code = code.replace(key, "[redacted]") if code else None
         request_id = request_id.replace(key, "[redacted]") if request_id else None
         trace_id = trace_id.replace(key, "[redacted]") if trace_id else None
-    return FishAudioError(kind, status, request_id, message, trace_id=trace_id)
+    return FishAudioError(kind, status, request_id, message, trace_id=trace_id, code=code, hint=hint, standard=True)

@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural, usd } from '../format'
+
+const tag = 'zh-Hans'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : zh.thisAgent)
 
@@ -51,9 +54,14 @@ export const zh = {
   stop: '停止',
   use: '使用',
   inUse: '使用中',
-  favourite: '收藏',
-  unfavourite: '取消收藏',
-  uses: (n: number) => `使用 ${compact(n)} 次`,
+  previewVoice: (title: string) => `试听「${title}」`,
+  stopVoice: (title: string) => `停止「${title}」`,
+  deleteVoice: (title: string) => `删除「${title}」`,
+  favouriteVoice: (title: string) => `收藏「${title}」`,
+  unfavouriteVoice: (title: string) => `取消收藏「${title}」`,
+  saveAsN: (n: number) => `候选 ${n} 的名称`,
+  emptyFile: (name: string) => `${name} 是空文件。`,
+  uses: (n: number) => `使用 ${compact(tag, n)} ${plural(tag, n, { other: '次' })}`,
   noVoices: '没有匹配的声音',
   noFavourites: '暂无收藏',
   noFavouritesHint: '在声音库中点击声音的星标，即可将其收藏到这里。',
@@ -102,10 +110,10 @@ export const zh = {
   operatorSaved: (title: string) => `已保存${title}。可在声音库的“收藏”中找到。`,
   apiCredit: 'API 额度',
   lowCredit: '余额不足——请充值以继续使用语音回复。',
-  topUps: '累计充值',
+  topUpsLine: (amount: string) => `累计充值：${usd(tag, amount)}`,
   freeCredit: '可用免费额度',
   plan: '套餐',
-  planBalance: (balance: number, total: number) => `剩余 ${balance.toLocaleString('zh-CN')} / ${total.toLocaleString('zh-CN')} 积分`,
+  planBalance: (balance: number, total: number) => `剩余 ${number(tag, balance)} / ${number(tag, total)} 积分`,
   renews: (date: string) => `续订日期：${date}`,
   periodEnds: (date: string) => `当前周期结束日期：${date}`,
   noPlan: '无应用套餐',
@@ -116,7 +124,41 @@ export const zh = {
   apiKeys: 'API 密钥',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API 额度',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  usd: (value: string) => usd(tag, value),
+  errors: {
+    credential: (url: string) => `请设置有效的 Fish Audio API 密钥：${url}`,
+    quota: (url: string) => `请充值 Fish Audio API 点数：${url}；应用套餐点数与 API 点数分开计算。`,
+    rate_limit: `已达到 Fish Audio 并发请求上限。按累计充值额：低于 $100 为 5 个，达到 $100 为 15 个，达到 $1k 为 50 个并发请求。请稍后重试。`,
+    availability: `Fish Audio 暂时不可用。请稍后重试。`,
+    invalid_request: `Fish Audio 拒绝了语音合成请求。请检查声音和设置。`,
+    not_found: `Fish Audio 找不到所请求的声音或模型。`,
+    too_large: `Fish Audio 请求过大。请减少文本或缩小参考音频。`,
+    unsupported_media: `Fish Audio 不支持此音频格式。`,
+    voice_not_found: (url: string) => `声音 ID 不存在，或属于其他账户的私有声音。浏览声音：${url}。`,
+    credentialOperator: `语音服务的凭据被拒绝。请联系此智能体的运营者。`,
+    quotaOperator: `语音服务点数不足。请联系此智能体的运营者。`,
+    rateLimitOperator: `语音服务繁忙。请稍后重试。`,
+    error: `出现了问题`,
+    badChunkSize: `网关返回了无效的上传分块大小。`,
+    code: (code: string) => ` 错误代码：${code}。`,
+    paidModel: (url: string) => ` 请切换到 s2.1-pro 并充值：${url}`,
+    requestId: (id: string) => `（请求 ID：${id}）`,
+    fishTrace: (id: string) => `（Fish 跟踪：${id}）`,
+  },
+  refusals: {
+    no_key: `此配置尚未设置 Fish Audio。请在设置 ▸ 插件 ▸ Fish Audio（旧版本为技能与工具 ▸ 插件）中添加密钥，或在运行 Hermes 的机器上执行 \`hermes fish login\`。`,
+    no_keyOperator: `请联系此智能体的运营者完成 Fish Audio 设置。`,
+    not_owner: `只能删除您自己的 Fish Audio 账户创建的声音。`,
+    gone: `上传已不可用；请重新添加文件。`,
+    bad_upload_id: `上传标识符无效。`,
+    consent: `请确认您已获得说话者的声音克隆许可。`,
+    managed: `此设置由智能体的运营者管理。`,
+    io_error: `插件的上传目录不是普通文件夹。`,
+    chunk_too_large: `上传分块过大。`,
+    offset: `偏移量与已上传的字节数不符。`,
+    size_mismatch: `一个样本尚未上传完成；请重新添加。`,
+    limit: `每个配置最多可保存 50 个声音名称。`,
+  },
   settings: {
     restart: '重启此智能体的网关，以完成 Fish Audio 的更新。',
     voicesPage: '声音页面',
@@ -139,6 +181,7 @@ export const zh = {
     voice: '声音',
     voicePlaceholder: '声音 ID 或已保存的名称',
     add: '添加',
+    removeAlias: (name: string) => `移除 ${name}`,
     remove: '移除',
     added: (name: string) => `已保存 ${name}`,
     updated: (name: string) => `已更新 ${name}`,
@@ -152,7 +195,3 @@ export const zh = {
     agentChangedAfterSend: (profile: string) => `在收到回复前，所选智能体已更改。此更改已应用于${agentName(profile)}。`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}

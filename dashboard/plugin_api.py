@@ -121,7 +121,11 @@ def _failure(exc: Exception) -> dict:
     try:
         errors, media, support = _fa("errors"), _fa("media"), _fa("tool_support")
         if isinstance(exc, errors.FishAudioError):
-            return {"ok": False, "kind": exc.kind, "message": _redact(str(exc))}
+            result = {"ok": False, "kind": exc.kind, "message": _redact(str(exc))}
+            if exc.standard:
+                result["detail"] = {"request_id": exc.request_id, "trace_id": exc.trace_id,
+                                    "code": exc.code, "hint": exc.hint}
+            return result
         if isinstance(exc, media.InputFileError):
             return {"ok": False, "kind": "bad_audio", "message": _redact(str(exc))}
         if isinstance(exc, support.ToolInputError):

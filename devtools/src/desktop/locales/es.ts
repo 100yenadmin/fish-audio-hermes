@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural, usd } from '../format'
+
+const tag = 'es'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : es.thisAgent)
 
@@ -51,9 +54,14 @@ export const es = {
   stop: 'Detener',
   use: 'Usar',
   inUse: 'En uso',
-  favourite: 'Añadir a favoritos',
-  unfavourite: 'Quitar de favoritos',
-  uses: (n: number) => `${compact(n)} ${n === 1 ? 'uso' : 'usos'}`,
+  previewVoice: (title: string) => `Escuchar ${title}`,
+  stopVoice: (title: string) => `Detener ${title}`,
+  deleteVoice: (title: string) => `Eliminar ${title}`,
+  favouriteVoice: (title: string) => `Añadir ${title} a favoritos`,
+  unfavouriteVoice: (title: string) => `Quitar ${title} de favoritos`,
+  saveAsN: (n: number) => `Nombre ${n}`,
+  emptyFile: (name: string) => `${name} está vacío.`,
+  uses: (n: number) => `${compact(tag, n)} ${plural(tag, n, { one: 'uso', other: 'usos' })}`,
   noVoices: 'No hay voces que coincidan',
   noFavourites: 'Aún no hay favoritos',
   noFavouritesHint: 'Marca una voz con una estrella en la biblioteca para guardarla aquí.',
@@ -102,10 +110,10 @@ export const es = {
   operatorSaved: (title: string) => `${title} guardada. La encontrarás en la Biblioteca, en Favoritos.`,
   apiCredit: 'Crédito API',
   lowCredit: 'Saldo bajo — recarga para que las respuestas de voz sigan funcionando.',
-  topUps: 'Recargas acumuladas',
+  topUpsLine: (amount: string) => `Recargas acumuladas: ${usd(tag, amount)}`,
   freeCredit: 'Crédito gratuito disponible',
   plan: 'Plan',
-  planBalance: (balance: number, total: number) => `Quedan ${balance.toLocaleString('es')} de ${total.toLocaleString('es')} créditos`,
+  planBalance: (balance: number, total: number) => `Quedan ${number(tag, balance)} de ${number(tag, total)} créditos`,
   renews: (date: string) => `Se renueva el ${date}`,
   periodEnds: (date: string) => `El periodo actual termina el ${date}`,
   noPlan: 'Sin plan de la app',
@@ -116,7 +124,41 @@ export const es = {
   apiKeys: 'Claves API',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Crédito API de Fish Audio',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  usd: (value: string) => usd(tag, value),
+  errors: {
+    credential: (url: string) => `Configura una clave API válida de Fish Audio: ${url}`,
+    quota: (url: string) => `Recarga los créditos API de Fish Audio: ${url}; los créditos del plan de la app y de la API son independientes.`,
+    rate_limit: `Se alcanzó el límite de solicitudes simultáneas de Fish Audio. Según las recargas: menos de $100: 5, desde $100: 15, desde $1k: 50 solicitudes simultáneas. Inténtalo más tarde.`,
+    availability: `Fish Audio no está disponible. Inténtalo más tarde.`,
+    invalid_request: `Fish Audio rechazó la solicitud de síntesis. Revisa la voz y los ajustes.`,
+    not_found: `Fish Audio no encontró la voz o el modelo solicitado.`,
+    too_large: `La solicitud a Fish Audio es demasiado grande. Usa menos texto o referencias más pequeñas.`,
+    unsupported_media: `Fish Audio no admite este formato de audio.`,
+    voice_not_found: (url: string) => `El ID de voz no existe o es privado de otra cuenta. Explora las voces en ${url}.`,
+    credentialOperator: `El servicio de voz rechazó las credenciales. Contacta con el operador de este agente.`,
+    quotaOperator: `El servicio de voz no tiene crédito. Contacta con el operador de este agente.`,
+    rateLimitOperator: `El servicio de voz está ocupado. Inténtalo de nuevo en unos instantes.`,
+    error: `Algo salió mal`,
+    badChunkSize: `La pasarela envió un tamaño de bloque de carga no válido.`,
+    code: (code: string) => ` Código: ${code}.`,
+    paidModel: (url: string) => ` Cambia a s2.1-pro y recarga: ${url}`,
+    requestId: (id: string) => ` (ID de solicitud ${id})`,
+    fishTrace: (id: string) => ` (traza de Fish ${id})`,
+  },
+  refusals: {
+    no_key: `Fish Audio aún no está configurado para este perfil. Añade una clave en Configuración ▸ Plugins ▸ Fish Audio (en versiones anteriores: Capacidades ▸ Plugins), o ejecuta \`hermes fish login\` en la máquina donde se ejecuta Hermes.`,
+    no_keyOperator: `Pide al operador de este agente que termine de configurar Fish Audio.`,
+    not_owner: `Solo puedes eliminar voces creadas por tu cuenta de Fish Audio.`,
+    gone: `La carga ya no está disponible; añade el archivo de nuevo.`,
+    bad_upload_id: `El identificador de carga no es válido.`,
+    consent: `Confirma que tienes permiso del hablante para clonar esta voz.`,
+    managed: `El operador de este agente controla este ajuste.`,
+    io_error: `La carpeta de carga del plugin no es una carpeta normal.`,
+    chunk_too_large: `El bloque de carga es demasiado grande.`,
+    offset: `El desplazamiento no coincide con los bytes cargados.`,
+    size_mismatch: `Una muestra no terminó de cargarse; añádela de nuevo.`,
+    limit: `Puedes guardar hasta 50 nombres de voz por perfil.`,
+  },
   settings: {
     restart: 'Reinicia la pasarela de este agente para terminar de actualizar Fish Audio.',
     voicesPage: 'Página de voces',
@@ -139,6 +181,7 @@ export const es = {
     voice: 'Voz',
     voicePlaceholder: 'ID de voz o nombre guardado',
     add: 'Añadir',
+    removeAlias: (name: string) => `Eliminar ${name}`,
     remove: 'Quitar',
     added: (name: string) => `${name} guardado`,
     updated: (name: string) => `${name} actualizado`,
@@ -152,7 +195,3 @@ export const es = {
     agentChangedAfterSend: (profile: string) => `El agente seleccionado cambió antes de que llegara la respuesta. El cambio se aplicó a ${agentName(profile)}.`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}
