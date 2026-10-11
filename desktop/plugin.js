@@ -118,15 +118,16 @@ var agentKey = (pin) => `${pin.connectionId ?? "local"}::${pin.profile}`;
 var postSettings = (body) => post("/settings", body);
 var addAlias = (name, voice) => post("/aliases", { name, voice });
 var removeAlias = (name) => call(`/aliases/${encodeURIComponent(name)}`, { method: "DELETE", timeoutMs: 6e4 });
+function versionParts(version) {
+  if (typeof version !== "string") return null;
+  const core = version.split(/[-+]/)[0];
+  return /^\d+\.\d+\.\d+$/.test(core) ? core.split(".").map(Number) : null;
+}
 function versionAtLeast(version, min) {
-  const parts = (text) => text.split(".").map((part) => parseInt(part, 10));
-  const have = parts(version);
-  const want = parts(min);
-  if (have.some(Number.isNaN)) return false;
-  for (let i = 0; i < want.length; i++) {
-    const a = have[i] ?? 0;
-    if (a !== want[i]) return a > want[i];
-  }
+  const have = versionParts(version);
+  const want = versionParts(min);
+  if (!have || !want) return false;
+  for (let i = 0; i < 3; i++) if (have[i] !== want[i]) return have[i] > want[i];
   return true;
 }
 function gatewayAtLeast(min) {
@@ -956,6 +957,19 @@ function badAliasName(raw) {
   return !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name);
 }
 var shortId = (id) => id.slice(0, 8);
+var CONTROL_HEIGHT = 32;
+var control = { boxSizing: "border-box", height: CONTROL_HEIGHT, width: "100%" };
+var TITLE_FETCHES = 50;
+function VoiceTitle({ pin, id, known, fetch = true }) {
+  const voice = useQuery2({
+    enabled: fetch && !known,
+    queryFn: () => readFor(pin, `/voices/${encodeURIComponent(id)}`),
+    queryKey: ["fish-audio", agentKey(pin), "voice", id],
+    retry: false,
+    staleTime: 3e5
+  });
+  return /* @__PURE__ */ jsx4("bdi", { children: known || voice.data?.voice?.title || shortId(id) });
+}
 function SettingsPage() {
   const t = usePluginI18n5(PLUGIN_ID);
   const available = useValue4($available);
@@ -1016,14 +1030,7 @@ function Sections({ pin, operator }) {
     return () => void generation.current++;
   }, []);
   const current = state?.voice ?? null;
-  const currentVoice = useQuery2({
-    enabled: Boolean(current),
-    queryFn: () => readFor(pin, `/voices/${encodeURIComponent(current ?? "")}`),
-    queryKey: ["fish-audio", agentKey(pin), "voice", current],
-    retry: false,
-    staleTime: 3e5
-  });
-  const titleOf = (id) => currentVoice.data?.voice.id === id && currentVoice.data.voice.title || favourites.find((f) => f.id === id)?.title || shortId(id);
+  const favouriteTitle = (id) => favourites.find((f) => f.id === id)?.title;
   const write = async (id, send, apply) => {
     const i18n = pluginCtx().i18n;
     if (!samePin(currentPin(), pin)) return host4.notify({ kind: "error", message: i18n.t("agentChangedNothingSent") });
@@ -1065,6 +1072,7 @@ function Sections({ pin, operator }) {
     const typed = name.trim();
     void write("add", () => addAlias(typed, aliasVoice.trim()), (res) => {
       setState((s) => s && { ...s, aliases: res.aliases });
+      load();
       setName("");
       setVoice(null);
       saved(pluginCtx().i18n.t(res.updated ? "settings.updated" : "settings.added", typed.toLowerCase()));
@@ -1072,6 +1080,7 @@ function Sections({ pin, operator }) {
   };
   const remove = (alias) => void write(`remove:${alias}`, () => removeAlias(alias), (res) => {
     setState((s) => s && { ...s, aliases: res.aliases });
+    load();
     saved(pluginCtx().i18n.t("settings.removed", alias));
   });
   return /* @__PURE__ */ jsxs4("div", { children: [
@@ -1096,7 +1105,7 @@ function Sections({ pin, operator }) {
           )
         ] }),
         below: managedNote("voice"),
-        description: current ? /* @__PURE__ */ jsx4("bdi", { children: titleOf(current) }) : t("settings.defaultVoice"),
+        description: current ? /* @__PURE__ */ jsx4(VoiceTitle, { id: current, known: favouriteTitle(current), pin }) : t("settings.defaultVoice"),
         title: t("settings.currentVoice")
       }
     ) }),
@@ -1119,7 +1128,7 @@ function Sections({ pin, operator }) {
       /* @__PURE__ */ jsx4("p", { style: { ...muted, fontSize: 12, lineHeight: 1.5, margin: "4px 0 0" }, children: t("settings.namesHint") }),
       managedNote("aliases"),
       state.aliases.length === 0 && /* @__PURE__ */ jsx4("p", { style: { ...muted, fontSize: 13, margin: "8px 0 0" }, children: t("settings.noNames") }),
-      state.aliases.map((alias) => /* @__PURE__ */ jsx4(
+      state.aliases.map((alias, index) => /* @__PURE__ */ jsx4(
         ListRow,
         {
           action: /* @__PURE__ */ jsx4(
@@ -1134,7 +1143,7 @@ function Sections({ pin, operator }) {
               children: t("settings.remove")
             }
           ),
-          description: /* @__PURE__ */ jsx4("bdi", { children: titleOf(alias.voice) }),
+          description: /* @__PURE__ */ jsx4(VoiceTitle, { fetch: index < TITLE_FETCHES, id: alias.voice, known: favouriteTitle(alias.voice), pin }),
           title: /* @__PURE__ */ jsx4("bdi", { children: alias.name })
         },
         alias.name
@@ -1142,49 +1151,53 @@ function Sections({ pin, operator }) {
       /* @__PURE__ */ jsx4(
         ListRow,
         {
-          action: /* @__PURE__ */ jsxs4(Fragment3, { children: [
-            /* @__PURE__ */ jsx4("div", { style: { width: 140 }, children: /* @__PURE__ */ jsx4(
-              Input3,
-              {
-                "aria-label": t("settings.name"),
-                disabled: managed("aliases"),
-                onChange: (e) => {
-                  setName(e.target.value);
-                  setBadName(false);
-                },
-                placeholder: t("settings.name"),
-                value: name
-              }
-            ) }),
-            /* @__PURE__ */ jsx4("div", { style: { width: 240 }, children: /* @__PURE__ */ jsx4(
-              Input3,
-              {
-                "aria-label": t("settings.voice"),
-                disabled: managed("aliases"),
-                onChange: (e) => setVoice(e.target.value),
-                placeholder: t("settings.voicePlaceholder"),
-                value: aliasVoice
-              }
-            ) }),
-            /* @__PURE__ */ jsx4(
-              Button4,
-              {
-                disabled: managed("aliases") || locked || !name.trim() || !aliasVoice.trim(),
-                loading: busy === "add",
-                onClick: add,
-                size: "xs",
-                children: t("settings.add")
-              }
-            )
-          ] }),
           below: /* @__PURE__ */ jsxs4(Fragment3, { children: [
+            /* @__PURE__ */ jsxs4("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }, children: [
+              /* @__PURE__ */ jsx4("div", { style: { flex: "0 1 140px", minWidth: 110 }, children: /* @__PURE__ */ jsx4(
+                Input3,
+                {
+                  "aria-label": t("settings.name"),
+                  disabled: managed("aliases"),
+                  onChange: (e) => {
+                    setName(e.target.value);
+                    setBadName(false);
+                  },
+                  placeholder: t("settings.name"),
+                  style: control,
+                  value: name
+                }
+              ) }),
+              /* @__PURE__ */ jsx4("div", { style: { flex: "1 1 260px", maxWidth: 380, minWidth: 200 }, children: /* @__PURE__ */ jsx4(
+                Input3,
+                {
+                  "aria-label": t("settings.voice"),
+                  disabled: managed("aliases"),
+                  onChange: (e) => setVoice(e.target.value),
+                  placeholder: t("settings.voicePlaceholder"),
+                  style: control,
+                  value: aliasVoice
+                }
+              ) }),
+              /* @__PURE__ */ jsx4(
+                Button4,
+                {
+                  disabled: managed("aliases") || locked || !name.trim() || !aliasVoice.trim(),
+                  loading: busy === "add",
+                  onClick: add,
+                  size: "sm",
+                  style: { height: CONTROL_HEIGHT },
+                  children: t("settings.add")
+                }
+              )
+            ] }),
             badName && /* @__PURE__ */ jsx4("div", { role: "alert", style: { color: "var(--ui-orange)", fontSize: 12, marginTop: 4 }, children: t("settings.badName") }),
             favourites.length > 0 && !managed("aliases") && /* @__PURE__ */ jsxs4("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }, children: [
               /* @__PURE__ */ jsx4("span", { style: { ...muted, fontSize: 12 }, children: t("favouritesOnly") }),
               favourites.slice(0, 8).map((f) => /* @__PURE__ */ jsx4(Button4, { onClick: () => setVoice(f.id), size: "xs", variant: "ghost", children: /* @__PURE__ */ jsx4("bdi", { children: f.title }) }, f.id))
             ] })
           ] }),
-          title: t("settings.addName")
+          title: t("settings.addName"),
+          wide: true
         }
       )
     ] }),
@@ -2737,7 +2750,7 @@ function registerAvailabilityGate(ctx) {
     );
   };
   void probe(true);
-  ctx.setInterval(() => void probe(), PROBE_INTERVAL_MS);
+  const stopInterval = ctx.setInterval(() => void probe(), PROBE_INTERVAL_MS);
   const onAgentChange = () => {
     if (disposed) return;
     endAgentOperations();
@@ -2754,13 +2767,16 @@ function registerAvailabilityGate(ctx) {
     const accountShown = accountRemovers !== null;
     show(false);
     show(true, accountShown);
-  })];
-  ctx.onDispose(() => {
+  }), stopInterval];
+  const end = (hide = false) => {
+    if (disposed) return;
+    if (hide) show(false);
     disposed = true;
     cancelRetry?.();
     stops.forEach((stop2) => stop2());
-  });
-  return { probe };
+  };
+  ctx.onDispose(() => end());
+  return { probe, end };
 }
 function registerSettingsPage(ctx) {
   let remove;
@@ -2769,23 +2785,28 @@ function registerSettingsPage(ctx) {
     remove = ctx.registerSettingsPage?.({ id: "fish-audio", title: ctx.i18n.t("settings.title"), icon: "unmute", render: () => /* @__PURE__ */ jsx5(SettingsPage, {}) });
   };
   add();
-  if (!remove) return;
+  if (!remove) return () => void 0;
   const stop2 = ctx.i18n.onLocaleChange(() => {
     if (disposed) return;
     remove?.();
     add();
   });
-  ctx.onDispose(() => {
+  const end = () => {
+    if (disposed) return;
     disposed = true;
     stop2();
     remove?.();
-  });
+  };
+  ctx.onDispose(end);
+  return end;
 }
+var deactivate;
 var plugin = {
   id: PLUGIN_ID,
   name: "Fish Audio",
   description: "A Voices page for Fish Audio: search and preview the voice library, use a voice, clone or design voices, and see your account.",
   register(ctx) {
+    deactivate?.();
     ctx.i18n.register({ en, zh, "zh-hant": zhHant, ja, ar, ru, fr, de, es });
     bindContext(ctx);
     ctx.register({
@@ -2794,10 +2815,20 @@ var plugin = {
       data: { path: PAGE_PATH },
       render: () => /* @__PURE__ */ jsx5(VoicesPage, {})
     });
-    registerSettingsPage(ctx);
-    setRefresher(registerAvailabilityGate(ctx).probe);
+    const endPage = registerSettingsPage(ctx);
+    const gate = registerAvailabilityGate(ctx);
+    setRefresher(gate.probe);
     ctx.onDispose(releasePlayback);
     ctx.onDispose(endAgentOperations);
+    const mine = () => {
+      endPage();
+      gate.end(true);
+      endAgentOperations();
+    };
+    deactivate = mine;
+    ctx.onDispose(() => {
+      if (deactivate === mine) deactivate = void 0;
+    });
   }
 };
 var plugin_default = plugin;

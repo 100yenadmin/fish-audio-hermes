@@ -24,11 +24,17 @@ type Call = { path: string; method?: string; body?: any }
 type Rest = (path: string, opts?: any) => Promise<any>
 
 /** The 1.4.0 gateway: GET /settings, the current voice's title, and the writes, each answering per the wire contract. */
-const gateway = (state = SETTINGS, writes: Rest = async () => ({ ok: true })): Rest => async (path, opts) => {
+const TITLES: Record<string, string> = { [A]: 'Warm narrator', [B]: 'Bright host' }
+/** `state` may be a function, so a write can change what the next GET /settings returns. */
+const gateway = (state: SettingsResponse | (() => SettingsResponse) = SETTINGS, writes: Rest = async () => ({ ok: true })): Rest => async (path, opts) => {
   if (path === '/available') return { ok: true, plugin: 'fish-audio', version: '1.4.0', key: true, account: true }
   if (path === '/account') return { ok: true, credit: '5', cumulative_top_up: '5', has_free_credit: false, low: false, package: null, links: {} }
-  if (path === '/settings' && !opts?.method) return state
-  if (path.startsWith('/voices/')) return { ok: true, voice: { id: A, title: 'Warm narrator' } }
+  if (path === '/settings' && !opts?.method) return typeof state === 'function' ? state() : state
+  if (path.startsWith('/voices/')) {
+    const id = path.slice('/voices/'.length)
+    if (!TITLES[id]) throw new Error(`Error invoking remote method 'hermes:api': Error: 404: {"detail":"Not Found"}`)
+    return { ok: true, voice: { id, title: TITLES[id] } }
+  }
   return writes(path, opts)
 }
 
@@ -109,7 +115,7 @@ describe('settings page body', () => {
     expect(calls).toEqual([])
   })
 
-  it.each(['1.3.3', '1.3.10', ''])('a gateway at %j asks for a restart and keeps the Voices-page link', version => {
+  it.each(['1.3.3', '1.3.10', '', '1.4junk.0', 'dev'])('a gateway at %j asks for a restart and keeps the Voices-page link', version => {
     const navigate = vi.spyOn(host, 'navigate')
     const { calls } = mount(gateway(), { key: true, version, account: true })
     expect(screen.getByText(en.settings.restart)).toBeTruthy()
@@ -194,7 +200,8 @@ describe('settings page writes', () => {
   it('Add posts exactly {name, voice} and lists the answer', async () => {
     const notify = vi.spyOn(host, 'notify')
     const aliases = [{ name: 'host', voice: B }, { name: 'narrator', voice: A }]
-    const { writes } = mount(gateway(SETTINGS, async () => ({ ok: true, aliases, updated: false })))
+    let server = SETTINGS
+    const { writes } = mount(gateway(() => server, async () => ((server = { ...SETTINGS, aliases }), { ok: true, aliases, updated: false })))
     await flush()
     fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: ' Host ' } })
     fireEvent.change(screen.getByLabelText(en.settings.voice), { target: { value: B } })
@@ -202,6 +209,7 @@ describe('settings page writes', () => {
     await flush()
     expect(writes()).toEqual([{ path: '/aliases', method: 'POST', body: { name: 'Host', voice: B } }])
     expect(screen.getByText('host')).toBeTruthy()
+    expect(screen.getByText('Bright host')).toBeTruthy()  // the new name's voice title, fetched once
     expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.settings.added('host') })
     expect((screen.getByLabelText(en.settings.name) as HTMLInputElement).value).toBe('')
   })
@@ -244,7 +252,8 @@ describe('settings page writes', () => {
   })
 
   it('Remove sends exactly DELETE /aliases/{name} and lists the answer', async () => {
-    const { writes } = mount(gateway(SETTINGS, async () => ({ ok: true, aliases: [] })))
+    let server = SETTINGS
+    const { writes } = mount(gateway(() => server, async () => ((server = { ...SETTINGS, aliases: [] }), { ok: true, aliases: [] })))
     await flush()
     fireEvent.click(screen.getByRole('button', { name: `${en.settings.remove} narrator` }))
     await flush()
@@ -327,9 +336,104 @@ describe('settings page writes', () => {
   })
 })
 
+describe('fix pass 1', () => {
+  it('an alias write reloads /settings, so a model change made meanwhile shows after the write', async () => {
+    let server = SETTINGS
+    const aliases = [{ name: 'host', voice: B }, { name: 'narrator', voice: A }]
+    const { calls } = mount(gateway(() => server, async () => ({ ok: true, aliases, updated: false })))
+    await flush()
+    expect(document.querySelector('[data-select]')!.getAttribute('data-select')).toBe('s2.1-pro')
+    server = { ...SETTINGS, model: 's1', aliases }  // another surface (the CLI, /fish model) changed the model
+    fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: 'host' } })
+    fireEvent.click(screen.getByRole('button', { name: en.settings.add }))
+    await flush()
+    expect(calls.filter(c => c.path === '/settings' && !c.method)).toHaveLength(2)
+    expect(document.querySelector('[data-select]')!.getAttribute('data-select')).toBe('s1')
+    fireEvent.click(screen.getByRole('button', { name: `${en.settings.remove} host` }))
+    await flush()
+    expect(calls.filter(c => c.path === '/settings' && !c.method)).toHaveLength(3)
+  })
+
+  it('a refresh after an alias write that lands after an agent switch changes nothing', async () => {
+    let finish!: (value: unknown) => void
+    const { calls } = mount(gateway(SETTINGS, async () => new Promise(resolve => { finish = resolve })))
+    await flush()
+    fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: 'host' } })
+    fireEvent.click(screen.getByRole('button', { name: en.settings.add }))
+    vi.spyOn(host.state.profile, 'get').mockReturnValue('other')
+    await act(async () => finish({ ok: true, aliases: [], updated: false }))
+    await flush()
+    expect(calls.filter(c => c.path === '/settings' && !c.method)).toHaveLength(1)  // no re-read for the other agent
+    expect(screen.getByText('narrator')).toBeTruthy()
+  })
+
+  it("alias rows show their voice's title, fetched once per agent and voice, with the short id on any error", async () => {
+    const C = 'c'.repeat(32)
+    const { calls } = mount(gateway({ ...SETTINGS, voice: null,
+      aliases: [{ name: 'host', voice: B }, { name: 'lost', voice: C }, { name: 'narrator', voice: A }, { name: 'twin', voice: A }] }))
+    await flush()
+    expect(screen.getByText('Bright host')).toBeTruthy()
+    expect(screen.getAllByText('Warm narrator')).toHaveLength(2)
+    expect(screen.getByText(C.slice(0, 8))).toBeTruthy()  // 404 → short id
+    expect(calls.filter(c => c.path.startsWith('/voices/')).map(c => c.path).sort()).toEqual([`/voices/${A}`, `/voices/${B}`, `/voices/${C}`])
+  })
+
+  it('a favourite title needs no fetch, and at most 50 alias titles are fetched', async () => {
+    const ids = Array.from({ length: 52 }, (_, i) => i.toString(16).padStart(32, '0'))
+    const rest = gateway({ ...SETTINGS, voice: null, aliases: ids.map((voice, i) => ({ name: `n${String(i).padStart(2, '0')}`, voice })) })
+    const calls: string[] = []
+    const t = createTestContext({ rest: async (path, opts) => (calls.push(path), rest(path, opts)) })
+    t.stored.set('favourites:conn-1::default', [{ id: ids[0], title: 'Starred' }])
+    bindContext(t.ctx as any)
+    $available.set({ key: true, version: '1.4.0', account: true })
+    render(<SettingsPage />)
+    await flush()
+    expect(screen.getAllByText('Starred')).toHaveLength(2)  // the n00 row and its quick-fill chip
+    const fetched = new Set(calls.filter(path => path.startsWith('/voices/')))
+    expect(fetched.has(`/voices/${ids[0]}`)).toBe(false)
+    expect(fetched.size).toBe(49)  // aliases 1–49: the first 50 rows less the favourite
+    expect(fetched.has(`/voices/${ids[50]}`)).toBe(false)
+  })
+
+  it('a second activation without a dispose replaces the first: no stacked listeners, probes or settings pages', async () => {
+    const calls: string[] = []
+    const rest = gateway()
+    const t = createTestContext({ rest: async (path, opts) => (calls.push(path), rest(path, opts)) })
+    let pages = 0
+    let localeListeners = 0
+    const listen = t.ctx.i18n.onLocaleChange
+    Object.assign(t.ctx.i18n, {
+      onLocaleChange: (fn: () => void) => {
+        localeListeners++
+        const stop = listen(fn)
+        return () => (localeListeners--, stop())
+      }
+    })
+    Object.assign(t.ctx, { registerSettingsPage: () => (pages++, () => void pages--) })
+    plugin.register(t.ctx as any)
+    await flush()
+    const single = localeListeners
+    plugin.register(t.ctx as any)
+    await flush()
+    expect(localeListeners).toBe(single)
+    expect(pages).toBe(1)
+    setLocale('ja')
+    expect(pages).toBe(1)
+    expect(t.live.get('nav').data.label).toBe(ja.navLabel)
+    calls.length = 0
+    t.tickIntervals()
+    await flush()
+    expect(calls.filter(path => path === '/available')).toHaveLength(1)
+    t.dispose()
+    expect(pages).toBe(0)
+    expect(localeListeners).toBe(0)
+  })
+})
+
 describe('gateway version compare', () => {
-  it.each([['1.4.0', true], ['1.4.1', true], ['1.10.0', true], ['2.0', true], ['1.4', true], ['1.4.0rc1', true],
-    ['1.3.9', false], ['1.3.10', false], ['0.9.9', false], ['', false], ['dev', false]])('%j ≥ 1.4.0 is %s', (version, ok) => {
+  it.each([['1.4.0', true], ['1.4.1', true], ['1.10.0', true], ['2.0.0', true], ['1.4.0-rc.1', true], ['1.4.0+build.7', true],
+    ['1.3.9', false], ['1.3.10', false], ['0.9.9', false], ['1.4junk.0', false], ['1.4', false], ['2.0', false], ['1.4.0rc1', false],
+    ['1.4.0.1', false], [' 1.4.0', false], ['', false], [undefined, false], [null, false], ['dev', false]])('%j ≥ 1.4.0 is %s', (version, ok) => {
     expect(versionAtLeast(version, '1.4.0')).toBe(ok)
   })
 })

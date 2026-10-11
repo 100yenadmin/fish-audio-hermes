@@ -15,7 +15,7 @@ import {
   usePluginI18n,
   useValue
 } from '@hermes/plugin-sdk'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react'
 
 import {
   $available,
@@ -52,15 +52,31 @@ const HEX32 = /^[0-9a-f]{32}$/
 const NAME = /^[a-z][a-z0-9_-]{1,31}$/
 const RESERVED = ['add', 'remove', 'list', 'current', 'default']
 
-/** Decision 2's name rule, checked before sending; the gateway stays authoritative. A non-ASCII name goes to the
- *  gateway unchecked: its casefold can differ from toLowerCase. */
+/** Decision 2's name rule, checked before sending; the gateway stays authoritative. */
 export function badAliasName(raw: string): boolean {
   const name = raw.trim().toLowerCase()
-  if (/[^\x00-\x7f]/.test(name)) return false
+  if (/[^\x00-\x7f]/.test(name)) return false  // the gateway decides: Python casefold makes 'straße' a valid 'strasse'
   return !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name)
 }
 
 const shortId = (id: string) => id.slice(0, 8)
+const CONTROL_HEIGHT = 32
+const control: CSSProperties = { boxSizing: 'border-box', height: CONTROL_HEIGHT, width: '100%' }
+/** Alias rows fetch at most this many titles (the gateway allows 50 names). */
+const TITLE_FETCHES = 50
+
+/** A voice's title: from favourites when known, else GET /voices/{id} (free; cached per agent and voice id). The short
+ *  id on any error. */
+function VoiceTitle({ pin, id, known, fetch = true }: { pin: AgentPin; id: string; known?: string; fetch?: boolean }) {
+  const voice = useQuery({
+    enabled: fetch && !known,
+    queryFn: () => readFor<{ voice: Voice }>(pin, `/voices/${encodeURIComponent(id)}`),
+    queryKey: ['fish-audio', agentKey(pin), 'voice', id],
+    retry: false,
+    staleTime: 300_000
+  })
+  return <bdi>{known || voice.data?.voice?.title || shortId(id)}</bdi>
+}
 
 export function SettingsPage() {
   const t = usePluginI18n(PLUGIN_ID)
@@ -154,15 +170,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
   }, [])
 
   const current = state?.voice ?? null
-  const currentVoice = useQuery({
-    enabled: Boolean(current),
-    queryFn: () => readFor<{ voice: Voice }>(pin, `/voices/${encodeURIComponent(current ?? '')}`),
-    queryKey: ['fish-audio', agentKey(pin), 'voice', current],
-    retry: false,
-    staleTime: 300_000
-  })
-  const titleOf = (id: string) =>
-    (currentVoice.data?.voice.id === id && currentVoice.data.voice.title) || favourites.find(f => f.id === id)?.title || shortId(id)
+  const favouriteTitle = (id: string) => favourites.find(f => f.id === id)?.title
 
   /** One write at a time. Each re-checks the agent before sending and after the answer: an answer that arrives after
    *  the agent changed (even A→B→A) changes nothing on this page. */
@@ -218,6 +226,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
     const typed = name.trim()
     void write('add', () => addAlias(typed, aliasVoice.trim()), res => {
       setState(s => s && { ...s, aliases: res.aliases })
+      load()  // the alias routes answer only the names; voice, model and managed may have moved meanwhile
       setName('')
       setVoice(null)
       saved(pluginCtx().i18n.t(res.updated ? 'settings.updated' : 'settings.added', typed.toLowerCase()))
@@ -226,6 +235,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
   const remove = (alias: string) =>
     void write(`remove:${alias}`, () => removeAlias(alias), res => {
       setState(s => s && { ...s, aliases: res.aliases })
+      load()
       saved(pluginCtx().i18n.t('settings.removed', alias))
     })
 
@@ -255,7 +265,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
             </>
           }
           below={managedNote('voice')}
-          description={current ? <bdi>{titleOf(current)}</bdi> : t('settings.defaultVoice')}
+          description={current ? <VoiceTitle id={current} known={favouriteTitle(current)} pin={pin} /> : t('settings.defaultVoice')}
           title={t('settings.currentVoice')}
         />
       </Section>
@@ -287,7 +297,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
         <p style={{ ...muted, fontSize: 12, lineHeight: 1.5, margin: '4px 0 0' }}>{t('settings.namesHint')}</p>
         {managedNote('aliases')}
         {state.aliases.length === 0 && <p style={{ ...muted, fontSize: 13, margin: '8px 0 0' }}>{t('settings.noNames')}</p>}
-        {state.aliases.map(alias => (
+        {state.aliases.map((alias, index) => (
           <ListRow
             action={
               <Button
@@ -301,47 +311,49 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
                 {t('settings.remove')}
               </Button>
             }
-            description={<bdi>{titleOf(alias.voice)}</bdi>}
+            description={<VoiceTitle fetch={index < TITLE_FETCHES} id={alias.voice} known={favouriteTitle(alias.voice)} pin={pin} />}
             key={alias.name}
             title={<bdi>{alias.name}</bdi>}
           />
         ))}
+        {/* A full-width row: [Name] [Voice] [Add] on one line, equal heights; they wrap together on a narrow pane. */}
         <ListRow
-          action={
-            <>
-              <div style={{ width: 140 }}>
-                <Input
-                  aria-label={t('settings.name')}
-                  disabled={managed('aliases')}
-                  onChange={(e: { target: { value: string } }) => {
-                    setName(e.target.value)
-                    setBadName(false)
-                  }}
-                  placeholder={t('settings.name')}
-                  value={name}
-                />
-              </div>
-              <div style={{ width: 240 }}>
-                <Input
-                  aria-label={t('settings.voice')}
-                  disabled={managed('aliases')}
-                  onChange={(e: { target: { value: string } }) => setVoice(e.target.value)}
-                  placeholder={t('settings.voicePlaceholder')}
-                  value={aliasVoice}
-                />
-              </div>
-              <Button
-                disabled={managed('aliases') || locked || !name.trim() || !aliasVoice.trim()}
-                loading={busy === 'add'}
-                onClick={add}
-                size="xs"
-              >
-                {t('settings.add')}
-              </Button>
-            </>
-          }
           below={
             <>
+              <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                <div style={{ flex: '0 1 140px', minWidth: 110 }}>
+                  <Input
+                    aria-label={t('settings.name')}
+                    disabled={managed('aliases')}
+                    onChange={(e: { target: { value: string } }) => {
+                      setName(e.target.value)
+                      setBadName(false)
+                    }}
+                    placeholder={t('settings.name')}
+                    style={control}
+                    value={name}
+                  />
+                </div>
+                <div style={{ flex: '1 1 260px', maxWidth: 380, minWidth: 200 }}>
+                  <Input
+                    aria-label={t('settings.voice')}
+                    disabled={managed('aliases')}
+                    onChange={(e: { target: { value: string } }) => setVoice(e.target.value)}
+                    placeholder={t('settings.voicePlaceholder')}
+                    style={control}
+                    value={aliasVoice}
+                  />
+                </div>
+                <Button
+                  disabled={managed('aliases') || locked || !name.trim() || !aliasVoice.trim()}
+                  loading={busy === 'add'}
+                  onClick={add}
+                  size="sm"
+                  style={{ height: CONTROL_HEIGHT }}
+                >
+                  {t('settings.add')}
+                </Button>
+              </div>
               {badName && <div role="alert" style={{ color: 'var(--ui-orange)', fontSize: 12, marginTop: 4 }}>{t('settings.badName')}</div>}
               {favourites.length > 0 && !managed('aliases') && (
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
@@ -356,6 +368,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
             </>
           }
           title={t('settings.addName')}
+          wide
         />
       </Section>
       <Section title={t('settings.linksSection')}>
