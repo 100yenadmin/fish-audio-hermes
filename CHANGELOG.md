@@ -5,7 +5,8 @@
 - **Live dictation.** On Hermes 0.21.6+, `stt.provider: fish-audio` and `stt.streaming: true` show captions phrase by
   phrase in CLI voice mode, the TUI and Desktop's composer mic, with final text about half a second after you stop.
   Each committed phrase is billed at Fish's ASR price, rounded up to a second; a phrase needs at least 300 ms of sound
-  (100 ms for a last word after an earlier phrase), so a pause is never committed on its own.
+  (100 ms for a last word after an earlier phrase), so a pause is never committed on its own, and pauses between phrases
+  are not streamed beyond the half second before each phrase.
 - Uses Fish's ElevenLabs-compatible realtime endpoint on `api.fish.audio`. A failed live session falls back quietly to
   file transcription; if Fish has not answered the last phrase 15 s after you stop, the text holds only the phrases it
   already returned. Hermes 0.21.5, self-hosted endpoints and plugin-host isolation keep the file path.

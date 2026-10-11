@@ -31,11 +31,13 @@ class LiveServer:
             ws.send(json.dumps({"message_type": "session_started"}))
             if self.error == "input_error":
                 ws.send(json.dumps({"message_type": "input_error", "error": KEY}))
+            if self.error == "huge":
+                ws.send(json.dumps({"message_type": "padding", "text": "x" * 2 ** 21}))
             for message in ws:
                 frame = json.loads(message)
                 self.frames.append(frame)
                 if frame["commit"]:
-                    if self.error and self.error != "input_error":
+                    if self.error and self.error not in ("input_error", "huge"):
                         ws.send(json.dumps({"message_type": "transcriber_error", "error": self.error + KEY}))
                     elif self.answers > 0:
                         text = "Hello" if self.answers == 99 else self.second
@@ -104,10 +106,11 @@ def test_silence_only(live):
     server, session = live()
     session.push_audio(SILENCE * 2300)
     assert session.finalize()["error_kind"] == "no_speech"
-    assert server.closed.wait(2) and not any(frame["commit"] for frame in server.frames)
+    assert server.closed.wait(2) and not server.frames  # silence alone is never streamed
 
 
-@pytest.mark.parametrize("error,kind", [("Invalid Token", "auth"), ("broken", "unavailable"), ("input_error", None)])
+@pytest.mark.parametrize("error,kind", [("Invalid Token", "auth"), ("broken", "unavailable"), ("input_error", None),
+        ("huge", "unavailable")])
 def test_server_errors(live, caplog, error, kind):
     _, session = live(error=error)
     session.push_audio(SPEECH * 20)
@@ -146,6 +149,36 @@ def test_watchdog(live, monkeypatch, limit):
     assert server.closed.wait(1)
     session.push_audio(SPEECH)  # expiry never reconnects
     assert len(server.headers) == 1
+
+
+def test_polling_is_not_activity(live, monkeypatch):
+    monkeypatch.setattr(live_stt, "IDLE_TIMEOUT", .2)
+    server, session = live()
+    session.push_audio(SPEECH)
+    end = time.monotonic() + 2
+    while not server.closed.is_set() and time.monotonic() < end:
+        session.partial_transcript()  # Hermes polls even when no audio arrives
+        time.sleep(.02)
+    assert server.closed.is_set()
+
+
+def test_pauses_are_not_streamed(live):
+    server, session = live()
+    session.push_audio(SILENCE * 500 + SPEECH * 50 + SILENCE * 35)  # a 10 s pause before the first phrase
+    assert wait_partial(session) == "Hello"
+    session.push_audio(SILENCE * 1000 + SPEECH * 20)  # a 20 s pause before the last one
+    assert session.finalize()["transcript"] == "Hello world."
+    sent = sum(len(base64.b64decode(frame["audio_base_64"])) for frame in server.frames)
+    lead_in = live_stt.LEAD_IN_FRAMES
+    assert sent == (lead_in + 50 + 35 + lead_in + 20) * live_stt.FRAME_BYTES
+
+
+@pytest.mark.parametrize("base,url", [("https://api.fish.audio", "wss://api.fish.audio/"),
+        ("http://127.0.0.1:9", "ws://127.0.0.1:9/"), ("https://localhost:8443", "wss://localhost:8443/")])
+def test_live_url_scheme(monkeypatch, base, url):
+    monkeypatch.setattr(stt, "transport_settings", lambda: {"base_url": base})
+    monkeypatch.setattr(stt, "fish_api_key", lambda: KEY)
+    assert stt.FishAudioTranscriptionProvider().open_stream_session()._url.startswith(url + "compat/")
 
 
 def test_capability_matrix(monkeypatch):

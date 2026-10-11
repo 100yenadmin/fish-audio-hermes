@@ -15,6 +15,7 @@ SILENCE_RMS_THRESHOLD = 200  # Hermes voice_mode scale; no core import
 FINALIZE_TIMEOUT = 15
 IDLE_TIMEOUT = 30
 MAX_SESSION_SECONDS = 3500
+LEAD_IN_FRAMES = 25  # 500 ms sent before a phrase's first voiced frame; earlier pause audio is never sent
 logger = logging.getLogger(__name__)
 _CJK = re.compile(r"[\u2e80-\u30ff\u31f0-\u31ff\u3400-\u9fff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\uf900-\ufaff"
                   r"\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uffdc\U0001aff0-\U0001afff\U0001b000-\U0001b16f\U00020000-\U000323af]")
@@ -91,7 +92,7 @@ class FishLiveSession(TranscriptionStreamSession):
     def _connect(self):
         from websockets.sync.client import connect
         self._socket = connect(self._url, additional_headers={"xi-api-key": self._key, "User-Agent": self._agent},
-                               user_agent_header=None, open_timeout=8, close_timeout=1, max_size=None)
+                               user_agent_header=None, open_timeout=8, close_timeout=1, max_size=1024 * 1024)  # transcript events are small
         self._connected = self._activity = time.monotonic()
         self._watch()
         event = json.loads(self._socket.recv(timeout=8))
@@ -121,6 +122,8 @@ class FishLiveSession(TranscriptionStreamSession):
                 if self._detector.feed(frame):
                     self._send(self._held, True)
                     self._held.clear()
+                elif not self._detector.speech:
+                    del self._held[:-LEAD_IN_FRAMES * FRAME_BYTES]  # a pause is never streamed, so never billed
                 elif len(self._held) >= 6 * FRAME_BYTES:
                     self._send(self._held[:-FRAME_BYTES], False)
                     del self._held[:-FRAME_BYTES]  # always retain real audio for the final commit
@@ -141,8 +144,7 @@ class FishLiveSession(TranscriptionStreamSession):
         elif kind == "input_error":
             logger.debug("Fish live input error; continuing.")  # never log server-controlled text
 
-    def partial_transcript(self):
-        self._activity = time.monotonic()
+    def partial_transcript(self):  # Hermes polls this every 250 ms, so it is not session activity
         try:
             while self._socket is not None and not self._failed:
                 self._receive(0)

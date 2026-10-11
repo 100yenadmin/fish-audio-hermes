@@ -73,7 +73,7 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
         base, loopback = _live_base()
         if not loopback and base.hostname != "api.fish.audio":
             raise ValueError("Fish Audio live transcription requires api.fish.audio.")
-        url = ("ws" if loopback else "wss") + "://" + base.netloc
+        url = ("wss" if base.scheme == "https" else "ws") + "://" + base.netloc
         url += "/compat/elevenlabs/v1/speech-to-text/realtime?audio_format=pcm_16000&commit_strategy=manual"
         # Capture safe text now; the worker and watchdog never resolve secrets or settings.
         errors = {kind: redact(text) for kind, text in {
