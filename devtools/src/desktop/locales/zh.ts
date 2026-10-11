@@ -116,7 +116,42 @@ export const zh = {
   apiKeys: 'API 密钥',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API 额度',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    title: 'Fish Audio',
+    restart: '重启此智能体的网关，以完成 Fish Audio 的更新。',
+    voicesPage: '声音页面',
+    voiceSection: '声音',
+    currentVoice: '当前声音',
+    defaultVoice: 'Fish 默认声音',
+    change: '更改',
+    reset: '重置',
+    resetDone: '声音已重置为 Fish 默认值',
+    modelSection: '语音模型',
+    model: '模型',
+    modelHint: '用于此智能体的语音回复。',
+    defaultModel: 'Fish 默认',
+    modelSaved: '语音模型已保存',
+    namesSection: '声音名称',
+    namesHint: '在任何需要输入声音 ID 的地方都可以使用名称，例如 /fish use narrator。',
+    noNames: '还没有名称',
+    addName: '添加名称',
+    name: '名称',
+    voice: '声音',
+    voicePlaceholder: '声音 ID 或已保存的名称',
+    add: '添加',
+    remove: '移除',
+    added: (name: string) => `已保存 ${name}`,
+    updated: (name: string) => `已更新 ${name}`,
+    removed: (name: string) => `已移除 ${name}`,
+    badName: '请使用 2–32 个字母、数字、- 或 _，并以字母开头。不能使用声音 ID，也不能使用 add、remove、list、current 和 default。',
+    linksSection: '链接',
+    fishAccount: 'Fish Audio 账户',
+    agentSettingsNote: 'API 密钥、服务器地址、流式传输和传输方式位于“智能体设置”中。',
+    managed: '由此智能体的运营者设置',
+    loadFailed: '无法加载设置',
+    agentChangedAfterSend: (profile: string) => `在收到回复前，所选智能体已更改。此更改已应用于${agentName(profile)}。`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {
