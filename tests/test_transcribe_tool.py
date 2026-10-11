@@ -45,7 +45,7 @@ def test_asr_fields_exact_model_timeout_and_raw_markers(model, file, wire):
         assert result["request_id"] == "from-header" and result["language_code"] == "en"
         request = route.calls.last.request
         assert dict(request.headers)["model"] == wire
-        assert request.extensions["timeout"]["read"] == 600
+        assert request.extensions["timeout"]["read"] == 900
         assert b'name="ignore_timestamps"\r\n\r\ntrue' in request.content
         if wire == "transcribe-1-pro":
             assert b'name="tag_audio_events"\r\n\r\nfalse' in request.content

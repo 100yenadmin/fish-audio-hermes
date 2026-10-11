@@ -1,0 +1,36 @@
+{
+  "fetch_date": "2026-10-11",
+  "fish_audio_api_skill_sha256": "ab8ebd4c4fa82c10c7c0bee4aabfbaf9ed637809ee8bd8adc446e077aafbd41b",
+  "known_model_ids": [
+    "drama-3-preview",
+    "s1",
+    "s2-pro",
+    "s2.1-pro",
+    "s2.1-pro-free",
+    "transcribe-1",
+    "transcribe-1-pro",
+    "transcribe-1pro",
+    "voice-design-1"
+  ],
+  "changelog_labels_seen": [
+    "Drama 3 Preview",
+    "Fish Audio S1",
+    "Fish Audio S1 retirement",
+    "Fish Audio S2",
+    "Fish Audio S2.1 Pro",
+    "Transcribe 1 Pro",
+    "v0.2.0",
+    "v1.0.0",
+    "v1.1.0",
+    "v1.1.1",
+    "v1.1.2",
+    "v1.2",
+    "v1.2.1",
+    "v1.4.0",
+    "v1.4.1",
+    "v1.4.2",
+    "v1.4.3",
+    "v1.5.0",
+    "v1.5.1"
+  ]
+}

@@ -11,3 +11,5 @@ dist-tmp/
 .test-home/
 pinned/
 coverage/
+devtools/node_modules/
+devtools/pinned/

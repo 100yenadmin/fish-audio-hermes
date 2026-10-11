@@ -68,7 +68,7 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
     known_message = data.get("message")
     if resolved_kind in by_kind:
         kind, message = resolved_kind, by_kind[resolved_kind]
-    elif status in {400, 404} and isinstance(known_message, str) and known_message.lower() in {"reference not found", "model not found"}:
+    elif status in {None, 400, 404} and isinstance(known_message, str) and known_message.lower() in {"reference not found", "model not found"}:
         kind, message = "voice_not_found", by_kind["voice_not_found"]
     if code:
         message += f" Code: {code}."

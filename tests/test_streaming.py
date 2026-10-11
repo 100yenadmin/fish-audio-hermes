@@ -344,3 +344,10 @@ def test_operator_streaming_missing_key_presentation(monkeypatch):
         speak()
     assert exc.value.kind == "credential"
     assert exc.value.message == "Ask the operator of this agent to finish the Fish Audio setup."
+
+
+def test_ws_bad_reference_maps_to_voice_not_found(live):
+    live([{"event": "error", "error": "Reference not found"}])
+    with pytest.raises(FishAudioError, match="The voice id was not found") as exc:
+        speak()
+    assert exc.value.kind == "voice_not_found"

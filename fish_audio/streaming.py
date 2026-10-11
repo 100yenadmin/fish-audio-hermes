@@ -6,7 +6,7 @@ Hermes builds without the hook never call it and speak each sentence with whole-
 import logging
 import os
 
-from . import client, settings
+from . import client, models, settings
 from .errors import FishAudioError
 from .models import MODELS
 from .secrets import fish_api_key
@@ -61,6 +61,7 @@ def stream_pcm(text, *, voice=None, model=None, speed=None):
             raise FishAudioError("credential", None, None, setup_message())
         params, _ = settings.resolve_tts(voice, model, speed, None, "stream.wav", key=key)
         base_url = params.pop("base_url")
+        params["model"] = models.effective_model(params["model"])
         family = next(row["family"] for row in MODELS if row["id"] == params["model"])
         params.update(text=adapt_tags(text, family), format="pcm", sample_rate=SAMPLE_RATE)
         params.setdefault("latency", "balanced")

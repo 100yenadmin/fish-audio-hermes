@@ -1,7 +1,7 @@
 """Three explicit Fish Audio tools; ordinary read-aloud stays with Hermes TTS."""
 from uuid import uuid4
 
-from . import client, hooks, media, settings, tags
+from . import client, hooks, media, models, settings, tags
 from .models import MODELS
 from .secrets import fish_api_key
 from .tool_support import require, voice_id, run
@@ -16,6 +16,7 @@ def _speak(args, key, base, session, *, record_media=True):
     require(isinstance(text, str) and bool(text.strip()), "Nothing to say: the text is empty.")
     model, source = settings.resolve_model_source(args.get("model"), key=key, base_url=base, prefer_call=True)
     defaulted = source != "configured"
+    model = models.effective_model(model)
     row = next(row for row in MODELS if row["id"] == model)
     nested = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio"))
     voice = args.get("voice")
@@ -107,7 +108,7 @@ B = _field("boolean")
 STRINGS = _field("array", items=S)
 VOICE = _field("string", pattern="^[A-Za-z0-9_-]{8,128}$")
 SCHEMAS = {
-    "fish_speak": {"text": S, "voice": VOICE, "model": _field("string", enum=[r["id"] for r in MODELS]),
+    "fish_speak": {"text": S, "voice": VOICE, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
         "speakers": _field("array", items=VOICE, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,

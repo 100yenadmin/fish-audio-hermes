@@ -2,7 +2,7 @@
 import re
 import threading
 
-from . import account, client, settings, state, tools
+from . import account, client, models, settings, state, tools
 from .errors import FishAudioError, response_error
 from .models import MODEL_IDS
 from .secrets import fish_api_key, redact
@@ -58,6 +58,7 @@ def status(key=None):
     return "\n".join((f"Key set: {'yes' if key else 'no'}", f"TTS: {tts.get('provider') or 'unset'} (Fish: {tts.get('provider') == 'fish-audio'})",
         f"STT: {stt.get('provider') or 'unset'} (Fish: {stt.get('provider') == 'fish-audio'})",
         f"Voice: {nested.get('voice') or tts.get('voice') or 'Fish default'}", f"Model: {model} ({reason})",
+        *(("warn: " + models.s1_warning(),) if nested.get("model") == "s1" else ()),
         *(("Account: managed by the operator",) if operator else
           (f"API credit: {wallet.credit if wallet else 'unknown'}", f"Plan: {package.get('type', 'unknown') if package else 'unknown'}")),
         f"Last failure: {' · '.join(failure) if failure else 'none'}", f"Plugin: {client.PLUGIN_VERSION}",
@@ -139,6 +140,8 @@ def handle(raw_args=""):
             model, _ = settings.resolve_model(rest, key=key, base_url=base)
             if rest == "s2.1-pro-free" and model != rest:
                 return "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
+            if rest == "s1":
+                return "Saved.\n" + models.s1_warning()
             return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" and not settings.operator_account() else "")
         if command == "preview":
             ident, _, text = rest.partition(" ")

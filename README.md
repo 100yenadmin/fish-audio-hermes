@@ -10,14 +10,23 @@ cloned or designed voices, and accurate speech-to-text. It works in the Hermes C
 supports and the Desktop app.
 
 ```bash
-hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable
+hermes plugins install fish-audio --enable
 hermes fish login        # paste your key from https://fish.audio/app/api-keys
 ```
 
-Hermes 0.21.5 installs the plugin's Python dependencies automatically. Newer Hermes builds ask first;
-add `--yes-deps` there to answer yes. `hermes fish login` checks the key against your Fish account, saves it to the
-active profile. It makes Fish Audio the speech and transcription provider where none is set, and replaces another
-provider only if you confirm at the prompt or pass `--yes`. Once Fish Audio is the provider, voice replies,
+This installs the reviewed release pinned in the Hermes plugin catalog. To follow the repository's latest `main` instead:
+
+```bash
+hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable
+```
+
+On Hermes 0.21.6 and newer, Hermes asks before installing the plugin's Python dependencies; in a script, add
+`--yes-deps`. Hermes 0.21.5 installs them without asking and has no `--yes-deps` flag. On either version,
+`hermes plugins enable fish-audio` afterwards also installs them.
+
+`hermes fish login` checks the key against your Fish account and saves it to the active profile. It makes Fish
+Audio the speech and transcription provider where none is set, and replaces another provider only if you confirm
+at the prompt or pass `--yes`. Once Fish Audio is the provider, voice replies,
 read-aloud and voice notes go through it.
 
 ## What you get
@@ -90,7 +99,7 @@ The Voices page follows Hermes Desktop's display language: English, Simplified C
 (`zh-hant`), Japanese (`ja`), Arabic (`ar`), Russian (`ru`), French (`fr`), German (`de`) and Spanish (`es`).
 Changing the display language updates the page, sidebar, status bar and command palette without a reload.
 The translations are machine-authored and checked against Hermes Desktop's own wording; native-speaker corrections
-are welcome as pull requests to `src/desktop/locales/`.
+are welcome as pull requests to `devtools/src/desktop/locales/`.
 
 The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
 
@@ -107,7 +116,11 @@ The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
 | ![Create: design a voice from a description and save a candidate, or clone one from recordings with the speaker's consent](docs/media/screenshot-desktop-create.png) | ![Account: API credit, plan credits, top-up and plan links](docs/media/screenshot-desktop-account.png) |
 
 The page has two halves in one package: routes that run **on the agent's gateway** and screens that run **in
-Hermes Desktop**. To install from Desktop:
+Hermes Desktop**. On the same computer, where Desktop and the agent share a Hermes home (the usual local install),
+Desktop picks up the desktop half by itself after the CLI install. Open **Capabilities → Plugins → Fish Audio**,
+switch on **Desktop**, and restart the gateway once.
+
+For Desktop connected to an agent on another machine, install from Desktop:
 
 1. Open **Capabilities → Plugins → Install from Git**, enter `https://github.com/100yenadmin/fish-audio-hermes`,
    choose **Review repository**, then **Install**. Desktop installs the agent half into the connected agent and
@@ -116,8 +129,7 @@ Hermes Desktop**. To install from Desktop:
    you turn them on.
 3. **Restart the agent's gateway** once. Hermes mounts plugin routes only at startup.
 
-If you installed the plugin with `hermes plugins install` on the gateway machine, do steps 1 and 2 on each
-computer that runs Desktop, and restart the gateway once after upgrading to 0.3.0. The **Voices** row appears only
+The **Voices** row appears only
 for agents whose gateway has the plugin; an agent without a Fish Audio key shows a card that links to the key page
 and the plugin's settings.
 
@@ -219,7 +231,14 @@ the wallet that users can't see.
 
 Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. Streaming voice needs 0.21.6 or newer. CI tests the
 plugin against Hermes 0.21.5 (the floor), the latest Hermes release, Hermes `main` and the Electric Sheep fork. Windows is
-untested.
+untested. CI also runs Python 3.14.
+
+### Performance
+
+Measured on 2026-10-11 from Tokyo with plugin v1.3.2, N=3, p50: HTTP streaming time to first audio was
+0.293 s on s2.1-pro, 0.266 s on s2-pro and 0.244 s on s1. Whole-file MP3 synthesis of 310 characters took
+3.605 s on s2.1-pro and 2.209 s on s2-pro. On a clean synthetic speech corpus, transcribe-1-pro had English
+word error rate (WER) 1.8% and Japanese/Chinese character error rate (CER) 0. These numbers depend on region and load.
 
 ## Troubleshooting
 
@@ -246,3 +265,8 @@ also alters `<|speaker:N|>` markup on that path: use `fish_speak` for multi-spea
 
 Apache-2.0. Maintained by [Electric Sheep](https://github.com/100yenadmin) with the Fish Audio team.
 Fish Audio is a trademark of Hanabi AI Inc.
+
+## Development
+
+Run JavaScript tooling from `devtools/`: `cd devtools && npm ci && npm run typecheck && npm test`.
+`npm run check:bundle` checks the committed `desktop/plugin.js`; `npm run build` rebuilds it.

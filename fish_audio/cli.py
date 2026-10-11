@@ -7,7 +7,7 @@ import sys
 import tempfile
 import time
 
-from . import account, commands, settings
+from . import account, commands, models, settings
 from .errors import FishAudioError, response_error
 from .secrets import fish_api_key, redact
 from .tool_support import require, ToolInputError
@@ -95,6 +95,8 @@ def _doctor(args):
         failed = failed or level == "fail"
         print(f"{level}: {text}")
     key, base, cfg = fish_api_key(), commands.base_url(), settings._config()
+    if settings._mapping(settings._mapping(cfg.get("tts")).get("fish-audio")).get("model") == "s1":
+        line("warn", models.s1_warning())
     line("ok" if key else "fail", "Key present" if key else "Key absent; run hermes fish login")
     if key:
         started = time.monotonic()

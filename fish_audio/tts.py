@@ -1,6 +1,6 @@
 """Hermes's ordinary text_to_speech provider."""
 from ._compat import TTSProvider
-from . import client, settings
+from . import client, models, settings
 from .models import MODELS
 from .secrets import fish_api_key
 from .settings import FREE_MODEL_NOTICE, resolve_tts
@@ -65,6 +65,7 @@ class FishAudioTTSProvider(TTSProvider):
             raise ValueError(setup_message())
         params, final_path = resolve_tts(voice, model, speed, format, output_path, key=key)
         base_url = params.pop("base_url")
+        params["model"] = models.effective_model(params["model"])
         family = next(row["family"] for row in MODELS if row["id"] == params["model"])
         params["text"] = adapt_tags(text, family)
         metadata = extra.get("result_metadata")
