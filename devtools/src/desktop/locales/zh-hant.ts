@@ -116,7 +116,42 @@ export const zhHant = {
   apiKeys: 'API 金鑰',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API 額度',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    title: 'Fish Audio',
+    restart: '重新啟動此代理的閘道，以完成 Fish Audio 的更新。',
+    voicesPage: '聲音頁面',
+    voiceSection: '聲音',
+    currentVoice: '目前聲音',
+    defaultVoice: 'Fish 預設聲音',
+    change: '變更',
+    reset: '重設',
+    resetDone: '聲音已重設為 Fish 預設值',
+    modelSection: '語音模型',
+    model: '模型',
+    modelHint: '用於此代理的語音回覆。',
+    defaultModel: 'Fish 預設',
+    modelSaved: '語音模型已儲存',
+    namesSection: '聲音名稱',
+    namesHint: '在任何需要輸入聲音 ID 的地方都能使用名稱，例如 /fish use narrator。',
+    noNames: '尚無名稱',
+    addName: '新增名稱',
+    name: '名稱',
+    voice: '聲音',
+    voicePlaceholder: '聲音 ID 或已儲存的名稱',
+    add: '新增',
+    remove: '移除',
+    added: (name: string) => `已儲存 ${name}`,
+    updated: (name: string) => `已更新 ${name}`,
+    removed: (name: string) => `已移除 ${name}`,
+    badName: '請使用 2–32 個字母、數字、- 或 _，並以字母開頭。不能使用聲音 ID，也不能使用 add、remove、list、current 和 default。',
+    linksSection: '連結',
+    fishAccount: 'Fish Audio 帳戶',
+    agentSettingsNote: 'API 金鑰、伺服器位址、串流和傳輸方式位於「代理程式設定」中。',
+    managed: '由此代理的營運者設定',
+    loadFailed: '無法載入設定',
+    agentChangedAfterSend: (profile: string) => `在收到回覆前，所選代理已變更。此變更已套用至${agentName(profile)}。`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

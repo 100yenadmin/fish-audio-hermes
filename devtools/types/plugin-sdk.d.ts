@@ -64,6 +64,16 @@ declare module '@hermes/plugin-sdk' {
     rest<T = unknown>(path: string, opts?: PluginRestOptions): Promise<T>
     os: PluginOs
     storage: PluginStorage
+    /** Settings ▸ Plugins (Hermes Desktop 0.21.6+). Absent on older hosts and the fork: always call it as
+     *  `ctx.registerSettingsPage?.(...)`. Returns a disposer that removes the page by id. */
+    registerSettingsPage?: (page: {
+      id: string
+      title: string
+      icon?: string
+      order?: number
+      render: () => ReactNode
+      children?: Array<{ id: string; title: string; render: () => ReactNode }>
+    }) => () => void
   }
 
   export interface HermesPlugin {
@@ -158,6 +168,7 @@ declare module '@hermes/plugin-sdk' {
   export const EmptyState: ComponentType<any>
   export const ErrorState: ComponentType<any>
   export const Input: ComponentType<any>
+  export const ListRow: ComponentType<any>
   export const SearchField: ComponentType<any>
   export const Select: ComponentType<any>
   export const SelectContent: ComponentType<any>

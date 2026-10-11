@@ -116,7 +116,42 @@ export const ja = {
   apiKeys: 'API キー',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API クレジット',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    title: 'Fish Audio',
+    restart: 'Fish Audio の更新を完了するには、このエージェントのゲートウェイを再起動してください。',
+    voicesPage: 'ボイスページ',
+    voiceSection: 'ボイス',
+    currentVoice: '現在のボイス',
+    defaultVoice: 'Fish の既定のボイス',
+    change: '変更',
+    reset: 'リセット',
+    resetDone: 'ボイスを Fish の既定に戻しました',
+    modelSection: '音声モデル',
+    model: 'モデル',
+    modelHint: 'このエージェントの音声返信に使われます。',
+    defaultModel: 'Fish の既定',
+    modelSaved: '音声モデルを保存しました',
+    namesSection: 'ボイス名',
+    namesHint: 'ボイス ID を入力する場所ならどこでも名前を使えます。例：/fish use narrator',
+    noNames: 'まだ名前はありません',
+    addName: '名前を追加',
+    name: '名前',
+    voice: 'ボイス',
+    voicePlaceholder: 'ボイス ID または保存した名前',
+    add: '追加',
+    remove: '削除',
+    added: (name: string) => `${name} を保存しました`,
+    updated: (name: string) => `${name} を更新しました`,
+    removed: (name: string) => `${name} を削除しました`,
+    badName: '英字で始まる 2〜32 文字の英数字、- または _ を使ってください。ボイス ID と add、remove、list、current、default は使えません。',
+    linksSection: 'リンク',
+    fishAccount: 'Fish Audio アカウント',
+    agentSettingsNote: 'API キー、サーバーアドレス、ストリーミング、転送方式は「エージェント設定」にあります。',
+    managed: 'このエージェントの運用者が設定しています',
+    loadFailed: '設定を読み込めませんでした',
+    agentChangedAfterSend: (profile: string) => `応答が届く前に選択中のエージェントが変更されました。変更は${agentName(profile)}に適用されています。`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

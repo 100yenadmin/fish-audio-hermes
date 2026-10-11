@@ -17,6 +17,7 @@ import {
 import { releasePlayback } from './audio'
 import { $account, $available, $availableError, $tab, type Account, bindContext, currentAgentEpoch, endAgentOperations, isNotFoundError, setRefresher } from './api'
 import { VoicesPage } from './page'
+import { SettingsPage } from './settings-page'
 import { en } from './locales/en'
 import { zh } from './locales/zh'
 import { zhHant } from './locales/zh-hant'
@@ -207,6 +208,30 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   return { probe }
 }
 
+/** Settings ▸ Plugins ▸ Fish Audio (Hermes Desktop 0.21.6+; older hosts and the fork lack the member, so nothing is
+ *  registered there). Registered unconditionally: gating it on /available would un-fold and re-fold the host's
+ *  "Agent settings" form (which holds the API key) as availability flaps. Only the page body follows availability. */
+export function registerSettingsPage(ctx: PluginContext) {
+  let remove: (() => void) | undefined
+  let disposed = false
+  const add = () => {
+    remove = ctx.registerSettingsPage?.({ id: 'fish-audio', title: ctx.i18n.t('settings.title'), icon: 'unmute', render: () => <SettingsPage /> })
+  }
+  add()
+  if (!remove) return
+  const stop = ctx.i18n.onLocaleChange(() => {
+    if (disposed) return
+    // The old disposer first: a disposer removes by id, so calling it after registering again would remove the new page.
+    remove?.()
+    add()
+  })
+  ctx.onDispose(() => {
+    disposed = true
+    stop()
+    remove?.()
+  })
+}
+
 const plugin: HermesPlugin = {
   id: PLUGIN_ID,
   name: 'Fish Audio',
@@ -220,6 +245,7 @@ const plugin: HermesPlugin = {
       data: { path: PAGE_PATH } satisfies RouteContribution,
       render: () => <VoicesPage />
     })
+    registerSettingsPage(ctx)
     setRefresher(registerAvailabilityGate(ctx).probe)
     ctx.onDispose(releasePlayback)
     ctx.onDispose(endAgentOperations)

@@ -133,3 +133,61 @@ export const currentPin = (): AgentPin => ({ connectionId: host.state.connection
 export const samePin = (a: AgentPin, b: AgentPin) => a.connectionId === b.connectionId && a.profile === b.profile
 
 export const agentKey = (pin: AgentPin) => `${pin.connectionId ?? 'local'}::${pin.profile}`
+
+// ---- Settings ▸ Plugins ▸ Fish Audio (gateway 1.4.0+). Shapes follow the v1.4.0 wire contract exactly.
+
+export type SettingsKey = 'aliases' | 'model' | 'voice'
+
+export interface ModelOption {
+  id: string
+  display: string
+  deprecated: boolean
+}
+
+export interface VoiceAlias {
+  name: string
+  voice: string
+}
+
+export interface SettingsResponse {
+  ok: true
+  /** The configured nested values; null means Fish's default. */
+  voice: null | string
+  model: null | string
+  models: ModelOption[]
+  aliases: VoiceAlias[]
+  managed: SettingsKey[]
+}
+
+export interface AliasesResponse {
+  ok: true
+  aliases: VoiceAlias[]
+}
+
+export const getSettings = () => call<SettingsResponse>('/settings')
+
+/** `model: null` removes the configured model; `voice` accepts only null (voices are set through /use). */
+export const postSettings = (body: { model?: null | string; voice?: null }) => post<SettingsResponse>('/settings', body)
+
+export const addAlias = (name: string, voice: string) => post<AliasesResponse & { updated: boolean }>('/aliases', { name, voice })
+
+export const removeAlias = (name: string) => call<AliasesResponse>(`/aliases/${encodeURIComponent(name)}`, { method: 'DELETE', timeoutMs: 60_000 })
+
+/** True when dotted version `version` is at least `min` (numeric parts; a suffix like `rc1` is ignored). */
+export function versionAtLeast(version: string, min: string): boolean {
+  const parts = (text: string) => text.split('.').map(part => parseInt(part, 10))
+  const have = parts(version)
+  const want = parts(min)
+  if (have.some(Number.isNaN)) return false
+  for (let i = 0; i < want.length; i++) {
+    const a = have[i] ?? 0
+    if (a !== want[i]) return a > want[i]
+  }
+  return true
+}
+
+/** Whether the selected agent's gateway half is at least `min`, from its /available answer. */
+export function gatewayAtLeast(min: string): boolean {
+  const available = $available.get()
+  return available ? versionAtLeast(available.version, min) : false
+}
