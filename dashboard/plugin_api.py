@@ -124,7 +124,7 @@ def _failure(exc: Exception) -> dict:
             result = {"ok": False, "kind": exc.kind, "message": _redact(str(exc))}
             if exc.standard:
                 result["detail"] = {"request_id": exc.request_id, "trace_id": exc.trace_id,
-                                    "code": exc.code, "hint": exc.hint}
+                                    "code": exc.code, "hint": exc.hint, "text": exc.text}
             return result
         if isinstance(exc, media.InputFileError):
             return {"ok": False, "kind": "bad_audio", "message": _redact(str(exc))}
@@ -171,7 +171,10 @@ def _scope():
     """The requesting profile's key and API base URL, read fresh for this call."""
     key = _fa("secrets").fish_api_key()
     if not key:
-        raise Refusal("no_key", "Ask the operator of this agent to finish the Fish Audio setup." if _fa("settings").operator_account() else NO_KEY)
+        operator = _fa("settings").operator_account()
+        # detail.text names the sentence, so Desktop never re-derives operator mode from a stale probe.
+        raise Refusal("no_key", "Ask the operator of this agent to finish the Fish Audio setup." if operator else NO_KEY,
+                      detail={"text": "no_keyOperator" if operator else "no_key"})
     return key, _fa("commands").base_url()
 
 

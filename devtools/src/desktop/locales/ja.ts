@@ -127,6 +127,7 @@ export const ja = {
   usd: (value: string) => usd(tag, value),
   errors: {
     credential: (url: string) => `有効な Fish Audio API キーを設定してください：${url}`,
+    credentialAccess: (url: string) => `Fish Audio API キーとアクセス権を確認してください：${url}`,
     quota: (url: string) => `Fish Audio API クレジットをチャージしてください：${url}。アプリのプランと API のクレジットは別です。`,
     rate_limit: `Fish Audio の同時リクエスト数の上限に達しました。累計チャージ額が $100 未満なら 5 件、$100 以上なら 15 件、$1k 以上なら 50 件です。時間をおいて再試行してください。`,
     availability: `Fish Audio を利用できません。時間をおいて再試行してください。`,

@@ -130,6 +130,7 @@ export const ar = {
   usd: money,
   errors: {
     credential: (url: string) => `أضف مفتاح API صالحًا لـ Fish Audio: ${isolate(url)}`,
+    credentialAccess: (url: string) => `تحقّق من مفتاح API لـ Fish Audio وصلاحيات الوصول: ${isolate(url)}`,
     quota: (url: string) => `اشحن رصيد API لـ Fish Audio: ${isolate(url)}؛ رصيد خطة التطبيق منفصل عن رصيد API.`,
     rate_limit: `بلغ Fish Audio حد الطلبات المتزامنة. حسب إجمالي الشحن: أقل من $100: 5، من $100: 15، من $1k: 50 طلبًا متزامنًا. حاول لاحقًا.`,
     availability: `Fish Audio غير متاح. حاول لاحقًا.`,

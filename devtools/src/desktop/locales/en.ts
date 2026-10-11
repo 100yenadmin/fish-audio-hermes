@@ -132,6 +132,7 @@ export const en = {
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   errors: {
     credential: (url: string) => `Set a valid Fish Audio API key: ${url}`,
+    credentialAccess: (url: string) => `Check your Fish Audio API key and access: ${url}`,
     quota: (url: string) => `Top up Fish Audio API credits: ${url}; app plan credits are separate from API credits.`,
     rate_limit: `Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, ≥$100: 15, ≥$1k: 50 concurrent requests. Retry later.`,
     availability: `Fish Audio is unavailable. Try again later.`,

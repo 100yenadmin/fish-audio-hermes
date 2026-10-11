@@ -127,6 +127,7 @@ export const fr = {
   usd: (value: string) => usd(tag, value),
   errors: {
     credential: (url: string) => `Configurez une clé API Fish Audio valide : ${url}`,
+    credentialAccess: (url: string) => `Vérifiez votre clé API Fish Audio et ses droits d’accès : ${url}`,
     quota: (url: string) => `Rechargez les crédits API Fish Audio : ${url} ; les crédits du forfait de l’application et de l’API sont distincts.`,
     rate_limit: `La limite de requêtes simultanées Fish Audio est atteinte. Selon les recharges : moins de $100 : 5, à partir de $100 : 15, à partir de $1k : 50 requêtes simultanées. Réessayez plus tard.`,
     availability: `Fish Audio est indisponible. Réessayez plus tard.`,

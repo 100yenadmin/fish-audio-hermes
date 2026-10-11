@@ -127,6 +127,7 @@ export const de = {
   usd: (value: string) => usd(tag, value),
   errors: {
     credential: (url: string) => `Gültigen Fish Audio API-Schlüssel einrichten: ${url}`,
+    credentialAccess: (url: string) => `Fish Audio API-Schlüssel und Zugriffsrechte prüfen: ${url}`,
     quota: (url: string) => `Fish Audio API-Guthaben aufladen: ${url}; App-Tarif und API haben getrennte Guthaben.`,
     rate_limit: `Fish Audio hat das Limit gleichzeitiger Anfragen erreicht. Nach Aufladebetrag: unter $100: 5, ab $100: 15, ab $1k: 50 gleichzeitige Anfragen. Später erneut versuchen.`,
     availability: `Fish Audio ist nicht verfügbar. Später erneut versuchen.`,

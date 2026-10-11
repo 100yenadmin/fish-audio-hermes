@@ -65,10 +65,12 @@ export const $tab = atom<'account' | 'create' | 'library' | 'mine'>('library')
 
 /** An in-band `{ok:false, kind, message}` answer, raised so callers can show it. */
 export interface ErrorDetail {
-  request_id: string | null
-  trace_id: string | null
-  code: string | null
-  hint: string | null
+  request_id?: string | null
+  trace_id?: string | null
+  code?: string | null
+  hint?: string | null
+  /** The bundle key of the sentence the gateway chose (its operator wording, 401 or 403); absent = keep its text. */
+  text?: string | null
 }
 
 export class ApiError extends Error {
@@ -130,22 +132,25 @@ export function httpStatus(error: unknown): null | number {
 }
 
 const FIXED_TEXT = new Set(['no_key', 'not_owner', 'gone', 'bad_upload_id', 'consent', 'managed', 'io_error', 'chunk_too_large', 'offset', 'size_mismatch', 'limit'])
+/** Sentences a gateway may name in `detail.text`: Fish API errors, and the refusals with an operator variant. */
+const NAMED = {
+  errors: new Set(['credential', 'credentialAccess', 'credentialOperator', 'quota', 'quotaOperator', 'rate_limit', 'rateLimitOperator',
+    'availability', 'invalid_request', 'not_found', 'too_large', 'unsupported_media', 'voice_not_found']),
+  refusals: new Set(['no_key', 'no_keyOperator'])
+}
 
 export function errorText(error: unknown): string {
   if (!(error instanceof ApiError)) return error instanceof Error ? error.message : String(error)
   const t = pluginCtx().i18n.t
   if (error.kind === 'bad_chunk_size') return t('errors.badChunkSize')
-  const available = $available.get()
-  const operator = available && available.account === false
-  const localized = (group: string, kind: string, url?: string) => {
-    const key = `${group}.${kind}`
-    const variant = `${group}.${kind === 'rate_limit' ? 'rateLimit' : kind}Operator`
-    if (operator && t(variant, url) !== variant) return t(variant, url)
-    return t(key, url) !== key ? t(key, url) : null
-  }
+  const sentence = (key: string, url?: string) => (t(key, url) !== key ? t(key, url) : null)
   if (error.detail) {
+    // The gateway chose the sentence for this request (operator wording, 401 or 403); this bundle only supplies the words.
+    // A sentence the bundles lack, or no name at all, keeps the gateway's own text, which already carries every id.
+    const group = FIXED_TEXT.has(error.kind) ? 'refusals' : 'errors'
+    const name = error.detail.text
     const url = error.kind === 'credential' ? LINKS.keys : error.kind === 'quota' ? LINKS.account : LINKS.discovery
-    const base = localized('errors', error.kind, url)
+    const base = typeof name === 'string' && NAMED[group].has(name) ? sentence(`${group}.${name}`, url) : null
     if (base !== null) {
       let text = base
       const { code, hint, request_id, trace_id } = error.detail
@@ -158,7 +163,10 @@ export function errorText(error: unknown): string {
       return text
     }
   } else if (FIXED_TEXT.has(error.kind)) {
-    const text = localized('refusals', error.kind)
+    // A gateway without detail (1.5.0 and older): fixed refusal texts by kind, operator wording from the last probe.
+    const available = $available.get()
+    const variant = `refusals.${error.kind}Operator`
+    const text = (available && available.account === false ? sentence(variant) : null) ?? sentence(`refusals.${error.kind}`)
     if (text !== null) return text
   }
   return error.message || t('errors.error')

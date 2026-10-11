@@ -132,21 +132,34 @@ function httpStatus(error) {
   return match ? Number(match[1]) : null;
 }
 var FIXED_TEXT = /* @__PURE__ */ new Set(["no_key", "not_owner", "gone", "bad_upload_id", "consent", "managed", "io_error", "chunk_too_large", "offset", "size_mismatch", "limit"]);
+var NAMED = {
+  errors: /* @__PURE__ */ new Set([
+    "credential",
+    "credentialAccess",
+    "credentialOperator",
+    "quota",
+    "quotaOperator",
+    "rate_limit",
+    "rateLimitOperator",
+    "availability",
+    "invalid_request",
+    "not_found",
+    "too_large",
+    "unsupported_media",
+    "voice_not_found"
+  ]),
+  refusals: /* @__PURE__ */ new Set(["no_key", "no_keyOperator"])
+};
 function errorText(error) {
   if (!(error instanceof ApiError)) return error instanceof Error ? error.message : String(error);
   const t = pluginCtx().i18n.t;
   if (error.kind === "bad_chunk_size") return t("errors.badChunkSize");
-  const available = $available.get();
-  const operator = available && available.account === false;
-  const localized = (group, kind, url) => {
-    const key = `${group}.${kind}`;
-    const variant = `${group}.${kind === "rate_limit" ? "rateLimit" : kind}Operator`;
-    if (operator && t(variant, url) !== variant) return t(variant, url);
-    return t(key, url) !== key ? t(key, url) : null;
-  };
+  const sentence = (key, url) => t(key, url) !== key ? t(key, url) : null;
   if (error.detail) {
+    const group = FIXED_TEXT.has(error.kind) ? "refusals" : "errors";
+    const name = error.detail.text;
     const url = error.kind === "credential" ? LINKS.keys : error.kind === "quota" ? LINKS.account : LINKS.discovery;
-    const base = localized("errors", error.kind, url);
+    const base = typeof name === "string" && NAMED[group].has(name) ? sentence(`${group}.${name}`, url) : null;
     if (base !== null) {
       let text = base;
       const { code, hint, request_id, trace_id } = error.detail;
@@ -160,7 +173,9 @@ function errorText(error) {
       return text;
     }
   } else if (FIXED_TEXT.has(error.kind)) {
-    const text = localized("refusals", error.kind);
+    const available = $available.get();
+    const variant = `refusals.${error.kind}Operator`;
+    const text = (available && available.account === false ? sentence(variant) : null) ?? sentence(`refusals.${error.kind}`);
     if (text !== null) return text;
   }
   return error.message || t("errors.error");
@@ -1384,6 +1399,7 @@ var en = {
   usd: (value) => `$${Number(value).toFixed(2)}`,
   errors: {
     credential: (url) => `Set a valid Fish Audio API key: ${url}`,
+    credentialAccess: (url) => `Check your Fish Audio API key and access: ${url}`,
     quota: (url) => `Top up Fish Audio API credits: ${url}; app plan credits are separate from API credits.`,
     rate_limit: `Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, \u2265$100: 15, \u2265$1k: 50 concurrent requests. Retry later.`,
     availability: `Fish Audio is unavailable. Try again later.`,
@@ -1576,6 +1592,7 @@ var zh = {
   usd: (value) => usd(tag2, value),
   errors: {
     credential: (url) => `\u8BF7\u8BBE\u7F6E\u6709\u6548\u7684 Fish Audio API \u5BC6\u94A5\uFF1A${url}`,
+    credentialAccess: (url) => `\u8BF7\u68C0\u67E5 Fish Audio API \u5BC6\u94A5\u53CA\u5176\u8BBF\u95EE\u6743\u9650\uFF1A${url}`,
     quota: (url) => `\u8BF7\u5145\u503C Fish Audio API \u70B9\u6570\uFF1A${url}\uFF1B\u5E94\u7528\u5957\u9910\u70B9\u6570\u4E0E API \u70B9\u6570\u5206\u5F00\u8BA1\u7B97\u3002`,
     rate_limit: `\u5DF2\u8FBE\u5230 Fish Audio \u5E76\u53D1\u8BF7\u6C42\u4E0A\u9650\u3002\u6309\u7D2F\u8BA1\u5145\u503C\u989D\uFF1A\u4F4E\u4E8E $100 \u4E3A 5 \u4E2A\uFF0C\u8FBE\u5230 $100 \u4E3A 15 \u4E2A\uFF0C\u8FBE\u5230 $1k \u4E3A 50 \u4E2A\u5E76\u53D1\u8BF7\u6C42\u3002\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`,
     availability: `Fish Audio \u6682\u65F6\u4E0D\u53EF\u7528\u3002\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`,
@@ -1768,6 +1785,7 @@ var zhHant = {
   usd: (value) => usd(tag3, value),
   errors: {
     credential: (url) => `\u8ACB\u8A2D\u5B9A\u6709\u6548\u7684 Fish Audio API \u91D1\u9470\uFF1A${url}`,
+    credentialAccess: (url) => `\u8ACB\u6AA2\u67E5 Fish Audio API \u91D1\u9470\u53CA\u5176\u5B58\u53D6\u6B0A\u9650\uFF1A${url}`,
     quota: (url) => `\u8ACB\u5132\u503C Fish Audio API \u9EDE\u6578\uFF1A${url}\uFF1B\u61C9\u7528\u7A0B\u5F0F\u65B9\u6848\u9EDE\u6578\u8207 API \u9EDE\u6578\u5206\u958B\u8A08\u7B97\u3002`,
     rate_limit: `\u5DF2\u9054\u5230 Fish Audio \u4E26\u884C\u8ACB\u6C42\u4E0A\u9650\u3002\u4F9D\u7D2F\u8A08\u5132\u503C\u984D\uFF1A\u4F4E\u65BC $100 \u70BA 5 \u500B\uFF0C\u9054\u5230 $100 \u70BA 15 \u500B\uFF0C\u9054\u5230 $1k \u70BA 50 \u500B\u4E26\u884C\u8ACB\u6C42\u3002\u8ACB\u7A0D\u5F8C\u91CD\u8A66\u3002`,
     availability: `Fish Audio \u66AB\u6642\u7121\u6CD5\u4F7F\u7528\u3002\u8ACB\u7A0D\u5F8C\u91CD\u8A66\u3002`,
@@ -1960,6 +1978,7 @@ var ja = {
   usd: (value) => usd(tag4, value),
   errors: {
     credential: (url) => `\u6709\u52B9\u306A Fish Audio API \u30AD\u30FC\u3092\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
+    credentialAccess: (url) => `Fish Audio API \u30AD\u30FC\u3068\u30A2\u30AF\u30BB\u30B9\u6A29\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
     quota: (url) => `Fish Audio API \u30AF\u30EC\u30B8\u30C3\u30C8\u3092\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}\u3002\u30A2\u30D7\u30EA\u306E\u30D7\u30E9\u30F3\u3068 API \u306E\u30AF\u30EC\u30B8\u30C3\u30C8\u306F\u5225\u3067\u3059\u3002`,
     rate_limit: `Fish Audio \u306E\u540C\u6642\u30EA\u30AF\u30A8\u30B9\u30C8\u6570\u306E\u4E0A\u9650\u306B\u9054\u3057\u307E\u3057\u305F\u3002\u7D2F\u8A08\u30C1\u30E3\u30FC\u30B8\u984D\u304C $100 \u672A\u6E80\u306A\u3089 5 \u4EF6\u3001$100 \u4EE5\u4E0A\u306A\u3089 15 \u4EF6\u3001$1k \u4EE5\u4E0A\u306A\u3089 50 \u4EF6\u3067\u3059\u3002\u6642\u9593\u3092\u304A\u3044\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
     availability: `Fish Audio \u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002\u6642\u9593\u3092\u304A\u3044\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
@@ -2154,6 +2173,7 @@ var ar = {
   usd: money,
   errors: {
     credential: (url) => `\u0623\u0636\u0641 \u0645\u0641\u062A\u0627\u062D API \u0635\u0627\u0644\u062D\u064B\u0627 \u0644\u0640 Fish Audio: ${isolate(url)}`,
+    credentialAccess: (url) => `\u062A\u062D\u0642\u0651\u0642 \u0645\u0646 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0648\u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0627\u0644\u0648\u0635\u0648\u0644: ${isolate(url)}`,
     quota: (url) => `\u0627\u0634\u062D\u0646 \u0631\u0635\u064A\u062F API \u0644\u0640 Fish Audio: ${isolate(url)}\u061B \u0631\u0635\u064A\u062F \u062E\u0637\u0629 \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0645\u0646\u0641\u0635\u0644 \u0639\u0646 \u0631\u0635\u064A\u062F API.`,
     rate_limit: `\u0628\u0644\u063A Fish Audio \u062D\u062F \u0627\u0644\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u0645\u062A\u0632\u0627\u0645\u0646\u0629. \u062D\u0633\u0628 \u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646: \u0623\u0642\u0644 \u0645\u0646 $100: 5\u060C \u0645\u0646 $100: 15\u060C \u0645\u0646 $1k: 50 \u0637\u0644\u0628\u064B\u0627 \u0645\u062A\u0632\u0627\u0645\u0646\u064B\u0627. \u062D\u0627\u0648\u0644 \u0644\u0627\u062D\u0642\u064B\u0627.`,
     availability: `Fish Audio \u063A\u064A\u0631 \u0645\u062A\u0627\u062D. \u062D\u0627\u0648\u0644 \u0644\u0627\u062D\u0642\u064B\u0627.`,
@@ -2346,6 +2366,7 @@ var ru = {
   usd: (value) => usd(tag6, value),
   errors: {
     credential: (url) => `\u0423\u043A\u0430\u0436\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0439 API-\u043A\u043B\u044E\u0447 Fish Audio: ${url}`,
+    credentialAccess: (url) => `\u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 API-\u043A\u043B\u044E\u0447 Fish Audio \u0438 \u043F\u0440\u0430\u0432\u0430 \u0434\u043E\u0441\u0442\u0443\u043F\u0430: ${url}`,
     quota: (url) => `\u041F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u043A\u0440\u0435\u0434\u0438\u0442\u044B API Fish Audio: ${url}; \u043A\u0440\u0435\u0434\u0438\u0442\u044B \u0442\u0430\u0440\u0438\u0444\u0430 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438 API \u0443\u0447\u0438\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E.`,
     rate_limit: `\u0414\u043E\u0441\u0442\u0438\u0433\u043D\u0443\u0442 \u043B\u0438\u043C\u0438\u0442 \u043E\u0434\u043D\u043E\u0432\u0440\u0435\u043C\u0435\u043D\u043D\u044B\u0445 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432 Fish Audio. \u041F\u043E \u0441\u0443\u043C\u043C\u0435 \u043F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0439: \u043C\u0435\u043D\u0435\u0435 $100: 5, \u043E\u0442 $100: 15, \u043E\u0442 $1k: 50 \u043E\u0434\u043D\u043E\u0432\u0440\u0435\u043C\u0435\u043D\u043D\u044B\u0445 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`,
     availability: `Fish Audio \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`,
@@ -2538,6 +2559,7 @@ var fr = {
   usd: (value) => usd(tag7, value),
   errors: {
     credential: (url) => `Configurez une cl\xE9 API Fish Audio valide : ${url}`,
+    credentialAccess: (url) => `V\xE9rifiez votre cl\xE9 API Fish Audio et ses droits d\u2019acc\xE8s : ${url}`,
     quota: (url) => `Rechargez les cr\xE9dits API Fish Audio : ${url} ; les cr\xE9dits du forfait de l\u2019application et de l\u2019API sont distincts.`,
     rate_limit: `La limite de requ\xEAtes simultan\xE9es Fish Audio est atteinte. Selon les recharges : moins de $100 : 5, \xE0 partir de $100 : 15, \xE0 partir de $1k : 50 requ\xEAtes simultan\xE9es. R\xE9essayez plus tard.`,
     availability: `Fish Audio est indisponible. R\xE9essayez plus tard.`,
@@ -2730,6 +2752,7 @@ var de = {
   usd: (value) => usd(tag8, value),
   errors: {
     credential: (url) => `G\xFCltigen Fish Audio API-Schl\xFCssel einrichten: ${url}`,
+    credentialAccess: (url) => `Fish Audio API-Schl\xFCssel und Zugriffsrechte pr\xFCfen: ${url}`,
     quota: (url) => `Fish Audio API-Guthaben aufladen: ${url}; App-Tarif und API haben getrennte Guthaben.`,
     rate_limit: `Fish Audio hat das Limit gleichzeitiger Anfragen erreicht. Nach Aufladebetrag: unter $100: 5, ab $100: 15, ab $1k: 50 gleichzeitige Anfragen. Sp\xE4ter erneut versuchen.`,
     availability: `Fish Audio ist nicht verf\xFCgbar. Sp\xE4ter erneut versuchen.`,
@@ -2922,6 +2945,7 @@ var es = {
   usd: (value) => usd(tag9, value),
   errors: {
     credential: (url) => `Configura una clave API v\xE1lida de Fish Audio: ${url}`,
+    credentialAccess: (url) => `Revisa tu clave API de Fish Audio y sus permisos de acceso: ${url}`,
     quota: (url) => `Recarga los cr\xE9ditos API de Fish Audio: ${url}; los cr\xE9ditos del plan de la app y de la API son independientes.`,
     rate_limit: `Se alcanz\xF3 el l\xEDmite de solicitudes simult\xE1neas de Fish Audio. Seg\xFAn las recargas: menos de $100: 5, desde $100: 15, desde $1k: 50 solicitudes simult\xE1neas. Int\xE9ntalo m\xE1s tarde.`,
     availability: `Fish Audio no est\xE1 disponible. Int\xE9ntalo m\xE1s tarde.`,

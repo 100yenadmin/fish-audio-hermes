@@ -127,6 +127,7 @@ export const zh = {
   usd: (value: string) => usd(tag, value),
   errors: {
     credential: (url: string) => `请设置有效的 Fish Audio API 密钥：${url}`,
+    credentialAccess: (url: string) => `请检查 Fish Audio API 密钥及其访问权限：${url}`,
     quota: (url: string) => `请充值 Fish Audio API 点数：${url}；应用套餐点数与 API 点数分开计算。`,
     rate_limit: `已达到 Fish Audio 并发请求上限。按累计充值额：低于 $100 为 5 个，达到 $100 为 15 个，达到 $1k 为 50 个并发请求。请稍后重试。`,
     availability: `Fish Audio 暂时不可用。请稍后重试。`,

@@ -127,6 +127,7 @@ export const ru = {
   usd: (value: string) => usd(tag, value),
   errors: {
     credential: (url: string) => `Укажите действительный API-ключ Fish Audio: ${url}`,
+    credentialAccess: (url: string) => `Проверьте API-ключ Fish Audio и права доступа: ${url}`,
     quota: (url: string) => `Пополните кредиты API Fish Audio: ${url}; кредиты тарифа приложения и API учитываются отдельно.`,
     rate_limit: `Достигнут лимит одновременных запросов Fish Audio. По сумме пополнений: менее $100: 5, от $100: 15, от $1k: 50 одновременных запросов. Повторите позже.`,
     availability: `Fish Audio недоступен. Повторите позже.`,

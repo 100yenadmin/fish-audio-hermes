@@ -9,7 +9,7 @@ BILLING_URL = "https://fish.audio/app/developers/billing"
 
 
 class FishAudioError(Exception):
-    def __init__(self, kind, status, request_id, message, *, trace_id=None, code=None, hint=None, standard=False):
+    def __init__(self, kind, status, request_id, message, *, trace_id=None, code=None, hint=None, standard=False, text=None):
         self.kind = kind
         self.status = status
         self.request_id = redact(request_id) if request_id else None
@@ -18,6 +18,8 @@ class FishAudioError(Exception):
         self.code = redact(code) if code else None
         self.hint = hint
         self.standard = standard
+        # The Desktop bundle key of the sentence chosen above (operator wording, 401 vs 403), or None to keep this text.
+        self.text = text
         super().__init__(self.message)
 
     def __str__(self):
@@ -48,12 +50,17 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         415: ("unsupported_media", "Fish Audio does not support this audio format."),
         429: ("rate_limit", "Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, ≥$100: 15, ≥$1k: 50 concurrent requests. Retry later."),
     }
+    # Each fixed sentence's Desktop bundle key, so Desktop shows the sentence chosen here in its own language.
+    text_keys = {message: kind for kind, message in messages.values()}
+    text_keys[messages[403][1]] = "credentialAccess"
     if operator:
         for status_code, text in ((401, "The voice service's credentials were rejected. Contact the operator of this agent."),
                                   (403, "The voice service's credentials were rejected. Contact the operator of this agent."),
                                   (402, "The voice service is out of credit. Contact the operator of this agent."),
                                   (429, "The voice service is busy. Try again shortly.")):
             messages[status_code] = (messages[status_code][0], text)
+        text_keys.update({messages[401][1]: "credentialOperator", messages[402][1]: "quotaOperator",
+                          messages[429][1]: "rateLimitOperator"})
     if status == 400 and model in {"transcribe-1", "transcribe-1-pro"}:
         message = "Fish Audio could not decode this audio."
         if model == "transcribe-1":
@@ -73,6 +80,8 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         kind, message = resolved_kind, by_kind[resolved_kind]
     elif status in {None, 400, 404} and isinstance(known_message, str) and known_message.lower() in {"reference not found", "model not found"}:
         kind, message = "voice_not_found", by_kind["voice_not_found"]
+    text_keys.update({by_kind["availability"]: "availability", by_kind["voice_not_found"]: "voice_not_found"})
+    text_key = text_keys.get(message)
     if code:
         message += f" Code: {code}."
     hint = None
@@ -95,4 +104,5 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
         code = code.replace(key, "[redacted]") if code else None
         request_id = request_id.replace(key, "[redacted]") if request_id else None
         trace_id = trace_id.replace(key, "[redacted]") if trace_id else None
-    return FishAudioError(kind, status, request_id, message, trace_id=trace_id, code=code, hint=hint, standard=True)
+    return FishAudioError(kind, status, request_id, message, trace_id=trace_id, code=code, hint=hint, standard=True,
+                          text=text_key)
