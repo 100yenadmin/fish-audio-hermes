@@ -15,13 +15,16 @@ MISSING = object()
 
 
 class LiveServer:
-    def __init__(self, error=None, answers=99, second="world.", throttle=False):
+    def __init__(self, error=None, answers=99, second="world.", slow=0, reject=None):
         from websockets.sync.server import serve
         self.frames, self.headers, self.paths = [], [], []
         self.closed = threading.Event()
         self.error, self.answers, self.second = error, answers, second
-        self.throttle, self.held = throttle, False
-        self.server = serve(self.handle, "127.0.0.1", 0)
+        self.slow, self.busy, self.buffer, self.lock = slow, False, 0, threading.Lock()
+        self.throttles = self.input_errors = 0
+        def process_request(connection, request):  # reject the key during the upgrade, as Fish does
+            return connection.respond(reject, "No permission") if reject else None
+        self.server = serve(self.handle, "127.0.0.1", 0, process_request=process_request)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.base = f"http://127.0.0.1:{self.server.socket.getsockname()[1]}"
 
@@ -37,15 +40,14 @@ class LiveServer:
             for message in ws:
                 frame = json.loads(message)
                 self.frames.append(frame)
-                if frame["commit"] and self.throttle:  # hold the first answer until the next commit arrives
-                    self.throttle, self.held = False, True
+                if self.slow:  # Fish's wire: a buffer, one transcription at a time
+                    self.slow_frame(ws, frame)
                     continue
-                if frame["commit"] and self.held:
-                    self.held = False
+                if frame["commit"] and self.error == "throttled":
                     ws.send(json.dumps({"message_type": "commit_throttled", "error": "already in progress"}))
-                    # fall through: answer the held commit; the client's retry gets the next answer
+                    continue
                 if frame["commit"]:
-                    if self.error and self.error not in ("input_error", "huge"):
+                    if self.error and self.error not in ("input_error", "huge", "throttled"):
                         ws.send(json.dumps({"message_type": "transcriber_error", "error": self.error + KEY}))
                     elif self.answers > 0:
                         text = "Hello" if self.answers == 99 else self.second
@@ -57,6 +59,29 @@ class LiveServer:
                         ws.send(json.dumps({"message_type": "committed_transcript_with_timestamps", "text": "ignored"}))
         finally:
             self.closed.set()
+
+    def slow_frame(self, ws, frame):
+        with self.lock:
+            self.buffer += len(base64.b64decode(frame["audio_base_64"]))
+            if not frame["commit"]:
+                return
+            if self.busy:  # Fish keeps the audio and refuses the commit
+                self.throttles += 1
+                ws.send(json.dumps({"message_type": "commit_throttled", "error": "already in progress"}))
+                return
+            if not self.buffer:
+                self.input_errors += 1
+                ws.send(json.dumps({"message_type": "input_error", "error": "no audio to commit"}))
+                return
+            self.busy, self.buffer, self.answers = True, 0, self.answers + 1
+            text = f"p{self.answers - 99}"
+        def answer():
+            with self.lock:
+                self.busy = False
+                ws.send(json.dumps({"message_type": "committed_transcript", "text": text}))
+        timer = threading.Timer(self.slow, answer)
+        timer.daemon = True
+        timer.start()
 
 
 @pytest.fixture
@@ -118,7 +143,7 @@ def test_silence_only(live):
 
 
 @pytest.mark.parametrize("error,kind", [("Invalid Token", "auth"), ("broken", "unavailable"), ("input_error", None),
-        ("huge", "unavailable")])
+        ("huge", "unavailable"), ("throttled", "unavailable")])
 def test_server_errors(live, caplog, error, kind):
     _, session = live(error=error)
     session.push_audio(SPEECH * 20)
@@ -182,7 +207,8 @@ def test_pauses_are_not_streamed(live):
 
 
 @pytest.mark.parametrize("base,url", [("https://api.fish.audio", "wss://api.fish.audio/"),
-        ("http://127.0.0.1:9", "ws://127.0.0.1:9/"), ("https://localhost:8443", "wss://localhost:8443/")])
+        ("http://127.0.0.1:9", "ws://127.0.0.1:9/"), ("https://localhost:8443", "wss://localhost:8443/"),
+        ("http://localhost:8000/fish/", "ws://localhost:8000/fish/")])
 def test_live_url_scheme(monkeypatch, base, url):
     monkeypatch.setattr(stt, "transport_settings", lambda: {"base_url": base})
     monkeypatch.setattr(stt, "fish_api_key", lambda: KEY)
@@ -223,13 +249,38 @@ def test_malformed_transcript_falls_back(live, second):
     assert session.finalize()["error_kind"] == "unavailable"  # Hermes then transcribes the whole file
 
 
-def test_throttled_commit_is_retried(live, monkeypatch):
-    monkeypatch.setattr(live_stt, "FINALIZE_TIMEOUT", 2)
-    server, session = live(throttle=True)
-    session.push_audio(SPEECH * 50 + SILENCE * 35 + SPEECH * 20)  # "No." right after a phrase
-    assert session.finalize()["transcript"] == "Hello world."
-    commits = [frame for frame in server.frames if frame["commit"]]
-    assert len(commits) == 3 and commits[-1]["audio_base_64"] == ""  # the retry commits Fish's buffered audio
+PHRASE = SPEECH * 50 + SILENCE * 35
+
+
+@pytest.mark.parametrize("pcm,transcript", [
+    (PHRASE + SPEECH * 6, "p1 p2"),  # a short last word while the phrase before it is transcribed
+    (PHRASE + PHRASE + SPEECH * 20, "p1 p2"),  # a phrase ends while Fish is busy; the tail joins it
+    (PHRASE + PHRASE + SILENCE * 40 + PHRASE, "p1 p2"),  # a pause is never committed on its own
+])
+def test_commits_wait_for_the_phrase_in_progress(live, pcm, transcript):
+    server, session = live(slow=.3)  # Fish takes 300 ms per phrase; everything arrives at once
+    session.push_audio(pcm)
+    assert session.finalize()["transcript"] == transcript
+    assert server.throttles == server.input_errors == 0
+
+
+def test_rejected_key_during_upgrade(live):
+    _, session = live(reject=401)
+    session.push_audio(SPEECH * 20)
+    assert session.finalize()["error_kind"] == "auth"
+
+
+def test_quiet_microphone_threshold(live, monkeypatch):
+    quiet = b"\xa0\x00" * 320  # RMS 160, below Hermes's default 200
+    server, session = live()
+    session.push_audio(quiet * 20)
+    assert session.finalize()["error_kind"] == "no_speech"
+    config = {"voice": {"silence_threshold": 80}, "plugins": {"entries": {"fish-audio": {"settings": {"base_url": server.base}}}}}
+    monkeypatch.setattr(settings, "_config", lambda: config)
+    monkeypatch.setattr(stt, "_config", lambda: config)
+    session = stt.FishAudioTranscriptionProvider().open_stream_session()
+    session.push_audio(quiet * 20)
+    assert session.finalize()["transcript"] == "Hello"
 
 
 def test_long_pause_never_splits_a_word():
@@ -242,11 +293,14 @@ def test_long_pause_never_splits_a_word():
 
 def test_join_and_long_guard():
     for segments, expected in [(["Hello", "world"], "Hello world"), (["漢", "字"], "漢字"),
-            (["a", "かな"], "aかな"), (["한", "a"], "한a"), (["a。", "b"], "a。b"), (["a", "Ａ"], "a Ａ"), (["a", "𛀁"], "a𛀁")]:
+            (["a", "かな"], "aかな"), (["한", "a"], "한 a"), (["오늘 날씨가", "좋아요"], "오늘 날씨가 좋아요"), (["a。", "b"], "a。b"), (["a", "Ａ"], "a Ａ"), (["a", "𛀁"], "a𛀁")]:
         assert live_stt.join_text(segments) == expected
     for forced in (False, True):
         detector = live_stt.PauseDetector()
         assert not any(detector.feed(SPEECH) for _ in range(1499))
         if forced:
             assert not any(detector.feed(SPEECH) for _ in range(750))
+        else:  # after 30 s a 180 ms gap inside a word is not a pause; 200 ms is
+            assert not any(detector.feed(frame) for frame in [SILENCE] * 9 + [SPEECH])
+            assert not any(detector.feed(SILENCE) for _ in range(9))
         assert detector.feed(SPEECH if forced else SILENCE)

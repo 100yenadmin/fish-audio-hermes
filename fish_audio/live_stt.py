@@ -17,8 +17,9 @@ IDLE_TIMEOUT = 30
 MAX_SESSION_SECONDS = 3500
 LEAD_IN_FRAMES = 25  # 500 ms sent before a phrase's first voiced frame; earlier pause audio is never sent
 logger = logging.getLogger(__name__)
-_CJK = re.compile(r"[\u2e80-\u30ff\u31f0-\u31ff\u3400-\u9fff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\uf900-\ufaff"
-                  r"\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uffdc\U0001aff0-\U0001afff\U0001b000-\U0001b16f\U00020000-\U000323af]")
+_CJK = re.compile(  # Chinese and Japanese join without spaces; Korean is space-delimited
+    r"[\u2e80-\u30ff\u31f0-\u31ff\u3400-\u9fff\uf900-\ufaff"
+    r"\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff9f\U0001aff0-\U0001afff\U0001b000-\U0001b16f\U00020000-\U000323af]")
 
 
 def join_text(segments):
@@ -32,8 +33,9 @@ def join_text(segments):
 
 
 class PauseDetector:
-    def __init__(self):
+    def __init__(self, threshold=SILENCE_RMS_THRESHOLD):
         self.frames = self.speech = self.silence = 0
+        self.level = 320 * threshold ** 2
 
     @property
     def has_speech(self):
@@ -41,28 +43,27 @@ class PauseDetector:
 
     def feed(self, frame):
         samples = struct.unpack("<320h", frame)
-        speaking = sum(value * value for value in samples) >= 320 * SILENCE_RMS_THRESHOLD ** 2
+        speaking = sum(value * value for value in samples) >= self.level
         if not self.speech and not speaking:
             return False  # a segment's clocks start at its first voiced frame, so a long pause never splits a word
         self.frames += 1
         self.speech += speaking
         self.silence = 0 if speaking else self.silence + 1
         commit = self.has_speech and ((self.speech >= 50 and self.silence >= 35)
-                                     or (self.frames >= 1500 and not speaking) or self.frames >= 2250)
+                                     or (self.frames >= 1500 and self.silence >= 10) or self.frames >= 2250)
         if commit:
             self.frames = self.speech = self.silence = 0
         return commit
 
 
 class FishLiveSession(TranscriptionStreamSession):
-    def __init__(self, url, key, user_agent, errors):
+    def __init__(self, url, key, user_agent, errors, threshold=SILENCE_RMS_THRESHOLD):
         self._url, self._key, self._agent, self._errors = url, key, user_agent, errors
         self._socket = self._timer = None
         self._failed = None
-        self._detector = PauseDetector()
-        self._pending, self._held, self._texts = bytearray(), bytearray(), []
+        self._detector = PauseDetector(threshold)
+        self._pending, self._held, self._due, self._texts = bytearray(), bytearray(), bytearray(), []
         self._commits = self._received = 0
-        self._retry = False
         self._activity, self._connected = time.monotonic(), None
 
     def _watch(self):
@@ -106,6 +107,14 @@ class FishLiveSession(TranscriptionStreamSession):
                                       "commit": commit, "sample_rate": 16000}))
         self._commits += bool(commit)
 
+    def _commit(self, audio):
+        # Fish transcribes one commit at a time and throttles another, so a phrase that ends meanwhile waits here,
+        # with streaming paused, and is committed with its own audio as soon as the previous phrase returns.
+        self._due.extend(audio)
+        if self._received == self._commits:
+            self._send(self._due, True)
+            self._due.clear()
+
     def push_audio(self, chunk):
         self._activity = time.monotonic()
         if self._failed or not chunk:
@@ -121,15 +130,16 @@ class FishLiveSession(TranscriptionStreamSession):
                 del self._pending[:FRAME_BYTES]
                 self._held.extend(frame)
                 if self._detector.feed(frame):
-                    self._send(self._held, True)
+                    self._commit(self._held)
                     self._held.clear()
                 elif not self._detector.speech:
                     del self._held[:-LEAD_IN_FRAMES * FRAME_BYTES]  # a pause is never streamed, so never billed
-                elif len(self._held) >= 6 * FRAME_BYTES:
+                elif not self._due and len(self._held) >= 6 * FRAME_BYTES:
                     self._send(self._held[:-FRAME_BYTES], False)
                     del self._held[:-FRAME_BYTES]  # always retain real audio for the final commit
-        except Exception:
-            self._fail()
+        except Exception as exc:
+            status = getattr(getattr(exc, "response", None), "status_code", None)  # a rejected key fails the upgrade
+            self._fail("auth" if status in (401, 403) else "unavailable")
 
     def _receive(self, timeout):
         event = json.loads(self._socket.recv(timeout=timeout))
@@ -140,12 +150,10 @@ class FishLiveSession(TranscriptionStreamSession):
                 raise ValueError("Fish live transcript without text")  # fail to file transcription; never drop a phrase
             self._texts.append(text)
             self._received += 1
-            if self._retry:  # Fish kept the throttled audio; an empty commit transcribes it
-                self._retry = False
-                self._send(b"", True)
-        elif kind == "commit_throttled":  # sent while the previous phrase was still being transcribed
-            self._commits -= 1
-            self._retry = True
+            if self._due:
+                self._commit(b"")
+        elif kind == "commit_throttled":  # never expected, since commits wait their turn; fall back to the file
+            self._fail("unavailable")
         elif kind == "transcriber_error":
             self._fail("auth" if "Invalid Token" in str(event.get("error", "")) else "unavailable")
         elif kind == "input_error":
@@ -170,9 +178,9 @@ class FishLiveSession(TranscriptionStreamSession):
         deadline = time.monotonic() + FINALIZE_TIMEOUT
         try:
             # After an earlier phrase, a short last word ("No.") still counts; a lone click (1-2 frames) does not.
-            if not self._failed and (self._detector.has_speech or (self._commits and self._detector.speech >= 5)):
+            if not self._failed and (self._detector.has_speech or ((self._commits or self._due) and self._detector.speech >= 5)):
                 self._held.extend(self._pending)
-                self._send(self._held, True)
+                self._commit(self._held)
             while not self._failed and self._received < self._commits:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:

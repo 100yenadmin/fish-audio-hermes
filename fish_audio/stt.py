@@ -11,7 +11,7 @@ from ._compat import HAS_STT_STREAM_SEAM, TranscriptionProvider
 from . import client
 from .errors import FishAudioError
 from .secrets import fish_api_key, redact
-from .settings import DEFAULT_BASE_URL, _base_url, transport_settings
+from .settings import DEFAULT_BASE_URL, _base_url, _config, _mapping, transport_settings
 from .tts import FishAudioTTSProvider, setup_message
 from .state import record_failure
 
@@ -73,13 +73,17 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
         base, loopback = _live_base()
         if not loopback and base.hostname != "api.fish.audio":
             raise ValueError("Fish Audio live transcription requires api.fish.audio.")
-        url = ("wss" if base.scheme == "https" else "ws") + "://" + base.netloc
+        url = ("wss" if base.scheme == "https" else "ws") + "://" + base.netloc + base.path.rstrip("/")
         url += "/compat/elevenlabs/v1/speech-to-text/realtime?audio_format=pcm_16000&commit_strategy=manual"
         # Capture safe text now; the worker and watchdog never resolve secrets or settings.
         errors = {kind: redact(text) for kind, text in {
             "auth": "Fish Audio live authentication failed.", "unavailable": "Fish Audio live transcription failed.",
             "timeout": "Fish Audio live transcription timed out.", "no_speech": "no speech detected"}.items()}
-        return FishLiveSession(url, key, client._user_agent(), errors)
+        # Hermes's own microphone threshold (voice.silence_threshold, default 200), so quiet mics get captions too.
+        threshold = _mapping(_config().get("voice")).get("silence_threshold")
+        if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 0 < threshold < 32768:
+            threshold = 200
+        return FishLiveSession(url, key, client._user_agent(), errors, threshold)
 
     def transcribe(self, file_path, *, model=None, language=None, **extra):
         result = {"success": False, "transcript": "", "provider": "fish-audio"}
