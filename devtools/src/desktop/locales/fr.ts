@@ -118,7 +118,6 @@ export const fr = {
   chipTip: 'Crédit API Fish Audio',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: 'Fish Audio',
     restart: 'Redémarrez la passerelle de cet agent pour terminer la mise à jour de Fish Audio.',
     voicesPage: 'Page Voix',
     voiceSection: 'Voix',

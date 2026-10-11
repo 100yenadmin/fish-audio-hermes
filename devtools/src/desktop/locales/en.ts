@@ -123,7 +123,6 @@ export const en = {
   chipTip: 'Fish Audio API credit',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: 'Fish Audio',
     restart: "Restart this agent's gateway to finish updating Fish Audio.",
     voicesPage: 'Voices page',
     voiceSection: 'Voice',

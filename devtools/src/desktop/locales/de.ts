@@ -118,7 +118,6 @@ export const de = {
   chipTip: 'Fish Audio API-Guthaben',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: 'Fish Audio',
     restart: 'Starten Sie das Gateway dieses Agenten neu, um das Update von Fish Audio abzuschließen.',
     voicesPage: 'Seite „Stimmen“',
     voiceSection: 'Stimme',

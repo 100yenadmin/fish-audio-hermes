@@ -6,6 +6,7 @@ import plugin from '../plugin'
 import { badAliasName, SettingsPage } from '../settings-page'
 import { en } from '../locales/en'
 import { ja } from '../locales/ja'
+import { de } from '../locales/de'
 
 const flush = async () => {
   for (let i = 0; i < 5; i++) await act(() => new Promise(resolve => setTimeout(resolve, 0)))
@@ -69,38 +70,43 @@ describe('settings page registration', () => {
     t.dispose()
   })
 
-  it('registers once at activation, before availability is known, with id, icon and the localized title', () => {
+  const LOCALES = ['en', 'zh', 'zh-hant', 'ja', 'ar', 'ru', 'fr', 'de', 'es']
+
+  it.each(LOCALES)('registers once at activation under %s, before availability is known, titled Fish Audio', locale => {
+    setLocale(locale)  // the saved language may already apply when the plugin activates
     const t = createTestContext({ rest: () => new Promise(() => undefined) })  // /available never answers
     const register = vi.fn((_page: any) => () => undefined)
-    const translate = vi.spyOn(t.ctx.i18n, 't')
     Object.assign(t.ctx, { registerSettingsPage: register })
     plugin.register(t.ctx as any)
     expect(register).toHaveBeenCalledTimes(1)
     const page = register.mock.calls[0][0]
-    expect(page).toMatchObject({ id: 'fish-audio', icon: 'unmute', title: en.settings.title })
-    expect(translate).toHaveBeenCalledWith('settings.title')
+    expect(page).toMatchObject({ id: 'fish-audio', icon: 'unmute', title: 'Fish Audio' })
     expect(typeof page.render).toBe('function')
     t.dispose()
   })
 
-  it('a locale change calls the old disposer BEFORE registering again; a disable removes it and stops listening', () => {
+  it('a locale change does NOT dispose or re-register the settings page; its body follows the locale; a disable removes it', async () => {
     const t = createTestContext({ rest: gateway() })
-    const events: string[] = []
-    let n = 0
-    Object.assign(t.ctx, {
-      registerSettingsPage: (page: any) => {
-        const id = ++n
-        events.push(`register ${id} ${page.title}`)
-        return () => events.push(`dispose ${id}`)
-      }
-    })
+    const dispose = vi.fn()
+    const register = vi.fn((_page: any) => dispose)
+    Object.assign(t.ctx, { registerSettingsPage: register })
     plugin.register(t.ctx as any)
-    setLocale('ja')
-    expect(events).toEqual([`register 1 ${en.settings.title}`, 'dispose 1', `register 2 ${ja.settings.title}`])
+    await flush()
+    render(register.mock.calls[0][0].render())
+    await flush()
+    expect(screen.getByRole('heading', { name: en.settings.voiceSection })).toBeTruthy()
+    // 0.21.6 starts in English and applies the saved language after plugins activate: re-registering would drop
+    // the host's folded "Agent settings" (the API key form) from under the entry.
+    for (const locale of [...LOCALES.slice(1), 'en']) await act(() => setLocale(locale))
+    await act(() => setLocale('de'))
+    expect(register).toHaveBeenCalledTimes(1)
+    expect(dispose).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: de.settings.voiceSection })).toBeTruthy()
+    cleanup()
     t.dispose()
-    expect(events.at(-1)).toBe('dispose 2')
+    expect(dispose).toHaveBeenCalledTimes(1)
     setLocale('fr')
-    expect(events).toHaveLength(4)
+    expect(register).toHaveBeenCalledTimes(1)
   })
 })
 

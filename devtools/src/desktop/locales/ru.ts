@@ -118,7 +118,6 @@ export const ru = {
   chipTip: 'Баланс API Fish Audio',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: 'Fish Audio',
     restart: 'Перезапустите шлюз этого агента, чтобы завершить обновление Fish Audio.',
     voicesPage: 'Страница голосов',
     voiceSection: 'Голос',
