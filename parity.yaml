@@ -5385,6 +5385,20 @@ entries:
         enum: null
         required: false
 doc_only:
+- field: input_audio_chunk
+  surface: 'Live dictation: compat realtime STT, 16 kHz PCM with non-empty manual commits'
+  status: verified
+  tests:
+  - tests/test_live_stt.py::test_happy_path
+  - tests/test_live_stt.py::test_silence_only
+  url: https://docs.fish.audio/developer-guide/compat/migrate-from-elevenlabs#realtime-stt
+- field: committed_transcript
+  surface: 'Live dictation: committed phrase captions and final joined text'
+  status: verified
+  tests:
+  - tests/test_live_stt.py::test_happy_path
+  - tests/integration/test_hermes_live_stt_path.py::test_core_live_stt
+  url: https://docs.fish.audio/developer-guide/compat/migrate-from-elevenlabs#realtime-stt
 - field: start
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: verified
