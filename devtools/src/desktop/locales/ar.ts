@@ -118,7 +118,6 @@ export const ar = {
   chipTip: 'رصيد API لـ Fish Audio',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: 'Fish Audio',
     restart: 'أعد تشغيل بوابة هذا الوكيل لإكمال تحديث Fish Audio.',
     voicesPage: 'صفحة الأصوات',
     voiceSection: 'الصوت',

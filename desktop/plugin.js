@@ -1335,7 +1335,6 @@ var en = {
   chipTip: "Fish Audio API credit",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "Restart this agent's gateway to finish updating Fish Audio.",
     voicesPage: "Voices page",
     voiceSection: "Voice",
@@ -1490,7 +1489,6 @@ var zh = {
   chipTip: "Fish Audio API \u989D\u5EA6",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "\u91CD\u542F\u6B64\u667A\u80FD\u4F53\u7684\u7F51\u5173\uFF0C\u4EE5\u5B8C\u6210 Fish Audio \u7684\u66F4\u65B0\u3002",
     voicesPage: "\u58F0\u97F3\u9875\u9762",
     voiceSection: "\u58F0\u97F3",
@@ -1645,7 +1643,6 @@ var zhHant = {
   chipTip: "Fish Audio API \u984D\u5EA6",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "\u91CD\u65B0\u555F\u52D5\u6B64\u4EE3\u7406\u7684\u9598\u9053\uFF0C\u4EE5\u5B8C\u6210 Fish Audio \u7684\u66F4\u65B0\u3002",
     voicesPage: "\u8072\u97F3\u9801\u9762",
     voiceSection: "\u8072\u97F3",
@@ -1800,7 +1797,6 @@ var ja = {
   chipTip: "Fish Audio API \u30AF\u30EC\u30B8\u30C3\u30C8",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "Fish Audio \u306E\u66F4\u65B0\u3092\u5B8C\u4E86\u3059\u308B\u306B\u306F\u3001\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u3092\u518D\u8D77\u52D5\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
     voicesPage: "\u30DC\u30A4\u30B9\u30DA\u30FC\u30B8",
     voiceSection: "\u30DC\u30A4\u30B9",
@@ -1955,7 +1951,6 @@ var ar = {
   chipTip: "\u0631\u0635\u064A\u062F API \u0644\u0640 Fish Audio",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "\u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0628\u0648\u0627\u0628\u0629 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0644\u0625\u0643\u0645\u0627\u0644 \u062A\u062D\u062F\u064A\u062B Fish Audio.",
     voicesPage: "\u0635\u0641\u062D\u0629 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
     voiceSection: "\u0627\u0644\u0635\u0648\u062A",
@@ -2110,7 +2105,6 @@ var ru = {
   chipTip: "\u0411\u0430\u043B\u0430\u043D\u0441 API Fish Audio",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "\u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0448\u043B\u044E\u0437 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430, \u0447\u0442\u043E\u0431\u044B \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 Fish Audio.",
     voicesPage: "\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
     voiceSection: "\u0413\u043E\u043B\u043E\u0441",
@@ -2265,7 +2259,6 @@ var fr = {
   chipTip: "Cr\xE9dit API Fish Audio",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "Red\xE9marrez la passerelle de cet agent pour terminer la mise \xE0 jour de Fish Audio.",
     voicesPage: "Page Voix",
     voiceSection: "Voix",
@@ -2420,7 +2413,6 @@ var de = {
   chipTip: "Fish Audio API-Guthaben",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "Starten Sie das Gateway dieses Agenten neu, um das Update von Fish Audio abzuschlie\xDFen.",
     voicesPage: "Seite \u201EStimmen\u201C",
     voiceSection: "Stimme",
@@ -2575,7 +2567,6 @@ var es = {
   chipTip: "Cr\xE9dito API de Fish Audio",
   usd: (value) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: "Fish Audio",
     restart: "Reinicia la pasarela de este agente para terminar de actualizar Fish Audio.",
     voicesPage: "P\xE1gina de voces",
     voiceSection: "Voz",
@@ -2779,23 +2770,13 @@ function registerAvailabilityGate(ctx) {
   return { probe, end };
 }
 function registerSettingsPage(ctx) {
-  let remove;
-  let disposed = false;
-  const add = () => {
-    remove = ctx.registerSettingsPage?.({ id: "fish-audio", title: ctx.i18n.t("settings.title"), icon: "unmute", render: () => /* @__PURE__ */ jsx5(SettingsPage, {}) });
-  };
-  add();
+  const remove = ctx.registerSettingsPage?.({ id: "fish-audio", title: "Fish Audio", icon: "unmute", render: () => /* @__PURE__ */ jsx5(SettingsPage, {}) });
   if (!remove) return () => void 0;
-  const stop2 = ctx.i18n.onLocaleChange(() => {
-    if (disposed) return;
-    remove?.();
-    add();
-  });
+  let disposed = false;
   const end = () => {
     if (disposed) return;
     disposed = true;
-    stop2();
-    remove?.();
+    remove();
   };
   ctx.onDispose(end);
   return end;

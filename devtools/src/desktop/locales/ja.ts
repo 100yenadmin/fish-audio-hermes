@@ -118,7 +118,6 @@ export const ja = {
   chipTip: 'Fish Audio API クレジット',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: 'Fish Audio',
     restart: 'Fish Audio の更新を完了するには、このエージェントのゲートウェイを再起動してください。',
     voicesPage: 'ボイスページ',
     voiceSection: 'ボイス',

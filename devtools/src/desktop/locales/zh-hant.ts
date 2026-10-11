@@ -118,7 +118,6 @@ export const zhHant = {
   chipTip: 'Fish Audio API 額度',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
   settings: {
-    title: 'Fish Audio',
     restart: '重新啟動此代理的閘道，以完成 Fish Audio 的更新。',
     voicesPage: '聲音頁面',
     voiceSection: '聲音',

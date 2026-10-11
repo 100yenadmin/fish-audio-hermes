@@ -214,27 +214,19 @@ export function registerAvailabilityGate(ctx: PluginContext) {
 }
 
 /** Settings ▸ Plugins ▸ Fish Audio (Hermes Desktop 0.21.6+; older hosts and the fork lack the member, so nothing is
- *  registered there). Registered unconditionally: gating it on /available would un-fold and re-fold the host's
- *  "Agent settings" form (which holds the API key) as availability flaps. Only the page body follows availability. */
+ *  registered there). Registered once, unconditionally: gating it on /available would un-fold and re-fold the host's
+ *  "Agent settings" form (which holds the API key) as availability flaps. Only the page body follows availability.
+ *  The title is the brand in every locale, so a locale change never re-registers it: a re-registered entry loses the
+ *  host's fold of "Agent settings" (seen on 0.21.6, which applies the saved language after plugins activate). The body
+ *  re-renders in the new locale on its own. */
 export function registerSettingsPage(ctx: PluginContext) {
-  let remove: (() => void) | undefined
-  let disposed = false
-  const add = () => {
-    remove = ctx.registerSettingsPage?.({ id: 'fish-audio', title: ctx.i18n.t('settings.title'), icon: 'unmute', render: () => <SettingsPage /> })
-  }
-  add()
+  const remove = ctx.registerSettingsPage?.({ id: 'fish-audio', title: 'Fish Audio', icon: 'unmute', render: () => <SettingsPage /> })
   if (!remove) return () => undefined
-  const stop = ctx.i18n.onLocaleChange(() => {
-    if (disposed) return
-    // The old disposer first: a disposer removes by id, so calling it after registering again would remove the new page.
-    remove?.()
-    add()
-  })
+  let disposed = false
   const end = () => {
     if (disposed) return
     disposed = true
-    stop()
-    remove?.()
+    remove()
   }
   ctx.onDispose(end)
   return end
