@@ -23,6 +23,16 @@ def test_drift_ignores_raw_hash_and_detects_each_canary():
         assert any(phrase in item for item in report)
 
 
+def test_drift_reports_removed_canaries():
+    spec = parity.load_spec(parity.ROOT / "parity/fish-openapi.pruned.json")
+    mapping = {"entries": __import__("yaml").safe_load((parity.ROOT / "parity.yaml").read_text())["entries"], "doc_only": []}
+    lock = drift.canaries(b"skill", '`s1` `s2.1-pro-free` <Update label="old"> <Update label="kept">')
+    report = drift.compare(spec, spec, lock, b"skill", '`s1` <Update label="kept">', mapping, lambda u: None)
+    assert "Removed known_model_ids: ['s2.1-pro-free']" in report
+    assert "Removed changelog_labels_seen: ['old']" in report
+    assert not any(item.startswith("New ") for item in report)
+
+
 @pytest.mark.parametrize("error,count", [(TimeoutError, 0), (URLError, 0), (HTTPError, 1)])
 def test_url_failure_classification(monkeypatch, tmp_path, error, count):
     (tmp_path / "parity.yaml").write_text("")

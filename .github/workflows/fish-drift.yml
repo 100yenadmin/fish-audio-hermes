@@ -28,7 +28,7 @@ jobs:
           n=$(gh issue list --state open --label fish-drift --json number -q '.[0].number')
           if [ -n "$n" ]; then
             gh issue view "$n" --json body,comments > drift/issue.json
-            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("drift/issue.json").read_text()); comments=issue["comments"]; text=pathlib.Path("drift/report.md").read_text().rstrip("\n"); sys.exit(0 if text in [issue["body"].rstrip("\n"), comments[-1]["body"].rstrip("\n") if comments else None] else 1)'; then
+            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("drift/issue.json").read_text()); comments=issue["comments"]; text=pathlib.Path("drift/report.md").read_text().rstrip("\n"); latest=(comments[-1]["body"] if comments else issue["body"]).rstrip("\n"); sys.exit(0 if text == latest else 1)'; then
               echo 'Unchanged drift report; no comment.'; exit 0
             fi
             gh issue comment "$n" --body-file drift/report.md

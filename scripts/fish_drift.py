@@ -34,8 +34,11 @@ def compare(pinned, fresh, lock, skill, prose, mapping, head, inconclusive=None)
         report.append("fish-audio-api SKILL.md sha changed.")
     for field in ("known_model_ids", "changelog_labels_seen"):
         added = sorted(set(current[field]) - set(lock[field]))
+        removed = sorted(set(lock[field]) - set(current[field]))
         if added:
             report.append(f"New {field}: {added}")
+        if removed:
+            report.append(f"Removed {field}: {removed}")
     urls = {row["url"].split("#")[0] for row in mapping.get("doc_only", [])}
     urls.update(re.findall(r'https://docs\.fish\.audio/[^\s]+', (parity.ROOT / "parity.yaml").read_text()))
     for url in sorted({url.split("#")[0] for url in urls}):
