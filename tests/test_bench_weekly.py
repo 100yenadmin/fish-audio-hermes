@@ -102,7 +102,7 @@ def test_missing_ffmpeg_fails_before_any_paid_call(tmp_path, monkeypatch):
     assert (tmp_path / "report.md").read_text().startswith("Fish bench: error")
 
 
-@pytest.mark.parametrize("statuses,state", [([429], "warn"), ([503], "warn"), ([400], "fail"), ([], "fail")])
+@pytest.mark.parametrize("statuses,state", [([429], "warn"), ([503], "warn"), ([503, 200], "fail"), ([400], "fail"), ([], "fail")])
 def test_transcription_failure_envelope(tmp_path, statuses, state):
     class Failing(w.Fake):
         def transcribe(self, path, seconds, reference):
@@ -110,8 +110,12 @@ def test_transcription_failure_envelope(tmp_path, statuses, state):
             return {"success": False, "transcript": "", "error_kind": "unavailable"}
     assert w.run(tmp_path, dry_run=True, backend=Failing) == int(state == "fail")
     result = json.loads((tmp_path / "results.json").read_text())
-    levels = {r["level"] for r in result["gates"] if r["gate"].startswith(("asr", "roundtrip", "live"))}
-    assert (result["state"], levels) == (state, {state})
+    assert result["state"] == state
+    worst = {}  # each gate's most severe row, so a mismatch names the gate
+    for row in result["gates"]:
+        if row["gate"].startswith(("asr", "roundtrip", "live")):
+            worst[row["gate"]] = max(worst.get(row["gate"], "pass"), row["level"], key=("pass", "warn", "fail").index)
+    assert worst == dict.fromkeys(("asr-en", "asr-ja", "asr-zh", "roundtrip-en", "roundtrip-ja", "roundtrip-zh", "live"), state)
 
 
 @pytest.mark.parametrize("status,state", [(301, "fail"), (401, "fail"), (503, "warn")])
