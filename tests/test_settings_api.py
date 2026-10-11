@@ -1,0 +1,107 @@
+import base64
+import copy
+from types import ModuleType
+import sys
+
+import pytest
+import respx
+
+from test_dashboard_api import env, VOICE, OTHER, MP3
+
+
+def expected(env, **overrides):
+    return {"ok": True, "voice": None, "model": "s2.1-pro", "models": [
+        {"id": "s2.1-pro", "display": "S2.1 Pro", "deprecated": False},
+        {"id": "s2.1-pro-free", "display": "S2.1 Pro Free", "deprecated": False},
+        {"id": "s2-pro", "display": "S2 Pro", "deprecated": False},
+        {"id": "s1", "display": "S1 (deprecated)", "deprecated": True},
+        {"id": "drama-3-preview", "display": "Drama 3 Preview", "deprecated": False}],
+        "aliases": [], "managed": [], **overrides}
+
+
+def managed(monkeypatch, layer):
+    module = ModuleType("hermes_cli.managed_scope")
+    module.load_managed_config = lambda: layer
+    monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", module)
+
+
+def test_settings_exact_offline_operator_and_profile(env):
+    with respx.mock as mock:
+        assert env.get("/settings") == expected(env)
+        transport = env.active().config["plugins"]["entries"]["fish-audio"]["settings"]
+        transport.update(operator_account=True, allow_free_model=False)
+        rows = expected(env)["models"]
+        rows.pop(1)
+        assert env.get("/settings") == expected(env, models=rows)
+        assert not mock.calls
+    env.switch("b")
+    assert env.get("/settings") == expected(env)
+
+
+def test_settings_write_and_reset(env):
+    assert env.post("/settings", model="s1") == expected(env, model="s1")
+    env.active().config["tts"]["fish-audio"]["voice"] = VOICE
+    assert env.post("/settings", model=None, voice=None) == expected(env, model=None)
+    assert "model" not in env.active().config["tts"]["fish-audio"]
+    assert "voice" not in env.active().config["tts"]["fish-audio"]
+
+
+@pytest.mark.parametrize("body", [{"voice": "abc"}, {"model": "unknown"}, {"model": []}, {"extra": None}])
+def test_settings_invalid_flat_envelope(env, body):
+    before = copy.deepcopy(env.active().config)
+    assert env.post("/settings", **body) == {"ok": False, "kind": "invalid",
+        "message": "Set a known model or reset voice/model to null; voices are set through /use."}
+    assert env.active().config == before and env.active().saves == 0
+
+
+@pytest.mark.parametrize("leaf", ["voice", "model", "aliases"])
+def test_managed_flat_envelope(env, monkeypatch, leaf):
+    managed(monkeypatch, {"tts": {"fish-audio": {leaf: None}}})
+    assert env.get("/settings") == expected(env, managed=[leaf])
+    refusal = {"ok": False, "kind": "managed", "message": "This setting is set by the operator of this agent."}
+    if leaf == "aliases":
+        assert env.post("/aliases", name="narrator", voice=VOICE) == refusal
+        assert env.delete("/aliases/narrator") == refusal
+    else:
+        assert env.post("/settings", **{leaf: None}) == refusal
+    assert env.active().saves == 0
+
+
+def test_alias_routes_and_use_exact(env):
+    with respx.mock as mock:
+        mock.get(env.active().base + "/model/" + VOICE).respond(json={})
+        rows = [{"name": "narrator", "voice": VOICE}]
+        assert env.post("/aliases", name="Narrator", voice=VOICE) == {"ok": True, "aliases": rows, "updated": False}
+        assert env.post("/aliases", name="narrator", voice="narrator") == {"ok": True, "aliases": rows, "updated": True}
+        assert env.get("/settings") == expected(env, aliases=rows)
+        assert env.post("/use", voice="narrator") == {"ok": True, "voice": VOICE, "message": "Saved.",
+            "provider": None, "operator_pinned": False}
+    assert env.delete("/aliases/narrator") == {"ok": True, "aliases": []}
+    assert env.delete("/aliases/narrator") == {"ok": False, "kind": "not_found", "message": "No saved voice name found."}
+
+
+def test_preview_resolves_before_speak_exact(env, monkeypatch):
+    env.active().config["tts"]["fish-audio"]["aliases"] = {"narrator": VOICE}
+    path = env.active().home / "audio" / "synthetic.mp3"
+    def speak(args, *a, **kw):
+        assert args["voice"] == VOICE
+        path.write_bytes(MP3)
+        return {"file_path": str(path), "model": "s2.1-pro"}
+    monkeypatch.setattr(env.api._fa("tools"), "_speak", speak)
+    assert env.post("/preview", voice="narrator") == {"ok": True, "voice": VOICE,
+        "audio": base64.b64encode(MP3).decode(), "mime": "audio/mpeg", "model": "s2.1-pro", "billed": True}
+
+
+def test_alias_refusals_wire(env):
+    with respx.mock as mock:
+        mock.get(env.active().base + "/model/" + VOICE).respond(json={})
+        env.active().config["tts"]["fish-audio"]["aliases"] = {f"voice{i}": VOICE for i in range(50)}
+        assert env.post("/aliases", name="extra", voice=VOICE) == {"ok": False, "kind": "limit",
+            "message": "At most 50 voice names can be saved per profile."}
+        mock.get(env.active().base + "/model/" + OTHER).respond(404)
+        failure = env.post("/aliases", name="voice0", voice=OTHER)
+        assert failure == {"ok": False, "kind": "voice_not_found", "message": str(
+            env.api._fa("errors").response_error(404, body=b'{"code":"voice_not_found"}'))}
+    for route in ("/use", "/preview"):
+        assert env.post(route, voice="??") == {"ok": False, "kind": "invalid",
+            "message": "Unknown voice or name. See `/fish alias`."}

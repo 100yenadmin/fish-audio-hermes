@@ -51,6 +51,18 @@ class FishAudioTTSProvider(TTSProvider):
     def default_voice(self):
         return None
 
+    def list_voices(self):
+        try:
+            saved = settings.aliases()
+            voices = [{"id": voice, "display": name} for name, voice in sorted(saved.items())]
+            current = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio")).get("voice")
+            import re
+            if isinstance(current, str) and re.fullmatch(r"[0-9a-f]{32}", current) and current not in saved.values():
+                voices.append({"id": current, "display": "Current voice"})
+            return voices
+        except Exception:
+            return []
+
     def warm(self):
         pass
 
