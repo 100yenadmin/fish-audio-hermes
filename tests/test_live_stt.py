@@ -15,11 +15,12 @@ MISSING = object()
 
 
 class LiveServer:
-    def __init__(self, error=None, answers=99, second="world."):
+    def __init__(self, error=None, answers=99, second="world.", throttle=False):
         from websockets.sync.server import serve
         self.frames, self.headers, self.paths = [], [], []
         self.closed = threading.Event()
         self.error, self.answers, self.second = error, answers, second
+        self.throttle, self.held = throttle, False
         self.server = serve(self.handle, "127.0.0.1", 0)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.base = f"http://127.0.0.1:{self.server.socket.getsockname()[1]}"
@@ -36,6 +37,13 @@ class LiveServer:
             for message in ws:
                 frame = json.loads(message)
                 self.frames.append(frame)
+                if frame["commit"] and self.throttle:  # hold the first answer until the next commit arrives
+                    self.throttle, self.held = False, True
+                    continue
+                if frame["commit"] and self.held:
+                    self.held = False
+                    ws.send(json.dumps({"message_type": "commit_throttled", "error": "already in progress"}))
+                    # fall through: answer the held commit; the client's retry gets the next answer
                 if frame["commit"]:
                     if self.error and self.error not in ("input_error", "huge"):
                         ws.send(json.dumps({"message_type": "transcriber_error", "error": self.error + KEY}))
@@ -213,6 +221,15 @@ def test_malformed_transcript_falls_back(live, second):
     assert wait_partial(session) == "Hello"
     session.push_audio(SPEECH * 20)
     assert session.finalize()["error_kind"] == "unavailable"  # Hermes then transcribes the whole file
+
+
+def test_throttled_commit_is_retried(live, monkeypatch):
+    monkeypatch.setattr(live_stt, "FINALIZE_TIMEOUT", 2)
+    server, session = live(throttle=True)
+    session.push_audio(SPEECH * 50 + SILENCE * 35 + SPEECH * 20)  # "No." right after a phrase
+    assert session.finalize()["transcript"] == "Hello world."
+    commits = [frame for frame in server.frames if frame["commit"]]
+    assert len(commits) == 3 and commits[-1]["audio_base_64"] == ""  # the retry commits Fish's buffered audio
 
 
 def test_long_pause_never_splits_a_word():

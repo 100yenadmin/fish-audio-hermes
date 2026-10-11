@@ -62,6 +62,7 @@ class FishLiveSession(TranscriptionStreamSession):
         self._detector = PauseDetector()
         self._pending, self._held, self._texts = bytearray(), bytearray(), []
         self._commits = self._received = 0
+        self._retry = False
         self._activity, self._connected = time.monotonic(), None
 
     def _watch(self):
@@ -139,6 +140,12 @@ class FishLiveSession(TranscriptionStreamSession):
                 raise ValueError("Fish live transcript without text")  # fail to file transcription; never drop a phrase
             self._texts.append(text)
             self._received += 1
+            if self._retry:  # Fish kept the throttled audio; an empty commit transcribes it
+                self._retry = False
+                self._send(b"", True)
+        elif kind == "commit_throttled":  # sent while the previous phrase was still being transcribed
+            self._commits -= 1
+            self._retry = True
         elif kind == "transcriber_error":
             self._fail("auth" if "Invalid Token" in str(event.get("error", "")) else "unavailable")
         elif kind == "input_error":

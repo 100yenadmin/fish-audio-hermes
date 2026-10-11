@@ -210,8 +210,8 @@ only the phrases it already returned.
 
 Each committed phrase is billed at Fish's ASR price, with its audio rounded up to a whole second. A phrase is committed
 only when it holds at least 300 ms of sound above the silence threshold (100 ms for a last word after an earlier
-phrase), so a pause is never sent as a phrase on its own. Pauses between phrases are not streamed: only the
-half second before each phrase goes to Fish with it. Live dictation uses Fish's ElevenLabs-compatible realtime endpoint at
+phrase), so a pause is never sent as a phrase on its own. After a phrase is committed, nothing is streamed
+until sound returns, except the half second just before it. Live dictation uses Fish's ElevenLabs-compatible realtime endpoint at
 `wss://api.fish.audio/compat/elevenlabs/v1/speech-to-text/realtime`; microphone audio streams to Fish while you speak.
 It is unavailable with a self-hosted `base_url` or under plugin-host isolation (`plugins.isolation: host`), which
 keep file transcription. Language and prompt hints are ignored on this endpoint.

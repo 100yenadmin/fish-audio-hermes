@@ -69,6 +69,6 @@ speak to `wss://api.fish.audio/compat/elevenlabs/v1/speech-to-text/realtime`, au
 the `xi-api-key` header. The key and safe error text are captured in the opener's profile scope. Only committed
 phrases are transcribed and billed, each rounded up to a second at Fish's ASR price. A phrase is committed only when
 it holds at least 300 ms of sound above the silence threshold (100 ms for a last word after an earlier phrase), so a
-pause is never committed on its own. Pauses between phrases are not streamed, apart from the half second before each phrase.
+pause is never committed on its own. After a phrase is committed, nothing is streamed until sound returns, except the half second just before it.
 Failed live sessions fall back to file transcription. Self-hosted endpoints and plugin-host isolation keep
 the file path. Abandoned sockets close 30 seconds after the last audio, or 3500 seconds after connecting.
