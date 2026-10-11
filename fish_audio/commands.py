@@ -126,6 +126,19 @@ def verify_voice(ident, key, base):
         raise
 
 
+def _write_alias(name, ident):
+    """Adds (ident) or removes (None) one name in the raw config mapping. Entries that settings.aliases() skips, such as a
+    hand-edited name that breaks the rules, stay as they are."""
+    def change(cfg):
+        nested = cfg.setdefault("tts", {}).setdefault("fish-audio", {})
+        raw = nested.get("aliases") if isinstance(nested.get("aliases"), dict) else {}
+        raw = {k: v for k, v in raw.items() if not (isinstance(k, str) and k.strip().casefold() == name)}
+        if ident is not None:
+            raw[name] = ident
+        nested["aliases"] = raw
+    write_config(change)
+
+
 def alias_add(name, voice, key, base):
     name = settings.alias_name(name)
     require_unmanaged("aliases")
@@ -139,7 +152,7 @@ def alias_add(name, voice, key, base):
         if not updated and len(saved) >= settings.MAX_ALIASES:
             raise WriteRefusal("limit", "At most 50 voice names can be saved per profile.")
         saved[name] = ident
-        write_config(lambda cfg: cfg.setdefault("tts", {}).setdefault("fish-audio", {}).__setitem__("aliases", saved))
+        _write_alias(name, ident)
     return saved, updated
 
 
@@ -153,7 +166,7 @@ def alias_remove(name):
         if name not in saved:
             raise WriteRefusal("not_found", "No saved voice name found.")
         del saved[name]
-        write_config(lambda cfg: cfg.setdefault("tts", {}).setdefault("fish-audio", {}).__setitem__("aliases", saved))
+        _write_alias(name, None)
     return saved
 
 

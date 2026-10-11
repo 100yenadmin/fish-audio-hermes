@@ -47,6 +47,17 @@ def test_alias_crud(config, monkeypatch):
     assert "finish" in commands.handle("alias")
 
 
+def test_alias_writes_keep_entries_the_reader_skips(config):
+    config[0]["tts"]["fish-audio"] = {"aliases": {"Short": "legacy-id", "x": VOICE, " Narrator ": VOICE, "host": OTHER}}
+    with respx.mock as mock:
+        mock.get(BASE + "/model/" + OTHER).respond(json={})
+        commands.alias_add("narrator", OTHER, "test-key", BASE)
+    assert config[0]["tts"]["fish-audio"]["aliases"] == {"Short": "legacy-id", "x": VOICE, "host": OTHER, "narrator": OTHER}
+    commands.alias_remove("HOST")
+    assert config[0]["tts"]["fish-audio"]["aliases"] == {"Short": "legacy-id", "x": VOICE, "narrator": OTHER}
+    assert settings.aliases() == {"narrator": OTHER}
+
+
 def test_alias_limit_and_unknown_voice(config):
     nested = seed(config)
     nested["aliases"] = {f"voice{i}": VOICE for i in range(50)}
