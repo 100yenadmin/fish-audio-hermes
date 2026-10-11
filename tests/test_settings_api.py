@@ -78,6 +78,8 @@ def test_alias_routes_and_use_exact(env):
             "provider": None, "operator_pinned": False}
     assert env.delete("/aliases/narrator") == {"ok": True, "aliases": []}
     assert env.delete("/aliases/narrator") == {"ok": False, "kind": "not_found", "message": "No saved voice name found."}
+    for bad in ("default", "x", "a" * 32):
+        assert env.delete(f"/aliases/{bad}") == {"ok": False, "kind": "not_found", "message": "No saved voice name found."}
 
 
 def test_preview_resolves_before_speak_exact(env, monkeypatch):

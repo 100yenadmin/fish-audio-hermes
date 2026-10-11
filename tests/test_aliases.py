@@ -121,7 +121,8 @@ def test_managed_writes(config, monkeypatch, leaf, operation):
 
 
 @pytest.mark.parametrize("layer,expected", [({"tts": None}, True),
-    ({"tts": {"fish-audio": None}}, True), ({"tts": {"provider": "edge"}}, False)])
+    ({"tts": {"fish-audio": None}}, True), ({"tts": {"fish-audio": {}}}, True), ({}, False),
+    ({"tts": {"provider": "edge"}}, False)])
 def test_managed_parents(config, monkeypatch, layer, expected):
     managed_layer(monkeypatch, layer)
     assert settings.managed_leaf("tts", "fish-audio", "model") is expected
