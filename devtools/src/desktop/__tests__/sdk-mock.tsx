@@ -249,7 +249,13 @@ export function createTestContext(options: TestContextOptions = {}) {
       timeouts.push(timer)
       return () => { timer.cancelled = true }
     },
-    setInterval: (fn: () => void) => (intervals.push(fn), () => undefined),
+    setInterval: (fn: () => void) => {
+      intervals.push(fn)
+      return () => {
+        const index = intervals.indexOf(fn)
+        if (index >= 0) intervals.splice(index, 1)
+      }
+    },
     rest: options.rest ?? (async () => ({ ok: true })),
     os: { writeClipboard: async (_text: string) => true, openExternal: async () => true },
     storage: {

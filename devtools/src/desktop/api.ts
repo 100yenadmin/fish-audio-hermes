@@ -173,16 +173,19 @@ export const addAlias = (name: string, voice: string) => post<AliasesResponse & 
 
 export const removeAlias = (name: string) => call<AliasesResponse>(`/aliases/${encodeURIComponent(name)}`, { method: 'DELETE', timeoutMs: 60_000 })
 
-/** True when dotted version `version` is at least `min` (numeric parts; a suffix like `rc1` is ignored). */
-export function versionAtLeast(version: string, min: string): boolean {
-  const parts = (text: string) => text.split('.').map(part => parseInt(part, 10))
-  const have = parts(version)
-  const want = parts(min)
-  if (have.some(Number.isNaN)) return false
-  for (let i = 0; i < want.length; i++) {
-    const a = have[i] ?? 0
-    if (a !== want[i]) return a > want[i]
-  }
+/** Parts of a strict `major.minor.patch` version (a `-prerelease` or `+build` suffix is dropped), else null. */
+function versionParts(version: unknown): null | number[] {
+  if (typeof version !== 'string') return null
+  const core = version.split(/[-+]/)[0]
+  return /^\d+\.\d+\.\d+$/.test(core) ? core.split('.').map(Number) : null
+}
+
+/** True when `version` is at least `min`. Anything that is not a strict `x.y.z` counts as too old. */
+export function versionAtLeast(version: unknown, min: string): boolean {
+  const have = versionParts(version)
+  const want = versionParts(min)
+  if (!have || !want) return false
+  for (let i = 0; i < 3; i++) if (have[i] !== want[i]) return have[i] > want[i]
   return true
 }
 
