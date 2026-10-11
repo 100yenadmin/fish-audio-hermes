@@ -112,3 +112,16 @@ def test_transcription_failure_envelope(tmp_path, statuses, state):
     result = json.loads((tmp_path / "results.json").read_text())
     levels = {r["level"] for r in result["gates"] if r["gate"].startswith(("asr", "roundtrip", "live"))}
     assert (result["state"], levels) == (state, {state})
+
+
+@pytest.mark.parametrize("status,state", [(301, "fail"), (401, "fail"), (503, "warn")])
+def test_every_raised_call_leaves_a_row(tmp_path, status, state):
+    class Raising(w.Fake):
+        def stream(self, text, voice):
+            self.statuses.append(status)  # the response hook saw it before the plugin raised
+            error = RuntimeError("raised")
+            error.status = status
+            raise error
+    w.run(tmp_path, dry_run=True, backend=Raising)
+    rows = [r for r in json.loads((tmp_path / "results.json").read_text())["gates"] if r["status"] == status]
+    assert rows and {r["level"] for r in rows} == {state}
