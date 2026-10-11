@@ -139,6 +139,15 @@ def test_managed_parents(config, monkeypatch, layer, expected):
     assert settings.managed_leaf("tts", "fish-audio", "model") is expected
 
 
+def test_list_voices_current_legacy_and_malformed(config):
+    nested = seed(config)
+    nested["voice"] = "named_voice_123"
+    assert FishAudioTTSProvider().list_voices()[-1] == {"id": "named_voice_123", "display": "Current voice"}
+    for bad in (123, ["x"], "short"):
+        nested["voice"] = bad
+        assert len(FishAudioTTSProvider().list_voices()) == 2
+
+
 def test_list_voices_offline_and_error(config, monkeypatch):
     nested = seed(config)
     nested["voice"] = "b" * 32

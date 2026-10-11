@@ -53,11 +53,11 @@ class FishAudioTTSProvider(TTSProvider):
 
     def list_voices(self):
         try:
+            from .tool_support import voice_id
             saved = settings.aliases()
             voices = [{"id": voice, "display": name} for name, voice in sorted(saved.items())]
             current = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio")).get("voice")
-            import re
-            if isinstance(current, str) and re.fullmatch(r"[0-9a-f]{32}", current) and current not in saved.values():
+            if voice_id(current) and current not in saved.values():  # the rule synthesis applies to tts.fish-audio.voice
                 voices.append({"id": current, "display": "Current voice"})
             return voices
         except Exception:

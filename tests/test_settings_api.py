@@ -38,6 +38,20 @@ def test_settings_exact_offline_operator_and_profile(env):
     assert env.get("/settings") == expected(env)
 
 
+@pytest.mark.parametrize("voice,model,allow_free,shown", [
+    (123, ["s1"], True, (None, None)),
+    ("named_voice_123", "speech-9", True, ("named_voice_123", None)),
+    ("abc", "s2.1-pro-free", True, (None, "s2.1-pro-free")),
+    (VOICE, "s2.1-pro-free", False, (VOICE, "s2.1-pro")),
+])
+def test_settings_report_what_synthesis_uses(env, voice, model, allow_free, shown):
+    env.active().config["tts"]["fish-audio"].update(voice=voice, model=model)
+    env.active().config["plugins"]["entries"]["fish-audio"]["settings"]["allow_free_model"] = allow_free
+    state = env.get("/settings")
+    assert (state["voice"], state["model"]) == shown
+    assert state["model"] is None or state["model"] in {row["id"] for row in state["models"]}
+
+
 def test_settings_write_and_reset(env):
     assert env.post("/settings", model="s1") == expected(env, model="s1")
     env.active().config["tts"]["fish-audio"]["voice"] = VOICE
