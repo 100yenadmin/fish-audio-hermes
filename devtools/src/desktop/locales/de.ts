@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural, usd } from '../format'
+
+const tag = 'de'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : de.thisAgent)
 
@@ -51,9 +54,14 @@ export const de = {
   stop: 'Stoppen',
   use: 'Verwenden',
   inUse: 'In Verwendung',
-  favourite: 'Als Favorit markieren',
-  unfavourite: 'Favorit entfernen',
-  uses: (n: number) => `${compact(n)} ${n === 1 ? 'Nutzung' : 'Nutzungen'}`,
+  previewVoice: (title: string) => `${title} vorhören`,
+  stopVoice: (title: string) => `${title} stoppen`,
+  deleteVoice: (title: string) => `${title} löschen`,
+  favouriteVoice: (title: string) => `${title} als Favorit markieren`,
+  unfavouriteVoice: (title: string) => `${title} aus Favoriten entfernen`,
+  saveAsN: (n: number) => `Name ${n}`,
+  emptyFile: (name: string) => `${name} ist leer.`,
+  uses: (n: number) => `${compact(tag, n)} ${plural(tag, n, { one: 'Nutzung', other: 'Nutzungen' })}`,
   noVoices: 'Keine passenden Stimmen',
   noFavourites: 'Noch keine Favoriten',
   noFavouritesHint: 'Markieren Sie eine Stimme in der Bibliothek mit einem Stern, um sie hier zu speichern.',
@@ -102,10 +110,10 @@ export const de = {
   operatorSaved: (title: string) => `${title} gespeichert. Sie finden die Stimme in der Bibliothek unter Favoriten.`,
   apiCredit: 'API-Guthaben',
   lowCredit: 'Guthaben niedrig — laden Sie es auf, damit Sprachantworten weiter funktionieren.',
-  topUps: 'Aufladungen insgesamt',
+  topUpsLine: (amount: string) => `Aufladungen insgesamt: ${usd(tag, amount)}`,
   freeCredit: 'Kostenloses Guthaben verfügbar',
   plan: 'Tarif',
-  planBalance: (balance: number, total: number) => `${balance.toLocaleString('de')} von ${total.toLocaleString('de')} Credits übrig`,
+  planBalance: (balance: number, total: number) => `${number(tag, balance)} von ${number(tag, total)} Credits übrig`,
   renews: (date: string) => `Verlängert sich am ${date}`,
   periodEnds: (date: string) => `Der aktuelle Zeitraum endet am ${date}`,
   noPlan: 'Kein App-Tarif',
@@ -116,7 +124,42 @@ export const de = {
   apiKeys: 'API-Schlüssel',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API-Guthaben',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  usd: (value: string) => usd(tag, value),
+  errors: {
+    credential: (url: string) => `Gültigen Fish Audio API-Schlüssel einrichten: ${url}`,
+    credentialAccess: (url: string) => `Fish Audio API-Schlüssel und Zugriffsrechte prüfen: ${url}`,
+    quota: (url: string) => `Fish Audio API-Guthaben aufladen: ${url}; App-Tarif und API haben getrennte Guthaben.`,
+    rate_limit: `Fish Audio hat das Limit gleichzeitiger Anfragen erreicht. Nach Aufladebetrag: unter $100: 5, ab $100: 15, ab $1k: 50 gleichzeitige Anfragen. Später erneut versuchen.`,
+    availability: `Fish Audio ist nicht verfügbar. Später erneut versuchen.`,
+    invalid_request: `Fish Audio hat die Sprachanfrage abgelehnt. Stimme und Einstellungen prüfen.`,
+    not_found: `Fish Audio konnte die angeforderte Stimme oder das Modell nicht finden.`,
+    too_large: `Die Fish Audio-Anfrage ist zu groß. Weniger Text oder kleinere Referenzen verwenden.`,
+    unsupported_media: `Fish Audio unterstützt dieses Audioformat nicht.`,
+    voice_not_found: (url: string) => `Die Stimm-ID wurde nicht gefunden oder ist in einem anderen Konto privat. Stimmen durchsuchen: ${url}.`,
+    credentialOperator: `Die Zugangsdaten des Sprachdienstes wurden abgelehnt. Den Betreiber dieses Agenten kontaktieren.`,
+    quotaOperator: `Das Guthaben des Sprachdienstes ist aufgebraucht. Den Betreiber dieses Agenten kontaktieren.`,
+    rateLimitOperator: `Der Sprachdienst ist ausgelastet. In Kürze erneut versuchen.`,
+    error: `Etwas ist schiefgelaufen`,
+    badChunkSize: `Das Gateway hat eine ungültige Upload-Blockgröße gesendet.`,
+    code: (code: string) => ` Code: ${code}.`,
+    paidModel: (url: string) => ` Zu s2.1-pro wechseln und Guthaben aufladen: ${url}`,
+    requestId: (id: string) => ` (Anfrage-ID ${id})`,
+    fishTrace: (id: string) => ` (Fish-Trace ${id})`,
+  },
+  refusals: {
+    no_key: `Fish Audio ist für dieses Profil noch nicht eingerichtet. Einen Schlüssel unter Einstellungen ▸ Plugins ▸ Fish Audio (bei älteren Versionen: Fähigkeiten ▸ Plugins) hinzufügen oder \`hermes fish login\` auf dem Rechner mit Hermes ausführen.`,
+    no_keyOperator: `Den Betreiber dieses Agenten bitten, Fish Audio fertig einzurichten.`,
+    not_owner: `Nur Stimmen aus dem eigenen Fish Audio-Konto können gelöscht werden.`,
+    gone: `Der Upload ist nicht mehr verfügbar; die Datei erneut hinzufügen.`,
+    bad_upload_id: `Die Upload-ID ist ungültig.`,
+    consent: `Bestätigen, dass der Sprecher dem Klonen seiner Stimme zugestimmt hat.`,
+    managed: `Diese Einstellung wird vom Betreiber dieses Agenten festgelegt.`,
+    io_error: `Der Upload-Ordner des Plugins ist kein gewöhnlicher Ordner.`,
+    chunk_too_large: `Der Upload-Block ist zu groß.`,
+    offset: `Der Offset stimmt nicht mit den hochgeladenen Bytes überein.`,
+    size_mismatch: `Ein Sample wurde nicht vollständig hochgeladen; erneut hinzufügen.`,
+    limit: `Pro Profil können höchstens 50 Stimmnamen gespeichert werden.`,
+  },
   settings: {
     restart: 'Starten Sie das Gateway dieses Agenten neu, um das Update von Fish Audio abzuschließen.',
     voicesPage: 'Seite „Stimmen“',
@@ -139,6 +182,7 @@ export const de = {
     voice: 'Stimme',
     voicePlaceholder: 'Stimmen-ID oder gespeicherter Name',
     add: 'Hinzufügen',
+    removeAlias: (name: string) => `${name} entfernen`,
     remove: 'Entfernen',
     added: (name: string) => `${name} gespeichert`,
     updated: (name: string) => `${name} aktualisiert`,
@@ -152,7 +196,3 @@ export const de = {
     agentChangedAfterSend: (profile: string) => `Der ausgewählte Agent hat sich vor der Antwort geändert. Die Änderung wurde für ${agentName(profile)} übernommen.`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}

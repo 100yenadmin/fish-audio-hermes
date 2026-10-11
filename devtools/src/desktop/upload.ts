@@ -1,7 +1,7 @@
 // Clone uploads: chunked JSON + base64 (multipart `upload` throws on cookie/OAuth remotes), pinned to the agent
 // the files were picked on. ctx.rest always goes to the agent selected at call time, so every request of the
 // operation re-checks the pin synchronously, with no await between the check and the dispatch.
-import { type AgentPin, ApiError, samePin } from './api'
+import { type AgentPin, ApiError, type ErrorDetail, samePin } from './api'
 import { bytesToBase64 } from './audio'
 
 export const MAX_FILES = 3
@@ -44,9 +44,9 @@ export async function cloneVoice(
 
   const send = <T>(path: string, body: unknown, timeoutMs: number): Promise<T> => {
     if (!still()) throw new AgentChanged()
-    return deps.rest<T & { kind?: string; message?: string; ok?: boolean }>(path, { method: 'POST', body, timeoutMs }).then(res => {
+    return deps.rest<T & { kind?: string; message?: string; ok?: boolean; detail?: ErrorDetail }>(path, { method: 'POST', body, timeoutMs }).then(res => {
       if (!still()) throw new AgentChanged()
-      if (res && res.ok === false) throw new ApiError(res.kind ?? 'error', res.message ?? 'Something went wrong')
+      if (res && res.ok === false) throw new ApiError(res.kind ?? 'error', res.message ?? '', res.detail)
       return res
     })
   }
@@ -59,7 +59,7 @@ export async function cloneVoice(
     for (const [index, file] of files.entries()) {
       const start = await send<{ chunk_bytes: number; upload_id: string }>('/clone/start', { size: file.size }, 30_000)
       uploaded.push({ upload_id: start.upload_id, size: file.size })
-      if (!Number.isInteger(start.chunk_bytes) || start.chunk_bytes <= 0) throw new ApiError('error', 'The gateway sent an invalid upload chunk size.')
+      if (!Number.isInteger(start.chunk_bytes) || start.chunk_bytes <= 0) throw new ApiError('bad_chunk_size', '')
       for (let offset = 0; offset < file.size; offset += start.chunk_bytes) {
         const data = await read(file.slice(offset, offset + start.chunk_bytes))
         await send('/clone/chunk', { upload_id: start.upload_id, offset, data }, 120_000)

@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural, usd } from '../format'
+
+const tag = 'zh-Hant'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : zhHant.thisAgent)
 
@@ -51,9 +54,14 @@ export const zhHant = {
   stop: '停止',
   use: '使用',
   inUse: '使用中',
-  favourite: '收藏',
-  unfavourite: '取消收藏',
-  uses: (n: number) => `使用 ${compact(n)} 次`,
+  previewVoice: (title: string) => `試聽「${title}」`,
+  stopVoice: (title: string) => `停止「${title}」`,
+  deleteVoice: (title: string) => `刪除「${title}」`,
+  favouriteVoice: (title: string) => `收藏「${title}」`,
+  unfavouriteVoice: (title: string) => `取消收藏「${title}」`,
+  saveAsN: (n: number) => `候選 ${n} 的名稱`,
+  emptyFile: (name: string) => `${name} 是空檔案。`,
+  uses: (n: number) => `使用 ${compact(tag, n)} ${plural(tag, n, { other: '次' })}`,
   noVoices: '沒有符合的聲音',
   noFavourites: '尚無收藏',
   noFavouritesHint: '在聲音庫中點選聲音的星號，即可將其收藏到這裡。',
@@ -102,10 +110,10 @@ export const zhHant = {
   operatorSaved: (title: string) => `已儲存${title}。可在聲音庫的「收藏」中找到。`,
   apiCredit: 'API 額度',
   lowCredit: '餘額不足——請儲值以繼續使用語音回覆。',
-  topUps: '累計儲值',
+  topUpsLine: (amount: string) => `累計儲值：${usd(tag, amount)}`,
   freeCredit: '可用免費額度',
   plan: '方案',
-  planBalance: (balance: number, total: number) => `剩餘 ${balance.toLocaleString('zh-TW')} / ${total.toLocaleString('zh-TW')} 點數`,
+  planBalance: (balance: number, total: number) => `剩餘 ${number(tag, balance)} / ${number(tag, total)} 點數`,
   renews: (date: string) => `續訂日期：${date}`,
   periodEnds: (date: string) => `目前週期結束日期：${date}`,
   noPlan: '無應用程式方案',
@@ -116,7 +124,42 @@ export const zhHant = {
   apiKeys: 'API 金鑰',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API 額度',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  usd: (value: string) => usd(tag, value),
+  errors: {
+    credential: (url: string) => `請設定有效的 Fish Audio API 金鑰：${url}`,
+    credentialAccess: (url: string) => `請檢查 Fish Audio API 金鑰及其存取權限：${url}`,
+    quota: (url: string) => `請儲值 Fish Audio API 點數：${url}；應用程式方案點數與 API 點數分開計算。`,
+    rate_limit: `已達到 Fish Audio 並行請求上限。依累計儲值額：低於 $100 為 5 個，達到 $100 為 15 個，達到 $1k 為 50 個並行請求。請稍後重試。`,
+    availability: `Fish Audio 暫時無法使用。請稍後重試。`,
+    invalid_request: `Fish Audio 拒絕了語音合成請求。請檢查聲音和設定。`,
+    not_found: `Fish Audio 找不到所要求的聲音或模型。`,
+    too_large: `Fish Audio 請求過大。請減少文字或縮小參考音訊。`,
+    unsupported_media: `Fish Audio 不支援此音訊格式。`,
+    voice_not_found: (url: string) => `聲音 ID 不存在，或屬於其他帳號的私人聲音。瀏覽聲音：${url}。`,
+    credentialOperator: `語音服務的憑證遭到拒絕。請聯絡此代理的營運者。`,
+    quotaOperator: `語音服務點數不足。請聯絡此代理的營運者。`,
+    rateLimitOperator: `語音服務忙碌。請稍後重試。`,
+    error: `發生了問題`,
+    badChunkSize: `閘道傳回了無效的上傳區塊大小。`,
+    code: (code: string) => `錯誤代碼：${code}。`,
+    paidModel: (url: string) => `請切換至 s2.1-pro 並儲值：${url}`,
+    requestId: (id: string) => `（請求 ID：${id}）`,
+    fishTrace: (id: string) => `（Fish 追蹤：${id}）`,
+  },
+  refusals: {
+    no_key: `此設定檔尚未設定 Fish Audio。請在設定 ▸ 外掛 ▸ Fish Audio（舊版本為技能與工具 ▸ 外掛）中加入金鑰，或在執行 Hermes 的機器上執行 \`hermes fish login\`。`,
+    no_keyOperator: `請聯絡此代理的營運者完成 Fish Audio 設定。`,
+    not_owner: `只能刪除您自己的 Fish Audio 帳號建立的聲音。`,
+    gone: `上傳已無法使用；請重新加入檔案。`,
+    bad_upload_id: `上傳識別碼無效。`,
+    consent: `請確認您已取得說話者的聲音複製許可。`,
+    managed: `此設定由代理的營運者管理。`,
+    io_error: `外掛的上傳目錄不是一般資料夾。`,
+    chunk_too_large: `上傳區塊過大。`,
+    offset: `偏移量與已上傳的位元組數不符。`,
+    size_mismatch: `一個樣本尚未上傳完成；請重新加入。`,
+    limit: `每個設定檔最多可儲存 50 個聲音名稱。`,
+  },
   settings: {
     restart: '重新啟動此代理的閘道，以完成 Fish Audio 的更新。',
     voicesPage: '聲音頁面',
@@ -139,6 +182,7 @@ export const zhHant = {
     voice: '聲音',
     voicePlaceholder: '聲音 ID 或已儲存的名稱',
     add: '新增',
+    removeAlias: (name: string) => `移除 ${name}`,
     remove: '移除',
     added: (name: string) => `已儲存 ${name}`,
     updated: (name: string) => `已更新 ${name}`,
@@ -152,7 +196,3 @@ export const zhHant = {
     agentChangedAfterSend: (profile: string) => `在收到回覆前，所選代理已變更。此變更已套用至${agentName(profile)}。`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}

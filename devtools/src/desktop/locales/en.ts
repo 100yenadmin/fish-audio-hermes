@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural } from '../format'
+
+const tag = 'en'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : en.thisAgent)
 
@@ -53,9 +56,14 @@ export const en = {
   stop: 'Stop',
   use: 'Use',
   inUse: 'In use',
-  favourite: 'Favourite',
-  unfavourite: 'Remove favourite',
-  uses: (n: number) => `${compact(n)} uses`,
+  previewVoice: (title: string) => `Preview ${title}`,
+  stopVoice: (title: string) => `Stop ${title}`,
+  deleteVoice: (title: string) => `Delete ${title}`,
+  favouriteVoice: (title: string) => `Favourite ${title}`,
+  unfavouriteVoice: (title: string) => `Unfavourite ${title}`,
+  saveAsN: (n: number) => `Name ${n}`,
+  emptyFile: (name: string) => `${name} is empty.`,
+  uses: (n: number) => `${compact(tag, n).replace('K', 'k')} ${plural(tag, n, { one: 'use', other: 'uses' })}`,
   noVoices: 'No voices match',
   noFavourites: 'No favourites yet',
   noFavouritesHint: 'Star a voice in the library to keep it here.',
@@ -107,10 +115,10 @@ export const en = {
   // Account
   apiCredit: 'API credit',
   lowCredit: 'Low balance — top up to keep voice replies working.',
-  topUps: 'Lifetime top-ups',
+  topUpsLine: (amount: string): string => `Lifetime top-ups: ${en.usd(amount)}`,
   freeCredit: 'Free credit available',
   plan: 'Plan',
-  planBalance: (balance: number, total: number) => `${balance.toLocaleString()} of ${total.toLocaleString()} credits left`,
+  planBalance: (balance: number, total: number) => `${number(tag, balance)} of ${number(tag, total)} credits left`,
   renews: (date: string) => `Renews ${date}`,
   periodEnds: (date: string) => `Current period ends ${date}`,
   noPlan: 'No app plan',
@@ -122,6 +130,41 @@ export const en = {
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API credit',
   usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  errors: {
+    credential: (url: string) => `Set a valid Fish Audio API key: ${url}`,
+    credentialAccess: (url: string) => `Check your Fish Audio API key and access: ${url}`,
+    quota: (url: string) => `Top up Fish Audio API credits: ${url}; app plan credits are separate from API credits.`,
+    rate_limit: `Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, ≥$100: 15, ≥$1k: 50 concurrent requests. Retry later.`,
+    availability: `Fish Audio is unavailable. Try again later.`,
+    invalid_request: `Fish Audio rejected the synthesis request. Check the voice and settings.`,
+    not_found: `Fish Audio could not find the requested voice or model.`,
+    too_large: `The Fish Audio request is too large. Use less text or smaller references.`,
+    unsupported_media: `Fish Audio does not support this audio format.`,
+    voice_not_found: (url: string) => `The voice id was not found, or is private to another account. Browse voices at ${url}.`,
+    credentialOperator: `The voice service's credentials were rejected. Contact the operator of this agent.`,
+    quotaOperator: `The voice service is out of credit. Contact the operator of this agent.`,
+    rateLimitOperator: `The voice service is busy. Try again shortly.`,
+    error: `Something went wrong`,
+    badChunkSize: `The gateway sent an invalid upload chunk size.`,
+    code: (code: string) => ` Code: ${code}.`,
+    paidModel: (url: string) => ` Switch to s2.1-pro and top up: ${url}`,
+    requestId: (id: string) => ` (request id ${id})`,
+    fishTrace: (id: string) => ` (Fish trace ${id})`,
+  },
+  refusals: {
+    no_key: `Fish Audio isn't set up for this profile yet. Add a key in Settings ▸ Plugins ▸ Fish Audio (Capabilities ▸ Plugins on older Desktop), or run \`hermes fish login\` on the machine running Hermes.`,
+    no_keyOperator: `Ask the operator of this agent to finish the Fish Audio setup.`,
+    not_owner: `You can delete only voices your Fish Audio account created.`,
+    gone: `The upload is no longer available; add the file again.`,
+    bad_upload_id: `The upload identifier is invalid.`,
+    consent: `Confirm that you have the speaker's permission to clone this voice.`,
+    managed: `This setting is set by the operator of this agent.`,
+    io_error: `The plugin's upload folder is not a plain folder.`,
+    chunk_too_large: `The upload chunk is too large.`,
+    offset: `The offset does not match the uploaded bytes.`,
+    size_mismatch: `A sample did not finish uploading; add it again.`,
+    limit: `At most 50 voice names can be saved per profile.`,
+  },
   settings: {
     restart: "Restart this agent's gateway to finish updating Fish Audio.",
     voicesPage: 'Voices page',
@@ -144,6 +187,7 @@ export const en = {
     voice: 'Voice',
     voicePlaceholder: 'Voice id or saved name',
     add: 'Add',
+    removeAlias: (name: string) => `Remove ${name}`,
     remove: 'Remove',
     added: (name: string) => `Saved ${name}`,
     updated: (name: string) => `Updated ${name}`,
@@ -157,8 +201,3 @@ export const en = {
     agentChangedAfterSend: (profile: string) => `The selected agent changed before the answer arrived. The change was made for ${agentName(profile)}.`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}
-

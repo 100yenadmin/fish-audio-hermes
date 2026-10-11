@@ -256,13 +256,20 @@ def apply_knobs(params, nested):
             params[key] = value
 
 
+def resolve_voice_source(call_voice, nested):
+    voice = nested.get("voice")
+    if isinstance(voice, str) and re.fullmatch(r"[A-Za-z0-9_-]{8,128}", voice):
+        return voice, "nested"
+    if isinstance(call_voice, str) and re.fullmatch(r"[0-9a-f]{32}", call_voice):
+        return call_voice, "call"
+    return None, "default"
+
+
 def resolve_tts(call_voice, call_model, call_speed, call_format, output_path, *, key=""):
     config = _config()
     nested = _mapping(_mapping(config.get("tts")).get("fish-audio"))
     transport = _mapping(_mapping(_mapping(_mapping(config.get("plugins")).get("entries")).get("fish-audio")).get("settings"))
-    voice = nested.get("voice")
-    if not isinstance(voice, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,128}", voice):
-        voice = call_voice if isinstance(call_voice, str) and re.fullmatch(r"[0-9a-f]{32}", call_voice) else None
+    voice, source = resolve_voice_source(call_voice, nested)
     base_url = _base_url(transport.get("base_url", DEFAULT_BASE_URL))
     model, defaulted = resolve_model(call_model, key=key, base_url=base_url)
     speed = call_speed if call_speed is not None else nested.get("speed", 1.0)
@@ -283,4 +290,9 @@ def resolve_tts(call_voice, call_model, call_speed, call_format, output_path, *,
     if voice is not None:
         params["reference_id"] = voice
     apply_knobs(params, nested)
+    voice_logger = logging.getLogger("fish_audio.voice")
+    prefix = voice[:8] + "…" if voice else "Fish default"
+    if getattr(voice_logger, "_fish_last_voice", None) != (prefix, source):
+        voice_logger._fish_last_voice = (prefix, source)
+        voice_logger.info("Fish Audio voice: %s (from %s)", prefix, source)
     return params, str(path)

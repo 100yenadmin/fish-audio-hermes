@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural, usd } from '../format'
+
+const tag = 'ja'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : ja.thisAgent)
 
@@ -51,9 +54,14 @@ export const ja = {
   stop: '停止',
   use: '使用',
   inUse: '使用中',
-  favourite: 'お気に入りに追加',
-  unfavourite: 'お気に入りから削除',
-  uses: (n: number) => `使用 ${compact(n)} 回`,
+  previewVoice: (title: string) => `「${title}」を試聴`,
+  stopVoice: (title: string) => `「${title}」を停止`,
+  deleteVoice: (title: string) => `「${title}」を削除`,
+  favouriteVoice: (title: string) => `「${title}」をお気に入りに追加`,
+  unfavouriteVoice: (title: string) => `「${title}」をお気に入りから削除`,
+  saveAsN: (n: number) => `候補 ${n} の名前`,
+  emptyFile: (name: string) => `${name} は空のファイルです。`,
+  uses: (n: number) => `使用 ${compact(tag, n)} ${plural(tag, n, { other: '回' })}`,
   noVoices: '一致するボイスがありません',
   noFavourites: 'お気に入りはまだありません',
   noFavouritesHint: 'ライブラリのボイスに星を付けると、ここに保存されます。',
@@ -102,10 +110,10 @@ export const ja = {
   operatorSaved: (title: string) => `「${title}」を保存しました。ライブラリの「お気に入り」で確認できます。`,
   apiCredit: 'API クレジット',
   lowCredit: '残高が少なくなっています。音声返信を使い続けるにはチャージしてください。',
-  topUps: '累計チャージ額',
+  topUpsLine: (amount: string) => `累計チャージ額：${usd(tag, amount)}`,
   freeCredit: '利用可能な無料クレジット',
   plan: 'プラン',
-  planBalance: (balance: number, total: number) => `${total.toLocaleString('ja')} クレジット中、残り ${balance.toLocaleString('ja')}`,
+  planBalance: (balance: number, total: number) => `${number(tag, total)} クレジット中、残り ${number(tag, balance)}`,
   renews: (date: string) => `更新日：${date}`,
   periodEnds: (date: string) => `現在の期間の終了日：${date}`,
   noPlan: 'アプリのプランなし',
@@ -116,7 +124,42 @@ export const ja = {
   apiKeys: 'API キー',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API クレジット',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  usd: (value: string) => usd(tag, value),
+  errors: {
+    credential: (url: string) => `有効な Fish Audio API キーを設定してください：${url}`,
+    credentialAccess: (url: string) => `Fish Audio API キーとアクセス権を確認してください：${url}`,
+    quota: (url: string) => `Fish Audio API クレジットをチャージしてください：${url}。アプリのプランと API のクレジットは別です。`,
+    rate_limit: `Fish Audio の同時リクエスト数の上限に達しました。累計チャージ額が $100 未満なら 5 件、$100 以上なら 15 件、$1k 以上なら 50 件です。時間をおいて再試行してください。`,
+    availability: `Fish Audio を利用できません。時間をおいて再試行してください。`,
+    invalid_request: `Fish Audio が音声合成リクエストを拒否しました。ボイスと設定を確認してください。`,
+    not_found: `指定されたボイスまたはモデルが Fish Audio に見つかりません。`,
+    too_large: `Fish Audio へのリクエストが大きすぎます。テキストや参照音声を短くしてください。`,
+    unsupported_media: `Fish Audio はこの音声形式に対応していません。`,
+    voice_not_found: (url: string) => `ボイス ID が見つからないか、別のアカウントの非公開ボイスです。ボイス一覧：${url}。`,
+    credentialOperator: `音声サービスの認証情報が拒否されました。このエージェントの運用者に連絡してください。`,
+    quotaOperator: `音声サービスのクレジットが不足しています。このエージェントの運用者に連絡してください。`,
+    rateLimitOperator: `音声サービスが混み合っています。少し待って再試行してください。`,
+    error: `問題が発生しました`,
+    badChunkSize: `ゲートウェイから無効なアップロードチャンクサイズが返されました。`,
+    code: (code: string) => `コード：${code}。`,
+    paidModel: (url: string) => `s2.1-pro に切り替えてチャージしてください：${url}`,
+    requestId: (id: string) => `（リクエスト ID：${id}）`,
+    fishTrace: (id: string) => `（Fish トレース：${id}）`,
+  },
+  refusals: {
+    no_key: `このプロファイルの Fish Audio は未設定です。設定 ▸ プラグイン ▸ Fish Audio（旧バージョンでは スキルとツール ▸ プラグイン）にキーを追加するか、Hermes が動作するマシンで \`hermes fish login\` を実行してください。`,
+    no_keyOperator: `このエージェントの運用者に Fish Audio の設定を完了するよう依頼してください。`,
+    not_owner: `削除できるのは、ご自身の Fish Audio アカウントで作成したボイスだけです。`,
+    gone: `アップロードが利用できなくなりました。ファイルを追加し直してください。`,
+    bad_upload_id: `アップロード ID が無効です。`,
+    consent: `この声をクローンする許可を話者から得ていることを確認してください。`,
+    managed: `この設定はエージェントの運用者が管理しています。`,
+    io_error: `プラグインのアップロードフォルダーが通常のフォルダーではありません。`,
+    chunk_too_large: `アップロードチャンクが大きすぎます。`,
+    offset: `オフセットがアップロード済みのバイト数と一致しません。`,
+    size_mismatch: `サンプルのアップロードが完了していません。追加し直してください。`,
+    limit: `プロファイルごとに保存できるボイス名は 50 件までです。`,
+  },
   settings: {
     restart: 'Fish Audio の更新を完了するには、このエージェントのゲートウェイを再起動してください。',
     voicesPage: 'ボイスページ',
@@ -139,6 +182,7 @@ export const ja = {
     voice: 'ボイス',
     voicePlaceholder: 'ボイス ID または保存した名前',
     add: '追加',
+    removeAlias: (name: string) => `${name} を削除`,
     remove: '削除',
     added: (name: string) => `${name} を保存しました`,
     updated: (name: string) => `${name} を更新しました`,
@@ -152,7 +196,3 @@ export const ja = {
     agentChangedAfterSend: (profile: string) => `応答が届く前に選択中のエージェントが変更されました。変更は${agentName(profile)}に適用されています。`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}

@@ -1,4 +1,7 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
+import { compact, number, plural, usd } from '../format'
+
+const tag = 'fr'
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : fr.thisAgent)
 
@@ -51,9 +54,14 @@ export const fr = {
   stop: 'Arrêter',
   use: 'Utiliser',
   inUse: 'Utilisée',
-  favourite: 'Ajouter aux favoris',
-  unfavourite: 'Retirer des favoris',
-  uses: (n: number) => `${compact(n)} ${n < 2 ? 'utilisation' : 'utilisations'}`,
+  previewVoice: (title: string) => `Écouter ${title}`,
+  stopVoice: (title: string) => `Arrêter ${title}`,
+  deleteVoice: (title: string) => `Supprimer ${title}`,
+  favouriteVoice: (title: string) => `Ajouter ${title} aux favoris`,
+  unfavouriteVoice: (title: string) => `Retirer ${title} des favoris`,
+  saveAsN: (n: number) => `Nom ${n}`,
+  emptyFile: (name: string) => `${name} est vide.`,
+  uses: (n: number) => `${compact(tag, n)} ${plural(tag, n, { one: 'utilisation', other: 'utilisations' })}`,
   noVoices: 'Aucune voix correspondante',
   noFavourites: 'Aucun favori pour le moment',
   noFavouritesHint: 'Ajoutez une voix aux favoris dans la bibliothèque pour la retrouver ici.',
@@ -102,10 +110,10 @@ export const fr = {
   operatorSaved: (title: string) => `${title} enregistrée. Retrouvez-la dans la Bibliothèque, sous Favoris.`,
   apiCredit: 'Crédit API',
   lowCredit: 'Solde faible — rechargez pour continuer à recevoir des réponses vocales.',
-  topUps: 'Recharges cumulées',
+  topUpsLine: (amount: string) => `Recharges cumulées : ${usd(tag, amount)}`,
   freeCredit: 'Crédit gratuit disponible',
   plan: 'Forfait',
-  planBalance: (balance: number, total: number) => `${balance.toLocaleString('fr')} crédits restants sur ${total.toLocaleString('fr')}`,
+  planBalance: (balance: number, total: number) => `${number(tag, balance)} crédits restants sur ${number(tag, total)}`,
   renews: (date: string) => `Renouvellement le ${date}`,
   periodEnds: (date: string) => `La période actuelle se termine le ${date}`,
   noPlan: 'Aucun forfait pour l’application',
@@ -116,7 +124,42 @@ export const fr = {
   apiKeys: 'Clés API',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Crédit API Fish Audio',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  usd: (value: string) => usd(tag, value),
+  errors: {
+    credential: (url: string) => `Configurez une clé API Fish Audio valide : ${url}`,
+    credentialAccess: (url: string) => `Vérifiez votre clé API Fish Audio et ses droits d’accès : ${url}`,
+    quota: (url: string) => `Rechargez les crédits API Fish Audio : ${url} ; les crédits du forfait de l’application et de l’API sont distincts.`,
+    rate_limit: `La limite de requêtes simultanées Fish Audio est atteinte. Selon les recharges : moins de $100 : 5, à partir de $100 : 15, à partir de $1k : 50 requêtes simultanées. Réessayez plus tard.`,
+    availability: `Fish Audio est indisponible. Réessayez plus tard.`,
+    invalid_request: `Fish Audio a refusé la demande de synthèse. Vérifiez la voix et les réglages.`,
+    not_found: `Fish Audio n’a pas trouvé la voix ou le modèle demandé.`,
+    too_large: `La requête Fish Audio est trop volumineuse. Réduisez le texte ou les références.`,
+    unsupported_media: `Fish Audio ne prend pas en charge ce format audio.`,
+    voice_not_found: (url: string) => `L’identifiant de voix est introuvable ou privé à un autre compte. Parcourez les voix sur ${url}.`,
+    credentialOperator: `Le service vocal a refusé les identifiants. Contactez l’opérateur de cet agent.`,
+    quotaOperator: `Le service vocal n’a plus de crédit. Contactez l’opérateur de cet agent.`,
+    rateLimitOperator: `Le service vocal est occupé. Réessayez dans un instant.`,
+    error: `Une erreur est survenue`,
+    badChunkSize: `La passerelle a envoyé une taille de bloc d’envoi non valide.`,
+    code: (code: string) => ` Code : ${code}.`,
+    paidModel: (url: string) => ` Passez à s2.1-pro et rechargez : ${url}`,
+    requestId: (id: string) => ` (identifiant de requête ${id})`,
+    fishTrace: (id: string) => ` (trace Fish ${id})`,
+  },
+  refusals: {
+    no_key: `Fish Audio n’est pas encore configuré pour ce profil. Ajoutez une clé dans Paramètres ▸ Plugins ▸ Fish Audio (dans les anciennes versions : Capacités ▸ Plugins), ou exécutez \`hermes fish login\` sur la machine où tourne Hermes.`,
+    no_keyOperator: `Demandez à l’opérateur de cet agent de terminer la configuration de Fish Audio.`,
+    not_owner: `Vous pouvez uniquement supprimer les voix créées par votre compte Fish Audio.`,
+    gone: `L’envoi n’est plus disponible ; ajoutez à nouveau le fichier.`,
+    bad_upload_id: `L’identifiant d’envoi n’est pas valide.`,
+    consent: `Confirmez que vous avez l’autorisation du locuteur pour cloner cette voix.`,
+    managed: `Ce réglage est défini par l’opérateur de cet agent.`,
+    io_error: `Le dossier d’envoi du plugin n’est pas un dossier ordinaire.`,
+    chunk_too_large: `Le bloc d’envoi est trop volumineux.`,
+    offset: `Le décalage ne correspond pas aux octets envoyés.`,
+    size_mismatch: `L’envoi d’un échantillon n’est pas terminé ; ajoutez-le à nouveau.`,
+    limit: `Vous pouvez enregistrer jusqu’à 50 noms de voix par profil.`,
+  },
   settings: {
     restart: 'Redémarrez la passerelle de cet agent pour terminer la mise à jour de Fish Audio.',
     voicesPage: 'Page Voix',
@@ -139,6 +182,7 @@ export const fr = {
     voice: 'Voix',
     voicePlaceholder: 'Identifiant de voix ou nom enregistré',
     add: 'Ajouter',
+    removeAlias: (name: string) => `Retirer ${name}`,
     remove: 'Retirer',
     added: (name: string) => `${name} enregistré`,
     updated: (name: string) => `${name} mis à jour`,
@@ -152,7 +196,3 @@ export const fr = {
     agentChangedAfterSend: (profile: string) => `L’agent sélectionné a changé avant la réponse. La modification a été appliquée à ${agentName(profile)}.`
   }
 } satisfies PluginMessages
-
-function compact(n: number) {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}

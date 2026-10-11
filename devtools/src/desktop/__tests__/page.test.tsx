@@ -63,7 +63,7 @@ describe('Voices page', () => {
     await flush()
     expect(calls.at(-1)).toEqual({ path: '/use', body: { voice: 'a'.repeat(32) } })
     expect(screen.getByText('In use')).toBeTruthy()
-    fireEvent.click(screen.getByLabelText('Favourite'))
+    fireEvent.click(screen.getByLabelText('Favourite Narrator'))
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ author: 'fish', id: 'a'.repeat(32), languages: ['en'], title: 'Narrator' }])
   })
 
@@ -461,8 +461,8 @@ describe('#13 follow-ups', () => {
     await flush()
     answer.resolve({ ok: true })
     await flush()
-    const stars = screen.getAllByRole('button', { name: new RegExp(`^(${en.favourite}|${en.unfavourite})$`) })
-    expect(stars.map(b => b.getAttribute('aria-label'))).toEqual([en.favourite, en.favourite])
+    const stars = screen.getAllByRole('button', { name: /^(Favourite|Unfavourite) / })
+    expect(stars.map(b => b.getAttribute('aria-label'))).toEqual([en.favouriteVoice('Narrator'), en.favouriteVoice('Storyteller')])
     fireEvent.click(stars[1]) // star Storyteller
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ author: 'fish', id: 'b'.repeat(32), languages: ['en'], title: 'Storyteller' }])
   })

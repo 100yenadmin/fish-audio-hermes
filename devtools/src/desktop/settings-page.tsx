@@ -1,3 +1,4 @@
+import { LIMITS } from './limits'
 // Settings ▸ Plugins ▸ Fish Audio (Hermes Desktop 0.21.6+): the selected agent's voice, speech model and voice names.
 import {
   Button,
@@ -27,7 +28,6 @@ import {
   currentPin,
   errorText,
   gatewayAtLeast,
-  getSettings,
   pluginCtx,
   postSettings,
   refreshAvailability,
@@ -301,7 +301,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
           <ListRow
             action={
               <Button
-                aria-label={`${t('settings.remove')} ${alias.name}`}
+                aria-label={t('settings.removeAlias', alias.name)}
                 disabled={managed('aliases') || locked}
                 loading={busy === `remove:${alias.name}`}
                 onClick={() => remove(alias.name)}
@@ -324,6 +324,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
                 <div style={{ flex: '0 1 140px', minWidth: 110 }}>
                   <Input
                     aria-label={t('settings.name')}
+                    maxLength={LIMITS.aliasName}
                     disabled={managed('aliases')}
                     onChange={(e: { target: { value: string } }) => {
                       setName(e.target.value)
@@ -337,6 +338,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
                 <div style={{ flex: '1 1 260px', maxWidth: 380, minWidth: 200 }}>
                   <Input
                     aria-label={t('settings.voice')}
+                    maxLength={LIMITS.aliasVoice}
                     disabled={managed('aliases')}
                     onChange={(e: { target: { value: string } }) => setVoice(e.target.value)}
                     placeholder={t('settings.voicePlaceholder')}

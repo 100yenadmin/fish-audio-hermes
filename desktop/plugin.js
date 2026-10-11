@@ -62,6 +62,24 @@ function rememberPreview(key, value) {
 
 // src/desktop/api.ts
 import { atom as atom2, host } from "@hermes/plugin-sdk";
+
+// src/desktop/strings.ts
+import { usePluginI18n, useValue } from "@hermes/plugin-sdk";
+var PLUGIN_ID = "fish-audio";
+var PAGE_PATH = "/fish-audio";
+function useAccountText(normal, operator) {
+  const t = usePluginI18n(PLUGIN_ID);
+  const available = useValue($available);
+  return t(available && available.account === false ? operator : normal);
+}
+var LINKS = {
+  keys: "https://fish.audio/app/api-keys",
+  discovery: "https://fish.audio/discovery",
+  account: "https://fish.audio/app/developers/billing"
+};
+var LANGUAGES = ["en", "zh", "ja", "ko", "es", "fr", "de", "it", "pt", "ru", "ar", "nl", "pl"];
+
+// src/desktop/api.ts
 var $available = atom2(null);
 var $account = atom2(null);
 var $availableError = atom2(null);
@@ -72,11 +90,13 @@ var endAgentOperations = () => {
 };
 var $tab = atom2("library");
 var ApiError = class extends Error {
-  constructor(kind, message) {
+  constructor(kind, message, detail) {
     super(message);
     this.kind = kind;
+    this.detail = detail;
   }
   kind;
+  detail;
 };
 var bound = null;
 var refresher = null;
@@ -93,7 +113,7 @@ function pluginCtx() {
 }
 async function call(path, opts) {
   const res = await pluginCtx().rest(path, opts);
-  if (res && res.ok === false) throw new ApiError(res.kind ?? "error", res.message ?? "Something went wrong");
+  if (res && res.ok === false) throw new ApiError(res.kind ?? "error", res.message ?? "", res.detail);
   return res;
 }
 var post = (path, body, timeoutMs = 6e4) => call(path, { method: "POST", body, timeoutMs });
@@ -111,7 +131,55 @@ function httpStatus(error) {
   const match = /^\s*(\d{3}):/.exec(text) ?? /Error: (\d{3}):/.exec(text);
   return match ? Number(match[1]) : null;
 }
-var errorText = (error) => error instanceof Error ? error.message : String(error);
+var FIXED_TEXT = /* @__PURE__ */ new Set(["no_key", "not_owner", "gone", "bad_upload_id", "consent", "managed", "io_error", "chunk_too_large", "offset", "size_mismatch", "limit"]);
+var NAMED = {
+  errors: /* @__PURE__ */ new Set([
+    "credential",
+    "credentialAccess",
+    "credentialOperator",
+    "quota",
+    "quotaOperator",
+    "rate_limit",
+    "rateLimitOperator",
+    "availability",
+    "invalid_request",
+    "not_found",
+    "too_large",
+    "unsupported_media",
+    "voice_not_found"
+  ]),
+  refusals: /* @__PURE__ */ new Set(["no_key", "no_keyOperator"])
+};
+function errorText(error) {
+  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : String(error);
+  const t = pluginCtx().i18n.t;
+  if (error.kind === "bad_chunk_size") return t("errors.badChunkSize");
+  const sentence = (key, url) => t(key, url) !== key ? t(key, url) : null;
+  if (error.detail) {
+    const group = FIXED_TEXT.has(error.kind) ? "refusals" : "errors";
+    const name = error.detail.text;
+    const url = error.kind === "credential" ? LINKS.keys : error.kind === "quota" ? LINKS.account : LINKS.discovery;
+    const base = typeof name === "string" && NAMED[group].has(name) ? sentence(`${group}.${name}`, url) : null;
+    if (base !== null) {
+      let text = base;
+      const { code, hint, request_id, trace_id } = error.detail;
+      const append = (suffix) => {
+        text += /[!-~]$/.test(text) && /^\S/.test(suffix) ? ` ${suffix}` : suffix;
+      };
+      if (code) append(t("errors.code", code));
+      if (hint === "paid_model") append(t("errors.paidModel", LINKS.account));
+      if (request_id) append(t("errors.requestId", request_id));
+      if (trace_id) append(t("errors.fishTrace", trace_id));
+      return text;
+    }
+  } else if (FIXED_TEXT.has(error.kind)) {
+    const available = $available.get();
+    const variant = `refusals.${error.kind}Operator`;
+    const text = (available && available.account === false ? sentence(variant) : null) ?? sentence(`refusals.${error.kind}`);
+    if (text !== null) return text;
+  }
+  return error.message || t("errors.error");
+}
 var currentPin = () => ({ connectionId: host.state.connectionId.get(), profile: host.state.profile.get() });
 var samePin = (a, b) => a.connectionId === b.connectionId && a.profile === b.profile;
 var agentKey = (pin) => `${pin.connectionId ?? "local"}::${pin.profile}`;
@@ -134,6 +202,10 @@ function gatewayAtLeast(min) {
   const available = $available.get();
   return available ? versionAtLeast(available.version, min) : false;
 }
+
+// src/desktop/limits.ts
+var clamp = (value, limit) => value.length <= limit ? value : Array.from(value).slice(0, limit).join("");
+var LIMITS = { title: 100, description: 500, instruction: 500, sampleText: 500, aliasName: 32, aliasVoice: 128, search: 100 };
 
 // src/desktop/page.tsx
 import {
@@ -191,22 +263,6 @@ function keepCreated(pin, voice) {
   return true;
 }
 
-// src/desktop/strings.ts
-import { usePluginI18n, useValue } from "@hermes/plugin-sdk";
-var PLUGIN_ID = "fish-audio";
-var PAGE_PATH = "/fish-audio";
-function useAccountText(normal, operator) {
-  const t = usePluginI18n(PLUGIN_ID);
-  const available = useValue($available);
-  return t(available && available.account === false ? operator : normal);
-}
-var LINKS = {
-  keys: "https://fish.audio/app/api-keys",
-  discovery: "https://fish.audio/discovery",
-  account: "https://fish.audio/app/developers/billing"
-};
-var LANGUAGES = ["en", "zh", "ja", "ko", "es", "fr", "de", "it", "pt", "ru", "ar", "nl", "pl"];
-
 // src/desktop/ui.tsx
 import { Button, Codicon, ErrorState, Skeleton, usePluginI18n as usePluginI18n2 } from "@hermes/plugin-sdk";
 import { jsx, jsxs } from "react/jsx-runtime";
@@ -218,11 +274,9 @@ var card = {
   padding: 16
 };
 function Rows({ n = 4 }) {
-  const t = usePluginI18n2(PLUGIN_ID);
   return /* @__PURE__ */ jsx("div", { "aria-busy": "true", style: { display: "grid", gap: 10, padding: "0 24px" }, children: Array.from({ length: n }, (_, i) => /* @__PURE__ */ jsx(Skeleton, { style: { height: 44 } }, i)) });
 }
 function BilledNote({ text }) {
-  const t = usePluginI18n2(PLUGIN_ID);
   return /* @__PURE__ */ jsxs("p", { style: { ...muted, alignItems: "center", display: "flex", fontSize: 12, gap: 6, margin: 0 }, children: [
     /* @__PURE__ */ jsx(Codicon, { name: "info" }),
     text
@@ -250,7 +304,7 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
     if (!still()) throw new AgentChanged();
     return deps.rest(path, { method: "POST", body, timeoutMs }).then((res) => {
       if (!still()) throw new AgentChanged();
-      if (res && res.ok === false) throw new ApiError(res.kind ?? "error", res.message ?? "Something went wrong");
+      if (res && res.ok === false) throw new ApiError(res.kind ?? "error", res.message ?? "", res.detail);
       return res;
     });
   };
@@ -262,7 +316,7 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
     for (const [index, file] of files.entries()) {
       const start = await send("/clone/start", { size: file.size }, 3e4);
       uploaded.push({ upload_id: start.upload_id, size: file.size });
-      if (!Number.isInteger(start.chunk_bytes) || start.chunk_bytes <= 0) throw new ApiError("error", "The gateway sent an invalid upload chunk size.");
+      if (!Number.isInteger(start.chunk_bytes) || start.chunk_bytes <= 0) throw new ApiError("bad_chunk_size", "");
       for (let offset = 0; offset < file.size; offset += start.chunk_bytes) {
         const data = await read(file.slice(offset, offset + start.chunk_bytes));
         await send("/clone/chunk", { upload_id: start.upload_id, offset, data }, 12e4);
@@ -292,7 +346,6 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
 import { Fragment, jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
 var label = { display: "grid", fontSize: 12, gap: 6 };
 function CreateTab({ pin }) {
-  const t = usePluginI18n3(PLUGIN_ID);
   return /* @__PURE__ */ jsxs2("div", { style: { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", padding: "0 24px" }, children: [
     /* @__PURE__ */ jsx2(DesignCard, { pin }),
     /* @__PURE__ */ jsx2(CloneCard, { pin })
@@ -314,6 +367,8 @@ function CloneCard({ pin }) {
     event.target.value = "";
     const tooBig = chosen.find((file) => file.size > MAX_FILE_BYTES);
     if (chosen.length > MAX_FILES) return setStatus({ key: "tooMany", args: [] });
+    const empty = chosen.find((file) => file.size === 0);
+    if (empty) return setStatus({ key: "emptyFile", args: [empty.name] });
     if (tooBig) return setStatus({ key: "tooLarge", args: [tooBig.name] });
     setStatus(null);
     setFiles(chosen);
@@ -363,11 +418,11 @@ function CloneCard({ pin }) {
       ] }),
       /* @__PURE__ */ jsxs2("label", { style: label, children: [
         t("voiceTitle"),
-        /* @__PURE__ */ jsx2(Input, { disabled: busy, onChange: (e) => setTitle(e.target.value), value: title })
+        /* @__PURE__ */ jsx2(Input, { disabled: busy, onChange: (e) => setTitle(clamp(e.target.value, LIMITS.title)), value: title })
       ] }),
       /* @__PURE__ */ jsxs2("label", { style: label, children: [
         t("descriptionOptional"),
-        /* @__PURE__ */ jsx2(Input, { disabled: busy, onChange: (e) => setDescription(e.target.value), value: description })
+        /* @__PURE__ */ jsx2(Input, { disabled: busy, onChange: (e) => setDescription(clamp(e.target.value, LIMITS.description)), value: description })
       ] }),
       /* @__PURE__ */ jsxs2("label", { style: { alignItems: "flex-start", display: "flex", fontSize: 12, gap: 8, lineHeight: 1.4 }, children: [
         /* @__PURE__ */ jsx2(
@@ -451,8 +506,7 @@ function DesignCard({ pin }) {
         {
           "aria-label": t("designTitle"),
           disabled: busy !== null,
-          maxLength: 500,
-          onChange: (e) => setInstruction(e.target.value),
+          onChange: (e) => setInstruction(clamp(e.target.value, LIMITS.instruction)),
           placeholder: t("designPlaceholder"),
           rows: 3,
           value: instruction
@@ -484,8 +538,8 @@ function DesignCard({ pin }) {
                 /* @__PURE__ */ jsx2("div", { style: { flex: 1, minWidth: 140 }, children: /* @__PURE__ */ jsx2(
                   Input,
                   {
-                    "aria-label": `${t("saveAs")} ${i + 1}`,
-                    onChange: (e) => setNames({ ...names, [candidate.design_token]: e.target.value }),
+                    "aria-label": t("saveAsN", i + 1),
+                    onChange: (e) => setNames({ ...names, [candidate.design_token]: clamp(e.target.value, LIMITS.title) }),
                     placeholder: t("saveAs"),
                     value: names[candidate.design_token] ?? ""
                   }
@@ -560,7 +614,7 @@ function Onboarding({ profile, operator }) {
   return /* @__PURE__ */ jsx3("div", { style: { padding: pad }, children: /* @__PURE__ */ jsxs3("div", { style: { ...card, maxWidth: 560 }, children: [
     /* @__PURE__ */ jsx3("h2", { style: { fontSize: 15, fontWeight: 600, margin: "0 0 6px" }, children: operator ? t("operatorOnboardTitle") : t("onboardTitle") }),
     /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }, children: operator ? t("operatorOnboardBody") : t("onboardBody", profile) }),
-    !operator && /* @__PURE__ */ jsxs3("ol", { style: { fontSize: 13, lineHeight: 1.8, listStyle: "decimal", margin: "0 0 14px", paddingLeft: 20 }, children: [
+    !operator && /* @__PURE__ */ jsxs3("ol", { style: { fontSize: 13, lineHeight: 1.8, listStyle: "decimal", margin: "0 0 14px", paddingInlineStart: 20 }, children: [
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep1") }),
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep2") })
     ] }),
@@ -640,7 +694,7 @@ function Library({ pin }) {
   const more = !favouritesOnly && hasMore(voices.data?.items.length, page, voices.data?.total);
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }, children: [
-      /* @__PURE__ */ jsx3("div", { style: { width: 280 }, children: /* @__PURE__ */ jsx3(SearchField, { "aria-label": t("search"), onChange: setText, placeholder: t("search"), value: text }) }),
+      /* @__PURE__ */ jsx3("div", { style: { width: 280 }, children: /* @__PURE__ */ jsx3(SearchField, { "aria-label": t("search"), onChange: (v) => setText(clamp(v, LIMITS.search)), placeholder: t("search"), value: text }) }),
       /* @__PURE__ */ jsx3("div", { style: { width: 160 }, children: /* @__PURE__ */ jsxs3(Select, { onValueChange: setLanguage, value: language, children: [
         /* @__PURE__ */ jsx3(SelectTrigger, { "aria-label": t("language"), children: /* @__PURE__ */ jsx3(SelectValue, {}) }),
         /* @__PURE__ */ jsxs3(SelectContent, { children: [
@@ -752,14 +806,14 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
         children: [
           /* @__PURE__ */ jsx3(Avatar, { title: voice.title }),
           /* @__PURE__ */ jsxs3("div", { style: { minWidth: 0 }, children: [
-            /* @__PURE__ */ jsx3("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: voice.title }),
-            /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: parts })
+            /* @__PURE__ */ jsx3("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: /* @__PURE__ */ jsx3("bdi", { children: voice.title }) }),
+            /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }, children: parts })
           ] }),
           /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", gap: 6 }, children: [
             /* @__PURE__ */ jsxs3(
               Button3,
               {
-                "aria-label": `${playing === key ? t("stop") : t("preview")} ${voice.title}`,
+                "aria-label": t(playing === key ? "stopVoice" : "previewVoice", voice.title),
                 loading: busy === `play:${voice.id}`,
                 onClick: () => void run(`play:${voice.id}`, () => previewVoice(pin, voice.id)),
                 size: "xs",
@@ -785,7 +839,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
             favourites && /* @__PURE__ */ jsx3(
               Button3,
               {
-                "aria-label": favourites.has(voice.id) ? t("unfavourite") : t("favourite"),
+                "aria-label": t(favourites.has(voice.id) ? "unfavouriteVoice" : "favouriteVoice", voice.title),
                 onClick: () => favourites.toggle(voice),
                 size: "icon-xs",
                 style: { color: favourites.has(voice.id) ? "var(--ui-orange)" : void 0 },
@@ -793,7 +847,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
                 children: /* @__PURE__ */ jsx3(Codicon3, { name: favourites.has(voice.id) ? "star-full" : "star-empty" })
               }
             ),
-            onDelete && /* @__PURE__ */ jsx3(Button3, { "aria-label": `${t("delete")} ${voice.title}`, onClick: () => onDelete(voice), size: "icon-xs", variant: "ghost", children: /* @__PURE__ */ jsx3(Codicon3, { name: "trash" }) })
+            onDelete && /* @__PURE__ */ jsx3(Button3, { "aria-label": t("deleteVoice", voice.title), onClick: () => onDelete(voice), size: "icon-xs", variant: "ghost", children: /* @__PURE__ */ jsx3(Codicon3, { name: "trash" }) })
           ] })
         ]
       },
@@ -802,7 +856,6 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
   }) });
 }
 function Avatar({ title }) {
-  const t = usePluginI18n4(PLUGIN_ID);
   const hue = [...title].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360;
   return /* @__PURE__ */ jsx3(
     "div",
@@ -901,11 +954,7 @@ function AccountTab({ pin }) {
       /* @__PURE__ */ jsx3("div", { style: { color: data.low ? "var(--ui-orange)" : void 0, fontSize: 28, fontVariantNumeric: "tabular-nums", fontWeight: 600, margin: "4px 0 8px" }, children: t("usd", data.credit) }),
       data.low && /* @__PURE__ */ jsx3("p", { style: { color: "var(--ui-orange)", fontSize: 12, margin: "0 0 8px" }, children: t("lowCredit") }),
       /* @__PURE__ */ jsxs3("div", { style: { ...muted, fontSize: 12, lineHeight: 1.7 }, children: [
-        /* @__PURE__ */ jsxs3("div", { children: [
-          t("topUps"),
-          ": ",
-          t("usd", data.cumulative_top_up)
-        ] }),
+        /* @__PURE__ */ jsx3("div", { children: t("topUpsLine", data.cumulative_top_up) }),
         data.has_free_credit && /* @__PURE__ */ jsx3("div", { children: t("freeCredit") })
       ] }),
       /* @__PURE__ */ jsxs3("div", { style: { display: "flex", gap: 8, marginTop: 12 }, children: [
@@ -915,7 +964,7 @@ function AccountTab({ pin }) {
     ] }),
     /* @__PURE__ */ jsxs3("div", { style: card, children: [
       /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12 }, children: t("plan") }),
-      /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: data.package_unavailable ? "none" : "capitalize" }, children: data.package_unavailable ? t("planUnavailable") : plan?.type ?? t("noPlan") }),
+      /* @__PURE__ */ jsx3("div", { style: { fontSize: 20, fontWeight: 600, margin: "4px 0 8px", textTransform: !data.package_unavailable && plan?.type ? "capitalize" : "none" }, children: data.package_unavailable ? t("planUnavailable") : plan?.type ?? t("noPlan") }),
       plan && /* @__PURE__ */ jsxs3("div", { style: { ...muted, fontSize: 12, lineHeight: 1.7 }, children: [
         typeof plan.total === "number" && /* @__PURE__ */ jsx3("div", { children: t("planBalance", Number(plan.balance ?? 0), plan.total) }),
         plan.finished_at && /* @__PURE__ */ jsx3("div", { children: t(renews(plan) ? "renews" : "periodEnds", String(plan.finished_at).slice(0, 10)) })
@@ -1134,7 +1183,7 @@ function Sections({ pin, operator }) {
           action: /* @__PURE__ */ jsx4(
             Button4,
             {
-              "aria-label": `${t("settings.remove")} ${alias.name}`,
+              "aria-label": t("settings.removeAlias", alias.name),
               disabled: managed("aliases") || locked,
               loading: busy === `remove:${alias.name}`,
               onClick: () => remove(alias.name),
@@ -1157,6 +1206,7 @@ function Sections({ pin, operator }) {
                 Input3,
                 {
                   "aria-label": t("settings.name"),
+                  maxLength: LIMITS.aliasName,
                   disabled: managed("aliases"),
                   onChange: (e) => {
                     setName(e.target.value);
@@ -1171,6 +1221,7 @@ function Sections({ pin, operator }) {
                 Input3,
                 {
                   "aria-label": t("settings.voice"),
+                  maxLength: LIMITS.aliasVoice,
                   disabled: managed("aliases"),
                   onChange: (e) => setVoice(e.target.value),
                   placeholder: t("settings.voicePlaceholder"),
@@ -1214,7 +1265,14 @@ function Sections({ pin, operator }) {
   ] });
 }
 
+// src/desktop/format.ts
+var compact = (tag10, n) => new Intl.NumberFormat(tag10, { notation: "compact", maximumFractionDigits: 1 }).format(n);
+var usd = (tag10, value) => new Intl.NumberFormat(tag10, { style: "currency", currency: "USD" }).format(Number(value));
+var number = (tag10, n) => new Intl.NumberFormat(tag10).format(n);
+var plural = (tag10, n, forms) => forms[new Intl.PluralRules(tag10).select(n >= 1e3 ? 1e3 : n)] ?? forms.other;
+
 // src/desktop/locales/en.ts
+var tag = "en";
 var agentName = (profile) => profile && profile !== "default" ? profile : en.thisAgent;
 var en = {
   thisAgent: "this agent",
@@ -1265,9 +1323,14 @@ var en = {
   stop: "Stop",
   use: "Use",
   inUse: "In use",
-  favourite: "Favourite",
-  unfavourite: "Remove favourite",
-  uses: (n) => `${compact(n)} uses`,
+  previewVoice: (title) => `Preview ${title}`,
+  stopVoice: (title) => `Stop ${title}`,
+  deleteVoice: (title) => `Delete ${title}`,
+  favouriteVoice: (title) => `Favourite ${title}`,
+  unfavouriteVoice: (title) => `Unfavourite ${title}`,
+  saveAsN: (n) => `Name ${n}`,
+  emptyFile: (name) => `${name} is empty.`,
+  uses: (n) => `${compact(tag, n).replace("K", "k")} ${plural(tag, n, { one: "use", other: "uses" })}`,
   noVoices: "No voices match",
   noFavourites: "No favourites yet",
   noFavouritesHint: "Star a voice in the library to keep it here.",
@@ -1319,10 +1382,10 @@ var en = {
   // Account
   apiCredit: "API credit",
   lowCredit: "Low balance \u2014 top up to keep voice replies working.",
-  topUps: "Lifetime top-ups",
+  topUpsLine: (amount) => `Lifetime top-ups: ${en.usd(amount)}`,
   freeCredit: "Free credit available",
   plan: "Plan",
-  planBalance: (balance, total) => `${balance.toLocaleString()} of ${total.toLocaleString()} credits left`,
+  planBalance: (balance, total) => `${number(tag, balance)} of ${number(tag, total)} credits left`,
   renews: (date) => `Renews ${date}`,
   periodEnds: (date) => `Current period ends ${date}`,
   noPlan: "No app plan",
@@ -1334,6 +1397,41 @@ var en = {
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API credit",
   usd: (value) => `$${Number(value).toFixed(2)}`,
+  errors: {
+    credential: (url) => `Set a valid Fish Audio API key: ${url}`,
+    credentialAccess: (url) => `Check your Fish Audio API key and access: ${url}`,
+    quota: (url) => `Top up Fish Audio API credits: ${url}; app plan credits are separate from API credits.`,
+    rate_limit: `Fish Audio concurrency limit reached. Top-up tiers: <$100: 5, \u2265$100: 15, \u2265$1k: 50 concurrent requests. Retry later.`,
+    availability: `Fish Audio is unavailable. Try again later.`,
+    invalid_request: `Fish Audio rejected the synthesis request. Check the voice and settings.`,
+    not_found: `Fish Audio could not find the requested voice or model.`,
+    too_large: `The Fish Audio request is too large. Use less text or smaller references.`,
+    unsupported_media: `Fish Audio does not support this audio format.`,
+    voice_not_found: (url) => `The voice id was not found, or is private to another account. Browse voices at ${url}.`,
+    credentialOperator: `The voice service's credentials were rejected. Contact the operator of this agent.`,
+    quotaOperator: `The voice service is out of credit. Contact the operator of this agent.`,
+    rateLimitOperator: `The voice service is busy. Try again shortly.`,
+    error: `Something went wrong`,
+    badChunkSize: `The gateway sent an invalid upload chunk size.`,
+    code: (code) => ` Code: ${code}.`,
+    paidModel: (url) => ` Switch to s2.1-pro and top up: ${url}`,
+    requestId: (id) => ` (request id ${id})`,
+    fishTrace: (id) => ` (Fish trace ${id})`
+  },
+  refusals: {
+    no_key: `Fish Audio isn't set up for this profile yet. Add a key in Settings \u25B8 Plugins \u25B8 Fish Audio (Capabilities \u25B8 Plugins on older Desktop), or run \`hermes fish login\` on the machine running Hermes.`,
+    no_keyOperator: `Ask the operator of this agent to finish the Fish Audio setup.`,
+    not_owner: `You can delete only voices your Fish Audio account created.`,
+    gone: `The upload is no longer available; add the file again.`,
+    bad_upload_id: `The upload identifier is invalid.`,
+    consent: `Confirm that you have the speaker's permission to clone this voice.`,
+    managed: `This setting is set by the operator of this agent.`,
+    io_error: `The plugin's upload folder is not a plain folder.`,
+    chunk_too_large: `The upload chunk is too large.`,
+    offset: `The offset does not match the uploaded bytes.`,
+    size_mismatch: `A sample did not finish uploading; add it again.`,
+    limit: `At most 50 voice names can be saved per profile.`
+  },
   settings: {
     restart: "Restart this agent's gateway to finish updating Fish Audio.",
     voicesPage: "Voices page",
@@ -1356,6 +1454,7 @@ var en = {
     voice: "Voice",
     voicePlaceholder: "Voice id or saved name",
     add: "Add",
+    removeAlias: (name) => `Remove ${name}`,
     remove: "Remove",
     added: (name) => `Saved ${name}`,
     updated: (name) => `Updated ${name}`,
@@ -1369,11 +1468,9 @@ var en = {
     agentChangedAfterSend: (profile) => `The selected agent changed before the answer arrived. The change was made for ${agentName(profile)}.`
   }
 };
-function compact(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/zh.ts
+var tag2 = "zh-Hans";
 var agentName2 = (profile) => profile && profile !== "default" ? profile : zh.thisAgent;
 var zh = {
   thisAgent: "\u6B64\u667A\u80FD\u4F53",
@@ -1422,9 +1519,14 @@ var zh = {
   stop: "\u505C\u6B62",
   use: "\u4F7F\u7528",
   inUse: "\u4F7F\u7528\u4E2D",
-  favourite: "\u6536\u85CF",
-  unfavourite: "\u53D6\u6D88\u6536\u85CF",
-  uses: (n) => `\u4F7F\u7528 ${compact2(n)} \u6B21`,
+  previewVoice: (title) => `\u8BD5\u542C\u300C${title}\u300D`,
+  stopVoice: (title) => `\u505C\u6B62\u300C${title}\u300D`,
+  deleteVoice: (title) => `\u5220\u9664\u300C${title}\u300D`,
+  favouriteVoice: (title) => `\u6536\u85CF\u300C${title}\u300D`,
+  unfavouriteVoice: (title) => `\u53D6\u6D88\u6536\u85CF\u300C${title}\u300D`,
+  saveAsN: (n) => `\u5019\u9009 ${n} \u7684\u540D\u79F0`,
+  emptyFile: (name) => `${name} \u662F\u7A7A\u6587\u4EF6\u3002`,
+  uses: (n) => `\u4F7F\u7528 ${compact(tag2, n)} ${plural(tag2, n, { other: "\u6B21" })}`,
   noVoices: "\u6CA1\u6709\u5339\u914D\u7684\u58F0\u97F3",
   noFavourites: "\u6682\u65E0\u6536\u85CF",
   noFavouritesHint: "\u5728\u58F0\u97F3\u5E93\u4E2D\u70B9\u51FB\u58F0\u97F3\u7684\u661F\u6807\uFF0C\u5373\u53EF\u5C06\u5176\u6536\u85CF\u5230\u8FD9\u91CC\u3002",
@@ -1473,10 +1575,10 @@ var zh = {
   operatorSaved: (title) => `\u5DF2\u4FDD\u5B58${title}\u3002\u53EF\u5728\u58F0\u97F3\u5E93\u7684\u201C\u6536\u85CF\u201D\u4E2D\u627E\u5230\u3002`,
   apiCredit: "API \u989D\u5EA6",
   lowCredit: "\u4F59\u989D\u4E0D\u8DB3\u2014\u2014\u8BF7\u5145\u503C\u4EE5\u7EE7\u7EED\u4F7F\u7528\u8BED\u97F3\u56DE\u590D\u3002",
-  topUps: "\u7D2F\u8BA1\u5145\u503C",
+  topUpsLine: (amount) => `\u7D2F\u8BA1\u5145\u503C\uFF1A${usd(tag2, amount)}`,
   freeCredit: "\u53EF\u7528\u514D\u8D39\u989D\u5EA6",
   plan: "\u5957\u9910",
-  planBalance: (balance, total) => `\u5269\u4F59 ${balance.toLocaleString("zh-CN")} / ${total.toLocaleString("zh-CN")} \u79EF\u5206`,
+  planBalance: (balance, total) => `\u5269\u4F59 ${number(tag2, balance)} / ${number(tag2, total)} \u79EF\u5206`,
   renews: (date) => `\u7EED\u8BA2\u65E5\u671F\uFF1A${date}`,
   periodEnds: (date) => `\u5F53\u524D\u5468\u671F\u7ED3\u675F\u65E5\u671F\uFF1A${date}`,
   noPlan: "\u65E0\u5E94\u7528\u5957\u9910",
@@ -1487,7 +1589,42 @@ var zh = {
   apiKeys: "API \u5BC6\u94A5",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API \u989D\u5EA6",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: (value) => usd(tag2, value),
+  errors: {
+    credential: (url) => `\u8BF7\u8BBE\u7F6E\u6709\u6548\u7684 Fish Audio API \u5BC6\u94A5\uFF1A${url}`,
+    credentialAccess: (url) => `\u8BF7\u68C0\u67E5 Fish Audio API \u5BC6\u94A5\u53CA\u5176\u8BBF\u95EE\u6743\u9650\uFF1A${url}`,
+    quota: (url) => `\u8BF7\u5145\u503C Fish Audio API \u70B9\u6570\uFF1A${url}\uFF1B\u5E94\u7528\u5957\u9910\u70B9\u6570\u4E0E API \u70B9\u6570\u5206\u5F00\u8BA1\u7B97\u3002`,
+    rate_limit: `\u5DF2\u8FBE\u5230 Fish Audio \u5E76\u53D1\u8BF7\u6C42\u4E0A\u9650\u3002\u6309\u7D2F\u8BA1\u5145\u503C\u989D\uFF1A\u4F4E\u4E8E $100 \u4E3A 5 \u4E2A\uFF0C\u8FBE\u5230 $100 \u4E3A 15 \u4E2A\uFF0C\u8FBE\u5230 $1k \u4E3A 50 \u4E2A\u5E76\u53D1\u8BF7\u6C42\u3002\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`,
+    availability: `Fish Audio \u6682\u65F6\u4E0D\u53EF\u7528\u3002\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`,
+    invalid_request: `Fish Audio \u62D2\u7EDD\u4E86\u8BED\u97F3\u5408\u6210\u8BF7\u6C42\u3002\u8BF7\u68C0\u67E5\u58F0\u97F3\u548C\u8BBE\u7F6E\u3002`,
+    not_found: `Fish Audio \u627E\u4E0D\u5230\u6240\u8BF7\u6C42\u7684\u58F0\u97F3\u6216\u6A21\u578B\u3002`,
+    too_large: `Fish Audio \u8BF7\u6C42\u8FC7\u5927\u3002\u8BF7\u51CF\u5C11\u6587\u672C\u6216\u7F29\u5C0F\u53C2\u8003\u97F3\u9891\u3002`,
+    unsupported_media: `Fish Audio \u4E0D\u652F\u6301\u6B64\u97F3\u9891\u683C\u5F0F\u3002`,
+    voice_not_found: (url) => `\u58F0\u97F3 ID \u4E0D\u5B58\u5728\uFF0C\u6216\u5C5E\u4E8E\u5176\u4ED6\u8D26\u6237\u7684\u79C1\u6709\u58F0\u97F3\u3002\u6D4F\u89C8\u58F0\u97F3\uFF1A${url}\u3002`,
+    credentialOperator: `\u8BED\u97F3\u670D\u52A1\u7684\u51ED\u636E\u88AB\u62D2\u7EDD\u3002\u8BF7\u8054\u7CFB\u6B64\u667A\u80FD\u4F53\u7684\u8FD0\u8425\u8005\u3002`,
+    quotaOperator: `\u8BED\u97F3\u670D\u52A1\u70B9\u6570\u4E0D\u8DB3\u3002\u8BF7\u8054\u7CFB\u6B64\u667A\u80FD\u4F53\u7684\u8FD0\u8425\u8005\u3002`,
+    rateLimitOperator: `\u8BED\u97F3\u670D\u52A1\u7E41\u5FD9\u3002\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`,
+    error: `\u51FA\u73B0\u4E86\u95EE\u9898`,
+    badChunkSize: `\u7F51\u5173\u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4E0A\u4F20\u5206\u5757\u5927\u5C0F\u3002`,
+    code: (code) => `\u9519\u8BEF\u4EE3\u7801\uFF1A${code}\u3002`,
+    paidModel: (url) => `\u8BF7\u5207\u6362\u5230 s2.1-pro \u5E76\u5145\u503C\uFF1A${url}`,
+    requestId: (id) => `\uFF08\u8BF7\u6C42 ID\uFF1A${id}\uFF09`,
+    fishTrace: (id) => `\uFF08Fish \u8DDF\u8E2A\uFF1A${id}\uFF09`
+  },
+  refusals: {
+    no_key: `\u6B64\u914D\u7F6E\u5C1A\u672A\u8BBE\u7F6E Fish Audio\u3002\u8BF7\u5728\u8BBE\u7F6E \u25B8 \u63D2\u4EF6 \u25B8 Fish Audio\uFF08\u65E7\u7248\u672C\u4E3A\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\uFF09\u4E2D\u6DFB\u52A0\u5BC6\u94A5\uFF0C\u6216\u5728\u8FD0\u884C Hermes \u7684\u673A\u5668\u4E0A\u6267\u884C \`hermes fish login\`\u3002`,
+    no_keyOperator: `\u8BF7\u8054\u7CFB\u6B64\u667A\u80FD\u4F53\u7684\u8FD0\u8425\u8005\u5B8C\u6210 Fish Audio \u8BBE\u7F6E\u3002`,
+    not_owner: `\u53EA\u80FD\u5220\u9664\u60A8\u81EA\u5DF1\u7684 Fish Audio \u8D26\u6237\u521B\u5EFA\u7684\u58F0\u97F3\u3002`,
+    gone: `\u4E0A\u4F20\u5DF2\u4E0D\u53EF\u7528\uFF1B\u8BF7\u91CD\u65B0\u6DFB\u52A0\u6587\u4EF6\u3002`,
+    bad_upload_id: `\u4E0A\u4F20\u6807\u8BC6\u7B26\u65E0\u6548\u3002`,
+    consent: `\u8BF7\u786E\u8BA4\u60A8\u5DF2\u83B7\u5F97\u8BF4\u8BDD\u8005\u7684\u58F0\u97F3\u514B\u9686\u8BB8\u53EF\u3002`,
+    managed: `\u6B64\u8BBE\u7F6E\u7531\u667A\u80FD\u4F53\u7684\u8FD0\u8425\u8005\u7BA1\u7406\u3002`,
+    io_error: `\u63D2\u4EF6\u7684\u4E0A\u4F20\u76EE\u5F55\u4E0D\u662F\u666E\u901A\u6587\u4EF6\u5939\u3002`,
+    chunk_too_large: `\u4E0A\u4F20\u5206\u5757\u8FC7\u5927\u3002`,
+    offset: `\u504F\u79FB\u91CF\u4E0E\u5DF2\u4E0A\u4F20\u7684\u5B57\u8282\u6570\u4E0D\u7B26\u3002`,
+    size_mismatch: `\u4E00\u4E2A\u6837\u672C\u5C1A\u672A\u4E0A\u4F20\u5B8C\u6210\uFF1B\u8BF7\u91CD\u65B0\u6DFB\u52A0\u3002`,
+    limit: `\u6BCF\u4E2A\u914D\u7F6E\u6700\u591A\u53EF\u4FDD\u5B58 50 \u4E2A\u58F0\u97F3\u540D\u79F0\u3002`
+  },
   settings: {
     restart: "\u91CD\u542F\u6B64\u667A\u80FD\u4F53\u7684\u7F51\u5173\uFF0C\u4EE5\u5B8C\u6210 Fish Audio \u7684\u66F4\u65B0\u3002",
     voicesPage: "\u58F0\u97F3\u9875\u9762",
@@ -1510,6 +1647,7 @@ var zh = {
     voice: "\u58F0\u97F3",
     voicePlaceholder: "\u58F0\u97F3 ID \u6216\u5DF2\u4FDD\u5B58\u7684\u540D\u79F0",
     add: "\u6DFB\u52A0",
+    removeAlias: (name) => `\u79FB\u9664 ${name}`,
     remove: "\u79FB\u9664",
     added: (name) => `\u5DF2\u4FDD\u5B58 ${name}`,
     updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
@@ -1523,11 +1661,9 @@ var zh = {
     agentChangedAfterSend: (profile) => `\u5728\u6536\u5230\u56DE\u590D\u524D\uFF0C\u6240\u9009\u667A\u80FD\u4F53\u5DF2\u66F4\u6539\u3002\u6B64\u66F4\u6539\u5DF2\u5E94\u7528\u4E8E${agentName2(profile)}\u3002`
   }
 };
-function compact2(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/zh-hant.ts
+var tag3 = "zh-Hant";
 var agentName3 = (profile) => profile && profile !== "default" ? profile : zhHant.thisAgent;
 var zhHant = {
   thisAgent: "\u6B64\u4EE3\u7406",
@@ -1576,9 +1712,14 @@ var zhHant = {
   stop: "\u505C\u6B62",
   use: "\u4F7F\u7528",
   inUse: "\u4F7F\u7528\u4E2D",
-  favourite: "\u6536\u85CF",
-  unfavourite: "\u53D6\u6D88\u6536\u85CF",
-  uses: (n) => `\u4F7F\u7528 ${compact3(n)} \u6B21`,
+  previewVoice: (title) => `\u8A66\u807D\u300C${title}\u300D`,
+  stopVoice: (title) => `\u505C\u6B62\u300C${title}\u300D`,
+  deleteVoice: (title) => `\u522A\u9664\u300C${title}\u300D`,
+  favouriteVoice: (title) => `\u6536\u85CF\u300C${title}\u300D`,
+  unfavouriteVoice: (title) => `\u53D6\u6D88\u6536\u85CF\u300C${title}\u300D`,
+  saveAsN: (n) => `\u5019\u9078 ${n} \u7684\u540D\u7A31`,
+  emptyFile: (name) => `${name} \u662F\u7A7A\u6A94\u6848\u3002`,
+  uses: (n) => `\u4F7F\u7528 ${compact(tag3, n)} ${plural(tag3, n, { other: "\u6B21" })}`,
   noVoices: "\u6C92\u6709\u7B26\u5408\u7684\u8072\u97F3",
   noFavourites: "\u5C1A\u7121\u6536\u85CF",
   noFavouritesHint: "\u5728\u8072\u97F3\u5EAB\u4E2D\u9EDE\u9078\u8072\u97F3\u7684\u661F\u865F\uFF0C\u5373\u53EF\u5C07\u5176\u6536\u85CF\u5230\u9019\u88E1\u3002",
@@ -1627,10 +1768,10 @@ var zhHant = {
   operatorSaved: (title) => `\u5DF2\u5132\u5B58${title}\u3002\u53EF\u5728\u8072\u97F3\u5EAB\u7684\u300C\u6536\u85CF\u300D\u4E2D\u627E\u5230\u3002`,
   apiCredit: "API \u984D\u5EA6",
   lowCredit: "\u9918\u984D\u4E0D\u8DB3\u2014\u2014\u8ACB\u5132\u503C\u4EE5\u7E7C\u7E8C\u4F7F\u7528\u8A9E\u97F3\u56DE\u8986\u3002",
-  topUps: "\u7D2F\u8A08\u5132\u503C",
+  topUpsLine: (amount) => `\u7D2F\u8A08\u5132\u503C\uFF1A${usd(tag3, amount)}`,
   freeCredit: "\u53EF\u7528\u514D\u8CBB\u984D\u5EA6",
   plan: "\u65B9\u6848",
-  planBalance: (balance, total) => `\u5269\u9918 ${balance.toLocaleString("zh-TW")} / ${total.toLocaleString("zh-TW")} \u9EDE\u6578`,
+  planBalance: (balance, total) => `\u5269\u9918 ${number(tag3, balance)} / ${number(tag3, total)} \u9EDE\u6578`,
   renews: (date) => `\u7E8C\u8A02\u65E5\u671F\uFF1A${date}`,
   periodEnds: (date) => `\u76EE\u524D\u9031\u671F\u7D50\u675F\u65E5\u671F\uFF1A${date}`,
   noPlan: "\u7121\u61C9\u7528\u7A0B\u5F0F\u65B9\u6848",
@@ -1641,7 +1782,42 @@ var zhHant = {
   apiKeys: "API \u91D1\u9470",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API \u984D\u5EA6",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: (value) => usd(tag3, value),
+  errors: {
+    credential: (url) => `\u8ACB\u8A2D\u5B9A\u6709\u6548\u7684 Fish Audio API \u91D1\u9470\uFF1A${url}`,
+    credentialAccess: (url) => `\u8ACB\u6AA2\u67E5 Fish Audio API \u91D1\u9470\u53CA\u5176\u5B58\u53D6\u6B0A\u9650\uFF1A${url}`,
+    quota: (url) => `\u8ACB\u5132\u503C Fish Audio API \u9EDE\u6578\uFF1A${url}\uFF1B\u61C9\u7528\u7A0B\u5F0F\u65B9\u6848\u9EDE\u6578\u8207 API \u9EDE\u6578\u5206\u958B\u8A08\u7B97\u3002`,
+    rate_limit: `\u5DF2\u9054\u5230 Fish Audio \u4E26\u884C\u8ACB\u6C42\u4E0A\u9650\u3002\u4F9D\u7D2F\u8A08\u5132\u503C\u984D\uFF1A\u4F4E\u65BC $100 \u70BA 5 \u500B\uFF0C\u9054\u5230 $100 \u70BA 15 \u500B\uFF0C\u9054\u5230 $1k \u70BA 50 \u500B\u4E26\u884C\u8ACB\u6C42\u3002\u8ACB\u7A0D\u5F8C\u91CD\u8A66\u3002`,
+    availability: `Fish Audio \u66AB\u6642\u7121\u6CD5\u4F7F\u7528\u3002\u8ACB\u7A0D\u5F8C\u91CD\u8A66\u3002`,
+    invalid_request: `Fish Audio \u62D2\u7D55\u4E86\u8A9E\u97F3\u5408\u6210\u8ACB\u6C42\u3002\u8ACB\u6AA2\u67E5\u8072\u97F3\u548C\u8A2D\u5B9A\u3002`,
+    not_found: `Fish Audio \u627E\u4E0D\u5230\u6240\u8981\u6C42\u7684\u8072\u97F3\u6216\u6A21\u578B\u3002`,
+    too_large: `Fish Audio \u8ACB\u6C42\u904E\u5927\u3002\u8ACB\u6E1B\u5C11\u6587\u5B57\u6216\u7E2E\u5C0F\u53C3\u8003\u97F3\u8A0A\u3002`,
+    unsupported_media: `Fish Audio \u4E0D\u652F\u63F4\u6B64\u97F3\u8A0A\u683C\u5F0F\u3002`,
+    voice_not_found: (url) => `\u8072\u97F3 ID \u4E0D\u5B58\u5728\uFF0C\u6216\u5C6C\u65BC\u5176\u4ED6\u5E33\u865F\u7684\u79C1\u4EBA\u8072\u97F3\u3002\u700F\u89BD\u8072\u97F3\uFF1A${url}\u3002`,
+    credentialOperator: `\u8A9E\u97F3\u670D\u52D9\u7684\u6191\u8B49\u906D\u5230\u62D2\u7D55\u3002\u8ACB\u806F\u7D61\u6B64\u4EE3\u7406\u7684\u71DF\u904B\u8005\u3002`,
+    quotaOperator: `\u8A9E\u97F3\u670D\u52D9\u9EDE\u6578\u4E0D\u8DB3\u3002\u8ACB\u806F\u7D61\u6B64\u4EE3\u7406\u7684\u71DF\u904B\u8005\u3002`,
+    rateLimitOperator: `\u8A9E\u97F3\u670D\u52D9\u5FD9\u788C\u3002\u8ACB\u7A0D\u5F8C\u91CD\u8A66\u3002`,
+    error: `\u767C\u751F\u4E86\u554F\u984C`,
+    badChunkSize: `\u9598\u9053\u50B3\u56DE\u4E86\u7121\u6548\u7684\u4E0A\u50B3\u5340\u584A\u5927\u5C0F\u3002`,
+    code: (code) => `\u932F\u8AA4\u4EE3\u78BC\uFF1A${code}\u3002`,
+    paidModel: (url) => `\u8ACB\u5207\u63DB\u81F3 s2.1-pro \u4E26\u5132\u503C\uFF1A${url}`,
+    requestId: (id) => `\uFF08\u8ACB\u6C42 ID\uFF1A${id}\uFF09`,
+    fishTrace: (id) => `\uFF08Fish \u8FFD\u8E64\uFF1A${id}\uFF09`
+  },
+  refusals: {
+    no_key: `\u6B64\u8A2D\u5B9A\u6A94\u5C1A\u672A\u8A2D\u5B9A Fish Audio\u3002\u8ACB\u5728\u8A2D\u5B9A \u25B8 \u5916\u639B \u25B8 Fish Audio\uFF08\u820A\u7248\u672C\u70BA\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\uFF09\u4E2D\u52A0\u5165\u91D1\u9470\uFF0C\u6216\u5728\u57F7\u884C Hermes \u7684\u6A5F\u5668\u4E0A\u57F7\u884C \`hermes fish login\`\u3002`,
+    no_keyOperator: `\u8ACB\u806F\u7D61\u6B64\u4EE3\u7406\u7684\u71DF\u904B\u8005\u5B8C\u6210 Fish Audio \u8A2D\u5B9A\u3002`,
+    not_owner: `\u53EA\u80FD\u522A\u9664\u60A8\u81EA\u5DF1\u7684 Fish Audio \u5E33\u865F\u5EFA\u7ACB\u7684\u8072\u97F3\u3002`,
+    gone: `\u4E0A\u50B3\u5DF2\u7121\u6CD5\u4F7F\u7528\uFF1B\u8ACB\u91CD\u65B0\u52A0\u5165\u6A94\u6848\u3002`,
+    bad_upload_id: `\u4E0A\u50B3\u8B58\u5225\u78BC\u7121\u6548\u3002`,
+    consent: `\u8ACB\u78BA\u8A8D\u60A8\u5DF2\u53D6\u5F97\u8AAA\u8A71\u8005\u7684\u8072\u97F3\u8907\u88FD\u8A31\u53EF\u3002`,
+    managed: `\u6B64\u8A2D\u5B9A\u7531\u4EE3\u7406\u7684\u71DF\u904B\u8005\u7BA1\u7406\u3002`,
+    io_error: `\u5916\u639B\u7684\u4E0A\u50B3\u76EE\u9304\u4E0D\u662F\u4E00\u822C\u8CC7\u6599\u593E\u3002`,
+    chunk_too_large: `\u4E0A\u50B3\u5340\u584A\u904E\u5927\u3002`,
+    offset: `\u504F\u79FB\u91CF\u8207\u5DF2\u4E0A\u50B3\u7684\u4F4D\u5143\u7D44\u6578\u4E0D\u7B26\u3002`,
+    size_mismatch: `\u4E00\u500B\u6A23\u672C\u5C1A\u672A\u4E0A\u50B3\u5B8C\u6210\uFF1B\u8ACB\u91CD\u65B0\u52A0\u5165\u3002`,
+    limit: `\u6BCF\u500B\u8A2D\u5B9A\u6A94\u6700\u591A\u53EF\u5132\u5B58 50 \u500B\u8072\u97F3\u540D\u7A31\u3002`
+  },
   settings: {
     restart: "\u91CD\u65B0\u555F\u52D5\u6B64\u4EE3\u7406\u7684\u9598\u9053\uFF0C\u4EE5\u5B8C\u6210 Fish Audio \u7684\u66F4\u65B0\u3002",
     voicesPage: "\u8072\u97F3\u9801\u9762",
@@ -1664,6 +1840,7 @@ var zhHant = {
     voice: "\u8072\u97F3",
     voicePlaceholder: "\u8072\u97F3 ID \u6216\u5DF2\u5132\u5B58\u7684\u540D\u7A31",
     add: "\u65B0\u589E",
+    removeAlias: (name) => `\u79FB\u9664 ${name}`,
     remove: "\u79FB\u9664",
     added: (name) => `\u5DF2\u5132\u5B58 ${name}`,
     updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
@@ -1677,11 +1854,9 @@ var zhHant = {
     agentChangedAfterSend: (profile) => `\u5728\u6536\u5230\u56DE\u8986\u524D\uFF0C\u6240\u9078\u4EE3\u7406\u5DF2\u8B8A\u66F4\u3002\u6B64\u8B8A\u66F4\u5DF2\u5957\u7528\u81F3${agentName3(profile)}\u3002`
   }
 };
-function compact3(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/ja.ts
+var tag4 = "ja";
 var agentName4 = (profile) => profile && profile !== "default" ? profile : ja.thisAgent;
 var ja = {
   thisAgent: "\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8",
@@ -1730,9 +1905,14 @@ var ja = {
   stop: "\u505C\u6B62",
   use: "\u4F7F\u7528",
   inUse: "\u4F7F\u7528\u4E2D",
-  favourite: "\u304A\u6C17\u306B\u5165\u308A\u306B\u8FFD\u52A0",
-  unfavourite: "\u304A\u6C17\u306B\u5165\u308A\u304B\u3089\u524A\u9664",
-  uses: (n) => `\u4F7F\u7528 ${compact4(n)} \u56DE`,
+  previewVoice: (title) => `\u300C${title}\u300D\u3092\u8A66\u8074`,
+  stopVoice: (title) => `\u300C${title}\u300D\u3092\u505C\u6B62`,
+  deleteVoice: (title) => `\u300C${title}\u300D\u3092\u524A\u9664`,
+  favouriteVoice: (title) => `\u300C${title}\u300D\u3092\u304A\u6C17\u306B\u5165\u308A\u306B\u8FFD\u52A0`,
+  unfavouriteVoice: (title) => `\u300C${title}\u300D\u3092\u304A\u6C17\u306B\u5165\u308A\u304B\u3089\u524A\u9664`,
+  saveAsN: (n) => `\u5019\u88DC ${n} \u306E\u540D\u524D`,
+  emptyFile: (name) => `${name} \u306F\u7A7A\u306E\u30D5\u30A1\u30A4\u30EB\u3067\u3059\u3002`,
+  uses: (n) => `\u4F7F\u7528 ${compact(tag4, n)} ${plural(tag4, n, { other: "\u56DE" })}`,
   noVoices: "\u4E00\u81F4\u3059\u308B\u30DC\u30A4\u30B9\u304C\u3042\u308A\u307E\u305B\u3093",
   noFavourites: "\u304A\u6C17\u306B\u5165\u308A\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093",
   noFavouritesHint: "\u30E9\u30A4\u30D6\u30E9\u30EA\u306E\u30DC\u30A4\u30B9\u306B\u661F\u3092\u4ED8\u3051\u308B\u3068\u3001\u3053\u3053\u306B\u4FDD\u5B58\u3055\u308C\u307E\u3059\u3002",
@@ -1781,10 +1961,10 @@ var ja = {
   operatorSaved: (title) => `\u300C${title}\u300D\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002\u30E9\u30A4\u30D6\u30E9\u30EA\u306E\u300C\u304A\u6C17\u306B\u5165\u308A\u300D\u3067\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002`,
   apiCredit: "API \u30AF\u30EC\u30B8\u30C3\u30C8",
   lowCredit: "\u6B8B\u9AD8\u304C\u5C11\u306A\u304F\u306A\u3063\u3066\u3044\u307E\u3059\u3002\u97F3\u58F0\u8FD4\u4FE1\u3092\u4F7F\u3044\u7D9A\u3051\u308B\u306B\u306F\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-  topUps: "\u7D2F\u8A08\u30C1\u30E3\u30FC\u30B8\u984D",
+  topUpsLine: (amount) => `\u7D2F\u8A08\u30C1\u30E3\u30FC\u30B8\u984D\uFF1A${usd(tag4, amount)}`,
   freeCredit: "\u5229\u7528\u53EF\u80FD\u306A\u7121\u6599\u30AF\u30EC\u30B8\u30C3\u30C8",
   plan: "\u30D7\u30E9\u30F3",
-  planBalance: (balance, total) => `${total.toLocaleString("ja")} \u30AF\u30EC\u30B8\u30C3\u30C8\u4E2D\u3001\u6B8B\u308A ${balance.toLocaleString("ja")}`,
+  planBalance: (balance, total) => `${number(tag4, total)} \u30AF\u30EC\u30B8\u30C3\u30C8\u4E2D\u3001\u6B8B\u308A ${number(tag4, balance)}`,
   renews: (date) => `\u66F4\u65B0\u65E5\uFF1A${date}`,
   periodEnds: (date) => `\u73FE\u5728\u306E\u671F\u9593\u306E\u7D42\u4E86\u65E5\uFF1A${date}`,
   noPlan: "\u30A2\u30D7\u30EA\u306E\u30D7\u30E9\u30F3\u306A\u3057",
@@ -1795,7 +1975,42 @@ var ja = {
   apiKeys: "API \u30AD\u30FC",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API \u30AF\u30EC\u30B8\u30C3\u30C8",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: (value) => usd(tag4, value),
+  errors: {
+    credential: (url) => `\u6709\u52B9\u306A Fish Audio API \u30AD\u30FC\u3092\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
+    credentialAccess: (url) => `Fish Audio API \u30AD\u30FC\u3068\u30A2\u30AF\u30BB\u30B9\u6A29\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
+    quota: (url) => `Fish Audio API \u30AF\u30EC\u30B8\u30C3\u30C8\u3092\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}\u3002\u30A2\u30D7\u30EA\u306E\u30D7\u30E9\u30F3\u3068 API \u306E\u30AF\u30EC\u30B8\u30C3\u30C8\u306F\u5225\u3067\u3059\u3002`,
+    rate_limit: `Fish Audio \u306E\u540C\u6642\u30EA\u30AF\u30A8\u30B9\u30C8\u6570\u306E\u4E0A\u9650\u306B\u9054\u3057\u307E\u3057\u305F\u3002\u7D2F\u8A08\u30C1\u30E3\u30FC\u30B8\u984D\u304C $100 \u672A\u6E80\u306A\u3089 5 \u4EF6\u3001$100 \u4EE5\u4E0A\u306A\u3089 15 \u4EF6\u3001$1k \u4EE5\u4E0A\u306A\u3089 50 \u4EF6\u3067\u3059\u3002\u6642\u9593\u3092\u304A\u3044\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    availability: `Fish Audio \u3092\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002\u6642\u9593\u3092\u304A\u3044\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    invalid_request: `Fish Audio \u304C\u97F3\u58F0\u5408\u6210\u30EA\u30AF\u30A8\u30B9\u30C8\u3092\u62D2\u5426\u3057\u307E\u3057\u305F\u3002\u30DC\u30A4\u30B9\u3068\u8A2D\u5B9A\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    not_found: `\u6307\u5B9A\u3055\u308C\u305F\u30DC\u30A4\u30B9\u307E\u305F\u306F\u30E2\u30C7\u30EB\u304C Fish Audio \u306B\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002`,
+    too_large: `Fish Audio \u3078\u306E\u30EA\u30AF\u30A8\u30B9\u30C8\u304C\u5927\u304D\u3059\u304E\u307E\u3059\u3002\u30C6\u30AD\u30B9\u30C8\u3084\u53C2\u7167\u97F3\u58F0\u3092\u77ED\u304F\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    unsupported_media: `Fish Audio \u306F\u3053\u306E\u97F3\u58F0\u5F62\u5F0F\u306B\u5BFE\u5FDC\u3057\u3066\u3044\u307E\u305B\u3093\u3002`,
+    voice_not_found: (url) => `\u30DC\u30A4\u30B9 ID \u304C\u898B\u3064\u304B\u3089\u306A\u3044\u304B\u3001\u5225\u306E\u30A2\u30AB\u30A6\u30F3\u30C8\u306E\u975E\u516C\u958B\u30DC\u30A4\u30B9\u3067\u3059\u3002\u30DC\u30A4\u30B9\u4E00\u89A7\uFF1A${url}\u3002`,
+    credentialOperator: `\u97F3\u58F0\u30B5\u30FC\u30D3\u30B9\u306E\u8A8D\u8A3C\u60C5\u5831\u304C\u62D2\u5426\u3055\u308C\u307E\u3057\u305F\u3002\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u904B\u7528\u8005\u306B\u9023\u7D61\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    quotaOperator: `\u97F3\u58F0\u30B5\u30FC\u30D3\u30B9\u306E\u30AF\u30EC\u30B8\u30C3\u30C8\u304C\u4E0D\u8DB3\u3057\u3066\u3044\u307E\u3059\u3002\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u904B\u7528\u8005\u306B\u9023\u7D61\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    rateLimitOperator: `\u97F3\u58F0\u30B5\u30FC\u30D3\u30B9\u304C\u6DF7\u307F\u5408\u3063\u3066\u3044\u307E\u3059\u3002\u5C11\u3057\u5F85\u3063\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    error: `\u554F\u984C\u304C\u767A\u751F\u3057\u307E\u3057\u305F`,
+    badChunkSize: `\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u304B\u3089\u7121\u52B9\u306A\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u30C1\u30E3\u30F3\u30AF\u30B5\u30A4\u30BA\u304C\u8FD4\u3055\u308C\u307E\u3057\u305F\u3002`,
+    code: (code) => `\u30B3\u30FC\u30C9\uFF1A${code}\u3002`,
+    paidModel: (url) => `s2.1-pro \u306B\u5207\u308A\u66FF\u3048\u3066\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
+    requestId: (id) => `\uFF08\u30EA\u30AF\u30A8\u30B9\u30C8 ID\uFF1A${id}\uFF09`,
+    fishTrace: (id) => `\uFF08Fish \u30C8\u30EC\u30FC\u30B9\uFF1A${id}\uFF09`
+  },
+  refusals: {
+    no_key: `\u3053\u306E\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u306E Fish Audio \u306F\u672A\u8A2D\u5B9A\u3067\u3059\u3002\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u25B8 Fish Audio\uFF08\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F \u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3\uFF09\u306B\u30AD\u30FC\u3092\u8FFD\u52A0\u3059\u308B\u304B\u3001Hermes \u304C\u52D5\u4F5C\u3059\u308B\u30DE\u30B7\u30F3\u3067 \`hermes fish login\` \u3092\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    no_keyOperator: `\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u904B\u7528\u8005\u306B Fish Audio \u306E\u8A2D\u5B9A\u3092\u5B8C\u4E86\u3059\u308B\u3088\u3046\u4F9D\u983C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    not_owner: `\u524A\u9664\u3067\u304D\u308B\u306E\u306F\u3001\u3054\u81EA\u8EAB\u306E Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u4F5C\u6210\u3057\u305F\u30DC\u30A4\u30B9\u3060\u3051\u3067\u3059\u3002`,
+    gone: `\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u304C\u5229\u7528\u3067\u304D\u306A\u304F\u306A\u308A\u307E\u3057\u305F\u3002\u30D5\u30A1\u30A4\u30EB\u3092\u8FFD\u52A0\u3057\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    bad_upload_id: `\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9 ID \u304C\u7121\u52B9\u3067\u3059\u3002`,
+    consent: `\u3053\u306E\u58F0\u3092\u30AF\u30ED\u30FC\u30F3\u3059\u308B\u8A31\u53EF\u3092\u8A71\u8005\u304B\u3089\u5F97\u3066\u3044\u308B\u3053\u3068\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    managed: `\u3053\u306E\u8A2D\u5B9A\u306F\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u904B\u7528\u8005\u304C\u7BA1\u7406\u3057\u3066\u3044\u307E\u3059\u3002`,
+    io_error: `\u30D7\u30E9\u30B0\u30A4\u30F3\u306E\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u30D5\u30A9\u30EB\u30C0\u30FC\u304C\u901A\u5E38\u306E\u30D5\u30A9\u30EB\u30C0\u30FC\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u3002`,
+    chunk_too_large: `\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u30C1\u30E3\u30F3\u30AF\u304C\u5927\u304D\u3059\u304E\u307E\u3059\u3002`,
+    offset: `\u30AA\u30D5\u30BB\u30C3\u30C8\u304C\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u6E08\u307F\u306E\u30D0\u30A4\u30C8\u6570\u3068\u4E00\u81F4\u3057\u307E\u305B\u3093\u3002`,
+    size_mismatch: `\u30B5\u30F3\u30D7\u30EB\u306E\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u304C\u5B8C\u4E86\u3057\u3066\u3044\u307E\u305B\u3093\u3002\u8FFD\u52A0\u3057\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    limit: `\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u3054\u3068\u306B\u4FDD\u5B58\u3067\u304D\u308B\u30DC\u30A4\u30B9\u540D\u306F 50 \u4EF6\u307E\u3067\u3067\u3059\u3002`
+  },
   settings: {
     restart: "Fish Audio \u306E\u66F4\u65B0\u3092\u5B8C\u4E86\u3059\u308B\u306B\u306F\u3001\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u3092\u518D\u8D77\u52D5\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
     voicesPage: "\u30DC\u30A4\u30B9\u30DA\u30FC\u30B8",
@@ -1818,6 +2033,7 @@ var ja = {
     voice: "\u30DC\u30A4\u30B9",
     voicePlaceholder: "\u30DC\u30A4\u30B9 ID \u307E\u305F\u306F\u4FDD\u5B58\u3057\u305F\u540D\u524D",
     add: "\u8FFD\u52A0",
+    removeAlias: (name) => `${name} \u3092\u524A\u9664`,
     remove: "\u524A\u9664",
     added: (name) => `${name} \u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F`,
     updated: (name) => `${name} \u3092\u66F4\u65B0\u3057\u307E\u3057\u305F`,
@@ -1831,11 +2047,11 @@ var ja = {
     agentChangedAfterSend: (profile) => `\u5FDC\u7B54\u304C\u5C4A\u304F\u524D\u306B\u9078\u629E\u4E2D\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u304C\u5909\u66F4\u3055\u308C\u307E\u3057\u305F\u3002\u5909\u66F4\u306F${agentName4(profile)}\u306B\u9069\u7528\u3055\u308C\u3066\u3044\u307E\u3059\u3002`
   }
 };
-function compact4(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/ar.ts
+var isolate = (value) => `\u2068${value}\u2069`;
+var tag5 = "ar";
+var money = (value) => usd(tag5, value).replace("US$", isolate("US$"));
 var agentName5 = (profile) => profile && profile !== "default" ? profile : ar.thisAgent;
 var ar = {
   thisAgent: "\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644",
@@ -1844,8 +2060,8 @@ var ar = {
   paletteVoices: "Fish Audio: \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
   paletteAccount: "Fish Audio: \u0627\u0644\u062D\u0633\u0627\u0628",
   poweredBy: "Fish Audio",
-  forAgent: (profile) => profile && profile !== "default" ? `\u0644\u0644\u0648\u0643\u064A\u0644 ${profile}` : "\u0644\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644",
-  notSetUp: (profile) => `\u0644\u0645 \u064A\u062A\u0645 \u0625\u0639\u062F\u0627\u062F Fish Audio \u0639\u0644\u0649 \u062C\u0647\u0627\u0632 ${agentName5(profile)} \u0628\u0639\u062F. \u062B\u0628\u0651\u062A \u0627\u0644\u0625\u0636\u0627\u0641\u0629 \u0647\u0646\u0627\u0643\u060C \u0648\u0641\u0639\u0651\u0644\u0647\u0627\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629.`,
+  forAgent: (profile) => profile && profile !== "default" ? `\u0644\u0644\u0648\u0643\u064A\u0644 ${isolate(profile)}` : "\u0644\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644",
+  notSetUp: (profile) => `\u0644\u0645 \u064A\u062A\u0645 \u0625\u0639\u062F\u0627\u062F Fish Audio \u0639\u0644\u0649 \u062C\u0647\u0627\u0632 ${isolate(agentName5(profile))} \u0628\u0639\u062F. \u062B\u0628\u0651\u062A \u0627\u0644\u0625\u0636\u0627\u0641\u0629 \u0647\u0646\u0627\u0643\u060C \u0648\u0641\u0639\u0651\u0644\u0647\u0627\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629.`,
   tabs: { library: "\u0627\u0644\u0645\u0643\u062A\u0628\u0629", mine: "\u0623\u0635\u0648\u0627\u062A\u064A", create: "\u0625\u0646\u0634\u0627\u0621", account: "\u0627\u0644\u062D\u0633\u0627\u0628" },
   operatorOnboardTitle: "\u0644\u0645 \u064A\u062A\u0645 \u0625\u0639\u062F\u0627\u062F \u0627\u0644\u0635\u0648\u062A \u0644\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0628\u0639\u062F",
   operatorOnboardBody: "\u0627\u0637\u0644\u0628 \u0645\u0646 \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0625\u0643\u0645\u0627\u0644 \u0625\u0639\u062F\u0627\u062F Fish Audio.",
@@ -1853,13 +2069,13 @@ var ar = {
   operatorCloneBilled: "\u064A\u0646\u0634\u0626 \u0627\u0644\u0627\u0633\u062A\u0646\u0633\u0627\u062E \u0635\u0648\u062A\u064B\u0627 \u062C\u062F\u064A\u062F\u064B\u0627 \u0644\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644.",
   operatorDesignBilled: "\u064A\u0646\u0634\u0626 \u0643\u0644 \u062A\u0635\u0645\u064A\u0645 \u0623\u0635\u0648\u0627\u062A\u064B\u0627 \u0645\u0631\u0634\u062D\u0629 \u062C\u062F\u064A\u062F\u0629.",
   onboardTitle: "\u0627\u0631\u0628\u0637 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio",
-  onboardBody: (profile) => `\u062A\u062D\u062A\u0627\u062C \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0625\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0644\u062F\u0649 ${agentName5(profile)}. \u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free.`,
+  onboardBody: (profile) => `\u062A\u062D\u062A\u0627\u062C \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0625\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}. \u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free.`,
   onboardStep1: "\u0623\u0646\u0634\u0626 \u0645\u0641\u062A\u0627\u062D API \u0645\u062C\u0627\u0646\u064A\u064B\u0627 \u0639\u0644\u0649 fish.audio",
-  onboardStep2: "\u0627\u0644\u0635\u0642\u0647 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25B8 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25B8 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25B8 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629",
+  onboardStep2: "\u0627\u0644\u0635\u0642\u0647 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629",
   getKey: "\u0627\u0644\u062D\u0635\u0648\u0644 \u0639\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API",
   openPlugins: "\u0641\u062A\u062D \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A",
   checkAgain: "\u0627\u0644\u062A\u062D\u0642\u0642 \u0645\u062C\u062F\u062F\u064B\u0627",
-  unreachable: (profile) => `\u062A\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 Fish Audio \u0644\u062F\u0649 ${agentName5(profile)}`,
+  unreachable: (profile) => `\u062A\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}`,
   search: "\u0627\u0644\u0628\u062D\u062B \u0639\u0646 \u0623\u0635\u0648\u0627\u062A",
   language: "\u0627\u0644\u0644\u063A\u0629",
   anyLanguage: "\u0623\u064A \u0644\u063A\u0629",
@@ -1884,28 +2100,33 @@ var ar = {
   stop: "\u0625\u064A\u0642\u0627\u0641",
   use: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645",
   inUse: "\u0642\u064A\u062F \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645",
-  favourite: "\u0625\u0636\u0627\u0641\u0629 \u0625\u0644\u0649 \u0627\u0644\u0645\u0641\u0636\u0644\u0629",
-  unfavourite: "\u0625\u0632\u0627\u0644\u0629 \u0645\u0646 \u0627\u0644\u0645\u0641\u0636\u0644\u0629",
-  uses: (n) => `\u0645\u0631\u0627\u062A \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645: ${compact5(n)}`,
+  previewVoice: (title) => `\u0645\u0639\u0627\u064A\u0646\u0629 ${isolate(title)}`,
+  stopVoice: (title) => `\u0625\u064A\u0642\u0627\u0641 ${isolate(title)}`,
+  deleteVoice: (title) => `\u062D\u0630\u0641 ${isolate(title)}`,
+  favouriteVoice: (title) => `\u0625\u0636\u0627\u0641\u0629 ${isolate(title)} \u0625\u0644\u0649 \u0627\u0644\u0645\u0641\u0636\u0644\u0629`,
+  unfavouriteVoice: (title) => `\u0625\u0632\u0627\u0644\u0629 ${isolate(title)} \u0645\u0646 \u0627\u0644\u0645\u0641\u0636\u0644\u0629`,
+  saveAsN: (n) => `\u0627\u0633\u0645 \u0627\u0644\u0645\u0631\u0634\u062D ${isolate(n)}`,
+  emptyFile: (name) => `\u0627\u0644\u0645\u0644\u0641 ${isolate(name)} \u0641\u0627\u0631\u063A.`,
+  uses: (n) => `${isolate(compact(tag5, n))} ${plural(tag5, n, { zero: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645", one: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645", two: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645\u0627\u0646", few: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645\u0627\u062A", many: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645\u064B\u0627", other: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645" })}`,
   noVoices: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0635\u0648\u0627\u062A \u0645\u0637\u0627\u0628\u0642\u0629",
   noFavourites: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0635\u0648\u0627\u062A \u0645\u0641\u0636\u0644\u0629 \u0628\u0639\u062F",
   noFavouritesHint: "\u0636\u0639 \u0646\u062C\u0645\u0629 \u0639\u0644\u0649 \u0635\u0648\u062A \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0644\u0644\u0627\u062D\u062A\u0641\u0627\u0638 \u0628\u0647 \u0647\u0646\u0627.",
   prev: "\u0627\u0644\u0633\u0627\u0628\u0642",
   next: "\u0627\u0644\u062A\u0627\u0644\u064A",
-  pageOf: (page) => `\u0627\u0644\u0635\u0641\u062D\u0629 ${page}`,
-  usedVoice: (title, profile) => `\u0623\u0635\u0628\u062D ${title} \u0627\u0644\u0622\u0646 \u0635\u0648\u062A ${agentName5(profile)}`,
-  useOtherProvider: (provider) => `\u0645\u0632\u0648\u062F \u062A\u062D\u0648\u064A\u0644 \u0627\u0644\u0646\u0635 \u0625\u0644\u0649 \u0643\u0644\u0627\u0645 \u0627\u0644\u062D\u0627\u0644\u064A \u0647\u0648 ${provider}. \u0644\u0644\u062A\u0628\u062F\u064A\u0644 \u0627\u0633\u062A\u062E\u062F\u0645 \`hermes tools\` \u25B8 Text-to-Speech \u25B8 Fish Audio.`,
-  useProviderByOperator: (provider) => `\u064A\u062D\u062F\u0651\u062F \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0645\u0632\u0648\u062F \u062A\u062D\u0648\u064A\u0644 \u0627\u0644\u0646\u0635 \u0625\u0644\u0649 \u0643\u0644\u0627\u0645 (${provider}).`,
+  pageOf: (page) => `\u0627\u0644\u0635\u0641\u062D\u0629 ${isolate(page)}`,
+  usedVoice: (title, profile) => `\u0623\u0635\u0628\u062D ${isolate(title)} \u0627\u0644\u0622\u0646 \u0635\u0648\u062A ${isolate(agentName5(profile))}`,
+  useOtherProvider: (provider) => `\u0645\u0632\u0648\u062F \u062A\u062D\u0648\u064A\u0644 \u0627\u0644\u0646\u0635 \u0625\u0644\u0649 \u0643\u0644\u0627\u0645 \u0627\u0644\u062D\u0627\u0644\u064A \u0647\u0648 ${isolate(provider)}. \u0644\u0644\u062A\u0628\u062F\u064A\u0644 \u0627\u0633\u062A\u062E\u062F\u0645 \`hermes tools\` \u25C2 Text-to-Speech \u25C2 Fish Audio.`,
+  useProviderByOperator: (provider) => `\u064A\u062D\u062F\u0651\u062F \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0645\u0632\u0648\u062F \u062A\u062D\u0648\u064A\u0644 \u0627\u0644\u0646\u0635 \u0625\u0644\u0649 \u0643\u0644\u0627\u0645 (${isolate(provider)}).`,
   loadFailed: "\u062A\u0639\u0630\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
   retry: "\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629",
   mineEmpty: "\u0644\u0645 \u062A\u0646\u0634\u0626 \u0623\u064A \u0623\u0635\u0648\u0627\u062A \u0628\u0639\u062F",
   mineEmptyHint: "\u0627\u0633\u062A\u0646\u0633\u062E \u0635\u0648\u062A\u0643 \u0623\u0648 \u0635\u0645\u0651\u0645 \u0635\u0648\u062A\u064B\u0627 \u062C\u062F\u064A\u062F\u064B\u0627 \u0641\u064A \xAB\u0625\u0646\u0634\u0627\u0621\xBB.",
   delete: "\u062D\u0630\u0641",
-  deleteTitle: (title) => `\u062D\u0630\u0641 \xAB${title}\xBB\u061F`,
+  deleteTitle: (title) => `\u062D\u0630\u0641 \xAB${isolate(title)}\xBB\u061F`,
   deleteBody: "\u0633\u064A\u0624\u062F\u064A \u0647\u0630\u0627 \u0625\u0644\u0649 \u0625\u0632\u0627\u0644\u0629 \u0627\u0644\u0635\u0648\u062A \u0645\u0646 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio. \u0633\u064A\u062D\u062A\u0627\u062C \u0627\u0644\u0648\u0643\u0644\u0627\u0621 \u0627\u0644\u0630\u064A\u0646 \u064A\u0633\u062A\u062E\u062F\u0645\u0648\u0646 \u0647\u0630\u0627 \u0627\u0644\u0635\u0648\u062A \u0625\u0644\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0635\u0648\u062A \u0622\u062E\u0631 \u0644\u0647\u0645.",
-  deleteConfirmLabel: (title) => `\u0627\u0643\u062A\u0628 \xAB${title}\xBB \u0644\u0644\u062A\u0623\u0643\u064A\u062F`,
+  deleteConfirmLabel: (title) => `\u0627\u0643\u062A\u0628 \xAB${isolate(title)}\xBB \u0644\u0644\u062A\u0623\u0643\u064A\u062F`,
   cancel: "\u0625\u0644\u063A\u0627\u0621",
-  deleted: (title) => `\u062A\u0645 \u062D\u0630\u0641 ${title}`,
+  deleted: (title) => `\u062A\u0645 \u062D\u0630\u0641 ${isolate(title)}`,
   cloneTitle: "\u0627\u0633\u062A\u0646\u0633\u0627\u062E \u0635\u0648\u062A",
   cloneBody: "\u0627\u0631\u0641\u0639 1\u20133 \u062A\u0633\u062C\u064A\u0644\u0627\u062A \u0648\u0627\u0636\u062D\u0629 \u0644\u0645\u062A\u062D\u062F\u062B \u0648\u0627\u062D\u062F (MP3 \u0623\u0648 WAV \u0623\u0648 OGG \u0623\u0648 WebM \u0623\u0648 FLAC \u0623\u0648 MP4\u060C \u0628\u062D\u062F \u0623\u0642\u0635\u0649 10 MB \u0644\u0643\u0644 \u0645\u0644\u0641).",
   chooseFiles: "\u0627\u062E\u062A\u064A\u0627\u0631 \u0645\u0644\u0641\u0627\u062A \u0635\u0648\u062A\u064A\u0629",
@@ -1914,12 +2135,12 @@ var ar = {
   consent: "\u0644\u062F\u064A \u0625\u0630\u0646 \u0627\u0644\u0645\u062A\u062D\u062F\u062B \u0644\u0627\u0633\u062A\u0646\u0633\u0627\u062E \u0647\u0630\u0627 \u0627\u0644\u0635\u0648\u062A.",
   clone: "\u0627\u0633\u062A\u0646\u0633\u0627\u062E \u0627\u0644\u0635\u0648\u062A",
   cloneBilled: "\u062A\u064F\u062D\u062A\u0633\u0628 \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0627\u0633\u062A\u0646\u0633\u0627\u062E \u0639\u0644\u0649 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio.",
-  uploading: (n, total, percent) => `\u062C\u0627\u0631\u064D \u0631\u0641\u0639 ${n} \u0645\u0646 ${total} \xB7 ${percent}%`,
+  uploading: (n, total, percent) => `\u062C\u0627\u0631\u064D \u0631\u0641\u0639 ${isolate(n)} \u0645\u0646 ${isolate(total)} \xB7 ${isolate(percent)}%`,
   cloning: "\u062C\u0627\u0631\u064D \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0635\u0648\u062A\u2026",
-  cloned: (title) => `\u062A\u0645 \u0625\u0646\u0634\u0627\u0621 ${title}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \xAB\u0623\u0635\u0648\u0627\u062A\u064A\xBB.`,
-  operatorCloned: (title) => `\u062A\u0645 \u0625\u0646\u0634\u0627\u0621 ${title}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0636\u0645\u0646 \xAB\u0627\u0644\u0645\u0641\u0636\u0644\u0629\xBB.`,
+  cloned: (title) => `\u062A\u0645 \u0625\u0646\u0634\u0627\u0621 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \xAB\u0623\u0635\u0648\u0627\u062A\u064A\xBB.`,
+  operatorCloned: (title) => `\u062A\u0645 \u0625\u0646\u0634\u0627\u0621 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0636\u0645\u0646 \xAB\u0627\u0644\u0645\u0641\u0636\u0644\u0629\xBB.`,
   tooMany: "\u0627\u062E\u062A\u0631 \u0645\u0627 \u064A\u0635\u0644 \u0625\u0644\u0649 3 \u0645\u0644\u0641\u0627\u062A.",
-  tooLarge: (name) => `\u062D\u062C\u0645 ${name} \u0623\u0643\u0628\u0631 \u0645\u0646 10 MB.`,
+  tooLarge: (name) => `\u062D\u062C\u0645 ${isolate(name)} \u0623\u0643\u0628\u0631 \u0645\u0646 10 MB.`,
   agentChangedNothingSent: "\u062A\u063A\u064A\u0651\u0631 \u0627\u0644\u0648\u0643\u064A\u0644 \u0627\u0644\u0645\u062D\u062F\u062F\u060C \u0644\u0630\u0627 \u0644\u0645 \u064A\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0623\u064A \u0634\u064A\u0621.",
   agentChanged: "\u062A\u063A\u064A\u0651\u0631 \u0627\u0644\u0648\u0643\u064A\u0644 \u0627\u0644\u0645\u062D\u062F\u062F\u060C \u0644\u0630\u0627 \u062A\u0648\u0642\u0641 \u0627\u0644\u0631\u0641\u0639. \u0644\u0645 \u064A\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0623\u064A \u0634\u064A\u0621 \u0625\u0644\u0649 \u0627\u0644\u0648\u0643\u064A\u0644 \u0627\u0644\u0622\u062E\u0631.",
   designTitle: "\u062A\u0635\u0645\u064A\u0645 \u0635\u0648\u062A",
@@ -1928,28 +2149,63 @@ var ar = {
   design: "\u062A\u0635\u0645\u064A\u0645 \u0623\u0635\u0648\u0627\u062A",
   designing: "\u062C\u0627\u0631\u064D \u0627\u0644\u062A\u0635\u0645\u064A\u0645\u2026",
   designBilled: "\u062A\u064F\u062D\u062A\u0633\u0628 \u062A\u0643\u0644\u0641\u0629 \u0643\u0644 \u062A\u0635\u0645\u064A\u0645 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio.",
-  candidate: (n) => `\u0627\u0644\u0635\u0648\u062A \u0627\u0644\u0645\u0631\u0634\u062D ${n}`,
+  candidate: (n) => `\u0627\u0644\u0635\u0648\u062A \u0627\u0644\u0645\u0631\u0634\u062D ${isolate(n)}`,
   saveAs: "\u0627\u0644\u0627\u0633\u0645",
   save: "\u062D\u0641\u0638 \u0627\u0644\u0635\u0648\u062A",
-  saved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${title}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \xAB\u0623\u0635\u0648\u0627\u062A\u064A\xBB.`,
-  operatorSaved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${title}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0636\u0645\u0646 \xAB\u0627\u0644\u0645\u0641\u0636\u0644\u0629\xBB.`,
+  saved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \xAB\u0623\u0635\u0648\u0627\u062A\u064A\xBB.`,
+  operatorSaved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0636\u0645\u0646 \xAB\u0627\u0644\u0645\u0641\u0636\u0644\u0629\xBB.`,
   apiCredit: "\u0631\u0635\u064A\u062F API",
   lowCredit: "\u0627\u0644\u0631\u0635\u064A\u062F \u0645\u0646\u062E\u0641\u0636 \u2014 \u0627\u0634\u062D\u0646\u0647 \u0644\u062A\u0633\u062A\u0645\u0631 \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0641\u064A \u0627\u0644\u0639\u0645\u0644.",
-  topUps: "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646\u0627\u062A \u0645\u0646\u0630 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628",
+  topUpsLine: (amount) => `\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646\u0627\u062A \u0645\u0646\u0630 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628: ${isolate(money(amount))}`,
   freeCredit: "\u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062C\u0627\u0646\u064A \u0627\u0644\u0645\u062A\u0627\u062D",
   plan: "\u0627\u0644\u062E\u0637\u0629",
-  planBalance: (balance, total) => `\u062A\u0628\u0642\u0651\u0649 ${balance.toLocaleString("ar")} \u0645\u0646 ${total.toLocaleString("ar")} \u0648\u062D\u062F\u0629 \u0631\u0635\u064A\u062F`,
-  renews: (date) => `\u062A\u062A\u062C\u062F\u062F \u0641\u064A ${date}`,
-  periodEnds: (date) => `\u062A\u0646\u062A\u0647\u064A \u0627\u0644\u0641\u062A\u0631\u0629 \u0627\u0644\u062D\u0627\u0644\u064A\u0629 \u0641\u064A ${date}`,
+  planBalance: (balance, total) => `\u062A\u0628\u0642\u0651\u0649 ${isolate(number(tag5, balance))} \u0645\u0646 ${isolate(number(tag5, total))} \u0648\u062D\u062F\u0629 \u0631\u0635\u064A\u062F`,
+  renews: (date) => `\u062A\u062A\u062C\u062F\u062F \u0641\u064A ${isolate(date)}`,
+  periodEnds: (date) => `\u062A\u0646\u062A\u0647\u064A \u0627\u0644\u0641\u062A\u0631\u0629 \u0627\u0644\u062D\u0627\u0644\u064A\u0629 \u0641\u064A ${isolate(date)}`,
   noPlan: "\u0644\u0627 \u062A\u0648\u062C\u062F \u062E\u0637\u0629 \u0644\u0644\u062A\u0637\u0628\u064A\u0642",
   planUnavailable: "\u062A\u0641\u0627\u0635\u064A\u0644 \u0627\u0644\u062E\u0637\u0629 \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629 \u062D\u0627\u0644\u064A\u064B\u0627.",
   creditsSeparate: "\u0631\u0635\u064A\u062F \u062E\u0637\u0629 \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0648\u0631\u0635\u064A\u062F API \u0645\u0646\u0641\u0635\u0644\u0627\u0646. \u062A\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0631\u0635\u064A\u062F API.",
   topUp: "\u0634\u062D\u0646 \u0631\u0635\u064A\u062F API",
   plans: "\u0627\u0644\u062E\u0637\u0637",
   apiKeys: "\u0645\u0641\u0627\u062A\u064A\u062D API",
-  chip: (credit) => `Fish ${credit}`,
+  chip: (credit) => `Fish ${isolate(credit)}`,
   chipTip: "\u0631\u0635\u064A\u062F API \u0644\u0640 Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: money,
+  errors: {
+    credential: (url) => `\u0623\u0636\u0641 \u0645\u0641\u062A\u0627\u062D API \u0635\u0627\u0644\u062D\u064B\u0627 \u0644\u0640 Fish Audio: ${isolate(url)}`,
+    credentialAccess: (url) => `\u062A\u062D\u0642\u0651\u0642 \u0645\u0646 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0648\u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0627\u0644\u0648\u0635\u0648\u0644: ${isolate(url)}`,
+    quota: (url) => `\u0627\u0634\u062D\u0646 \u0631\u0635\u064A\u062F API \u0644\u0640 Fish Audio: ${isolate(url)}\u061B \u0631\u0635\u064A\u062F \u062E\u0637\u0629 \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0645\u0646\u0641\u0635\u0644 \u0639\u0646 \u0631\u0635\u064A\u062F API.`,
+    rate_limit: `\u0628\u0644\u063A Fish Audio \u062D\u062F \u0627\u0644\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u0645\u062A\u0632\u0627\u0645\u0646\u0629. \u062D\u0633\u0628 \u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646: \u0623\u0642\u0644 \u0645\u0646 $100: 5\u060C \u0645\u0646 $100: 15\u060C \u0645\u0646 $1k: 50 \u0637\u0644\u0628\u064B\u0627 \u0645\u062A\u0632\u0627\u0645\u0646\u064B\u0627. \u062D\u0627\u0648\u0644 \u0644\u0627\u062D\u0642\u064B\u0627.`,
+    availability: `Fish Audio \u063A\u064A\u0631 \u0645\u062A\u0627\u062D. \u062D\u0627\u0648\u0644 \u0644\u0627\u062D\u0642\u064B\u0627.`,
+    invalid_request: `\u0631\u0641\u0636 Fish Audio \u0637\u0644\u0628 \u062A\u062D\u0648\u064A\u0644 \u0627\u0644\u0646\u0635 \u0625\u0644\u0649 \u0643\u0644\u0627\u0645. \u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0635\u0648\u062A \u0648\u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A.`,
+    not_found: `\u0644\u0645 \u064A\u0639\u062B\u0631 Fish Audio \u0639\u0644\u0649 \u0627\u0644\u0635\u0648\u062A \u0623\u0648 \u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u0637\u0644\u0648\u0628.`,
+    too_large: `\u0637\u0644\u0628 Fish Audio \u0643\u0628\u064A\u0631 \u062C\u062F\u064B\u0627. \u0642\u0644\u0651\u0644 \u0627\u0644\u0646\u0635 \u0623\u0648 \u062D\u062C\u0645 \u0627\u0644\u0639\u064A\u0646\u0627\u062A \u0627\u0644\u0645\u0631\u062C\u0639\u064A\u0629.`,
+    unsupported_media: `\u0644\u0627 \u064A\u062F\u0639\u0645 Fish Audio \u0647\u0630\u0627 \u0627\u0644\u062A\u0646\u0633\u064A\u0642 \u0627\u0644\u0635\u0648\u062A\u064A.`,
+    voice_not_found: (url) => `\u0644\u0645 \u064A\u064F\u0639\u062B\u0631 \u0639\u0644\u0649 \u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0635\u0648\u062A\u060C \u0623\u0648 \u0623\u0646\u0647 \u062E\u0627\u0635 \u0628\u062D\u0633\u0627\u0628 \u0622\u062E\u0631. \u062A\u0635\u0641\u0651\u062D \u0627\u0644\u0623\u0635\u0648\u0627\u062A: ${isolate(url)}.`,
+    credentialOperator: `\u0631\u0641\u0636\u062A \u0627\u0644\u062E\u062F\u0645\u0629 \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0627\u0639\u062A\u0645\u0627\u062F. \u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644.`,
+    quotaOperator: `\u0646\u0641\u062F \u0631\u0635\u064A\u062F \u0627\u0644\u062E\u062F\u0645\u0629 \u0627\u0644\u0635\u0648\u062A\u064A\u0629. \u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644.`,
+    rateLimitOperator: `\u0627\u0644\u062E\u062F\u0645\u0629 \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0645\u0634\u063A\u0648\u0644\u0629. \u062D\u0627\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627 \u0628\u0639\u062F \u0642\u0644\u064A\u0644.`,
+    error: `\u062D\u062F\u062B \u062E\u0637\u0623`,
+    badChunkSize: `\u0623\u0631\u0633\u0644\u062A \u0627\u0644\u0628\u0648\u0627\u0628\u0629 \u062D\u062C\u0645\u064B\u0627 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D \u0644\u062C\u0632\u0621 \u0627\u0644\u0631\u0641\u0639.`,
+    code: (code) => ` \u0627\u0644\u0631\u0645\u0632: ${isolate(code)}.`,
+    paidModel: (url) => ` \u0628\u062F\u0651\u0644 \u0625\u0644\u0649 s2.1-pro \u0648\u0627\u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F: ${isolate(url)}`,
+    requestId: (id) => ` (\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0637\u0644\u0628 ${isolate(id)})`,
+    fishTrace: (id) => ` (\u062A\u062A\u0628\u0651\u0639 Fish ${isolate(id)})`
+  },
+  refusals: {
+    no_key: `\u0644\u0645 \u064A\u064F\u0639\u062F\u0651 Fish Audio \u0644\u0647\u0630\u0627 \u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062E\u0635\u064A \u0628\u0639\u062F. \u0623\u0636\u0641 \u0645\u0641\u062A\u0627\u062D\u064B\u0627 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u0623\u0648 \u0634\u063A\u0651\u0644 \`hermes fish login\` \u0639\u0644\u0649 \u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0630\u064A \u064A\u0634\u063A\u0651\u0644 Hermes.`,
+    no_keyOperator: `\u0627\u0637\u0644\u0628 \u0645\u0646 \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0625\u0643\u0645\u0627\u0644 \u0625\u0639\u062F\u0627\u062F Fish Audio.`,
+    not_owner: `\u064A\u0645\u0643\u0646\u0643 \u062D\u0630\u0641 \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0627\u0644\u062A\u064A \u0623\u0646\u0634\u0623\u0647\u0627 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio \u0641\u0642\u0637.`,
+    gone: `\u0644\u0645 \u064A\u0639\u062F \u0627\u0644\u0631\u0641\u0639 \u0645\u062A\u0627\u062D\u064B\u0627\u061B \u0623\u0636\u0641 \u0627\u0644\u0645\u0644\u0641 \u0645\u062C\u062F\u062F\u064B\u0627.`,
+    bad_upload_id: `\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0631\u0641\u0639 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D.`,
+    consent: `\u0623\u0643\u062F \u062D\u0635\u0648\u0644\u0643 \u0639\u0644\u0649 \u0625\u0630\u0646 \u0627\u0644\u0645\u062A\u062D\u062F\u062B \u0644\u0627\u0633\u062A\u0646\u0633\u0627\u062E \u0647\u0630\u0627 \u0627\u0644\u0635\u0648\u062A.`,
+    managed: `\u064A\u062D\u062F\u062F \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0647\u0630\u0627 \u0627\u0644\u0625\u0639\u062F\u0627\u062F.`,
+    io_error: `\u0645\u062C\u0644\u062F \u0631\u0641\u0639 \u0627\u0644\u0625\u0636\u0627\u0641\u0629 \u0644\u064A\u0633 \u0645\u062C\u0644\u062F\u064B\u0627 \u0639\u0627\u062F\u064A\u064B\u0627.`,
+    chunk_too_large: `\u062C\u0632\u0621 \u0627\u0644\u0631\u0641\u0639 \u0643\u0628\u064A\u0631 \u062C\u062F\u064B\u0627.`,
+    offset: `\u0644\u0627 \u062A\u062A\u0637\u0627\u0628\u0642 \u0627\u0644\u0625\u0632\u0627\u062D\u0629 \u0645\u0639 \u0627\u0644\u0628\u0627\u064A\u062A\u0627\u062A \u0627\u0644\u0645\u0631\u0641\u0648\u0639\u0629.`,
+    size_mismatch: `\u0644\u0645 \u064A\u0643\u062A\u0645\u0644 \u0631\u0641\u0639 \u0625\u062D\u062F\u0649 \u0627\u0644\u0639\u064A\u0646\u0627\u062A\u061B \u0623\u0636\u0641\u0647\u0627 \u0645\u062C\u062F\u062F\u064B\u0627.`,
+    limit: `\u064A\u0645\u0643\u0646 \u062D\u0641\u0638 50 \u0627\u0633\u0645 \u0635\u0648\u062A \u0639\u0644\u0649 \u0627\u0644\u0623\u0643\u062B\u0631 \u0644\u0643\u0644 \u0645\u0644\u0641 \u0634\u062E\u0635\u064A.`
+  },
   settings: {
     restart: "\u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0628\u0648\u0627\u0628\u0629 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0644\u0625\u0643\u0645\u0627\u0644 \u062A\u062D\u062F\u064A\u062B Fish Audio.",
     voicesPage: "\u0635\u0641\u062D\u0629 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
@@ -1972,24 +2228,23 @@ var ar = {
     voice: "\u0627\u0644\u0635\u0648\u062A",
     voicePlaceholder: "\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0635\u0648\u062A \u0623\u0648 \u0627\u0633\u0645 \u0645\u062D\u0641\u0648\u0638",
     add: "\u0625\u0636\u0627\u0641\u0629",
+    removeAlias: (name) => `\u0625\u0632\u0627\u0644\u0629 ${isolate(name)}`,
     remove: "\u0625\u0632\u0627\u0644\u0629",
-    added: (name) => `\u062A\u0645 \u062D\u0641\u0638 ${name}`,
-    updated: (name) => `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B ${name}`,
-    removed: (name) => `\u062A\u0645\u062A \u0625\u0632\u0627\u0644\u0629 ${name}`,
+    added: (name) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(name)}`,
+    updated: (name) => `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B ${isolate(name)}`,
+    removed: (name) => `\u062A\u0645\u062A \u0625\u0632\u0627\u0644\u0629 ${isolate(name)}`,
     badName: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0645\u0646 2 \u0625\u0644\u0649 32 \u062D\u0631\u0641\u064B\u0627 \u0644\u0627\u062A\u064A\u0646\u064A\u064B\u0627 \u0623\u0648 \u0631\u0642\u0645\u064B\u0627 \u0623\u0648 - \u0623\u0648 _\u060C \u0639\u0644\u0649 \u0623\u0646 \u064A\u0628\u062F\u0623 \u0628\u062D\u0631\u0641. \u0644\u0627 \u064A\u064F\u0633\u0645\u062D \u0628\u0645\u0639\u0631\u0651\u0641\u0627\u062A \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0648\u0644\u0627 \u0628\u0627\u0644\u0643\u0644\u0645\u0627\u062A add \u0648remove \u0648list \u0648current \u0648default.",
     linksSection: "\u0631\u0648\u0627\u0628\u0637",
     fishAccount: "\u062D\u0633\u0627\u0628 Fish Audio",
     agentSettingsNote: "\u0645\u0641\u062A\u0627\u062D API \u0648\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062E\u0627\u062F\u0645 \u0648\u0627\u0644\u0628\u062B \u0648\u0637\u0631\u064A\u0642\u0629 \u0627\u0644\u0646\u0642\u0644 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \xAB\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0648\u0643\u064A\u0644\xBB.",
     managed: "\u064A\u062D\u062F\u062F\u0647 \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644",
     loadFailed: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A",
-    agentChangedAfterSend: (profile) => `\u062A\u063A\u064A\u0651\u0631 \u0627\u0644\u0648\u0643\u064A\u0644 \u0627\u0644\u0645\u062D\u062F\u062F \u0642\u0628\u0644 \u0648\u0635\u0648\u0644 \u0627\u0644\u0631\u062F. \u0637\u064F\u0628\u0651\u0642 \u0627\u0644\u062A\u063A\u064A\u064A\u0631 \u0639\u0644\u0649 ${agentName5(profile)}.`
+    agentChangedAfterSend: (profile) => `\u062A\u063A\u064A\u0651\u0631 \u0627\u0644\u0648\u0643\u064A\u0644 \u0627\u0644\u0645\u062D\u062F\u062F \u0642\u0628\u0644 \u0648\u0635\u0648\u0644 \u0627\u0644\u0631\u062F. \u0637\u064F\u0628\u0651\u0642 \u0627\u0644\u062A\u063A\u064A\u064A\u0631 \u0639\u0644\u0649 ${isolate(agentName5(profile))}.`
   }
 };
-function compact5(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/ru.ts
+var tag6 = "ru";
 var agentName6 = (profile) => profile && profile !== "default" ? profile : ru.thisAgent;
 var ru = {
   thisAgent: "\u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430",
@@ -2038,9 +2293,14 @@ var ru = {
   stop: "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C",
   use: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u044C",
   inUse: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u0442\u0441\u044F",
-  favourite: "\u0412 \u0438\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435",
-  unfavourite: "\u0423\u0431\u0440\u0430\u0442\u044C \u0438\u0437 \u0438\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0433\u043E",
-  uses: (n) => `\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u0438\u0439: ${compact6(n)}`,
+  previewVoice: (title) => `\u041F\u0440\u043E\u0441\u043B\u0443\u0448\u0430\u0442\u044C ${title}`,
+  stopVoice: (title) => `\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C ${title}`,
+  deleteVoice: (title) => `\u0423\u0434\u0430\u043B\u0438\u0442\u044C ${title}`,
+  favouriteVoice: (title) => `\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${title} \u0432 \u0438\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435`,
+  unfavouriteVoice: (title) => `\u0423\u0431\u0440\u0430\u0442\u044C ${title} \u0438\u0437 \u0438\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0433\u043E`,
+  saveAsN: (n) => `\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0432\u0430\u0440\u0438\u0430\u043D\u0442\u0430 ${n}`,
+  emptyFile: (name) => `\u0424\u0430\u0439\u043B ${name} \u043F\u0443\u0441\u0442.`,
+  uses: (n) => `${compact(tag6, n)} ${plural(tag6, n, { one: "\u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u0438\u0435", few: "\u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u0438\u044F", many: "\u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u0438\u0439", other: "\u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u0438\u044F" })}`,
   noVoices: "\u041F\u043E\u0434\u0445\u043E\u0434\u044F\u0449\u0438\u0445 \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u043D\u0435\u0442",
   noFavourites: "\u0418\u0437\u0431\u0440\u0430\u043D\u043D\u044B\u0445 \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
   noFavouritesHint: "\u041E\u0442\u043C\u0435\u0442\u044C\u0442\u0435 \u0433\u043E\u043B\u043E\u0441 \u0437\u0432\u0451\u0437\u0434\u043E\u0447\u043A\u043E\u0439 \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0435\u0433\u043E \u0437\u0434\u0435\u0441\u044C.",
@@ -2089,10 +2349,10 @@ var ru = {
   operatorSaved: (title) => `\u0413\u043E\u043B\u043E\u0441 ${title} \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041E\u043D \u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435 \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u0418\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435\xBB.`,
   apiCredit: "\u0411\u0430\u043B\u0430\u043D\u0441 API",
   lowCredit: "\u041D\u0438\u0437\u043A\u0438\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 \u2014 \u043F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0435\u0433\u043E, \u0447\u0442\u043E\u0431\u044B \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u044B\u0435 \u043E\u0442\u0432\u0435\u0442\u044B \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u043B\u0438 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C.",
-  topUps: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F \u0437\u0430 \u0432\u0441\u0451 \u0432\u0440\u0435\u043C\u044F",
+  topUpsLine: (amount) => `\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F \u0437\u0430 \u0432\u0441\u0451 \u0432\u0440\u0435\u043C\u044F: ${usd(tag6, amount)}`,
   freeCredit: "\u0414\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0439 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441",
   plan: "\u0422\u0430\u0440\u0438\u0444",
-  planBalance: (balance, total) => `\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${balance.toLocaleString("ru")} \u0438\u0437 ${total.toLocaleString("ru")} \u043A\u0440\u0435\u0434\u0438\u0442\u043E\u0432`,
+  planBalance: (balance, total) => `\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${number(tag6, balance)} \u0438\u0437 ${number(tag6, total)} \u043A\u0440\u0435\u0434\u0438\u0442\u043E\u0432`,
   renews: (date) => `\u041F\u0440\u043E\u0434\u043B\u0435\u043D\u0438\u0435: ${date}`,
   periodEnds: (date) => `\u0422\u0435\u043A\u0443\u0449\u0438\u0439 \u043F\u0435\u0440\u0438\u043E\u0434 \u0437\u0430\u043A\u0430\u043D\u0447\u0438\u0432\u0430\u0435\u0442\u0441\u044F ${date}`,
   noPlan: "\u041D\u0435\u0442 \u0442\u0430\u0440\u0438\u0444\u0430 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F",
@@ -2103,7 +2363,42 @@ var ru = {
   apiKeys: "API-\u043A\u043B\u044E\u0447\u0438",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "\u0411\u0430\u043B\u0430\u043D\u0441 API Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: (value) => usd(tag6, value),
+  errors: {
+    credential: (url) => `\u0423\u043A\u0430\u0436\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0439 API-\u043A\u043B\u044E\u0447 Fish Audio: ${url}`,
+    credentialAccess: (url) => `\u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 API-\u043A\u043B\u044E\u0447 Fish Audio \u0438 \u043F\u0440\u0430\u0432\u0430 \u0434\u043E\u0441\u0442\u0443\u043F\u0430: ${url}`,
+    quota: (url) => `\u041F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u043A\u0440\u0435\u0434\u0438\u0442\u044B API Fish Audio: ${url}; \u043A\u0440\u0435\u0434\u0438\u0442\u044B \u0442\u0430\u0440\u0438\u0444\u0430 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438 API \u0443\u0447\u0438\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E.`,
+    rate_limit: `\u0414\u043E\u0441\u0442\u0438\u0433\u043D\u0443\u0442 \u043B\u0438\u043C\u0438\u0442 \u043E\u0434\u043D\u043E\u0432\u0440\u0435\u043C\u0435\u043D\u043D\u044B\u0445 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432 Fish Audio. \u041F\u043E \u0441\u0443\u043C\u043C\u0435 \u043F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0439: \u043C\u0435\u043D\u0435\u0435 $100: 5, \u043E\u0442 $100: 15, \u043E\u0442 $1k: 50 \u043E\u0434\u043D\u043E\u0432\u0440\u0435\u043C\u0435\u043D\u043D\u044B\u0445 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`,
+    availability: `Fish Audio \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`,
+    invalid_request: `Fish Audio \u043E\u0442\u043A\u043B\u043E\u043D\u0438\u043B \u0437\u0430\u043F\u0440\u043E\u0441 \u0441\u0438\u043D\u0442\u0435\u0437\u0430. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0433\u043E\u043B\u043E\u0441 \u0438 \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438.`,
+    not_found: `Fish Audio \u043D\u0435 \u043D\u0430\u0448\u0451\u043B \u0437\u0430\u043F\u0440\u043E\u0448\u0435\u043D\u043D\u044B\u0439 \u0433\u043E\u043B\u043E\u0441 \u0438\u043B\u0438 \u043C\u043E\u0434\u0435\u043B\u044C.`,
+    too_large: `\u0417\u0430\u043F\u0440\u043E\u0441 Fish Audio \u0441\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0439. \u0421\u043E\u043A\u0440\u0430\u0442\u0438\u0442\u0435 \u0442\u0435\u043A\u0441\u0442 \u0438\u043B\u0438 \u043E\u0431\u0440\u0430\u0437\u0446\u044B.`,
+    unsupported_media: `Fish Audio \u043D\u0435 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442 \u044D\u0442\u043E\u0442 \u0430\u0443\u0434\u0438\u043E\u0444\u043E\u0440\u043C\u0430\u0442.`,
+    voice_not_found: (url) => `ID \u0433\u043E\u043B\u043E\u0441\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D \u0438\u043B\u0438 \u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D \u0442\u043E\u043B\u044C\u043A\u043E \u0434\u0440\u0443\u0433\u043E\u043C\u0443 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0443. \u041A\u0430\u0442\u0430\u043B\u043E\u0433 \u0433\u043E\u043B\u043E\u0441\u043E\u0432: ${url}.`,
+    credentialOperator: `\u0421\u0435\u0440\u0432\u0438\u0441 \u043E\u0437\u0432\u0443\u0447\u0438\u0432\u0430\u043D\u0438\u044F \u043E\u0442\u043A\u043B\u043E\u043D\u0438\u043B \u0443\u0447\u0451\u0442\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435. \u0421\u0432\u044F\u0436\u0438\u0442\u0435\u0441\u044C \u0441 \u043E\u043F\u0435\u0440\u0430\u0442\u043E\u0440\u043E\u043C \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430.`,
+    quotaOperator: `\u0423 \u0441\u0435\u0440\u0432\u0438\u0441\u0430 \u043E\u0437\u0432\u0443\u0447\u0438\u0432\u0430\u043D\u0438\u044F \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0438\u0441\u044C \u043A\u0440\u0435\u0434\u0438\u0442\u044B. \u0421\u0432\u044F\u0436\u0438\u0442\u0435\u0441\u044C \u0441 \u043E\u043F\u0435\u0440\u0430\u0442\u043E\u0440\u043E\u043C \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430.`,
+    rateLimitOperator: `\u0421\u0435\u0440\u0432\u0438\u0441 \u043E\u0437\u0432\u0443\u0447\u0438\u0432\u0430\u043D\u0438\u044F \u0437\u0430\u043D\u044F\u0442. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0447\u0435\u0440\u0435\u0437 \u043D\u0435\u043A\u043E\u0442\u043E\u0440\u043E\u0435 \u0432\u0440\u0435\u043C\u044F.`,
+    error: `\u041F\u0440\u043E\u0438\u0437\u043E\u0448\u043B\u0430 \u043E\u0448\u0438\u0431\u043A\u0430`,
+    badChunkSize: `\u0428\u043B\u044E\u0437 \u0432\u0435\u0440\u043D\u0443\u043B \u043D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0440\u0430\u0437\u043C\u0435\u0440 \u0431\u043B\u043E\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438.`,
+    code: (code) => ` \u041A\u043E\u0434: ${code}.`,
+    paidModel: (url) => ` \u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0438\u0442\u0435\u0441\u044C \u043D\u0430 s2.1-pro \u0438 \u043F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0431\u0430\u043B\u0430\u043D\u0441: ${url}`,
+    requestId: (id) => ` (ID \u0437\u0430\u043F\u0440\u043E\u0441\u0430 ${id})`,
+    fishTrace: (id) => ` (\u0442\u0440\u0430\u0441\u0441\u0438\u0440\u043E\u0432\u043A\u0430 Fish ${id})`
+  },
+  refusals: {
+    no_key: `Fish Audio \u0435\u0449\u0451 \u043D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D \u0434\u043B\u044F \u044D\u0442\u043E\u0433\u043E \u043F\u0440\u043E\u0444\u0438\u043B\u044F. \u0414\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u043A\u043B\u044E\u0447 \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u25B8 Fish Audio (\u0432 \u0431\u043E\u043B\u0435\u0435 \u0440\u0430\u043D\u043D\u0438\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445: \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B) \u0438\u043B\u0438 \u0432\u044B\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \`hermes fish login\` \u043D\u0430 \u043C\u0430\u0448\u0438\u043D\u0435, \u0433\u0434\u0435 \u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 Hermes.`,
+    no_keyOperator: `\u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0435 \u043E\u043F\u0435\u0440\u0430\u0442\u043E\u0440\u0430 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0443 Fish Audio.`,
+    not_owner: `\u041C\u043E\u0436\u043D\u043E \u0443\u0434\u0430\u043B\u044F\u0442\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0433\u043E\u043B\u043E\u0441\u0430, \u0441\u043E\u0437\u0434\u0430\u043D\u043D\u044B\u0435 \u0432\u0430\u0448\u0438\u043C \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u043E\u043C Fish Audio.`,
+    gone: `\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430; \u0434\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u0444\u0430\u0439\u043B \u0437\u0430\u043D\u043E\u0432\u043E.`,
+    bad_upload_id: `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0438\u0434\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0442\u043E\u0440 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438.`,
+    consent: `\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0435 \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u0433\u043E\u0432\u043E\u0440\u044F\u0449\u0435\u0433\u043E \u043D\u0430 \u043A\u043B\u043E\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0435\u0433\u043E \u0433\u043E\u043B\u043E\u0441\u0430.`,
+    managed: `\u042D\u0442\u0430 \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0430 \u0437\u0430\u0434\u0430\u043D\u0430 \u043E\u043F\u0435\u0440\u0430\u0442\u043E\u0440\u043E\u043C \u0430\u0433\u0435\u043D\u0442\u0430.`,
+    io_error: `\u041F\u0430\u043F\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A \u043F\u043B\u0430\u0433\u0438\u043D\u0430 \u043D\u0435 \u044F\u0432\u043B\u044F\u0435\u0442\u0441\u044F \u043E\u0431\u044B\u0447\u043D\u043E\u0439 \u043F\u0430\u043F\u043A\u043E\u0439.`,
+    chunk_too_large: `\u0411\u043B\u043E\u043A \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u0441\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0439.`,
+    offset: `\u0421\u043C\u0435\u0449\u0435\u043D\u0438\u0435 \u043D\u0435 \u0441\u043E\u0432\u043F\u0430\u0434\u0430\u0435\u0442 \u0441 \u043A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E\u043C \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043D\u044B\u0445 \u0431\u0430\u0439\u0442\u043E\u0432.`,
+    size_mismatch: `\u041E\u0431\u0440\u0430\u0437\u0435\u0446 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u043B\u0441\u044F \u043D\u0435 \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E; \u0434\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u0435\u0433\u043E \u0437\u0430\u043D\u043E\u0432\u043E.`,
+    limit: `\u0414\u043B\u044F \u043F\u0440\u043E\u0444\u0438\u043B\u044F \u043C\u043E\u0436\u043D\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043D\u0435 \u0431\u043E\u043B\u0435\u0435 50 \u0438\u043C\u0451\u043D \u0433\u043E\u043B\u043E\u0441\u043E\u0432.`
+  },
   settings: {
     restart: "\u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0448\u043B\u044E\u0437 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430, \u0447\u0442\u043E\u0431\u044B \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 Fish Audio.",
     voicesPage: "\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
@@ -2126,6 +2421,7 @@ var ru = {
     voice: "\u0413\u043E\u043B\u043E\u0441",
     voicePlaceholder: "ID \u0433\u043E\u043B\u043E\u0441\u0430 \u0438\u043B\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u0435 \u0438\u043C\u044F",
     add: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C",
+    removeAlias: (name) => `\u0423\u0434\u0430\u043B\u0438\u0442\u044C ${name}`,
     remove: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
     added: (name) => `\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E: ${name}`,
     updated: (name) => `\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${name}`,
@@ -2139,11 +2435,9 @@ var ru = {
     agentChangedAfterSend: (profile) => `\u0412\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0430\u0433\u0435\u043D\u0442 \u0438\u0437\u043C\u0435\u043D\u0438\u043B\u0441\u044F \u0434\u043E \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u044F \u043E\u0442\u0432\u0435\u0442\u0430. \u0418\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u0435 \u043F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u043E \u0434\u043B\u044F ${agentName6(profile)}.`
   }
 };
-function compact6(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/fr.ts
+var tag7 = "fr";
 var agentName7 = (profile) => profile && profile !== "default" ? profile : fr.thisAgent;
 var fr = {
   thisAgent: "cet agent",
@@ -2192,9 +2486,14 @@ var fr = {
   stop: "Arr\xEAter",
   use: "Utiliser",
   inUse: "Utilis\xE9e",
-  favourite: "Ajouter aux favoris",
-  unfavourite: "Retirer des favoris",
-  uses: (n) => `${compact7(n)} ${n < 2 ? "utilisation" : "utilisations"}`,
+  previewVoice: (title) => `\xC9couter ${title}`,
+  stopVoice: (title) => `Arr\xEAter ${title}`,
+  deleteVoice: (title) => `Supprimer ${title}`,
+  favouriteVoice: (title) => `Ajouter ${title} aux favoris`,
+  unfavouriteVoice: (title) => `Retirer ${title} des favoris`,
+  saveAsN: (n) => `Nom ${n}`,
+  emptyFile: (name) => `${name} est vide.`,
+  uses: (n) => `${compact(tag7, n)} ${plural(tag7, n, { one: "utilisation", other: "utilisations" })}`,
   noVoices: "Aucune voix correspondante",
   noFavourites: "Aucun favori pour le moment",
   noFavouritesHint: "Ajoutez une voix aux favoris dans la biblioth\xE8que pour la retrouver ici.",
@@ -2243,10 +2542,10 @@ var fr = {
   operatorSaved: (title) => `${title} enregistr\xE9e. Retrouvez-la dans la Biblioth\xE8que, sous Favoris.`,
   apiCredit: "Cr\xE9dit API",
   lowCredit: "Solde faible \u2014 rechargez pour continuer \xE0 recevoir des r\xE9ponses vocales.",
-  topUps: "Recharges cumul\xE9es",
+  topUpsLine: (amount) => `Recharges cumul\xE9es : ${usd(tag7, amount)}`,
   freeCredit: "Cr\xE9dit gratuit disponible",
   plan: "Forfait",
-  planBalance: (balance, total) => `${balance.toLocaleString("fr")} cr\xE9dits restants sur ${total.toLocaleString("fr")}`,
+  planBalance: (balance, total) => `${number(tag7, balance)} cr\xE9dits restants sur ${number(tag7, total)}`,
   renews: (date) => `Renouvellement le ${date}`,
   periodEnds: (date) => `La p\xE9riode actuelle se termine le ${date}`,
   noPlan: "Aucun forfait pour l\u2019application",
@@ -2257,7 +2556,42 @@ var fr = {
   apiKeys: "Cl\xE9s API",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Cr\xE9dit API Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: (value) => usd(tag7, value),
+  errors: {
+    credential: (url) => `Configurez une cl\xE9 API Fish Audio valide : ${url}`,
+    credentialAccess: (url) => `V\xE9rifiez votre cl\xE9 API Fish Audio et ses droits d\u2019acc\xE8s : ${url}`,
+    quota: (url) => `Rechargez les cr\xE9dits API Fish Audio : ${url} ; les cr\xE9dits du forfait de l\u2019application et de l\u2019API sont distincts.`,
+    rate_limit: `La limite de requ\xEAtes simultan\xE9es Fish Audio est atteinte. Selon les recharges : moins de $100 : 5, \xE0 partir de $100 : 15, \xE0 partir de $1k : 50 requ\xEAtes simultan\xE9es. R\xE9essayez plus tard.`,
+    availability: `Fish Audio est indisponible. R\xE9essayez plus tard.`,
+    invalid_request: `Fish Audio a refus\xE9 la demande de synth\xE8se. V\xE9rifiez la voix et les r\xE9glages.`,
+    not_found: `Fish Audio n\u2019a pas trouv\xE9 la voix ou le mod\xE8le demand\xE9.`,
+    too_large: `La requ\xEAte Fish Audio est trop volumineuse. R\xE9duisez le texte ou les r\xE9f\xE9rences.`,
+    unsupported_media: `Fish Audio ne prend pas en charge ce format audio.`,
+    voice_not_found: (url) => `L\u2019identifiant de voix est introuvable ou priv\xE9 \xE0 un autre compte. Parcourez les voix sur ${url}.`,
+    credentialOperator: `Le service vocal a refus\xE9 les identifiants. Contactez l\u2019op\xE9rateur de cet agent.`,
+    quotaOperator: `Le service vocal n\u2019a plus de cr\xE9dit. Contactez l\u2019op\xE9rateur de cet agent.`,
+    rateLimitOperator: `Le service vocal est occup\xE9. R\xE9essayez dans un instant.`,
+    error: `Une erreur est survenue`,
+    badChunkSize: `La passerelle a envoy\xE9 une taille de bloc d\u2019envoi non valide.`,
+    code: (code) => ` Code : ${code}.`,
+    paidModel: (url) => ` Passez \xE0 s2.1-pro et rechargez : ${url}`,
+    requestId: (id) => ` (identifiant de requ\xEAte ${id})`,
+    fishTrace: (id) => ` (trace Fish ${id})`
+  },
+  refusals: {
+    no_key: `Fish Audio n\u2019est pas encore configur\xE9 pour ce profil. Ajoutez une cl\xE9 dans Param\xE8tres \u25B8 Plugins \u25B8 Fish Audio (dans les anciennes versions : Capacit\xE9s \u25B8 Plugins), ou ex\xE9cutez \`hermes fish login\` sur la machine o\xF9 tourne Hermes.`,
+    no_keyOperator: `Demandez \xE0 l\u2019op\xE9rateur de cet agent de terminer la configuration de Fish Audio.`,
+    not_owner: `Vous pouvez uniquement supprimer les voix cr\xE9\xE9es par votre compte Fish Audio.`,
+    gone: `L\u2019envoi n\u2019est plus disponible ; ajoutez \xE0 nouveau le fichier.`,
+    bad_upload_id: `L\u2019identifiant d\u2019envoi n\u2019est pas valide.`,
+    consent: `Confirmez que vous avez l\u2019autorisation du locuteur pour cloner cette voix.`,
+    managed: `Ce r\xE9glage est d\xE9fini par l\u2019op\xE9rateur de cet agent.`,
+    io_error: `Le dossier d\u2019envoi du plugin n\u2019est pas un dossier ordinaire.`,
+    chunk_too_large: `Le bloc d\u2019envoi est trop volumineux.`,
+    offset: `Le d\xE9calage ne correspond pas aux octets envoy\xE9s.`,
+    size_mismatch: `L\u2019envoi d\u2019un \xE9chantillon n\u2019est pas termin\xE9 ; ajoutez-le \xE0 nouveau.`,
+    limit: `Vous pouvez enregistrer jusqu\u2019\xE0 50 noms de voix par profil.`
+  },
   settings: {
     restart: "Red\xE9marrez la passerelle de cet agent pour terminer la mise \xE0 jour de Fish Audio.",
     voicesPage: "Page Voix",
@@ -2280,6 +2614,7 @@ var fr = {
     voice: "Voix",
     voicePlaceholder: "Identifiant de voix ou nom enregistr\xE9",
     add: "Ajouter",
+    removeAlias: (name) => `Retirer ${name}`,
     remove: "Retirer",
     added: (name) => `${name} enregistr\xE9`,
     updated: (name) => `${name} mis \xE0 jour`,
@@ -2293,11 +2628,9 @@ var fr = {
     agentChangedAfterSend: (profile) => `L\u2019agent s\xE9lectionn\xE9 a chang\xE9 avant la r\xE9ponse. La modification a \xE9t\xE9 appliqu\xE9e \xE0 ${agentName7(profile)}.`
   }
 };
-function compact7(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/de.ts
+var tag8 = "de";
 var agentName8 = (profile) => profile && profile !== "default" ? profile : de.thisAgent;
 var de = {
   thisAgent: "diesen Agenten",
@@ -2346,9 +2679,14 @@ var de = {
   stop: "Stoppen",
   use: "Verwenden",
   inUse: "In Verwendung",
-  favourite: "Als Favorit markieren",
-  unfavourite: "Favorit entfernen",
-  uses: (n) => `${compact8(n)} ${n === 1 ? "Nutzung" : "Nutzungen"}`,
+  previewVoice: (title) => `${title} vorh\xF6ren`,
+  stopVoice: (title) => `${title} stoppen`,
+  deleteVoice: (title) => `${title} l\xF6schen`,
+  favouriteVoice: (title) => `${title} als Favorit markieren`,
+  unfavouriteVoice: (title) => `${title} aus Favoriten entfernen`,
+  saveAsN: (n) => `Name ${n}`,
+  emptyFile: (name) => `${name} ist leer.`,
+  uses: (n) => `${compact(tag8, n)} ${plural(tag8, n, { one: "Nutzung", other: "Nutzungen" })}`,
   noVoices: "Keine passenden Stimmen",
   noFavourites: "Noch keine Favoriten",
   noFavouritesHint: "Markieren Sie eine Stimme in der Bibliothek mit einem Stern, um sie hier zu speichern.",
@@ -2397,10 +2735,10 @@ var de = {
   operatorSaved: (title) => `${title} gespeichert. Sie finden die Stimme in der Bibliothek unter Favoriten.`,
   apiCredit: "API-Guthaben",
   lowCredit: "Guthaben niedrig \u2014 laden Sie es auf, damit Sprachantworten weiter funktionieren.",
-  topUps: "Aufladungen insgesamt",
+  topUpsLine: (amount) => `Aufladungen insgesamt: ${usd(tag8, amount)}`,
   freeCredit: "Kostenloses Guthaben verf\xFCgbar",
   plan: "Tarif",
-  planBalance: (balance, total) => `${balance.toLocaleString("de")} von ${total.toLocaleString("de")} Credits \xFCbrig`,
+  planBalance: (balance, total) => `${number(tag8, balance)} von ${number(tag8, total)} Credits \xFCbrig`,
   renews: (date) => `Verl\xE4ngert sich am ${date}`,
   periodEnds: (date) => `Der aktuelle Zeitraum endet am ${date}`,
   noPlan: "Kein App-Tarif",
@@ -2411,7 +2749,42 @@ var de = {
   apiKeys: "API-Schl\xFCssel",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API-Guthaben",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: (value) => usd(tag8, value),
+  errors: {
+    credential: (url) => `G\xFCltigen Fish Audio API-Schl\xFCssel einrichten: ${url}`,
+    credentialAccess: (url) => `Fish Audio API-Schl\xFCssel und Zugriffsrechte pr\xFCfen: ${url}`,
+    quota: (url) => `Fish Audio API-Guthaben aufladen: ${url}; App-Tarif und API haben getrennte Guthaben.`,
+    rate_limit: `Fish Audio hat das Limit gleichzeitiger Anfragen erreicht. Nach Aufladebetrag: unter $100: 5, ab $100: 15, ab $1k: 50 gleichzeitige Anfragen. Sp\xE4ter erneut versuchen.`,
+    availability: `Fish Audio ist nicht verf\xFCgbar. Sp\xE4ter erneut versuchen.`,
+    invalid_request: `Fish Audio hat die Sprachanfrage abgelehnt. Stimme und Einstellungen pr\xFCfen.`,
+    not_found: `Fish Audio konnte die angeforderte Stimme oder das Modell nicht finden.`,
+    too_large: `Die Fish Audio-Anfrage ist zu gro\xDF. Weniger Text oder kleinere Referenzen verwenden.`,
+    unsupported_media: `Fish Audio unterst\xFCtzt dieses Audioformat nicht.`,
+    voice_not_found: (url) => `Die Stimm-ID wurde nicht gefunden oder ist in einem anderen Konto privat. Stimmen durchsuchen: ${url}.`,
+    credentialOperator: `Die Zugangsdaten des Sprachdienstes wurden abgelehnt. Den Betreiber dieses Agenten kontaktieren.`,
+    quotaOperator: `Das Guthaben des Sprachdienstes ist aufgebraucht. Den Betreiber dieses Agenten kontaktieren.`,
+    rateLimitOperator: `Der Sprachdienst ist ausgelastet. In K\xFCrze erneut versuchen.`,
+    error: `Etwas ist schiefgelaufen`,
+    badChunkSize: `Das Gateway hat eine ung\xFCltige Upload-Blockgr\xF6\xDFe gesendet.`,
+    code: (code) => ` Code: ${code}.`,
+    paidModel: (url) => ` Zu s2.1-pro wechseln und Guthaben aufladen: ${url}`,
+    requestId: (id) => ` (Anfrage-ID ${id})`,
+    fishTrace: (id) => ` (Fish-Trace ${id})`
+  },
+  refusals: {
+    no_key: `Fish Audio ist f\xFCr dieses Profil noch nicht eingerichtet. Einen Schl\xFCssel unter Einstellungen \u25B8 Plugins \u25B8 Fish Audio (bei \xE4lteren Versionen: F\xE4higkeiten \u25B8 Plugins) hinzuf\xFCgen oder \`hermes fish login\` auf dem Rechner mit Hermes ausf\xFChren.`,
+    no_keyOperator: `Den Betreiber dieses Agenten bitten, Fish Audio fertig einzurichten.`,
+    not_owner: `Nur Stimmen aus dem eigenen Fish Audio-Konto k\xF6nnen gel\xF6scht werden.`,
+    gone: `Der Upload ist nicht mehr verf\xFCgbar; die Datei erneut hinzuf\xFCgen.`,
+    bad_upload_id: `Die Upload-ID ist ung\xFCltig.`,
+    consent: `Best\xE4tigen, dass der Sprecher dem Klonen seiner Stimme zugestimmt hat.`,
+    managed: `Diese Einstellung wird vom Betreiber dieses Agenten festgelegt.`,
+    io_error: `Der Upload-Ordner des Plugins ist kein gew\xF6hnlicher Ordner.`,
+    chunk_too_large: `Der Upload-Block ist zu gro\xDF.`,
+    offset: `Der Offset stimmt nicht mit den hochgeladenen Bytes \xFCberein.`,
+    size_mismatch: `Ein Sample wurde nicht vollst\xE4ndig hochgeladen; erneut hinzuf\xFCgen.`,
+    limit: `Pro Profil k\xF6nnen h\xF6chstens 50 Stimmnamen gespeichert werden.`
+  },
   settings: {
     restart: "Starten Sie das Gateway dieses Agenten neu, um das Update von Fish Audio abzuschlie\xDFen.",
     voicesPage: "Seite \u201EStimmen\u201C",
@@ -2434,6 +2807,7 @@ var de = {
     voice: "Stimme",
     voicePlaceholder: "Stimmen-ID oder gespeicherter Name",
     add: "Hinzuf\xFCgen",
+    removeAlias: (name) => `${name} entfernen`,
     remove: "Entfernen",
     added: (name) => `${name} gespeichert`,
     updated: (name) => `${name} aktualisiert`,
@@ -2447,11 +2821,9 @@ var de = {
     agentChangedAfterSend: (profile) => `Der ausgew\xE4hlte Agent hat sich vor der Antwort ge\xE4ndert. Die \xC4nderung wurde f\xFCr ${agentName8(profile)} \xFCbernommen.`
   }
 };
-function compact8(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/locales/es.ts
+var tag9 = "es";
 var agentName9 = (profile) => profile && profile !== "default" ? profile : es.thisAgent;
 var es = {
   thisAgent: "este agente",
@@ -2500,9 +2872,14 @@ var es = {
   stop: "Detener",
   use: "Usar",
   inUse: "En uso",
-  favourite: "A\xF1adir a favoritos",
-  unfavourite: "Quitar de favoritos",
-  uses: (n) => `${compact9(n)} ${n === 1 ? "uso" : "usos"}`,
+  previewVoice: (title) => `Escuchar ${title}`,
+  stopVoice: (title) => `Detener ${title}`,
+  deleteVoice: (title) => `Eliminar ${title}`,
+  favouriteVoice: (title) => `A\xF1adir ${title} a favoritos`,
+  unfavouriteVoice: (title) => `Quitar ${title} de favoritos`,
+  saveAsN: (n) => `Nombre ${n}`,
+  emptyFile: (name) => `${name} est\xE1 vac\xEDo.`,
+  uses: (n) => `${compact(tag9, n)} ${plural(tag9, n, { one: "uso", other: "usos" })}`,
   noVoices: "No hay voces que coincidan",
   noFavourites: "A\xFAn no hay favoritos",
   noFavouritesHint: "Marca una voz con una estrella en la biblioteca para guardarla aqu\xED.",
@@ -2551,10 +2928,10 @@ var es = {
   operatorSaved: (title) => `${title} guardada. La encontrar\xE1s en la Biblioteca, en Favoritos.`,
   apiCredit: "Cr\xE9dito API",
   lowCredit: "Saldo bajo \u2014 recarga para que las respuestas de voz sigan funcionando.",
-  topUps: "Recargas acumuladas",
+  topUpsLine: (amount) => `Recargas acumuladas: ${usd(tag9, amount)}`,
   freeCredit: "Cr\xE9dito gratuito disponible",
   plan: "Plan",
-  planBalance: (balance, total) => `Quedan ${balance.toLocaleString("es")} de ${total.toLocaleString("es")} cr\xE9ditos`,
+  planBalance: (balance, total) => `Quedan ${number(tag9, balance)} de ${number(tag9, total)} cr\xE9ditos`,
   renews: (date) => `Se renueva el ${date}`,
   periodEnds: (date) => `El periodo actual termina el ${date}`,
   noPlan: "Sin plan de la app",
@@ -2565,7 +2942,42 @@ var es = {
   apiKeys: "Claves API",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Cr\xE9dito API de Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`,
+  usd: (value) => usd(tag9, value),
+  errors: {
+    credential: (url) => `Configura una clave API v\xE1lida de Fish Audio: ${url}`,
+    credentialAccess: (url) => `Revisa tu clave API de Fish Audio y sus permisos de acceso: ${url}`,
+    quota: (url) => `Recarga los cr\xE9ditos API de Fish Audio: ${url}; los cr\xE9ditos del plan de la app y de la API son independientes.`,
+    rate_limit: `Se alcanz\xF3 el l\xEDmite de solicitudes simult\xE1neas de Fish Audio. Seg\xFAn las recargas: menos de $100: 5, desde $100: 15, desde $1k: 50 solicitudes simult\xE1neas. Int\xE9ntalo m\xE1s tarde.`,
+    availability: `Fish Audio no est\xE1 disponible. Int\xE9ntalo m\xE1s tarde.`,
+    invalid_request: `Fish Audio rechaz\xF3 la solicitud de s\xEDntesis. Revisa la voz y los ajustes.`,
+    not_found: `Fish Audio no encontr\xF3 la voz o el modelo solicitado.`,
+    too_large: `La solicitud a Fish Audio es demasiado grande. Usa menos texto o referencias m\xE1s peque\xF1as.`,
+    unsupported_media: `Fish Audio no admite este formato de audio.`,
+    voice_not_found: (url) => `El ID de voz no existe o es privado de otra cuenta. Explora las voces en ${url}.`,
+    credentialOperator: `El servicio de voz rechaz\xF3 las credenciales. Contacta con el operador de este agente.`,
+    quotaOperator: `El servicio de voz no tiene cr\xE9dito. Contacta con el operador de este agente.`,
+    rateLimitOperator: `El servicio de voz est\xE1 ocupado. Int\xE9ntalo de nuevo en unos instantes.`,
+    error: `Algo sali\xF3 mal`,
+    badChunkSize: `La pasarela envi\xF3 un tama\xF1o de bloque de carga no v\xE1lido.`,
+    code: (code) => ` C\xF3digo: ${code}.`,
+    paidModel: (url) => ` Cambia a s2.1-pro y recarga: ${url}`,
+    requestId: (id) => ` (ID de solicitud ${id})`,
+    fishTrace: (id) => ` (traza de Fish ${id})`
+  },
+  refusals: {
+    no_key: `Fish Audio a\xFAn no est\xE1 configurado para este perfil. A\xF1ade una clave en Configuraci\xF3n \u25B8 Plugins \u25B8 Fish Audio (en versiones anteriores: Capacidades \u25B8 Plugins), o ejecuta \`hermes fish login\` en la m\xE1quina donde se ejecuta Hermes.`,
+    no_keyOperator: `Pide al operador de este agente que termine de configurar Fish Audio.`,
+    not_owner: `Solo puedes eliminar voces creadas por tu cuenta de Fish Audio.`,
+    gone: `La carga ya no est\xE1 disponible; a\xF1ade el archivo de nuevo.`,
+    bad_upload_id: `El identificador de carga no es v\xE1lido.`,
+    consent: `Confirma que tienes permiso del hablante para clonar esta voz.`,
+    managed: `El operador de este agente controla este ajuste.`,
+    io_error: `La carpeta de carga del plugin no es una carpeta normal.`,
+    chunk_too_large: `El bloque de carga es demasiado grande.`,
+    offset: `El desplazamiento no coincide con los bytes cargados.`,
+    size_mismatch: `Una muestra no termin\xF3 de cargarse; a\xF1\xE1dela de nuevo.`,
+    limit: `Puedes guardar hasta 50 nombres de voz por perfil.`
+  },
   settings: {
     restart: "Reinicia la pasarela de este agente para terminar de actualizar Fish Audio.",
     voicesPage: "P\xE1gina de voces",
@@ -2588,6 +3000,7 @@ var es = {
     voice: "Voz",
     voicePlaceholder: "ID de voz o nombre guardado",
     add: "A\xF1adir",
+    removeAlias: (name) => `Eliminar ${name}`,
     remove: "Quitar",
     added: (name) => `${name} guardado`,
     updated: (name) => `${name} actualizado`,
@@ -2601,9 +3014,6 @@ var es = {
     agentChangedAfterSend: (profile) => `El agente seleccionado cambi\xF3 antes de que llegara la respuesta. El cambio se aplic\xF3 a ${agentName9(profile)}.`
   }
 };
-function compact9(n) {
-  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
-}
 
 // src/desktop/plugin.tsx
 import { jsx as jsx5 } from "react/jsx-runtime";
