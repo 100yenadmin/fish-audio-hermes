@@ -9,7 +9,8 @@
   nothing is streamed until sound returns, except the half second just before it.
 - Uses Fish's ElevenLabs-compatible realtime endpoint on `api.fish.audio`. A failed live session falls back quietly to
   file transcription; if Fish has not answered the last phrase 15 s after you stop, the text holds only the phrases it
-  already returned. Hermes 0.21.5, self-hosted endpoints and plugin-host isolation keep the file path.
+  already returned. Hermes 0.21.5, remote self-hosted endpoints and plugin-host isolation keep the file path; a
+  loopback `base_url` (a local proxy) receives the live audio.
 
 ## 1.4.0 — 2026-10-11
 

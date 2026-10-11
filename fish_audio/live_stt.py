@@ -49,7 +49,9 @@ class PauseDetector:
         self.frames += 1
         self.speech += speaking
         self.silence = 0 if speaking else self.silence + 1
-        commit = self.has_speech and ((self.speech >= 50 and self.silence >= 35)
+        # A phrase ends at a 700 ms pause after 1 s of speech, or at a 1.5 s pause after a short one, so a hesitation
+        # stays inside its phrase while a lone short word is not followed by a streamed pause.
+        commit = self.has_speech and ((self.speech >= 50 and self.silence >= 35) or self.silence >= 75
                                      or (self.frames >= 1500 and self.silence >= 10) or self.frames >= 2250)
         if commit:
             self.frames = self.speech = self.silence = 0

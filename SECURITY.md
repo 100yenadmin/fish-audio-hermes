@@ -70,6 +70,7 @@ the `xi-api-key` header. The key and safe error text are captured in the opener'
 phrases are transcribed and billed, each rounded up to a second at Fish's ASR price. A phrase is committed only when
 it holds at least 300 ms of sound above Hermes's `voice.silence_threshold` (100 ms for a last word after an earlier
 phrase), so a pause is never committed on its own. After a phrase is committed, nothing is streamed until sound
-returns, except the half second just before it. Failed live sessions fall back to file transcription. Self-hosted
-endpoints and plugin-host isolation keep the file path. Abandoned sockets close 30 seconds after the last audio, or
-3500 seconds after connecting.
+returns, except the half second just before it. Failed live sessions fall back to file transcription. A self-hosted
+`base_url` on a remote host, and plugin-host isolation, keep the file path. A loopback `base_url` (localhost, 127.0.0.1,
+::1) is treated as a local Fish proxy and receives the live microphone audio over ws:// (wss:// for https). Abandoned
+sockets close 30 seconds after the last audio, or 3500 seconds after connecting.

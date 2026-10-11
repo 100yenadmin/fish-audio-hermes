@@ -215,8 +215,9 @@ earlier phrase), so a pause is never sent as a phrase on its own. After a phrase
 sound returns, except the half second just before it. Live dictation uses Fish's ElevenLabs-compatible realtime
 endpoint at `wss://api.fish.audio/compat/elevenlabs/v1/speech-to-text/realtime`; microphone audio streams to Fish while
 you speak.
-It is unavailable with a self-hosted `base_url` or under plugin-host isolation (`plugins.isolation: host`), which
-keep file transcription. Language and prompt hints are ignored on this endpoint.
+It is unavailable with a self-hosted `base_url` on a remote host or under plugin-host isolation
+(`plugins.isolation: host`), which keep file transcription; a loopback `base_url` (a local proxy) receives the live
+audio. Language and prompt hints are ignored on this endpoint.
 
 ### Operator-managed keys
 
@@ -290,8 +291,8 @@ word error rate (WER) 1.8% and Japanese/Chinese character error rate (CER) 0. Th
 ## Known limitations
 
 Live dictation captions are committed phrases, rather than word-by-word interim text. It covers the composer mic,
-CLI voice mode and TUI; Desktop voice conversations and messaging voice notes keep file transcription. Self-hosted
-endpoints, Hermes 0.21.5 and plugin-host isolation also keep file transcription.
+CLI voice mode and TUI; Desktop voice conversations and messaging voice notes keep file transcription. Remote
+self-hosted endpoints, Hermes 0.21.5 and plugin-host isolation also keep file transcription.
 
 The auto-append fallback is per session. Mid-turn context compression can drop that fallback;
 the model normally includes the returned `media_tag` itself.

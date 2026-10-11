@@ -288,6 +288,13 @@ def test_quiet_microphone_threshold(live, monkeypatch):
         assert session.finalize()["error_kind"] == "no_speech"
 
 
+def test_short_phrase_commits_after_a_long_pause():
+    detector = live_stt.PauseDetector()
+    hesitation = [SPEECH] * 20 + [SILENCE] * 35 + [SPEECH] * 20  # "So... what I mean"
+    assert not any(detector.feed(frame) for frame in hesitation + [SILENCE] * 74)
+    assert detector.feed(SILENCE)  # 1.5 s after a short phrase
+
+
 def test_long_pause_never_splits_a_word():
     detector = live_stt.PauseDetector()
     assert not any(detector.feed(SILENCE) for _ in range(1600))  # 32 s pause before speaking
