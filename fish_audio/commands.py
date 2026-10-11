@@ -144,10 +144,10 @@ def alias_add(name, voice, key, base):
 
 
 def alias_remove(name):
+    require_unmanaged("aliases")
     if not isinstance(name, str) or name.strip().casefold() not in settings.aliases():
         raise WriteRefusal("not_found", "No saved voice name found.")
     name = name.strip().casefold()
-    require_unmanaged("aliases")
     with _LOCK:
         saved = settings.aliases()
         if name not in saved:
