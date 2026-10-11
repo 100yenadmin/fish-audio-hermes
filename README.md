@@ -102,6 +102,8 @@ and `fish-audio:fish-audio-voice-studio`.
 The Voices page follows Hermes Desktop's display language: English, Simplified Chinese (`zh`), Traditional Chinese
 (`zh-hant`), Japanese (`ja`), Arabic (`ar`), Russian (`ru`), French (`fr`), German (`de`) and Spanish (`es`).
 Changing the display language updates the page, sidebar, status bar and command palette without a reload.
+Fish Audio errors and the page's own messages are translated too, keeping the request id and Fish trace; numbers
+and amounts use the language's own formats.
 The translations are machine-authored and checked against Hermes Desktop's own wording; native-speaker corrections
 are welcome as pull requests to `devtools/src/desktop/locales/`.
 

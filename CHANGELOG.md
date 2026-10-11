@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.5.1 — 2026-10-12
+
+- **Fish Audio errors in your language on the Desktop Voices page.** Errors from Fish (key, credit, rate limit, voice not
+  found, and so on) and the page's own refusals now appear in all nine languages. The request id, Fish trace and error
+  code are kept. An older gateway still shows its English text, and older Desktop builds see no change.
+- **Numbers and money follow the display language:** compact counts with the right plural forms (`1,5 тыс.
+  использований`, `使用 1942.8万 回`), localized currency and grouping. English keeps `1.5k uses` and `$12.35`.
+- **Right-to-left and wording polish.** Voice descriptions wrap to two lines instead of losing their start in Arabic;
+  voice titles and data inside Arabic sentences are isolated, so names and ids keep their order; button names put the
+  voice title where each language wants it; Chinese and Japanese lines use full-width punctuation.
+- **Inputs stop at the gateway's limits** (counted in characters, so emoji count once), and an empty audio file is
+  refused before upload.
+- **Voice log line.** The gateway log says which voice speaks and where it came from, once per change, for example
+  `Fish Audio voice: 0327fdb5… (from nested)`. `nested` is `tts.fish-audio.voice`, `call` is a voice id passed with the
+  request, and `default` is Fish's default voice.
+
 ## 1.5.0 — 2026-10-11
 
 - **Live dictation.** On Hermes 0.21.6+, `stt.provider: fish-audio` and `stt.streaming: true` show captions phrase by
