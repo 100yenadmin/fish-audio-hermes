@@ -81,7 +81,9 @@ def test_real_plugin_entrypoint_with_fake_http(tmp_path, monkeypatch):
     monkeypatch.setattr(w.shutil, "which", lambda name: "/usr/bin/" + name)
     assert w.run(tmp_path, dry_run=True, backend=w.Plugin) == 1
     assert len(requests) == 1
-    assert json.loads((tmp_path / "results.json").read_text())["tts_chars"] == 62
+    result = json.loads((tmp_path / "results.json").read_text())
+    assert result["tts_chars"] == 62
+    assert [r["gate"] for r in result["gates"]] == ["key rejected"]  # one row per captured response
 
 
 def test_harness_error_files_a_report(tmp_path):

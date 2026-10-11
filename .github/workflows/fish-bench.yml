@@ -52,7 +52,8 @@ jobs:
           n=$(gh issue list --state open --label fish-bench --json number -q '.[0].number')
           if [ -n "$n" ]; then
             gh issue view "$n" --json body,comments > bench-out/issue.json
-            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("bench-out/issue.json").read_text()); comments=issue["comments"]; text=pathlib.Path("bench-out/report.md").read_text().rstrip("\n"); latest=(comments[-1]["body"] if comments else issue["body"]).rstrip("\n"); sys.exit(0 if text == latest else 1)'; then
+            # Compare with the job's own latest report, so a discussion comment does not trigger a repost.
+            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("bench-out/issue.json").read_text()); reports=[c["body"] for c in issue["comments"] if c["author"]["login"] in ("github-actions", "github-actions[bot]")]; text=pathlib.Path("bench-out/report.md").read_text().rstrip("\n"); latest=(reports[-1] if reports else issue["body"]).rstrip("\n"); sys.exit(0 if text == latest else 1)'; then
               echo 'Unchanged benchmark report; no comment.'; exit 0
             fi
             gh issue comment "$n" --body-file bench-out/report.md

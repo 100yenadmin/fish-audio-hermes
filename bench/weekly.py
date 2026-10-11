@@ -174,7 +174,8 @@ def run(out, *, dry_run=False, backend=None):
             result = fn()
         except Exception as exc:
             status = getattr(exc, "status", None)
-            record(gate, status=status, failed=not (status == 429 or status is not None and 500 <= status < 600))
+            if status is None or status not in api.statuses:  # a response the hook captured is recorded once, below
+                record(gate, status=status, failed=not (status == 429 or status is not None and 500 <= status < 600))
             result = None
         for status in api.statuses:
             if status is not None and status >= 400:
