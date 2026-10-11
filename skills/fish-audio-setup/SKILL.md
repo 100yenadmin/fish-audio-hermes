@@ -22,6 +22,7 @@ Otherwise, follow the whole skill.
    for Text-to-Speech in `hermes tools`, and for Speech-to-Text in Desktop settings or with
    `hermes config set stt.provider fish-audio` (`hermes tools` has no plugin speech-to-text rows).
    If a Hermes gateway or the desktop app is already running for this profile, restart it to pick up the new key.
+   On Hermes 0.21.6+, `hermes config set stt.streaming true` enables live dictation (`stt.streaming: true`) in CLI voice mode, TUI and the Desktop composer mic.
 3. Run `/fish voices <description>` and choose `/fish use <id>`. An existing provider is preserved.
    Browse more voices at https://fish.audio/discovery.
 4. Use `/fish model s2.1-pro` for paid synthesis, or `/fish model s2.1-pro-free` for the free model.

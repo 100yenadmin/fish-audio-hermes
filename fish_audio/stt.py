@@ -1,10 +1,13 @@
 """Fish transcription for ordinary Hermes voice notes and dictation."""
 import hashlib
+import ipaddress
 import logging
+import os
 from pathlib import Path
 import re
+from urllib.parse import urlsplit
 
-from ._compat import TranscriptionProvider
+from ._compat import HAS_STT_STREAM_SEAM, TranscriptionProvider
 from . import client
 from .errors import FishAudioError
 from .secrets import fish_api_key, redact
@@ -22,6 +25,15 @@ MIMES = {
     ".webm": "audio/webm", ".m4a": "audio/mp4", ".mp4": "audio/mp4",
     ".aac": "audio/aac", ".flac": "audio/flac",
 }
+
+
+def _live_base():
+    base = urlsplit(_base_url(transport_settings().get("base_url", DEFAULT_BASE_URL)))
+    try:
+        loopback = base.hostname == "localhost" or ipaddress.ip_address(base.hostname).is_loopback
+    except ValueError:
+        loopback = False
+    return base, loopback
 
 
 class FishAudioTranscriptionProvider(TranscriptionProvider):
@@ -43,6 +55,31 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
 
     def default_model(self):
         return MODEL_PRO
+
+    @property
+    def streaming_capable(self):
+        try:
+            base, loopback = _live_base()
+            return bool(HAS_STT_STREAM_SEAM and os.environ.get("HERMES_PLUGIN_HOST_PROCESS") != "1"
+                        and (base.hostname == "api.fish.audio" or loopback) and fish_api_key())
+        except Exception:
+            return False
+
+    def open_stream_session(self, *, language=None, prompt=None):
+        from .live_stt import FishLiveSession
+        key = fish_api_key()
+        if not key:
+            raise ValueError("Fish Audio live transcription requires a key.")
+        base, loopback = _live_base()
+        if not loopback and base.hostname != "api.fish.audio":
+            raise ValueError("Fish Audio live transcription requires api.fish.audio.")
+        url = ("ws" if loopback else "wss") + "://" + base.netloc
+        url += "/compat/elevenlabs/v1/speech-to-text/realtime?audio_format=pcm_16000&commit_strategy=manual"
+        # Capture safe text now; the worker and watchdog never resolve secrets or settings.
+        errors = {kind: redact(text) for kind, text in {
+            "auth": "Fish Audio live authentication failed.", "unavailable": "Fish Audio live transcription failed.",
+            "timeout": "Fish Audio live transcription timed out.", "no_speech": "no speech detected"}.items()}
+        return FishLiveSession(url, key, client._user_agent(), errors)
 
     def transcribe(self, file_path, *, model=None, language=None, **extra):
         result = {"success": False, "transcript": "", "provider": "fish-audio"}

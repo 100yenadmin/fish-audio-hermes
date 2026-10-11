@@ -38,7 +38,7 @@ read-aloud and voice notes go through it.
 | **Voice library** | Search Fish Audio's community voices from chat (`/fish voices narrator`) and switch with `/fish use <id>`. |
 | **Voice names** | Save a voice under a short name (`/fish alias add narrator <id>`), then use the name wherever a voice id goes: `/fish use narrator`, `/fish preview narrator` or `fish_speak`. |
 | **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting from chat go through Hermes's approval gate, so by default Hermes asks you first. |
-| **Speech-to-text** | Voice notes and Desktop dictation are transcribed by `transcribe-1-pro`. `fish_transcribe` adds speaker turns, timestamps and SRT subtitles. |
+| **Speech-to-text** | Voice notes use `transcribe-1-pro`. Live dictation shows phrases while you speak in CLI voice mode, TUI and Desktop (Hermes 0.21.6+). `fish_transcribe` adds speaker turns, timestamps and SRT subtitles. |
 | **Desktop Voices page** | In Hermes Desktop: browse and preview voices, pick one for the agent, clone or design your own, and check your credit. |
 | **Account at a glance** | `/fish balance` shows your API credit and plan. When credits run out, tools and `/fish` commands reply with a top-up link; for voice replies, `/fish status` shows the last error. |
 
@@ -162,6 +162,7 @@ tts:
     temperature: 0.7
 stt:
   provider: fish-audio
+  streaming: true              # live dictation on Hermes 0.21.6+
   fish-audio:
     model: transcribe-1-pro
 plugins:
@@ -198,6 +199,19 @@ WebSocket for diagnosis.
 Under host plugin isolation (`plugins.isolation: host`, newer Hermes builds), the `hermes fish` terminal command is
 unavailable and voice replies use whole-file speech instead of streaming; `/fish`, the tools, the hooks and
 both providers still work. Config changes apply to the active profile; managed installs may refuse writes.
+
+### Live dictation
+
+On Hermes 0.21.6 or newer, set `stt.provider: fish-audio` and `stt.streaming: true`. Live dictation works in CLI
+voice mode, the TUI and Desktop dictation (the composer mic). Captions appear phrase by phrase after a short pause,
+and the final text arrives about half a second after you stop. Any problem falls back silently to normal file
+transcription.
+
+Each committed phrase is billed at Fish's ASR price, with its audio rounded up to a whole second. Silence is never
+sent as a phrase. Live dictation uses Fish's ElevenLabs-compatible realtime endpoint at
+`wss://api.fish.audio/compat/elevenlabs/v1/speech-to-text/realtime`; microphone audio streams to Fish while you speak.
+It is unavailable with a self-hosted `base_url` or under plugin-host isolation (`plugins.isolation: host`), which
+keep file transcription. Language and prompt hints are ignored on this endpoint.
 
 ### Operator-managed keys
 
@@ -246,7 +260,7 @@ the wallet that users can't see.
 
 ## Compatibility
 
-Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. Streaming voice needs 0.21.6 or newer. CI tests the
+Hermes Agent 0.21.5 or newer, Python 3.11+, macOS and Linux. Streaming voice and live dictation need 0.21.6 or newer. CI tests the
 plugin against Hermes 0.21.5 (the floor), the latest Hermes release, Hermes `main` and the Electric Sheep fork. Windows is
 untested. CI also runs Python 3.14.
 
@@ -269,6 +283,10 @@ word error rate (WER) 1.8% and Japanese/Chinese character error rate (CER) 0. Th
 | Anything else | Run `hermes fish doctor`, and quote the Fish trace id from the error when you contact Fish Audio support. |
 
 ## Known limitations
+
+Live dictation captions are committed phrases, rather than word-by-word interim text. It covers the composer mic,
+CLI voice mode and TUI; Desktop voice conversations and messaging voice notes keep file transcription. Self-hosted
+endpoints, Hermes 0.21.5 and plugin-host isolation also keep file transcription.
 
 The auto-append fallback is per session. Mid-turn context compression can drop that fallback;
 the model normally includes the returned `media_tag` itself.

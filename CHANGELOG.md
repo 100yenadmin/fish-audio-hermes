@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 — 2026-10-11
+
+- **Live dictation.** On Hermes 0.21.6+, `stt.provider: fish-audio` and `stt.streaming: true` show captions phrase by
+  phrase in CLI voice mode, the TUI and Desktop's composer mic, with final text about half a second after you stop.
+  Each committed phrase is billed at Fish's ASR price, rounded up to a second; silence is never committed alone.
+- Uses Fish's ElevenLabs-compatible realtime endpoint on `api.fish.audio`. Any problem falls back silently to file
+  transcription. Hermes 0.21.5, self-hosted endpoints and plugin-host isolation keep the file path.
+
 ## 1.4.0 — 2026-10-11
 
 - **Voice names.** `/fish alias add <name> <voice-id>` saves a name. The name then works wherever a voice id goes:
