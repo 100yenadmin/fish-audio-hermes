@@ -791,7 +791,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
         children: [
           /* @__PURE__ */ jsx3(Avatar, { title: voice.title }),
           /* @__PURE__ */ jsxs3("div", { style: { minWidth: 0 }, children: [
-            /* @__PURE__ */ jsx3("div", { dir: "auto", style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: voice.title }),
+            /* @__PURE__ */ jsx3("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: /* @__PURE__ */ jsx3("bdi", { children: voice.title }) }),
             /* @__PURE__ */ jsx3("div", { style: { ...muted, fontSize: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }, children: parts })
           ] }),
           /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", gap: 6 }, children: [
@@ -2032,6 +2032,7 @@ var ja = {
 // src/desktop/locales/ar.ts
 var isolate = (value) => `\u2068${value}\u2069`;
 var tag5 = "ar";
+var money = (value) => usd(tag5, value).replace("US$", isolate("US$"));
 var agentName5 = (profile) => profile && profile !== "default" ? profile : ar.thisAgent;
 var ar = {
   thisAgent: "\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644",
@@ -2136,7 +2137,7 @@ var ar = {
   operatorSaved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0636\u0645\u0646 \xAB\u0627\u0644\u0645\u0641\u0636\u0644\u0629\xBB.`,
   apiCredit: "\u0631\u0635\u064A\u062F API",
   lowCredit: "\u0627\u0644\u0631\u0635\u064A\u062F \u0645\u0646\u062E\u0641\u0636 \u2014 \u0627\u0634\u062D\u0646\u0647 \u0644\u062A\u0633\u062A\u0645\u0631 \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0641\u064A \u0627\u0644\u0639\u0645\u0644.",
-  topUpsLine: (amount) => `\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646\u0627\u062A \u0645\u0646\u0630 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628: ${isolate(usd(tag5, amount))}`,
+  topUpsLine: (amount) => `\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646\u0627\u062A \u0645\u0646\u0630 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628: ${isolate(money(amount))}`,
   freeCredit: "\u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062C\u0627\u0646\u064A \u0627\u0644\u0645\u062A\u0627\u062D",
   plan: "\u0627\u0644\u062E\u0637\u0629",
   planBalance: (balance, total) => `\u062A\u0628\u0642\u0651\u0649 ${isolate(number(tag5, balance))} \u0645\u0646 ${isolate(number(tag5, total))} \u0648\u062D\u062F\u0629 \u0631\u0635\u064A\u062F`,
@@ -2150,7 +2151,7 @@ var ar = {
   apiKeys: "\u0645\u0641\u0627\u062A\u064A\u062D API",
   chip: (credit) => `Fish ${isolate(credit)}`,
   chipTip: "\u0631\u0635\u064A\u062F API \u0644\u0640 Fish Audio",
-  usd: (value) => usd(tag5, value),
+  usd: money,
   errors: {
     credential: (url) => `\u0623\u0636\u0641 \u0645\u0641\u062A\u0627\u062D API \u0635\u0627\u0644\u062D\u064B\u0627 \u0644\u0640 Fish Audio: ${isolate(url)}`,
     quota: (url) => `\u0627\u0634\u062D\u0646 \u0631\u0635\u064A\u062F API \u0644\u0640 Fish Audio: ${isolate(url)}\u061B \u0631\u0635\u064A\u062F \u062E\u0637\u0629 \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0645\u0646\u0641\u0635\u0644 \u0639\u0646 \u0631\u0635\u064A\u062F API.`,

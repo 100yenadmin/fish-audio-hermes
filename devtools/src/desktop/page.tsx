@@ -393,8 +393,9 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
           >
             <Avatar title={voice.title} />
             <div style={{ minWidth: 0 }}>
-              <div dir="auto" style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {voice.title}
+              {/* <bdi> isolates an RTL title without the row taking its direction (dir="auto" would right-align it). */}
+              <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <bdi>{voice.title}</bdi>
               </div>
               <div style={{ ...muted, fontSize: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 {parts}

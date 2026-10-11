@@ -100,6 +100,9 @@ it.each(['en', 'ja', 'de'] as const)('%s renders the top-up line without a page-
 it('preserves CJK top-up punctuation and ungrouped English currency bytes', () => {
   expect(zh.topUpsLine('12.35')).toBe('累计充值：US$12.35')
   expect(zhHant.topUpsLine('12.35')).toBe('累計儲值：US$12.35')
+  // Arabic keeps "US$" whole in a right-to-left line.
+  expect(ar.usd('12.35')).toBe('\u200f12.35\u00a0\u2068US$\u2069')
+  expect(ar.topUpsLine('12.35')).toBe('إجمالي الشحنات منذ إنشاء الحساب: \u2068\u200f12.35\u00a0\u2068US$\u2069\u2069')
   expect(en.usd('1234.5')).toBe('$1234.50')
   expect(en.topUpsLine('1234.5')).toBe('Lifetime top-ups: $1234.50')
 })
@@ -163,8 +166,9 @@ it('clamps details to two lines, isolates the title and uses logical onboarding 
   mount('ar')
   await flush()
   const title = screen.getByText('Narrator')
-  expect(title.getAttribute('dir')).toBe('auto')
-  const details = title.nextElementSibling as HTMLElement
+  expect(title.tagName).toBe('BDI')
+  expect(title.parentElement!.getAttribute('dir')).toBeNull()
+  const details = title.parentElement!.nextElementSibling as HTMLElement
   expect(details.style.display).toBe('-webkit-box')
   expect(details.style.webkitLineClamp).toBe('2')
   expect(details.style.webkitBoxOrient).toBe('vertical')

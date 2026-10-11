@@ -3,6 +3,8 @@ import { compact, number, plural, usd } from '../format'
 
 const isolate = (value: string | number) => `⁨${value}⁩`
 const tag = 'ar'
+// Intl gives "‏12.35 US$"; in a right-to-left line the "$" drifts to the far side of "US" ("$US 12.35"), so keep the symbol whole.
+const money = (value: string) => usd(tag, value).replace('US$', isolate('US$'))
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : ar.thisAgent)
 
@@ -111,7 +113,7 @@ export const ar = {
   operatorSaved: (title: string) => `تم حفظ ${isolate(title)}. ستجده في المكتبة ضمن «المفضلة».`,
   apiCredit: 'رصيد API',
   lowCredit: 'الرصيد منخفض — اشحنه لتستمر الردود الصوتية في العمل.',
-  topUpsLine: (amount: string) => `إجمالي الشحنات منذ إنشاء الحساب: ${isolate(usd(tag, amount))}`,
+  topUpsLine: (amount: string) => `إجمالي الشحنات منذ إنشاء الحساب: ${isolate(money(amount))}`,
   freeCredit: 'الرصيد المجاني المتاح',
   plan: 'الخطة',
   planBalance: (balance: number, total: number) => `تبقّى ${isolate(number(tag, balance))} من ${isolate(number(tag, total))} وحدة رصيد`,
@@ -125,7 +127,7 @@ export const ar = {
   apiKeys: 'مفاتيح API',
   chip: (credit: string) => `Fish ${isolate(credit)}`,
   chipTip: 'رصيد API لـ Fish Audio',
-  usd: (value: string) => usd(tag, value),
+  usd: money,
   errors: {
     credential: (url: string) => `أضف مفتاح API صالحًا لـ Fish Audio: ${isolate(url)}`,
     quota: (url: string) => `اشحن رصيد API لـ Fish Audio: ${isolate(url)}؛ رصيد خطة التطبيق منفصل عن رصيد API.`,
