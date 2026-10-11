@@ -36,6 +36,7 @@ read-aloud and voice notes go through it.
 | **Expressive speech** | Fish Audio S2 models follow emotion and delivery cues such as `[excited]`, `[whispering]` and `[laughing]`. Multi-speaker dialogue and custom pronunciations are supported too. |
 | **Streaming voice** | CLI voice mode and Desktop voice replies stream each sentence as it is ready. In our tests the first audio bytes arrived 0.24–0.38 s after a sentence was sent (see [Streaming voice](#configuration) for how this was measured). |
 | **Voice library** | Search Fish Audio's community voices from chat (`/fish voices narrator`) and switch with `/fish use <id>`. |
+| **Voice names** | Save a voice under a short name (`/fish alias add narrator <id>`), then use the name wherever a voice id goes: `/fish use narrator`, `/fish preview narrator` or `fish_speak`. |
 | **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting from chat go through Hermes's approval gate, so by default Hermes asks you first. |
 | **Speech-to-text** | Voice notes and Desktop dictation are transcribed by `transcribe-1-pro`. `fish_transcribe` adds speaker turns, timestamps and SRT subtitles. |
 | **Desktop Voices page** | In Hermes Desktop: browse and preview voices, pick one for the agent, clone or design your own, and check your credit. |
@@ -70,9 +71,12 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 |---|---|
 | `/fish status` | Key, providers, voice, model and why it was chosen, credit, last error |
 | `/fish voices [query]` | Search the voice library |
-| `/fish use <voice-id>` | Use a voice for this profile |
+| `/fish use <voice-id or name>` | Use a voice for this profile |
 | `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3-preview`) |
-| `/fish preview <voice-id> [text]` | Hear a voice (a billed synthesis) |
+| `/fish preview <voice-id or name> [text]` | Hear a voice (a billed synthesis) |
+| `/fish alias` | List your saved voice names |
+| `/fish alias add <name> <voice-id>` | Save a name for a voice: 2–32 letters, digits, `-` or `_`, starting with a letter |
+| `/fish alias remove <name>` | Delete a saved name |
 | `/fish balance` | API credit and plan |
 | `hermes fish login [--key-stdin] [--yes]` | Save and check a key, offer to switch providers |
 | `hermes fish status` · `hermes fish use <voice-id>` | Status and voice choice from your terminal |
@@ -133,6 +137,16 @@ The **Voices** row appears only
 for agents whose gateway has the plugin; an agent without a Fish Audio key shows a card that links to the key page
 and the plugin's settings.
 
+### Settings page (Hermes Desktop 0.21.6 and newer)
+
+**Settings ▸ Plugins ▸ Fish Audio** shows the selected agent's voice, speech model and saved voice names, and lets you
+change them. **Change** opens the Voices page to pick a voice. The plugin's own options (API key, server address,
+streaming and transport) sit under the same entry as **Agent settings**.
+
+The page acts on the agent selected in Desktop, and its header names that agent. Desktop's own **Settings ▸ Voice**
+doesn't list plugin speech providers or their voices yet (NousResearch/hermes-agent#136485), so pick Fish voices here
+or on the Voices page. Desktop 0.21.5 has no plugin settings pages; use the Voices page and `/fish` there.
+
 ## Configuration
 
 All settings are per profile.
@@ -159,7 +173,9 @@ plugins:
 
 The `plugins.entries.fish-audio.settings` keys (`base_url`, `streaming`, `transport`, `allow_free_model`,
 `operator_account`) and the API key also appear in Desktop ▸ Settings ▸ Plugins ▸ Fish Audio (Capabilities ▸
-Plugins on older Desktop). Set the voice and model from the Voices page, `/fish use` or `/fish model`.
+Plugins on older Desktop). Set the voice and model from the Fish Audio settings page, the Voices page, `/fish use` or
+`/fish model`. Saved voice names live in `tts.fish-audio.aliases` (name → voice id). On a managed agent, when the
+operator sets the voice, model or names, the plugin says so instead of saving.
 
 **Which model?** A valid `tts.fish-audio.model` is used as set (for `fish_speak`, a model named in the call comes
 first); invalid ids are ignored. Otherwise the plugin uses `s2.1-pro`, and picks `s2.1-pro-free` only when Fish

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 — 2026-10-11
+
+- **Voice names.** `/fish alias add <name> <voice-id>` saves a name. The name then works wherever a voice id goes:
+  `/fish use`, `/fish preview`, `hermes fish use`, `fish_speak` (including multi-speaker) and the Desktop Voices page.
+  `/fish use <name>` saves the voice itself, so changing the name later never changes your voice.
+- **Settings page in Hermes Desktop 0.21.6 and newer.** Settings ▸ Plugins ▸ Fish Audio shows and changes the selected
+  agent's voice, speech model and saved names, in all nine languages. Desktop 0.21.5 loads the plugin as before.
+- **Clearer operator settings.** On a managed agent, `/fish model`, `/fish use` and the new settings say when the
+  operator sets that value, instead of replying "Saved.".
+- The speech provider now lists your saved names and current voice through `list_voices()`, for Hermes surfaces that
+  show voices.
+
 ## 1.3.3 — 2026-10-11
 
 - **S1 is deprecated.** Fish retires S1 on 2026-12-31 and then serves it as S2.1 Pro. `/fish model s1`,
