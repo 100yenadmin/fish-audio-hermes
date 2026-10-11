@@ -6,6 +6,7 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -76,6 +77,8 @@ def duration(path):
 
 class Plugin:
     def __init__(self, ledger, stack):
+        if not (shutil.which("ffmpeg") and shutil.which("ffprobe")):
+            raise RuntimeError("ffmpeg and ffprobe are required")  # fail before the first paid call
         import httpx
         from fish_audio import client
         from websockets.sync import client as ws
@@ -194,7 +197,8 @@ def run(out, *, dry_run=False, backend=None):
                     if result is None:
                         return None
                     if not result.get("success") or not result.get("transcript"):
-                        record(gate, status=401 if result.get("error_kind") in ("auth", "credential") else None, failed=True)
+                        if not any(s == 429 or s and 500 <= s < 600 for s in api.statuses):  # a rate limit or outage already warned
+                            record(gate, status=401 if result.get("error_kind") in ("auth", "credential") else None, failed=True)
                         return None
                     return error_rate(lang, text, result["transcript"])
                 totals = {lang: [0, 0] for lang in ("en", "ja", "zh")}

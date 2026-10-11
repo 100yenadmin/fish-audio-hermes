@@ -9,7 +9,7 @@ concurrency: {group: fish-bench, cancel-in-progress: false}
 jobs:
   bench:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: {persist-credentials: false}
@@ -20,6 +20,7 @@ jobs:
       - name: Run capped benchmark
         id: bench
         continue-on-error: true
+        timeout-minutes: 20
         env:
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           HERMES_DISABLE_LAZY_INSTALLS: "1"
@@ -29,6 +30,7 @@ jobs:
             echo 'skipped: no FISH_API_KEY secret' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
           python bench/weekly.py --out bench-out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ always() && steps.bench.outcome != 'skipped' && hashFiles('bench-out/results.json') != '' }}
@@ -36,6 +38,12 @@ jobs:
           name: fish-bench-results
           path: bench-out/results.json
           retention-days: 30
+      - name: Report a run that stopped before writing its report
+        if: ${{ always() && steps.bench.outcome != 'success' && hashFiles('bench-out/report.md') == '' }}
+        env: {RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+        run: |
+          mkdir -p bench-out
+          printf 'Fish bench: error; the benchmark step failed or ran out of time before writing a report.\n- run log: %s\n' "$RUN_URL" > bench-out/report.md
       - name: Open or comment on one benchmark issue
         if: ${{ always() && hashFiles('bench-out/report.md') != '' }}
         env: {GH_TOKEN: "${{ github.token }}"}
@@ -50,5 +58,5 @@ jobs:
             gh issue comment "$n" --body-file bench-out/report.md
           else gh issue create --title 'Fish benchmark regression detected' --label fish-bench --body-file bench-out/report.md; fi
       - name: Preserve failed benchmark status
-        if: ${{ always() && steps.bench.outcome == 'failure' }}
+        if: ${{ always() && steps.bench.outcome != 'success' }}
         run: exit 1

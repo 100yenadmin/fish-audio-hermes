@@ -78,6 +78,7 @@ def test_real_plugin_entrypoint_with_fake_http(tmp_path, monkeypatch):
     monkeypatch.setattr(httpx, "Client", lambda **kw: original(transport=httpx.MockTransport(reject), **kw))
     monkeypatch.setattr(streaming, "fish_api_key", lambda: "fixture")
     monkeypatch.setattr(settings, "_config", lambda: {})
+    monkeypatch.setattr(w.shutil, "which", lambda name: "/usr/bin/" + name)
     assert w.run(tmp_path, dry_run=True, backend=w.Plugin) == 1
     assert len(requests) == 1
     assert json.loads((tmp_path / "results.json").read_text())["tts_chars"] == 62
@@ -89,3 +90,23 @@ def test_harness_error_files_a_report(tmp_path):
             raise RuntimeError("boom")
     assert w.run(tmp_path, dry_run=True, backend=Broken) == 2
     assert (tmp_path / "report.md").read_text().startswith("Fish bench: error")
+
+
+def test_missing_ffmpeg_fails_before_any_paid_call(tmp_path, monkeypatch):
+    monkeypatch.setattr(w.shutil, "which", lambda name: None)
+    assert w.run(tmp_path, dry_run=True, backend=w.Plugin) == 2
+    result = json.loads((tmp_path / "results.json").read_text())
+    assert (result["state"], result["tts_chars"], result["asr_seconds_billed"]) == ("error", 0, 0)
+    assert (tmp_path / "report.md").read_text().startswith("Fish bench: error")
+
+
+@pytest.mark.parametrize("statuses,state", [([429], "warn"), ([503], "warn"), ([400], "fail"), ([], "fail")])
+def test_transcription_failure_envelope(tmp_path, statuses, state):
+    class Failing(w.Fake):
+        def transcribe(self, path, seconds, reference):
+            self.statuses.extend(statuses)  # the plugin returns an envelope after its own retries
+            return {"success": False, "transcript": "", "error_kind": "unavailable"}
+    assert w.run(tmp_path, dry_run=True, backend=Failing) == int(state == "fail")
+    result = json.loads((tmp_path / "results.json").read_text())
+    levels = {r["level"] for r in result["gates"] if r["gate"].startswith(("asr", "roundtrip", "live"))}
+    assert (result["state"], levels) == (state, {state})
