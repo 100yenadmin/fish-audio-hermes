@@ -131,7 +131,10 @@ class FishLiveSession(TranscriptionStreamSession):
         event = json.loads(self._socket.recv(timeout=timeout))
         kind = event.get("message_type")
         if kind == "committed_transcript":
-            self._texts.append(str(event.get("text") or ""))
+            text = event.get("text")
+            if not isinstance(text, str):
+                raise ValueError("Fish live transcript without text")  # fail to file transcription; never drop a phrase
+            self._texts.append(text)
             self._received += 1
         elif kind == "transcriber_error":
             self._fail("auth" if "Invalid Token" in str(event.get("error", "")) else "unavailable")

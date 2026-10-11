@@ -11,14 +11,15 @@ from fish_audio import live_stt, secrets, settings, stt
 KEY = "fake-live-key"
 SPEECH, SILENCE = b"\xe8\x03" * 320, bytes(640)
 REAL_CONNECT, REAL_CREATE = socket.socket.connect, socket.create_connection
+MISSING = object()
 
 
 class LiveServer:
-    def __init__(self, error=None, answers=99):
+    def __init__(self, error=None, answers=99, second="world."):
         from websockets.sync.server import serve
         self.frames, self.headers, self.paths = [], [], []
         self.closed = threading.Event()
-        self.error, self.answers = error, answers
+        self.error, self.answers, self.second = error, answers, second
         self.server = serve(self.handle, "127.0.0.1", 0)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.base = f"http://127.0.0.1:{self.server.socket.getsockname()[1]}"
@@ -37,9 +38,12 @@ class LiveServer:
                     if self.error and self.error != "input_error":
                         ws.send(json.dumps({"message_type": "transcriber_error", "error": self.error + KEY}))
                     elif self.answers > 0:
-                        text = "Hello" if self.answers == 99 else "world."
+                        text = "Hello" if self.answers == 99 else self.second
                         self.answers -= 1
-                        ws.send(json.dumps({"message_type": "committed_transcript", "text": text}))
+                        answer = {"message_type": "committed_transcript"}
+                        if text is not MISSING:
+                            answer["text"] = text
+                        ws.send(json.dumps(answer))
                         ws.send(json.dumps({"message_type": "committed_transcript_with_timestamps", "text": "ignored"}))
         finally:
             self.closed.set()
@@ -167,6 +171,15 @@ def test_short_last_word_after_a_phrase(live, tail, commits, transcript):
     session.push_audio(SILENCE * 20 + SPEECH * tail)  # a 200 ms "No." is kept; a 60 ms click is not
     assert session.finalize()["transcript"] == transcript
     assert sum(frame["commit"] for frame in server.frames) == commits
+
+
+@pytest.mark.parametrize("second", [None, 123, MISSING])
+def test_malformed_transcript_falls_back(live, second):
+    _, session = live(second=second)
+    session.push_audio(SPEECH * 50 + SILENCE * 35)
+    assert wait_partial(session) == "Hello"
+    session.push_audio(SPEECH * 20)
+    assert session.finalize()["error_kind"] == "unavailable"  # Hermes then transcribes the whole file
 
 
 def test_long_pause_never_splits_a_word():

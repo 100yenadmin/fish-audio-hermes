@@ -205,7 +205,8 @@ both providers still work. Config changes apply to the active profile; managed i
 On Hermes 0.21.6 or newer, set `stt.provider: fish-audio` and `stt.streaming: true`. Live dictation works in CLI
 voice mode, the TUI and Desktop dictation (the composer mic). Captions appear phrase by phrase after a short pause,
 and the final text arrives about half a second after you stop. If the live session fails, Hermes quietly transcribes
-the recording as a file instead; if Fish stops answering after some phrases, the text holds only those phrases.
+the recording as a file instead. If Fish has not answered the last phrase 15 seconds after you stop, the text holds
+only the phrases it already returned.
 
 Each committed phrase is billed at Fish's ASR price, with its audio rounded up to a whole second. A phrase is committed
 only when it holds at least 300 ms of sound above the silence threshold (100 ms for a last word after an earlier
