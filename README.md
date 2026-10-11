@@ -143,9 +143,10 @@ and the plugin's settings.
 change them. **Change** opens the Voices page to pick a voice. The plugin's own options (API key, server address,
 streaming and transport) sit under the same entry as **Agent settings**.
 
-The page acts on the agent selected in Desktop, and its header names that agent. Desktop's own **Settings ▸ Voice**
-doesn't list plugin speech providers or their voices yet (NousResearch/hermes-agent#136485), so pick Fish voices here
-or on the Voices page. Desktop 0.21.5 has no plugin settings pages; use the Voices page and `/fish` there.
+The page acts on the agent selected in Desktop. Its header names that agent, or says "this agent" for the default
+profile. Desktop's own **Settings ▸ Voice** doesn't list plugin speech providers or their voices yet
+(NousResearch/hermes-agent#136485), so pick Fish voices here or on the Voices page. Desktop 0.21.5 has no plugin
+settings pages; use the Voices page and `/fish` there.
 
 ## Configuration
 
