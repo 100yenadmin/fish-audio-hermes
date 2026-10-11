@@ -281,6 +281,11 @@ def test_quiet_microphone_threshold(live, monkeypatch):
     session = stt.FishAudioTranscriptionProvider().open_stream_session()
     session.push_audio(quiet * 20)
     assert session.finalize()["transcript"] == "Hello"
+    for odd in (1e-200, 0, -5, 40000, True, "80"):  # never lets silence count as speech
+        config["voice"]["silence_threshold"] = odd
+        session = stt.FishAudioTranscriptionProvider().open_stream_session()
+        session.push_audio(SILENCE * 20 + quiet * 20)
+        assert session.finalize()["error_kind"] == "no_speech"
 
 
 def test_long_pause_never_splits_a_word():

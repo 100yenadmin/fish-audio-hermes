@@ -81,7 +81,7 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
             "timeout": "Fish Audio live transcription timed out.", "no_speech": "no speech detected"}.items()}
         # Hermes's own microphone threshold (voice.silence_threshold, default 200), so quiet mics get captions too.
         threshold = _mapping(_config().get("voice")).get("silence_threshold")
-        if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 0 < threshold < 32768:
+        if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 1 <= threshold < 32768:
             threshold = 200
         return FishLiveSession(url, key, client._user_agent(), errors, threshold)
 
