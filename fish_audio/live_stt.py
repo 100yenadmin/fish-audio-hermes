@@ -41,6 +41,8 @@ class PauseDetector:
     def feed(self, frame):
         samples = struct.unpack("<320h", frame)
         speaking = sum(value * value for value in samples) >= 320 * SILENCE_RMS_THRESHOLD ** 2
+        if not self.speech and not speaking:
+            return False  # a segment's clocks start at its first voiced frame, so a long pause never splits a word
         self.frames += 1
         self.speech += speaking
         self.silence = 0 if speaking else self.silence + 1
@@ -129,7 +131,7 @@ class FishLiveSession(TranscriptionStreamSession):
         event = json.loads(self._socket.recv(timeout=timeout))
         kind = event.get("message_type")
         if kind == "committed_transcript":
-            self._texts.append(event["text"])
+            self._texts.append(str(event.get("text") or ""))
             self._received += 1
         elif kind == "transcriber_error":
             self._fail("auth" if "Invalid Token" in str(event.get("error", "")) else "unavailable")
@@ -155,7 +157,8 @@ class FishLiveSession(TranscriptionStreamSession):
         self._activity = time.monotonic()
         deadline = time.monotonic() + FINALIZE_TIMEOUT
         try:
-            if not self._failed and self._detector.has_speech:
+            # After an earlier phrase, a short last word ("No.") still counts; a lone click (1-2 frames) does not.
+            if not self._failed and (self._detector.has_speech or (self._commits and self._detector.speech >= 5)):
                 self._held.extend(self._pending)
                 self._send(self._held, True)
             while not self._failed and self._received < self._commits:

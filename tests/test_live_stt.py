@@ -159,6 +159,24 @@ def test_capability_matrix(monkeypatch):
         assert stt.FishAudioTranscriptionProvider().streaming_capable is expected
 
 
+@pytest.mark.parametrize("tail,commits,transcript", [(10, 2, "Hello world."), (3, 1, "Hello")])
+def test_short_last_word_after_a_phrase(live, tail, commits, transcript):
+    server, session = live()
+    session.push_audio(SPEECH * 50 + SILENCE * 35)
+    assert wait_partial(session) == "Hello"
+    session.push_audio(SILENCE * 20 + SPEECH * tail)  # a 200 ms "No." is kept; a 60 ms click is not
+    assert session.finalize()["transcript"] == transcript
+    assert sum(frame["commit"] for frame in server.frames) == commits
+
+
+def test_long_pause_never_splits_a_word():
+    detector = live_stt.PauseDetector()
+    assert not any(detector.feed(SILENCE) for _ in range(1600))  # 32 s pause before speaking
+    words = [SPEECH] * 30 + [SILENCE] * 2 + [SPEECH] * 30  # a 40 ms gap between words
+    assert not any(detector.feed(frame) for frame in words)
+    assert any(detector.feed(SILENCE) for _ in range(35))
+
+
 def test_join_and_long_guard():
     for segments, expected in [(["Hello", "world"], "Hello world"), (["漢", "字"], "漢字"),
             (["a", "かな"], "aかな"), (["한", "a"], "한a"), (["a。", "b"], "a。b"), (["a", "Ａ"], "a Ａ"), (["a", "𛀁"], "a𛀁")]:
