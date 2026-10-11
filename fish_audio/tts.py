@@ -51,6 +51,18 @@ class FishAudioTTSProvider(TTSProvider):
     def default_voice(self):
         return None
 
+    def list_voices(self):
+        try:
+            from .tool_support import voice_id
+            saved = settings.aliases()
+            voices = [{"id": voice, "display": name} for name, voice in sorted(saved.items())]
+            current = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio")).get("voice")
+            if voice_id(current) and current not in saved.values():  # the rule synthesis applies to tts.fish-audio.voice
+                voices.append({"id": current, "display": "Current voice"})
+            return voices
+        except Exception:
+            return []
+
     def warm(self):
         pass
 

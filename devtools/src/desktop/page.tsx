@@ -57,7 +57,7 @@ const pad = '0 24px'
 
 /** A read for the captured agent: refused when another agent is selected now, dropped when it changed meanwhile,
  *  so one agent's results never land in another agent's query cache. */
-function readFor<T>(pin: AgentPin, path: string): Promise<T> {
+export function readFor<T>(pin: AgentPin, path: string): Promise<T> {
   const changed = () => new ApiError('agent_changed', pluginCtx().i18n.t('agentChangedNothingSent'))
   if (!samePin(currentPin(), pin)) return Promise.reject(changed())
   return call<T>(path).then(res => {
@@ -129,7 +129,7 @@ function Frame({ children, profile, tabs }: { children: ReactNode; profile: stri
   )
 }
 
-function Onboarding({ profile, operator }: { profile: string; operator: boolean }) {
+export function Onboarding({ profile, operator }: { profile: string; operator: boolean }) {
   const t = usePluginI18n(PLUGIN_ID)
   const open = (url: string) => void pluginCtx().os.openExternal(url)
   return (

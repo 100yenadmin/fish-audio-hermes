@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.3.3"
+VERSION = "1.4.0"
 
 _HOST_SCOPES = False
 
@@ -125,7 +125,7 @@ def _failure(exc: Exception) -> dict:
         if isinstance(exc, media.InputFileError):
             return {"ok": False, "kind": "bad_audio", "message": _redact(str(exc))}
         if isinstance(exc, support.ToolInputError):
-            return {"ok": False, "kind": "invalid", "message": _redact(str(exc))}
+            return {"ok": False, "kind": getattr(exc, "kind", "invalid"), "message": _redact(str(exc))}
     except Exception:
         pass
     return {"ok": False, "kind": "error", "message": "Fish Audio could not complete this request. Try again."}
@@ -224,13 +224,21 @@ class Preview(BaseModel):
     text: Any = None
 
 
+def _voice_reference(value):
+    voice = _fa("settings").resolve_voice(value)
+    if voice is None:
+        raise Refusal("invalid", _fa("settings").UNKNOWN_VOICE)
+    return voice
+
+
 @router.post("/preview")
 @_protocol
 def preview(body: Preview):
     """One billed synthesis, the same path as ``/fish preview``: mp3, at most 200 characters."""
     key, base = _scope()
     text = PREVIEW_TEXT if body.text in (None, "") else _text(body.text, "Preview text", 200)
-    result = _fa("tools")._speak({"text": text, "voice": _voice_id(body.voice), "format": "mp3"}, key, base, "",
+    voice = _voice_reference(body.voice)
+    result = _fa("tools")._speak({"text": text, "voice": voice, "format": "mp3"}, key, base, "",
                                 record_media=False)
     path = Path(result["file_path"])
     try:
@@ -239,7 +247,7 @@ def preview(body: Preview):
         audio = path.read_bytes()
     finally:
         path.unlink(missing_ok=True)
-    return {"ok": True, "audio": base64.b64encode(audio).decode("ascii"), "mime": "audio/mpeg",
+    return {"ok": True, "voice": voice, "audio": base64.b64encode(audio).decode("ascii"), "mime": "audio/mpeg",
             **({"model": result["model"]} if "model" in result else {}), "billed": True}
 
 
@@ -252,12 +260,70 @@ class Use(BaseModel):
 def use_voice(body: Use):
     """Write ``tts.fish-audio.voice`` for the requesting profile with the writer ``/fish use`` uses."""
     key, base = _scope()
-    voice = _voice_id(body.voice)
+    voice = _voice_reference(body.voice)
     commands = _fa("commands")
     provider, by_operator = commands.use_result(voice, key, base)
     # provider/operator_pinned let Desktop word the note in its own language; message stays for older clients.
     return {"ok": True, "voice": voice, "message": commands.use_message(provider, by_operator),
             "provider": provider, "operator_pinned": by_operator}
+
+
+def _alias_rows(saved):
+    return [{"name": name, "voice": voice} for name, voice in sorted(saved.items())]
+
+
+@router.get("/settings")
+@_protocol
+def get_settings():
+    settings = _fa("settings")
+    nested = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio"))
+    allow_free = settings.transport_settings().get("allow_free_model") is not False
+    # Report what synthesis uses: the resolvers ignore a malformed voice and an unknown model (Fish default applies),
+    # and allow_free_model: false sends s2.1-pro in place of s2.1-pro-free.
+    voice, model = nested.get("voice"), nested.get("model")
+    model = model if isinstance(model, str) and model in _fa("models").MODEL_IDS else None
+    if model == "s2.1-pro-free" and not allow_free:
+        model = "s2.1-pro"
+    return {"ok": True, "voice": voice if _fa("tool_support").voice_id(voice) else None, "model": model,
+            "models": [{"id": row["id"], "display": row["display"], "deprecated": row.get("deprecated", False)}
+                       for row in _fa("models").MODELS if row["id"] != "s2.1-pro-free" or allow_free],
+            "aliases": _alias_rows(settings.aliases()),
+            "managed": [leaf for leaf in ("voice", "model", "aliases") if settings.managed_leaf("tts", "fish-audio", leaf)]}
+
+
+@router.post("/settings")
+@_protocol
+def save_settings(body: dict):
+    if body.keys() - {"voice", "model"} or body.get("voice") is not None or (
+            body.get("model") is not None and (not isinstance(body["model"], str) or body["model"] not in _fa("models").MODEL_IDS)):
+        raise Refusal("invalid", "Set a known model or reset voice/model to null; voices are set through /use.")
+    commands = _fa("commands")
+    for leaf in body:
+        commands.require_unmanaged(leaf)
+    def change(cfg):
+        nested = cfg.setdefault("tts", {}).setdefault("fish-audio", {})
+        for leaf, value in body.items():
+            if value is None:
+                nested.pop(leaf, None)
+            else:
+                nested[leaf] = value
+    commands.write_config(change)
+    return get_settings()
+
+
+@router.post("/aliases")
+@_protocol
+def add_alias(body: dict):
+    key, base = _scope()
+    saved, updated = _fa("commands").alias_add(body.get("name"), body.get("voice"), key, base)
+    return {"ok": True, "aliases": _alias_rows(saved), "updated": updated}
+
+
+@router.delete("/aliases/{name}")
+@_protocol
+def remove_alias(name: str):
+    _scope()
+    return {"ok": True, "aliases": _alias_rows(_fa("commands").alias_remove(name))}
 
 
 def _author_owned(ident: str, key: str, base: str) -> bool:

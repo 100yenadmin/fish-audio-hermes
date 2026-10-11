@@ -116,7 +116,41 @@ export const ar = {
   apiKeys: 'مفاتيح API',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'رصيد API لـ Fish Audio',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: 'أعد تشغيل بوابة هذا الوكيل لإكمال تحديث Fish Audio.',
+    voicesPage: 'صفحة الأصوات',
+    voiceSection: 'الصوت',
+    currentVoice: 'الصوت الحالي',
+    defaultVoice: 'صوت Fish الافتراضي',
+    change: 'تغيير',
+    reset: 'إعادة تعيين',
+    resetDone: 'أُعيد الصوت إلى إعداد Fish الافتراضي',
+    modelSection: 'نموذج الكلام',
+    model: 'النموذج',
+    modelHint: 'يُستخدم للردود الصوتية لهذا الوكيل.',
+    defaultModel: 'افتراضي Fish',
+    modelSaved: 'تم حفظ نموذج الكلام',
+    namesSection: 'أسماء الأصوات',
+    namesHint: 'استخدم الاسم في أي مكان تكتب فيه معرّف صوت، مثل /fish use narrator.',
+    noNames: 'لا توجد أسماء بعد',
+    addName: 'إضافة اسم',
+    name: 'الاسم',
+    voice: 'الصوت',
+    voicePlaceholder: 'معرّف الصوت أو اسم محفوظ',
+    add: 'إضافة',
+    remove: 'إزالة',
+    added: (name: string) => `تم حفظ ${name}`,
+    updated: (name: string) => `تم تحديث ${name}`,
+    removed: (name: string) => `تمت إزالة ${name}`,
+    badName: 'استخدم من 2 إلى 32 حرفًا لاتينيًا أو رقمًا أو - أو _، على أن يبدأ بحرف. لا يُسمح بمعرّفات الأصوات ولا بالكلمات add وremove وlist وcurrent وdefault.',
+    linksSection: 'روابط',
+    fishAccount: 'حساب Fish Audio',
+    agentSettingsNote: 'مفتاح API وعنوان الخادم والبث وطريقة النقل موجودة في «إعدادات الوكيل».',
+    managed: 'يحدده مشغّل هذا الوكيل',
+    loadFailed: 'تعذّر تحميل الإعدادات',
+    agentChangedAfterSend: (profile: string) => `تغيّر الوكيل المحدد قبل وصول الرد. طُبّق التغيير على ${agentName(profile)}.`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

@@ -116,7 +116,41 @@ export const fr = {
   apiKeys: 'Clés API',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Crédit API Fish Audio',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: 'Redémarrez la passerelle de cet agent pour terminer la mise à jour de Fish Audio.',
+    voicesPage: 'Page Voix',
+    voiceSection: 'Voix',
+    currentVoice: 'Voix actuelle',
+    defaultVoice: 'Voix par défaut de Fish',
+    change: 'Changer',
+    reset: 'Réinitialiser',
+    resetDone: 'Voix réinitialisée sur la valeur par défaut de Fish',
+    modelSection: 'Modèle vocal',
+    model: 'Modèle',
+    modelHint: 'Utilisé pour les réponses vocales de cet agent.',
+    defaultModel: 'Par défaut de Fish',
+    modelSaved: 'Modèle vocal enregistré',
+    namesSection: 'Noms de voix',
+    namesHint: 'Utilisez un nom partout où vous saisiriez un identifiant de voix, par exemple /fish use narrator.',
+    noNames: 'Aucun nom pour le moment',
+    addName: 'Ajouter un nom',
+    name: 'Nom',
+    voice: 'Voix',
+    voicePlaceholder: 'Identifiant de voix ou nom enregistré',
+    add: 'Ajouter',
+    remove: 'Retirer',
+    added: (name: string) => `${name} enregistré`,
+    updated: (name: string) => `${name} mis à jour`,
+    removed: (name: string) => `${name} retiré`,
+    badName: 'Utilisez 2 à 32 lettres latines, chiffres, - ou _, en commençant par une lettre. Les identifiants de voix et les mots add, remove, list, current et default ne sont pas autorisés.',
+    linksSection: 'Liens',
+    fishAccount: 'Compte Fish Audio',
+    agentSettingsNote: 'La clé API, l’adresse du serveur, le streaming et le transport se trouvent dans Réglages de l’agent.',
+    managed: 'Défini par l’opérateur de cet agent',
+    loadFailed: 'Impossible de charger les réglages',
+    agentChangedAfterSend: (profile: string) => `L’agent sélectionné a changé avant la réponse. La modification a été appliquée à ${agentName(profile)}.`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

@@ -2,13 +2,13 @@
 
 // src/desktop/plugin.tsx
 import {
-  host as host4,
+  host as host5,
   PALETTE_AREA,
   ROUTES_AREA,
   SIDEBAR_NAV_AREA,
   STATUSBAR_AREAS,
-  usePluginI18n as usePluginI18n5,
-  useValue as useValue4
+  usePluginI18n as usePluginI18n6,
+  useValue as useValue5
 } from "@hermes/plugin-sdk";
 
 // src/desktop/audio.ts
@@ -115,6 +115,25 @@ var errorText = (error) => error instanceof Error ? error.message : String(error
 var currentPin = () => ({ connectionId: host.state.connectionId.get(), profile: host.state.profile.get() });
 var samePin = (a, b) => a.connectionId === b.connectionId && a.profile === b.profile;
 var agentKey = (pin) => `${pin.connectionId ?? "local"}::${pin.profile}`;
+var postSettings = (body) => post("/settings", body);
+var addAlias = (name, voice) => post("/aliases", { name, voice });
+var removeAlias = (name) => call(`/aliases/${encodeURIComponent(name)}`, { method: "DELETE", timeoutMs: 6e4 });
+function versionParts(version) {
+  if (typeof version !== "string") return null;
+  const core = version.split(/[-+]/)[0];
+  return /^\d+\.\d+\.\d+$/.test(core) ? core.split(".").map(Number) : null;
+}
+function versionAtLeast(version, min) {
+  const have = versionParts(version);
+  const want = versionParts(min);
+  if (!have || !want) return false;
+  for (let i = 0; i < 3; i++) if (have[i] !== want[i]) return have[i] > want[i];
+  return true;
+}
+function gatewayAtLeast(min) {
+  const available = $available.get();
+  return available ? versionAtLeast(available.version, min) : false;
+}
 
 // src/desktop/page.tsx
 import {
@@ -183,7 +202,8 @@ function useAccountText(normal, operator) {
 }
 var LINKS = {
   keys: "https://fish.audio/app/api-keys",
-  discovery: "https://fish.audio/discovery"
+  discovery: "https://fish.audio/discovery",
+  account: "https://fish.audio/app/developers/billing"
 };
 var LANGUAGES = ["en", "zh", "ja", "ko", "es", "fr", "de", "it", "pt", "ru", "ar", "nl", "pl"];
 
@@ -906,6 +926,294 @@ function AccountTab({ pin }) {
   ] });
 }
 
+// src/desktop/settings-page.tsx
+import {
+  Button as Button4,
+  Codicon as Codicon4,
+  ErrorState as ErrorState3,
+  host as host4,
+  Input as Input3,
+  ListRow,
+  Select as Select2,
+  SelectContent as SelectContent2,
+  SelectItem as SelectItem2,
+  SelectTrigger as SelectTrigger2,
+  SelectValue as SelectValue2,
+  useQuery as useQuery2,
+  usePluginI18n as usePluginI18n5,
+  useValue as useValue4
+} from "@hermes/plugin-sdk";
+import { useEffect as useEffect2, useRef as useRef2, useState as useState3 } from "react";
+import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+var SETTINGS_VERSION = "1.4.0";
+var PLUGINS_PATH = "/capabilities?tab=plugins&plugin=fish-audio";
+var DEFAULT_MODEL = "__fish_default__";
+var HEX32 = /^[0-9a-f]{32}$/;
+var NAME = /^[a-z][a-z0-9_-]{1,31}$/;
+var RESERVED = ["add", "remove", "list", "current", "default"];
+function badAliasName(raw) {
+  const name = raw.trim().toLowerCase();
+  if (/[^\x00-\x7f]/.test(name)) return false;
+  return !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name);
+}
+var shortId = (id) => id.slice(0, 8);
+var CONTROL_HEIGHT = 32;
+var control = { boxSizing: "border-box", height: CONTROL_HEIGHT, width: "100%" };
+var TITLE_FETCHES = 50;
+function VoiceTitle({ pin, id, known, fetch = true }) {
+  const voice = useQuery2({
+    enabled: fetch && !known,
+    queryFn: () => readFor(pin, `/voices/${encodeURIComponent(id)}`),
+    queryKey: ["fish-audio", agentKey(pin), "voice", id],
+    retry: false,
+    staleTime: 3e5
+  });
+  return /* @__PURE__ */ jsx4("bdi", { children: known || voice.data?.voice?.title || shortId(id) });
+}
+function SettingsPage() {
+  const t = usePluginI18n5(PLUGIN_ID);
+  const available = useValue4($available);
+  const availableError = useValue4($availableError);
+  const profile = useValue4(host4.state.profile);
+  const connectionId = useValue4(host4.state.connectionId);
+  const pin = { connectionId, profile };
+  let body;
+  if (available === false) {
+    body = /* @__PURE__ */ jsx4(Notice, { text: t("notSetUp", profile), children: /* @__PURE__ */ jsx4(Button4, { onClick: () => host4.navigate(PLUGINS_PATH), size: "xs", variant: "secondary", children: t("openPlugins") }) });
+  } else if (available === null) {
+    body = availableError ? /* @__PURE__ */ jsx4(ErrorState3, { description: errorText(availableError), title: t("unreachable", profile), children: /* @__PURE__ */ jsx4(Button4, { onClick: () => void refreshAvailability(), size: "xs", variant: "secondary", children: t("checkAgain") }) }) : /* @__PURE__ */ jsx4(Rows, { n: 3 });
+  } else if (!gatewayAtLeast(SETTINGS_VERSION)) {
+    body = /* @__PURE__ */ jsx4(Notice, { text: t("settings.restart"), children: /* @__PURE__ */ jsx4(Button4, { onClick: () => host4.navigate(PAGE_PATH), size: "xs", variant: "secondary", children: t("settings.voicesPage") }) });
+  } else if (!available.key) {
+    body = /* @__PURE__ */ jsx4(Onboarding, { operator: available.account === false, profile });
+  } else {
+    body = /* @__PURE__ */ jsx4(Sections, { operator: available.account === false, pin }, agentKey(pin));
+  }
+  return /* @__PURE__ */ jsxs4("div", { style: { display: "grid", gap: 8 }, children: [
+    /* @__PURE__ */ jsx4("p", { style: { ...muted, fontSize: 12, margin: 0 }, children: t("forAgent", profile) }),
+    body
+  ] });
+}
+function Notice({ text, children }) {
+  return /* @__PURE__ */ jsxs4("div", { style: { display: "grid", gap: 10, justifyItems: "start" }, children: [
+    /* @__PURE__ */ jsx4("p", { style: { ...muted, fontSize: 13, lineHeight: 1.5, margin: 0, maxWidth: 560 }, children: text }),
+    children
+  ] });
+}
+function Section({ title, children }) {
+  return /* @__PURE__ */ jsxs4("section", { style: { marginTop: 12 }, children: [
+    /* @__PURE__ */ jsx4("h3", { style: { color: "var(--ui-text-secondary)", fontSize: 12, fontWeight: 600, margin: 0 }, children: title }),
+    children
+  ] });
+}
+function Sections({ pin, operator }) {
+  const t = usePluginI18n5(PLUGIN_ID);
+  const [state, setState] = useState3(null);
+  const [error, setError] = useState3(null);
+  const [busy, setBusy] = useState3(null);
+  const [name, setName] = useState3("");
+  const [voice, setVoice] = useState3(null);
+  const [badName, setBadName] = useState3(false);
+  const generation = useRef2(0);
+  useValue4($favouritesRevision);
+  const favourites = readFavourites(pin);
+  const load = () => {
+    const mine = ++generation.current;
+    setError(null);
+    readFor(pin, "/settings").then(
+      (res) => mine === generation.current && setState(res),
+      (failure) => mine === generation.current && setError(failure)
+    );
+  };
+  useEffect2(() => {
+    load();
+    return () => void generation.current++;
+  }, []);
+  const current = state?.voice ?? null;
+  const favouriteTitle = (id) => favourites.find((f) => f.id === id)?.title;
+  const write = async (id, send, apply) => {
+    const i18n = pluginCtx().i18n;
+    if (!samePin(currentPin(), pin)) return host4.notify({ kind: "error", message: i18n.t("agentChangedNothingSent") });
+    const epoch2 = currentAgentEpoch();
+    const mine = ++generation.current;
+    setBusy(id);
+    try {
+      const res = await send();
+      if (!samePin(currentPin(), pin) || epoch2 !== currentAgentEpoch()) {
+        return host4.notify({ kind: "error", message: i18n.t("settings.agentChangedAfterSend", pin.profile) });
+      }
+      if (mine === generation.current) apply(res);
+    } catch (failure) {
+      if (samePin(currentPin(), pin)) host4.notify({ kind: "error", message: errorText(failure) });
+    } finally {
+      if (samePin(currentPin(), pin)) setBusy(null);
+    }
+  };
+  const saved = (message) => host4.notify({ kind: "success", message });
+  if (error) {
+    return /* @__PURE__ */ jsx4(ErrorState3, { description: errorText(error), title: t("settings.loadFailed"), children: /* @__PURE__ */ jsx4(Button4, { onClick: load, size: "xs", variant: "secondary", children: t("retry") }) });
+  }
+  if (!state) return /* @__PURE__ */ jsx4(Rows, { n: 3 });
+  const managed = (key) => state.managed.includes(key);
+  const managedNote = (key) => managed(key) ? /* @__PURE__ */ jsx4("div", { style: { ...muted, fontSize: 12, marginTop: 4 }, children: t("settings.managed") }) : void 0;
+  const locked = busy !== null;
+  const models = state.model && !state.models.some((m) => m.id === state.model) ? [...state.models, { id: state.model, display: state.model, deprecated: false }] : state.models;
+  const setModel = (value) => {
+    const model = value === DEFAULT_MODEL ? null : value;
+    if (model === state.model) return;
+    void write("model", () => postSettings({ model }), (res) => {
+      setState(res);
+      saved(pluginCtx().i18n.t("settings.modelSaved"));
+    });
+  };
+  const aliasVoice = voice ?? current ?? "";
+  const add = () => {
+    if (badAliasName(name)) return setBadName(true);
+    const typed = name.trim();
+    void write("add", () => addAlias(typed, aliasVoice.trim()), (res) => {
+      setState((s) => s && { ...s, aliases: res.aliases });
+      load();
+      setName("");
+      setVoice(null);
+      saved(pluginCtx().i18n.t(res.updated ? "settings.updated" : "settings.added", typed.toLowerCase()));
+    });
+  };
+  const remove = (alias) => void write(`remove:${alias}`, () => removeAlias(alias), (res) => {
+    setState((s) => s && { ...s, aliases: res.aliases });
+    load();
+    saved(pluginCtx().i18n.t("settings.removed", alias));
+  });
+  return /* @__PURE__ */ jsxs4("div", { children: [
+    /* @__PURE__ */ jsx4(Section, { title: t("settings.voiceSection"), children: /* @__PURE__ */ jsx4(
+      ListRow,
+      {
+        action: /* @__PURE__ */ jsxs4(Fragment3, { children: [
+          /* @__PURE__ */ jsx4(Button4, { disabled: managed("voice"), onClick: () => openTab("library"), size: "xs", variant: "secondary", children: t("settings.change") }),
+          current && /* @__PURE__ */ jsx4(
+            Button4,
+            {
+              disabled: managed("voice") || locked,
+              loading: busy === "reset",
+              onClick: () => void write("reset", () => postSettings({ voice: null }), (res) => {
+                setState(res);
+                saved(pluginCtx().i18n.t("settings.resetDone"));
+              }),
+              size: "xs",
+              variant: "ghost",
+              children: t("settings.reset")
+            }
+          )
+        ] }),
+        below: managedNote("voice"),
+        description: current ? /* @__PURE__ */ jsx4(VoiceTitle, { id: current, known: favouriteTitle(current), pin }) : t("settings.defaultVoice"),
+        title: t("settings.currentVoice")
+      }
+    ) }),
+    /* @__PURE__ */ jsx4(Section, { title: t("settings.modelSection"), children: /* @__PURE__ */ jsx4(
+      ListRow,
+      {
+        action: /* @__PURE__ */ jsx4("div", { style: { width: 220 }, children: /* @__PURE__ */ jsxs4(Select2, { disabled: managed("model") || locked, onValueChange: setModel, value: state.model ?? DEFAULT_MODEL, children: [
+          /* @__PURE__ */ jsx4(SelectTrigger2, { "aria-label": t("settings.model"), children: /* @__PURE__ */ jsx4(SelectValue2, {}) }),
+          /* @__PURE__ */ jsxs4(SelectContent2, { children: [
+            /* @__PURE__ */ jsx4(SelectItem2, { value: DEFAULT_MODEL, children: t("settings.defaultModel") }),
+            models.map((model) => /* @__PURE__ */ jsx4(SelectItem2, { value: model.id, children: model.display }, model.id))
+          ] })
+        ] }) }),
+        below: managedNote("model"),
+        description: t("settings.modelHint"),
+        title: t("settings.model")
+      }
+    ) }),
+    /* @__PURE__ */ jsxs4(Section, { title: t("settings.namesSection"), children: [
+      /* @__PURE__ */ jsx4("p", { style: { ...muted, fontSize: 12, lineHeight: 1.5, margin: "4px 0 0" }, children: t("settings.namesHint") }),
+      managedNote("aliases"),
+      state.aliases.length === 0 && /* @__PURE__ */ jsx4("p", { style: { ...muted, fontSize: 13, margin: "8px 0 0" }, children: t("settings.noNames") }),
+      state.aliases.map((alias, index) => /* @__PURE__ */ jsx4(
+        ListRow,
+        {
+          action: /* @__PURE__ */ jsx4(
+            Button4,
+            {
+              "aria-label": `${t("settings.remove")} ${alias.name}`,
+              disabled: managed("aliases") || locked,
+              loading: busy === `remove:${alias.name}`,
+              onClick: () => remove(alias.name),
+              size: "xs",
+              variant: "ghost",
+              children: t("settings.remove")
+            }
+          ),
+          description: /* @__PURE__ */ jsx4(VoiceTitle, { fetch: index < TITLE_FETCHES, id: alias.voice, known: favouriteTitle(alias.voice), pin }),
+          title: /* @__PURE__ */ jsx4("bdi", { children: alias.name })
+        },
+        alias.name
+      )),
+      /* @__PURE__ */ jsx4(
+        ListRow,
+        {
+          below: /* @__PURE__ */ jsxs4(Fragment3, { children: [
+            /* @__PURE__ */ jsxs4("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }, children: [
+              /* @__PURE__ */ jsx4("div", { style: { flex: "0 1 140px", minWidth: 110 }, children: /* @__PURE__ */ jsx4(
+                Input3,
+                {
+                  "aria-label": t("settings.name"),
+                  disabled: managed("aliases"),
+                  onChange: (e) => {
+                    setName(e.target.value);
+                    setBadName(false);
+                  },
+                  placeholder: t("settings.name"),
+                  style: control,
+                  value: name
+                }
+              ) }),
+              /* @__PURE__ */ jsx4("div", { style: { flex: "1 1 260px", maxWidth: 380, minWidth: 200 }, children: /* @__PURE__ */ jsx4(
+                Input3,
+                {
+                  "aria-label": t("settings.voice"),
+                  disabled: managed("aliases"),
+                  onChange: (e) => setVoice(e.target.value),
+                  placeholder: t("settings.voicePlaceholder"),
+                  style: control,
+                  value: aliasVoice
+                }
+              ) }),
+              /* @__PURE__ */ jsx4(
+                Button4,
+                {
+                  disabled: managed("aliases") || locked || !name.trim() || !aliasVoice.trim(),
+                  loading: busy === "add",
+                  onClick: add,
+                  size: "sm",
+                  style: { height: CONTROL_HEIGHT },
+                  children: t("settings.add")
+                }
+              )
+            ] }),
+            badName && /* @__PURE__ */ jsx4("div", { role: "alert", style: { color: "var(--ui-orange)", fontSize: 12, marginTop: 4 }, children: t("settings.badName") }),
+            favourites.length > 0 && !managed("aliases") && /* @__PURE__ */ jsxs4("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }, children: [
+              /* @__PURE__ */ jsx4("span", { style: { ...muted, fontSize: 12 }, children: t("favouritesOnly") }),
+              favourites.slice(0, 8).map((f) => /* @__PURE__ */ jsx4(Button4, { onClick: () => setVoice(f.id), size: "xs", variant: "ghost", children: /* @__PURE__ */ jsx4("bdi", { children: f.title }) }, f.id))
+            ] })
+          ] }),
+          title: t("settings.addName"),
+          wide: true
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs4(Section, { title: t("settings.linksSection"), children: [
+      /* @__PURE__ */ jsxs4("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }, children: [
+        /* @__PURE__ */ jsx4(Button4, { onClick: () => host4.navigate(PAGE_PATH), size: "xs", variant: "secondary", children: t("settings.voicesPage") }),
+        !operator && /* @__PURE__ */ jsxs4(Button4, { onClick: () => void pluginCtx().os.openExternal(LINKS.account), size: "xs", variant: "ghost", children: [
+          /* @__PURE__ */ jsx4(Codicon4, { name: "link-external" }),
+          t("settings.fishAccount")
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx4("p", { style: { ...muted, fontSize: 12, lineHeight: 1.5, margin: "8px 0 0" }, children: t("settings.agentSettingsNote") })
+    ] })
+  ] });
+}
+
 // src/desktop/locales/en.ts
 var agentName = (profile) => profile && profile !== "default" ? profile : en.thisAgent;
 var en = {
@@ -1025,7 +1333,41 @@ var en = {
   apiKeys: "API keys",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API credit",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "Restart this agent's gateway to finish updating Fish Audio.",
+    voicesPage: "Voices page",
+    voiceSection: "Voice",
+    currentVoice: "Current voice",
+    defaultVoice: "Fish default voice",
+    change: "Change",
+    reset: "Reset",
+    resetDone: "Voice reset to Fish's default",
+    modelSection: "Speech model",
+    model: "Model",
+    modelHint: "Used for this agent's voice replies.",
+    defaultModel: "Fish default",
+    modelSaved: "Speech model saved",
+    namesSection: "Voice names",
+    namesHint: "Use a name anywhere you'd type a voice id, for example /fish use narrator.",
+    noNames: "No names yet",
+    addName: "Add a name",
+    name: "Name",
+    voice: "Voice",
+    voicePlaceholder: "Voice id or saved name",
+    add: "Add",
+    remove: "Remove",
+    added: (name) => `Saved ${name}`,
+    updated: (name) => `Updated ${name}`,
+    removed: (name) => `Removed ${name}`,
+    badName: "Use 2\u201332 letters, digits, - or _, starting with a letter. Voice ids and the words add, remove, list, current and default are not allowed.",
+    linksSection: "Links",
+    fishAccount: "Fish Audio account",
+    agentSettingsNote: "API key, server address, streaming and transport are under Agent settings.",
+    managed: "Set by this agent's operator",
+    loadFailed: "Couldn't load settings",
+    agentChangedAfterSend: (profile) => `The selected agent changed before the answer arrived. The change was made for ${agentName(profile)}.`
+  }
 };
 function compact(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1145,7 +1487,41 @@ var zh = {
   apiKeys: "API \u5BC6\u94A5",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API \u989D\u5EA6",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "\u91CD\u542F\u6B64\u667A\u80FD\u4F53\u7684\u7F51\u5173\uFF0C\u4EE5\u5B8C\u6210 Fish Audio \u7684\u66F4\u65B0\u3002",
+    voicesPage: "\u58F0\u97F3\u9875\u9762",
+    voiceSection: "\u58F0\u97F3",
+    currentVoice: "\u5F53\u524D\u58F0\u97F3",
+    defaultVoice: "Fish \u9ED8\u8BA4\u58F0\u97F3",
+    change: "\u66F4\u6539",
+    reset: "\u91CD\u7F6E",
+    resetDone: "\u58F0\u97F3\u5DF2\u91CD\u7F6E\u4E3A Fish \u9ED8\u8BA4\u503C",
+    modelSection: "\u8BED\u97F3\u6A21\u578B",
+    model: "\u6A21\u578B",
+    modelHint: "\u7528\u4E8E\u6B64\u667A\u80FD\u4F53\u7684\u8BED\u97F3\u56DE\u590D\u3002",
+    defaultModel: "Fish \u9ED8\u8BA4",
+    modelSaved: "\u8BED\u97F3\u6A21\u578B\u5DF2\u4FDD\u5B58",
+    namesSection: "\u58F0\u97F3\u540D\u79F0",
+    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F93\u5165\u58F0\u97F3 ID \u7684\u5730\u65B9\u90FD\u53EF\u4EE5\u4F7F\u7528\u540D\u79F0\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
+    noNames: "\u8FD8\u6CA1\u6709\u540D\u79F0",
+    addName: "\u6DFB\u52A0\u540D\u79F0",
+    name: "\u540D\u79F0",
+    voice: "\u58F0\u97F3",
+    voicePlaceholder: "\u58F0\u97F3 ID \u6216\u5DF2\u4FDD\u5B58\u7684\u540D\u79F0",
+    add: "\u6DFB\u52A0",
+    remove: "\u79FB\u9664",
+    added: (name) => `\u5DF2\u4FDD\u5B58 ${name}`,
+    updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
+    removed: (name) => `\u5DF2\u79FB\u9664 ${name}`,
+    badName: "\u8BF7\u4F7F\u7528 2\u201332 \u4E2A\u5B57\u6BCD\u3001\u6570\u5B57\u3001- \u6216 _\uFF0C\u5E76\u4EE5\u5B57\u6BCD\u5F00\u5934\u3002\u4E0D\u80FD\u4F7F\u7528\u58F0\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
+    linksSection: "\u94FE\u63A5",
+    fishAccount: "Fish Audio \u8D26\u6237",
+    agentSettingsNote: "API \u5BC6\u94A5\u3001\u670D\u52A1\u5668\u5730\u5740\u3001\u6D41\u5F0F\u4F20\u8F93\u548C\u4F20\u8F93\u65B9\u5F0F\u4F4D\u4E8E\u201C\u667A\u80FD\u4F53\u8BBE\u7F6E\u201D\u4E2D\u3002",
+    managed: "\u7531\u6B64\u667A\u80FD\u4F53\u7684\u8FD0\u8425\u8005\u8BBE\u7F6E",
+    loadFailed: "\u65E0\u6CD5\u52A0\u8F7D\u8BBE\u7F6E",
+    agentChangedAfterSend: (profile) => `\u5728\u6536\u5230\u56DE\u590D\u524D\uFF0C\u6240\u9009\u667A\u80FD\u4F53\u5DF2\u66F4\u6539\u3002\u6B64\u66F4\u6539\u5DF2\u5E94\u7528\u4E8E${agentName2(profile)}\u3002`
+  }
 };
 function compact2(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1265,7 +1641,41 @@ var zhHant = {
   apiKeys: "API \u91D1\u9470",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API \u984D\u5EA6",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "\u91CD\u65B0\u555F\u52D5\u6B64\u4EE3\u7406\u7684\u9598\u9053\uFF0C\u4EE5\u5B8C\u6210 Fish Audio \u7684\u66F4\u65B0\u3002",
+    voicesPage: "\u8072\u97F3\u9801\u9762",
+    voiceSection: "\u8072\u97F3",
+    currentVoice: "\u76EE\u524D\u8072\u97F3",
+    defaultVoice: "Fish \u9810\u8A2D\u8072\u97F3",
+    change: "\u8B8A\u66F4",
+    reset: "\u91CD\u8A2D",
+    resetDone: "\u8072\u97F3\u5DF2\u91CD\u8A2D\u70BA Fish \u9810\u8A2D\u503C",
+    modelSection: "\u8A9E\u97F3\u6A21\u578B",
+    model: "\u6A21\u578B",
+    modelHint: "\u7528\u65BC\u6B64\u4EE3\u7406\u7684\u8A9E\u97F3\u56DE\u8986\u3002",
+    defaultModel: "Fish \u9810\u8A2D",
+    modelSaved: "\u8A9E\u97F3\u6A21\u578B\u5DF2\u5132\u5B58",
+    namesSection: "\u8072\u97F3\u540D\u7A31",
+    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F38\u5165\u8072\u97F3 ID \u7684\u5730\u65B9\u90FD\u80FD\u4F7F\u7528\u540D\u7A31\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
+    noNames: "\u5C1A\u7121\u540D\u7A31",
+    addName: "\u65B0\u589E\u540D\u7A31",
+    name: "\u540D\u7A31",
+    voice: "\u8072\u97F3",
+    voicePlaceholder: "\u8072\u97F3 ID \u6216\u5DF2\u5132\u5B58\u7684\u540D\u7A31",
+    add: "\u65B0\u589E",
+    remove: "\u79FB\u9664",
+    added: (name) => `\u5DF2\u5132\u5B58 ${name}`,
+    updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
+    removed: (name) => `\u5DF2\u79FB\u9664 ${name}`,
+    badName: "\u8ACB\u4F7F\u7528 2\u201332 \u500B\u5B57\u6BCD\u3001\u6578\u5B57\u3001- \u6216 _\uFF0C\u4E26\u4EE5\u5B57\u6BCD\u958B\u982D\u3002\u4E0D\u80FD\u4F7F\u7528\u8072\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
+    linksSection: "\u9023\u7D50",
+    fishAccount: "Fish Audio \u5E33\u6236",
+    agentSettingsNote: "API \u91D1\u9470\u3001\u4F3A\u670D\u5668\u4F4D\u5740\u3001\u4E32\u6D41\u548C\u50B3\u8F38\u65B9\u5F0F\u4F4D\u65BC\u300C\u4EE3\u7406\u7A0B\u5F0F\u8A2D\u5B9A\u300D\u4E2D\u3002",
+    managed: "\u7531\u6B64\u4EE3\u7406\u7684\u71DF\u904B\u8005\u8A2D\u5B9A",
+    loadFailed: "\u7121\u6CD5\u8F09\u5165\u8A2D\u5B9A",
+    agentChangedAfterSend: (profile) => `\u5728\u6536\u5230\u56DE\u8986\u524D\uFF0C\u6240\u9078\u4EE3\u7406\u5DF2\u8B8A\u66F4\u3002\u6B64\u8B8A\u66F4\u5DF2\u5957\u7528\u81F3${agentName3(profile)}\u3002`
+  }
 };
 function compact3(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1385,7 +1795,41 @@ var ja = {
   apiKeys: "API \u30AD\u30FC",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API \u30AF\u30EC\u30B8\u30C3\u30C8",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "Fish Audio \u306E\u66F4\u65B0\u3092\u5B8C\u4E86\u3059\u308B\u306B\u306F\u3001\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u3092\u518D\u8D77\u52D5\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+    voicesPage: "\u30DC\u30A4\u30B9\u30DA\u30FC\u30B8",
+    voiceSection: "\u30DC\u30A4\u30B9",
+    currentVoice: "\u73FE\u5728\u306E\u30DC\u30A4\u30B9",
+    defaultVoice: "Fish \u306E\u65E2\u5B9A\u306E\u30DC\u30A4\u30B9",
+    change: "\u5909\u66F4",
+    reset: "\u30EA\u30BB\u30C3\u30C8",
+    resetDone: "\u30DC\u30A4\u30B9\u3092 Fish \u306E\u65E2\u5B9A\u306B\u623B\u3057\u307E\u3057\u305F",
+    modelSection: "\u97F3\u58F0\u30E2\u30C7\u30EB",
+    model: "\u30E2\u30C7\u30EB",
+    modelHint: "\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u97F3\u58F0\u8FD4\u4FE1\u306B\u4F7F\u308F\u308C\u307E\u3059\u3002",
+    defaultModel: "Fish \u306E\u65E2\u5B9A",
+    modelSaved: "\u97F3\u58F0\u30E2\u30C7\u30EB\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F",
+    namesSection: "\u30DC\u30A4\u30B9\u540D",
+    namesHint: "\u30DC\u30A4\u30B9 ID \u3092\u5165\u529B\u3059\u308B\u5834\u6240\u306A\u3089\u3069\u3053\u3067\u3082\u540D\u524D\u3092\u4F7F\u3048\u307E\u3059\u3002\u4F8B\uFF1A/fish use narrator",
+    noNames: "\u307E\u3060\u540D\u524D\u306F\u3042\u308A\u307E\u305B\u3093",
+    addName: "\u540D\u524D\u3092\u8FFD\u52A0",
+    name: "\u540D\u524D",
+    voice: "\u30DC\u30A4\u30B9",
+    voicePlaceholder: "\u30DC\u30A4\u30B9 ID \u307E\u305F\u306F\u4FDD\u5B58\u3057\u305F\u540D\u524D",
+    add: "\u8FFD\u52A0",
+    remove: "\u524A\u9664",
+    added: (name) => `${name} \u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F`,
+    updated: (name) => `${name} \u3092\u66F4\u65B0\u3057\u307E\u3057\u305F`,
+    removed: (name) => `${name} \u3092\u524A\u9664\u3057\u307E\u3057\u305F`,
+    badName: "\u82F1\u5B57\u3067\u59CB\u307E\u308B 2\u301C32 \u6587\u5B57\u306E\u82F1\u6570\u5B57\u3001- \u307E\u305F\u306F _ \u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044\u3002\u30DC\u30A4\u30B9 ID \u3068 add\u3001remove\u3001list\u3001current\u3001default \u306F\u4F7F\u3048\u307E\u305B\u3093\u3002",
+    linksSection: "\u30EA\u30F3\u30AF",
+    fishAccount: "Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8",
+    agentSettingsNote: "API \u30AD\u30FC\u3001\u30B5\u30FC\u30D0\u30FC\u30A2\u30C9\u30EC\u30B9\u3001\u30B9\u30C8\u30EA\u30FC\u30DF\u30F3\u30B0\u3001\u8EE2\u9001\u65B9\u5F0F\u306F\u300C\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u8A2D\u5B9A\u300D\u306B\u3042\u308A\u307E\u3059\u3002",
+    managed: "\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u904B\u7528\u8005\u304C\u8A2D\u5B9A\u3057\u3066\u3044\u307E\u3059",
+    loadFailed: "\u8A2D\u5B9A\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F",
+    agentChangedAfterSend: (profile) => `\u5FDC\u7B54\u304C\u5C4A\u304F\u524D\u306B\u9078\u629E\u4E2D\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u304C\u5909\u66F4\u3055\u308C\u307E\u3057\u305F\u3002\u5909\u66F4\u306F${agentName4(profile)}\u306B\u9069\u7528\u3055\u308C\u3066\u3044\u307E\u3059\u3002`
+  }
 };
 function compact4(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1505,7 +1949,41 @@ var ar = {
   apiKeys: "\u0645\u0641\u0627\u062A\u064A\u062D API",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "\u0631\u0635\u064A\u062F API \u0644\u0640 Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "\u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0628\u0648\u0627\u0628\u0629 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0644\u0625\u0643\u0645\u0627\u0644 \u062A\u062D\u062F\u064A\u062B Fish Audio.",
+    voicesPage: "\u0635\u0641\u062D\u0629 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
+    voiceSection: "\u0627\u0644\u0635\u0648\u062A",
+    currentVoice: "\u0627\u0644\u0635\u0648\u062A \u0627\u0644\u062D\u0627\u0644\u064A",
+    defaultVoice: "\u0635\u0648\u062A Fish \u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636\u064A",
+    change: "\u062A\u063A\u064A\u064A\u0631",
+    reset: "\u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064A\u064A\u0646",
+    resetDone: "\u0623\u064F\u0639\u064A\u062F \u0627\u0644\u0635\u0648\u062A \u0625\u0644\u0649 \u0625\u0639\u062F\u0627\u062F Fish \u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636\u064A",
+    modelSection: "\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0643\u0644\u0627\u0645",
+    model: "\u0627\u0644\u0646\u0645\u0648\u0630\u062C",
+    modelHint: "\u064A\u064F\u0633\u062A\u062E\u062F\u0645 \u0644\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644.",
+    defaultModel: "\u0627\u0641\u062A\u0631\u0627\u0636\u064A Fish",
+    modelSaved: "\u062A\u0645 \u062D\u0641\u0638 \u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0643\u0644\u0627\u0645",
+    namesSection: "\u0623\u0633\u0645\u0627\u0621 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
+    namesHint: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0627\u0633\u0645 \u0641\u064A \u0623\u064A \u0645\u0643\u0627\u0646 \u062A\u0643\u062A\u0628 \u0641\u064A\u0647 \u0645\u0639\u0631\u0651\u0641 \u0635\u0648\u062A\u060C \u0645\u062B\u0644 /fish use narrator.",
+    noNames: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0633\u0645\u0627\u0621 \u0628\u0639\u062F",
+    addName: "\u0625\u0636\u0627\u0641\u0629 \u0627\u0633\u0645",
+    name: "\u0627\u0644\u0627\u0633\u0645",
+    voice: "\u0627\u0644\u0635\u0648\u062A",
+    voicePlaceholder: "\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0635\u0648\u062A \u0623\u0648 \u0627\u0633\u0645 \u0645\u062D\u0641\u0648\u0638",
+    add: "\u0625\u0636\u0627\u0641\u0629",
+    remove: "\u0625\u0632\u0627\u0644\u0629",
+    added: (name) => `\u062A\u0645 \u062D\u0641\u0638 ${name}`,
+    updated: (name) => `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B ${name}`,
+    removed: (name) => `\u062A\u0645\u062A \u0625\u0632\u0627\u0644\u0629 ${name}`,
+    badName: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0645\u0646 2 \u0625\u0644\u0649 32 \u062D\u0631\u0641\u064B\u0627 \u0644\u0627\u062A\u064A\u0646\u064A\u064B\u0627 \u0623\u0648 \u0631\u0642\u0645\u064B\u0627 \u0623\u0648 - \u0623\u0648 _\u060C \u0639\u0644\u0649 \u0623\u0646 \u064A\u0628\u062F\u0623 \u0628\u062D\u0631\u0641. \u0644\u0627 \u064A\u064F\u0633\u0645\u062D \u0628\u0645\u0639\u0631\u0651\u0641\u0627\u062A \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0648\u0644\u0627 \u0628\u0627\u0644\u0643\u0644\u0645\u0627\u062A add \u0648remove \u0648list \u0648current \u0648default.",
+    linksSection: "\u0631\u0648\u0627\u0628\u0637",
+    fishAccount: "\u062D\u0633\u0627\u0628 Fish Audio",
+    agentSettingsNote: "\u0645\u0641\u062A\u0627\u062D API \u0648\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062E\u0627\u062F\u0645 \u0648\u0627\u0644\u0628\u062B \u0648\u0637\u0631\u064A\u0642\u0629 \u0627\u0644\u0646\u0642\u0644 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \xAB\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0648\u0643\u064A\u0644\xBB.",
+    managed: "\u064A\u062D\u062F\u062F\u0647 \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644",
+    loadFailed: "\u062A\u0639\u0630\u0651\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A",
+    agentChangedAfterSend: (profile) => `\u062A\u063A\u064A\u0651\u0631 \u0627\u0644\u0648\u0643\u064A\u0644 \u0627\u0644\u0645\u062D\u062F\u062F \u0642\u0628\u0644 \u0648\u0635\u0648\u0644 \u0627\u0644\u0631\u062F. \u0637\u064F\u0628\u0651\u0642 \u0627\u0644\u062A\u063A\u064A\u064A\u0631 \u0639\u0644\u0649 ${agentName5(profile)}.`
+  }
 };
 function compact5(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1625,7 +2103,41 @@ var ru = {
   apiKeys: "API-\u043A\u043B\u044E\u0447\u0438",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "\u0411\u0430\u043B\u0430\u043D\u0441 API Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "\u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0448\u043B\u044E\u0437 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430, \u0447\u0442\u043E\u0431\u044B \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 Fish Audio.",
+    voicesPage: "\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
+    voiceSection: "\u0413\u043E\u043B\u043E\u0441",
+    currentVoice: "\u0422\u0435\u043A\u0443\u0449\u0438\u0439 \u0433\u043E\u043B\u043E\u0441",
+    defaultVoice: "\u0413\u043E\u043B\u043E\u0441 Fish \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E",
+    change: "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C",
+    reset: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C",
+    resetDone: "\u0413\u043E\u043B\u043E\u0441 \u0441\u0431\u0440\u043E\u0448\u0435\u043D \u0434\u043E \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F Fish \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E",
+    modelSection: "\u041C\u043E\u0434\u0435\u043B\u044C \u0440\u0435\u0447\u0438",
+    model: "\u041C\u043E\u0434\u0435\u043B\u044C",
+    modelHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u0442\u0441\u044F \u0434\u043B\u044F \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u044B\u0445 \u043E\u0442\u0432\u0435\u0442\u043E\u0432 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430.",
+    defaultModel: "\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E Fish",
+    modelSaved: "\u041C\u043E\u0434\u0435\u043B\u044C \u0440\u0435\u0447\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430",
+    namesSection: "\u0418\u043C\u0435\u043D\u0430 \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
+    namesHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u043C\u044F \u0432\u0435\u0437\u0434\u0435, \u0433\u0434\u0435 \u0432\u0432\u043E\u0434\u0438\u0442\u0435 ID \u0433\u043E\u043B\u043E\u0441\u0430, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 /fish use narrator.",
+    noNames: "\u0418\u043C\u0451\u043D \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
+    addName: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0438\u043C\u044F",
+    name: "\u0418\u043C\u044F",
+    voice: "\u0413\u043E\u043B\u043E\u0441",
+    voicePlaceholder: "ID \u0433\u043E\u043B\u043E\u0441\u0430 \u0438\u043B\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u0435 \u0438\u043C\u044F",
+    add: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C",
+    remove: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+    added: (name) => `\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E: ${name}`,
+    updated: (name) => `\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${name}`,
+    removed: (name) => `\u0423\u0434\u0430\u043B\u0435\u043D\u043E: ${name}`,
+    badName: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u043E\u0442 2 \u0434\u043E 32 \u043B\u0430\u0442\u0438\u043D\u0441\u043A\u0438\u0445 \u0431\u0443\u043A\u0432, \u0446\u0438\u0444\u0440, - \u0438\u043B\u0438 _, \u043D\u0430\u0447\u0438\u043D\u0430\u044F \u0441 \u0431\u0443\u043A\u0432\u044B. ID \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u0438 \u0441\u043B\u043E\u0432\u0430 add, remove, list, current \u0438 default \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A\u0430\u044E\u0442\u0441\u044F.",
+    linksSection: "\u0421\u0441\u044B\u043B\u043A\u0438",
+    fishAccount: "\u0410\u043A\u043A\u0430\u0443\u043D\u0442 Fish Audio",
+    agentSettingsNote: "API-\u043A\u043B\u044E\u0447, \u0430\u0434\u0440\u0435\u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430, \u043F\u043E\u0442\u043E\u043A\u043E\u0432\u0430\u044F \u043F\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0438 \u0442\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442 \u043D\u0430\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0430\u0433\u0435\u043D\u0442\u0430\xBB.",
+    managed: "\u0417\u0430\u0434\u0430\u043D\u043E \u043E\u043F\u0435\u0440\u0430\u0442\u043E\u0440\u043E\u043C \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430",
+    loadFailed: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438",
+    agentChangedAfterSend: (profile) => `\u0412\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0430\u0433\u0435\u043D\u0442 \u0438\u0437\u043C\u0435\u043D\u0438\u043B\u0441\u044F \u0434\u043E \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u044F \u043E\u0442\u0432\u0435\u0442\u0430. \u0418\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u0435 \u043F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u043E \u0434\u043B\u044F ${agentName6(profile)}.`
+  }
 };
 function compact6(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1745,7 +2257,41 @@ var fr = {
   apiKeys: "Cl\xE9s API",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Cr\xE9dit API Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "Red\xE9marrez la passerelle de cet agent pour terminer la mise \xE0 jour de Fish Audio.",
+    voicesPage: "Page Voix",
+    voiceSection: "Voix",
+    currentVoice: "Voix actuelle",
+    defaultVoice: "Voix par d\xE9faut de Fish",
+    change: "Changer",
+    reset: "R\xE9initialiser",
+    resetDone: "Voix r\xE9initialis\xE9e sur la valeur par d\xE9faut de Fish",
+    modelSection: "Mod\xE8le vocal",
+    model: "Mod\xE8le",
+    modelHint: "Utilis\xE9 pour les r\xE9ponses vocales de cet agent.",
+    defaultModel: "Par d\xE9faut de Fish",
+    modelSaved: "Mod\xE8le vocal enregistr\xE9",
+    namesSection: "Noms de voix",
+    namesHint: "Utilisez un nom partout o\xF9 vous saisiriez un identifiant de voix, par exemple /fish use narrator.",
+    noNames: "Aucun nom pour le moment",
+    addName: "Ajouter un nom",
+    name: "Nom",
+    voice: "Voix",
+    voicePlaceholder: "Identifiant de voix ou nom enregistr\xE9",
+    add: "Ajouter",
+    remove: "Retirer",
+    added: (name) => `${name} enregistr\xE9`,
+    updated: (name) => `${name} mis \xE0 jour`,
+    removed: (name) => `${name} retir\xE9`,
+    badName: "Utilisez 2 \xE0 32 lettres latines, chiffres, - ou _, en commen\xE7ant par une lettre. Les identifiants de voix et les mots add, remove, list, current et default ne sont pas autoris\xE9s.",
+    linksSection: "Liens",
+    fishAccount: "Compte Fish Audio",
+    agentSettingsNote: "La cl\xE9 API, l\u2019adresse du serveur, le streaming et le transport se trouvent dans R\xE9glages de l\u2019agent.",
+    managed: "D\xE9fini par l\u2019op\xE9rateur de cet agent",
+    loadFailed: "Impossible de charger les r\xE9glages",
+    agentChangedAfterSend: (profile) => `L\u2019agent s\xE9lectionn\xE9 a chang\xE9 avant la r\xE9ponse. La modification a \xE9t\xE9 appliqu\xE9e \xE0 ${agentName7(profile)}.`
+  }
 };
 function compact7(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1865,7 +2411,41 @@ var de = {
   apiKeys: "API-Schl\xFCssel",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Fish Audio API-Guthaben",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "Starten Sie das Gateway dieses Agenten neu, um das Update von Fish Audio abzuschlie\xDFen.",
+    voicesPage: "Seite \u201EStimmen\u201C",
+    voiceSection: "Stimme",
+    currentVoice: "Aktuelle Stimme",
+    defaultVoice: "Fish-Standardstimme",
+    change: "\xC4ndern",
+    reset: "Zur\xFCcksetzen",
+    resetDone: "Stimme auf den Fish-Standard zur\xFCckgesetzt",
+    modelSection: "Sprachmodell",
+    model: "Modell",
+    modelHint: "Wird f\xFCr die Sprachantworten dieses Agenten verwendet.",
+    defaultModel: "Fish-Standard",
+    modelSaved: "Sprachmodell gespeichert",
+    namesSection: "Stimmennamen",
+    namesHint: "Verwenden Sie einen Namen \xFCberall dort, wo Sie eine Stimmen-ID eingeben w\xFCrden, zum Beispiel /fish use narrator.",
+    noNames: "Noch keine Namen",
+    addName: "Namen hinzuf\xFCgen",
+    name: "Name",
+    voice: "Stimme",
+    voicePlaceholder: "Stimmen-ID oder gespeicherter Name",
+    add: "Hinzuf\xFCgen",
+    remove: "Entfernen",
+    added: (name) => `${name} gespeichert`,
+    updated: (name) => `${name} aktualisiert`,
+    removed: (name) => `${name} entfernt`,
+    badName: "Verwenden Sie 2\u201332 lateinische Buchstaben, Ziffern, - oder _, beginnend mit einem Buchstaben. Stimmen-IDs und die W\xF6rter add, remove, list, current und default sind nicht erlaubt.",
+    linksSection: "Links",
+    fishAccount: "Fish Audio-Konto",
+    agentSettingsNote: "API-Schl\xFCssel, Serveradresse, Streaming und Transport finden Sie unter Agent-Einstellungen.",
+    managed: "Vom Betreiber dieses Agenten festgelegt",
+    loadFailed: "Einstellungen konnten nicht geladen werden",
+    agentChangedAfterSend: (profile) => `Der ausgew\xE4hlte Agent hat sich vor der Antwort ge\xE4ndert. Die \xC4nderung wurde f\xFCr ${agentName8(profile)} \xFCbernommen.`
+  }
 };
 function compact8(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
@@ -1985,25 +2565,59 @@ var es = {
   apiKeys: "Claves API",
   chip: (credit) => `Fish ${credit}`,
   chipTip: "Cr\xE9dito API de Fish Audio",
-  usd: (value) => `$${Number(value).toFixed(2)}`
+  usd: (value) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "Reinicia la pasarela de este agente para terminar de actualizar Fish Audio.",
+    voicesPage: "P\xE1gina de voces",
+    voiceSection: "Voz",
+    currentVoice: "Voz actual",
+    defaultVoice: "Voz predeterminada de Fish",
+    change: "Cambiar",
+    reset: "Restablecer",
+    resetDone: "Voz restablecida a la predeterminada de Fish",
+    modelSection: "Modelo de voz",
+    model: "Modelo",
+    modelHint: "Se usa para las respuestas de voz de este agente.",
+    defaultModel: "Predeterminado de Fish",
+    modelSaved: "Modelo de voz guardado",
+    namesSection: "Nombres de voces",
+    namesHint: "Usa un nombre en cualquier lugar donde escribir\xEDas un ID de voz, por ejemplo /fish use narrator.",
+    noNames: "A\xFAn no hay nombres",
+    addName: "A\xF1adir un nombre",
+    name: "Nombre",
+    voice: "Voz",
+    voicePlaceholder: "ID de voz o nombre guardado",
+    add: "A\xF1adir",
+    remove: "Quitar",
+    added: (name) => `${name} guardado`,
+    updated: (name) => `${name} actualizado`,
+    removed: (name) => `${name} quitado`,
+    badName: "Usa de 2 a 32 letras latinas, d\xEDgitos, - o _, empezando por una letra. No se permiten IDs de voz ni las palabras add, remove, list, current y default.",
+    linksSection: "Enlaces",
+    fishAccount: "Cuenta de Fish Audio",
+    agentSettingsNote: "La clave de API, la direcci\xF3n del servidor, el streaming y el transporte est\xE1n en Ajustes del agente.",
+    managed: "Lo define el operador de este agente",
+    loadFailed: "No se pudieron cargar los ajustes",
+    agentChangedAfterSend: (profile) => `El agente seleccionado cambi\xF3 antes de que llegara la respuesta. El cambio se aplic\xF3 a ${agentName9(profile)}.`
+  }
 };
 function compact9(n) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n);
 }
 
 // src/desktop/plugin.tsx
-import { jsx as jsx4 } from "react/jsx-runtime";
+import { jsx as jsx5 } from "react/jsx-runtime";
 var PROBE_INTERVAL_MS = 6e4;
 var ACCOUNT_REFRESH_MS = 5 * 6e4;
 function openTab(tab) {
   $tab.set(tab);
-  host4.navigate(PAGE_PATH);
+  host5.navigate(PAGE_PATH);
 }
 function CreditChip() {
-  const t = usePluginI18n5(PLUGIN_ID);
-  const account = useValue4($account);
+  const t = usePluginI18n6(PLUGIN_ID);
+  const account = useValue5($account);
   if (!account) return null;
-  return /* @__PURE__ */ jsx4(
+  return /* @__PURE__ */ jsx5(
     "button",
     {
       "aria-label": t("chipTip"),
@@ -2061,7 +2675,7 @@ function registerAvailabilityGate(ctx) {
     }
     if (available && account && !accountRemovers) {
       accountRemovers = [
-        ctx.register({ id: "credit", area: STATUSBAR_AREAS.right, order: 70, render: () => /* @__PURE__ */ jsx4(CreditChip, {}) }),
+        ctx.register({ id: "credit", area: STATUSBAR_AREAS.right, order: 70, render: () => /* @__PURE__ */ jsx5(CreditChip, {}) }),
         ctx.register({
           id: "palette-account",
           area: PALETTE_AREA,
@@ -2127,7 +2741,7 @@ function registerAvailabilityGate(ctx) {
     );
   };
   void probe(true);
-  ctx.setInterval(() => void probe(), PROBE_INTERVAL_MS);
+  const stopInterval = ctx.setInterval(() => void probe(), PROBE_INTERVAL_MS);
   const onAgentChange = () => {
     if (disposed) return;
     endAgentOperations();
@@ -2139,35 +2753,63 @@ function registerAvailabilityGate(ctx) {
     show(false);
     void probe(true);
   };
-  const stops = [host4.state.profile.listen(onAgentChange), host4.state.connectionId.listen(onAgentChange), ctx.i18n.onLocaleChange(() => {
+  const stops = [host5.state.profile.listen(onAgentChange), host5.state.connectionId.listen(onAgentChange), ctx.i18n.onLocaleChange(() => {
     if (disposed || !removers) return;
     const accountShown = accountRemovers !== null;
     show(false);
     show(true, accountShown);
-  })];
-  ctx.onDispose(() => {
+  }), stopInterval];
+  const end = (hide = false) => {
+    if (disposed) return;
+    if (hide) show(false);
     disposed = true;
     cancelRetry?.();
     stops.forEach((stop2) => stop2());
-  });
-  return { probe };
+  };
+  ctx.onDispose(() => end());
+  return { probe, end };
 }
+function registerSettingsPage(ctx) {
+  const remove = ctx.registerSettingsPage?.({ id: "fish-audio", title: "Fish Audio", icon: "unmute", render: () => /* @__PURE__ */ jsx5(SettingsPage, {}) });
+  if (!remove) return () => void 0;
+  let disposed = false;
+  const end = () => {
+    if (disposed) return;
+    disposed = true;
+    remove();
+  };
+  ctx.onDispose(end);
+  return end;
+}
+var deactivate;
 var plugin = {
   id: PLUGIN_ID,
   name: "Fish Audio",
   description: "A Voices page for Fish Audio: search and preview the voice library, use a voice, clone or design voices, and see your account.",
   register(ctx) {
+    deactivate?.();
     ctx.i18n.register({ en, zh, "zh-hant": zhHant, ja, ar, ru, fr, de, es });
     bindContext(ctx);
     ctx.register({
       id: "page",
       area: ROUTES_AREA,
       data: { path: PAGE_PATH },
-      render: () => /* @__PURE__ */ jsx4(VoicesPage, {})
+      render: () => /* @__PURE__ */ jsx5(VoicesPage, {})
     });
-    setRefresher(registerAvailabilityGate(ctx).probe);
+    const endPage = registerSettingsPage(ctx);
+    const gate = registerAvailabilityGate(ctx);
+    setRefresher(gate.probe);
     ctx.onDispose(releasePlayback);
     ctx.onDispose(endAgentOperations);
+    const mine = () => {
+      endPage();
+      gate.end(true);
+      endAgentOperations();
+    };
+    deactivate = mine;
+    ctx.onDispose(() => {
+      if (deactivate === mine) deactivate = void 0;
+    });
   }
 };
 var plugin_default = plugin;
@@ -2177,5 +2819,6 @@ export {
   plugin_default as default,
   isNotFoundError,
   openTab,
-  registerAvailabilityGate
+  registerAvailabilityGate,
+  registerSettingsPage
 };

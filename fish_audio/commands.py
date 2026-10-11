@@ -9,7 +9,7 @@ from .secrets import fish_api_key, redact
 from .tool_support import require, voice_id, ToolInputError
 
 _LOCK = threading.RLock()
-HELP = "/fish status · voices [query] · use <id> · model <id> · preview <id> [text] (billed) · balance · help"
+HELP = "/fish status · voices [query] · use <id or name> · model <id> · preview <id or name> [text] (billed) · alias [list] · alias add <name> <voice id or name> · alias remove <name> · balance · help"
 NO_KEY = ("Fish Audio isn't set up for this profile yet. Get a key at https://fish.audio/app/api-keys, then finish "
           "setup in the Desktop app (Settings ▸ Plugins ▸ Fish Audio; Capabilities ▸ Plugins on older Desktop) or run `hermes fish login` on the machine running Hermes. "
           "For safety, never paste API keys into chat.")
@@ -89,12 +89,8 @@ def use_message(provider, by_operator):
 def use_result(ident, key, base):
     """Saves the voice. Returns the non-Fish TTS provider still speaking (None when Fish speaks) and whether its operator pinned it."""
     require(voice_id(ident), "Use a valid Fish Audio voice id.")
-    try:
-        client.get_json(f"/model/{ident}", {}, key, base)
-    except FishAudioError as exc:
-        if exc.status in {400, 404}:
-            raise response_error(exc.status, body=b'{"code":"voice_not_found"}', key=key) from None
-        raise
+    require_unmanaged("voice")
+    verify_voice(ident, key, base)
     # A managed layer (such as the evaOS overlay) may pin the provider this profile's config.yaml leaves unset;
     # Use never competes with it. The merged config can't tell: Hermes's own default ("edge") is always there.
     pinned = _managed_provider()
@@ -108,6 +104,70 @@ def use_result(ident, key, base):
     if "fishaudio" in provider.casefold() or "fish-audio" in provider.casefold():
         return None, False
     return provider, bool(pinned) and settings.operator_account()
+
+
+class WriteRefusal(ToolInputError):
+    def __init__(self, kind, message):
+        super().__init__(message)
+        self.kind = kind
+
+
+def require_unmanaged(leaf):
+    if settings.managed_leaf("tts", "fish-audio", leaf):
+        raise WriteRefusal("managed", "This setting is set by the operator of this agent.")
+
+
+def verify_voice(ident, key, base):
+    try:
+        client.get_json(f"/model/{ident}", {}, key, base)
+    except FishAudioError as exc:
+        if exc.status in {400, 404}:
+            raise response_error(exc.status, body=b'{"code":"voice_not_found"}', key=key) from None
+        raise
+
+
+def _write_alias(name, ident):
+    """Adds (ident) or removes (None) one name in the raw config mapping. Entries that settings.aliases() skips, such as a
+    hand-edited name that breaks the rules, stay as they are."""
+    def change(cfg):
+        nested = cfg.setdefault("tts", {}).setdefault("fish-audio", {})
+        raw = nested.get("aliases") if isinstance(nested.get("aliases"), dict) else {}
+        raw = {k: v for k, v in raw.items() if not (isinstance(k, str) and k.strip().casefold() == name)}
+        if ident is not None:
+            raw[name] = ident
+        nested["aliases"] = raw
+    write_config(change)
+
+
+def alias_add(name, voice, key, base):
+    name = settings.alias_name(name)
+    require_unmanaged("aliases")
+    ident = settings.resolve_voice(voice)
+    require(ident is not None, settings.UNKNOWN_VOICE)
+    require(re.fullmatch(r"[0-9a-f]{32}", ident), "A saved name must point to a 32-hex voice id.")
+    verify_voice(ident, key, base)
+    with _LOCK:
+        saved = settings.aliases()
+        updated = name in saved
+        if not updated and len(saved) >= settings.MAX_ALIASES:
+            raise WriteRefusal("limit", "At most 50 voice names can be saved per profile.")
+        saved[name] = ident
+        _write_alias(name, ident)
+    return saved, updated
+
+
+def alias_remove(name):
+    require_unmanaged("aliases")
+    if not isinstance(name, str) or name.strip().casefold() not in settings.aliases():
+        raise WriteRefusal("not_found", "No saved voice name found.")
+    name = name.strip().casefold()
+    with _LOCK:
+        saved = settings.aliases()
+        if name not in saved:
+            raise WriteRefusal("not_found", "No saved voice name found.")
+        del saved[name]
+        _write_alias(name, None)
+    return saved
 
 
 def handle(raw_args=""):
@@ -133,9 +193,24 @@ def handle(raw_args=""):
             return "\n".join(f"{v['id']} · {v['title']} · {', '.join(v['languages'])}" for v in result["items"]) + \
                 "\nUse one: /fish use <id>. Browse more: https://fish.audio/discovery"
         if command == "use":
-            return use(rest.strip(), key, base)
+            ident = settings.resolve_voice(rest.strip())
+            require(ident is not None, settings.UNKNOWN_VOICE)
+            return use(ident, key, base)
+        if command == "alias":
+            action, _, args = rest.strip().partition(" ")
+            if action in {"", "list"}:
+                return "\n".join(f"{n} · {v}" for n, v in sorted(settings.aliases().items())) or "No saved voice names yet. Add one: /fish alias add <name> <voice id>"
+            if action == "add":
+                name, _, voice = args.partition(" ")
+                _, updated = alias_add(name, voice.strip(), key, base)
+                return "Updated." if updated else "Saved."
+            if action == "remove":
+                alias_remove(args)
+                return "Removed."
+            return HELP
         if command == "model":
             require(rest in MODEL_IDS, "Unknown Fish model. Choose: " + ", ".join(sorted(MODEL_IDS)))
+            require_unmanaged("model")
             write_config(lambda cfg: cfg.setdefault("tts", {}).setdefault("fish-audio", {}).__setitem__("model", rest))
             model, _ = settings.resolve_model(rest, key=key, base_url=base)
             if rest == "s2.1-pro-free" and model != rest:
@@ -145,6 +220,8 @@ def handle(raw_args=""):
             return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" and not settings.operator_account() else "")
         if command == "preview":
             ident, _, text = rest.partition(" ")
+            ident = settings.resolve_voice(ident)
+            require(ident is not None, settings.UNKNOWN_VOICE)
             text = text or "Hi! This is how I sound."
             require(len(text) <= 200, "Preview text must be 200 characters or fewer.")
             result = tools._speak({"text": text, "voice": ident}, key, base, "", record_media=False)

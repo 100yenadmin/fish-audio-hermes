@@ -8,7 +8,7 @@ from .tool_support import require, voice_id, run
 
 BILLING = " Calls are billed to the user's Fish Audio account."
 SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio emotion cues like [excited] "
-                     "or [whispering]. For plain read-aloud use text_to_speech." + BILLING)
+                     "or [whispering]. Voices accept saved names. For plain read-aloud use text_to_speech." + BILLING)
 
 
 def _speak(args, key, base, session, *, record_media=True):
@@ -21,13 +21,16 @@ def _speak(args, key, base, session, *, record_media=True):
     nested = settings._mapping(settings._mapping(settings._config().get("tts")).get("fish-audio"))
     voice = args.get("voice")
     if voice is not None:
-        require(voice_id(voice), "Use a valid Fish Audio voice id.")
+        voice = settings.resolve_voice(voice)
+        require(voice is not None, settings.UNKNOWN_VOICE)
     else:
         voice = nested.get("voice") if voice_id(nested.get("voice")) else None
     if "speakers" in args:
         speakers = args["speakers"]
-        require(isinstance(speakers, list) and 2 <= len(speakers) <= 4 and all(voice_id(v) for v in speakers),
-                "speakers must contain 2–4 Fish Audio voice ids.")
+        require(isinstance(speakers, list) and 2 <= len(speakers) <= 4,
+                "speakers must contain 2–4 voice ids or saved names.")
+        speakers = [settings.resolve_voice(v) for v in speakers]
+        require(all(v is not None for v in speakers), settings.UNKNOWN_VOICE)
         require(row["multi_speaker"], "Multi-speaker speech is supported by: " +
                 ", ".join(r["id"] for r in MODELS if r["multi_speaker"]))
         voice = speakers
@@ -107,10 +110,11 @@ S = _field("string")
 B = _field("boolean")
 STRINGS = _field("array", items=S)
 VOICE = _field("string", pattern="^[A-Za-z0-9_-]{8,128}$")
+VOICE_REF = _field("string", pattern="^[A-Za-z0-9_-]{2,128}$", description="voice id or saved name")
 SCHEMAS = {
-    "fish_speak": {"text": S, "voice": VOICE, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
+    "fish_speak": {"text": S, "voice": VOICE_REF, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
-        "speakers": _field("array", items=VOICE, minItems=2, maxItems=4),
+        "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
         "pronunciations": _field("object", additionalProperties=S, maxProperties=200)},
     "fish_voices": {"action": _field("string", enum=["search", "mine", "get", "clone", "design", "save", "update", "delete"]),

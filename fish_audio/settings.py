@@ -54,6 +54,58 @@ def _config():
         return {}
 
 
+ALIAS_RE = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
+RESERVED = {"add", "remove", "list", "current", "default"}
+MAX_ALIASES = 50
+UNKNOWN_VOICE = "Unknown voice or name. See `/fish alias`."
+
+
+def alias_name(raw) -> str:
+    from .tool_support import ToolInputError
+    name = raw.strip().casefold() if isinstance(raw, str) else ""
+    if not ALIAS_RE.fullmatch(name) or name in RESERVED or re.fullmatch(r"[0-9a-f]{32}", name):
+        raise ToolInputError("Use a name of 2–32 letters, digits, underscores or hyphens, starting with a letter; reserved words and voice ids cannot be names.")
+    return name
+
+
+def aliases() -> dict[str, str]:
+    from .tool_support import ToolInputError
+    saved = _mapping(_mapping(_mapping(_config().get("tts")).get("fish-audio")).get("aliases"))
+    result = {}
+    for raw, voice in saved.items():
+        try:
+            name = alias_name(raw)
+        except ToolInputError:
+            continue
+        if isinstance(voice, str) and re.fullmatch(r"[0-9a-f]{32}", voice):
+            result[name] = voice
+    return result
+
+
+def resolve_voice(value) -> str | None:
+    if not isinstance(value, str):
+        return None
+    if re.fullmatch(r"[0-9a-f]{32}", value):
+        return value
+    saved = aliases().get(value.strip().casefold())
+    return saved or (value if re.fullmatch(r"[A-Za-z0-9_-]{8,128}", value) else None)
+
+
+def managed_leaf(*path) -> bool:
+    try:
+        from hermes_cli.managed_scope import load_managed_config
+        node = root = load_managed_config()
+        for part in path:
+            if not isinstance(node, dict) or (node is not root and not node):
+                return True  # Hermes core treats a scalar or an empty mapping as a managed leaf.
+            if part not in node:
+                return False
+            node = node[part]
+        return True
+    except Exception:
+        return False
+
+
 def _warn(key):
     if key not in _warned:
         _warned.add(key)

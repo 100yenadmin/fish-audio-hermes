@@ -181,6 +181,10 @@ export const SearchField = ({ value, onChange, placeholder, 'aria-label': label 
 export const Checkbox = ({ checked, onCheckedChange, 'aria-label': label }: any) =>
   createElement('input', { type: 'checkbox', 'aria-label': label, checked: Boolean(checked), onChange: () => onCheckedChange?.(!checked) })
 export const Input = passthrough('input')
+// ListRow: the settings row (label and description, control beside it, extra content below).
+export const ListRow = ({ title, description, action, below }: any) =>
+  createElement('div', { 'data-row': '' }, createElement('div', null, title), description ? createElement('div', null, description) : null,
+    below, action)
 export const Skeleton = passthrough('div')
 export const Streamdown = ({ children }: { children?: ReactNode }) => createElement('div', { 'data-testid': 'md' }, children)
 export const Textarea = passthrough('textarea')
@@ -194,13 +198,16 @@ export const DialogHeader = passthrough('div')
 export const DialogFooter = passthrough('div')
 export const DialogTitle = passthrough('h2')
 // Select: every item is a clickable option that reports its value to the Select's onValueChange.
-const SelectCtx = createContext<{ value?: string; onValueChange?: (value: string) => void }>({})
-export const Select = ({ value, onValueChange, children }: any) =>
-  createElement(SelectCtx.Provider, { value: { value, onValueChange } }, createElement('div', { 'data-select': value }, children))
+// A disabled Select ignores clicks on its items, like the real one ignores its trigger.
+const SelectCtx = createContext<{ value?: string; onValueChange?: (value: string) => void; disabled?: boolean }>({})
+export const Select = ({ value, onValueChange, disabled, children }: any) =>
+  createElement(SelectCtx.Provider, { value: { value, onValueChange, disabled } },
+    createElement('div', { 'data-select': value, 'data-disabled': disabled ? '' : undefined }, children))
 export const SelectContent = passthrough('div')
 export const SelectItem = ({ value, children }: any) => {
   const ctx = useContext(SelectCtx)
-  return createElement('div', { role: 'option', 'aria-selected': ctx.value === value, onClick: () => ctx.onValueChange?.(value) }, children)
+  return createElement('div', { role: 'option', 'aria-selected': ctx.value === value, 'aria-disabled': ctx.disabled || undefined,
+    onClick: () => !ctx.disabled && ctx.onValueChange?.(value) }, children)
 }
 export const SelectTrigger = passthrough('div')
 export const SelectValue = passthrough('span')
@@ -242,7 +249,13 @@ export function createTestContext(options: TestContextOptions = {}) {
       timeouts.push(timer)
       return () => { timer.cancelled = true }
     },
-    setInterval: (fn: () => void) => (intervals.push(fn), () => undefined),
+    setInterval: (fn: () => void) => {
+      intervals.push(fn)
+      return () => {
+        const index = intervals.indexOf(fn)
+        if (index >= 0) intervals.splice(index, 1)
+      }
+    },
     rest: options.rest ?? (async () => ({ ok: true })),
     os: { writeClipboard: async (_text: string) => true, openExternal: async () => true },
     storage: {

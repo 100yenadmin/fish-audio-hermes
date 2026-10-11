@@ -121,7 +121,41 @@ export const en = {
   apiKeys: 'API keys',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API credit',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: "Restart this agent's gateway to finish updating Fish Audio.",
+    voicesPage: 'Voices page',
+    voiceSection: 'Voice',
+    currentVoice: 'Current voice',
+    defaultVoice: 'Fish default voice',
+    change: 'Change',
+    reset: 'Reset',
+    resetDone: "Voice reset to Fish's default",
+    modelSection: 'Speech model',
+    model: 'Model',
+    modelHint: "Used for this agent's voice replies.",
+    defaultModel: 'Fish default',
+    modelSaved: 'Speech model saved',
+    namesSection: 'Voice names',
+    namesHint: "Use a name anywhere you'd type a voice id, for example /fish use narrator.",
+    noNames: 'No names yet',
+    addName: 'Add a name',
+    name: 'Name',
+    voice: 'Voice',
+    voicePlaceholder: 'Voice id or saved name',
+    add: 'Add',
+    remove: 'Remove',
+    added: (name: string) => `Saved ${name}`,
+    updated: (name: string) => `Updated ${name}`,
+    removed: (name: string) => `Removed ${name}`,
+    badName: 'Use 2–32 letters, digits, - or _, starting with a letter. Voice ids and the words add, remove, list, current and default are not allowed.',
+    linksSection: 'Links',
+    fishAccount: 'Fish Audio account',
+    agentSettingsNote: 'API key, server address, streaming and transport are under Agent settings.',
+    managed: "Set by this agent's operator",
+    loadFailed: "Couldn't load settings",
+    agentChangedAfterSend: (profile: string) => `The selected agent changed before the answer arrived. The change was made for ${agentName(profile)}.`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

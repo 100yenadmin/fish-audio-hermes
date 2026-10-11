@@ -116,7 +116,41 @@ export const es = {
   apiKeys: 'Claves API',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Crédito API de Fish Audio',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: 'Reinicia la pasarela de este agente para terminar de actualizar Fish Audio.',
+    voicesPage: 'Página de voces',
+    voiceSection: 'Voz',
+    currentVoice: 'Voz actual',
+    defaultVoice: 'Voz predeterminada de Fish',
+    change: 'Cambiar',
+    reset: 'Restablecer',
+    resetDone: 'Voz restablecida a la predeterminada de Fish',
+    modelSection: 'Modelo de voz',
+    model: 'Modelo',
+    modelHint: 'Se usa para las respuestas de voz de este agente.',
+    defaultModel: 'Predeterminado de Fish',
+    modelSaved: 'Modelo de voz guardado',
+    namesSection: 'Nombres de voces',
+    namesHint: 'Usa un nombre en cualquier lugar donde escribirías un ID de voz, por ejemplo /fish use narrator.',
+    noNames: 'Aún no hay nombres',
+    addName: 'Añadir un nombre',
+    name: 'Nombre',
+    voice: 'Voz',
+    voicePlaceholder: 'ID de voz o nombre guardado',
+    add: 'Añadir',
+    remove: 'Quitar',
+    added: (name: string) => `${name} guardado`,
+    updated: (name: string) => `${name} actualizado`,
+    removed: (name: string) => `${name} quitado`,
+    badName: 'Usa de 2 a 32 letras latinas, dígitos, - o _, empezando por una letra. No se permiten IDs de voz ni las palabras add, remove, list, current y default.',
+    linksSection: 'Enlaces',
+    fishAccount: 'Cuenta de Fish Audio',
+    agentSettingsNote: 'La clave de API, la dirección del servidor, el streaming y el transporte están en Ajustes del agente.',
+    managed: 'Lo define el operador de este agente',
+    loadFailed: 'No se pudieron cargar los ajustes',
+    agentChangedAfterSend: (profile: string) => `El agente seleccionado cambió antes de que llegara la respuesta. El cambio se aplicó a ${agentName(profile)}.`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

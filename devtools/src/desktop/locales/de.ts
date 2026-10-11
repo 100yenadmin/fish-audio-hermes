@@ -116,7 +116,41 @@ export const de = {
   apiKeys: 'API-Schlüssel',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Fish Audio API-Guthaben',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: 'Starten Sie das Gateway dieses Agenten neu, um das Update von Fish Audio abzuschließen.',
+    voicesPage: 'Seite „Stimmen“',
+    voiceSection: 'Stimme',
+    currentVoice: 'Aktuelle Stimme',
+    defaultVoice: 'Fish-Standardstimme',
+    change: 'Ändern',
+    reset: 'Zurücksetzen',
+    resetDone: 'Stimme auf den Fish-Standard zurückgesetzt',
+    modelSection: 'Sprachmodell',
+    model: 'Modell',
+    modelHint: 'Wird für die Sprachantworten dieses Agenten verwendet.',
+    defaultModel: 'Fish-Standard',
+    modelSaved: 'Sprachmodell gespeichert',
+    namesSection: 'Stimmennamen',
+    namesHint: 'Verwenden Sie einen Namen überall dort, wo Sie eine Stimmen-ID eingeben würden, zum Beispiel /fish use narrator.',
+    noNames: 'Noch keine Namen',
+    addName: 'Namen hinzufügen',
+    name: 'Name',
+    voice: 'Stimme',
+    voicePlaceholder: 'Stimmen-ID oder gespeicherter Name',
+    add: 'Hinzufügen',
+    remove: 'Entfernen',
+    added: (name: string) => `${name} gespeichert`,
+    updated: (name: string) => `${name} aktualisiert`,
+    removed: (name: string) => `${name} entfernt`,
+    badName: 'Verwenden Sie 2–32 lateinische Buchstaben, Ziffern, - oder _, beginnend mit einem Buchstaben. Stimmen-IDs und die Wörter add, remove, list, current und default sind nicht erlaubt.',
+    linksSection: 'Links',
+    fishAccount: 'Fish Audio-Konto',
+    agentSettingsNote: 'API-Schlüssel, Serveradresse, Streaming und Transport finden Sie unter Agent-Einstellungen.',
+    managed: 'Vom Betreiber dieses Agenten festgelegt',
+    loadFailed: 'Einstellungen konnten nicht geladen werden',
+    agentChangedAfterSend: (profile: string) => `Der ausgewählte Agent hat sich vor der Antwort geändert. Die Änderung wurde für ${agentName(profile)} übernommen.`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

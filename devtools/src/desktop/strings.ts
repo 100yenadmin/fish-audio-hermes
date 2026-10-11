@@ -12,7 +12,8 @@ export function useAccountText(normal: string, operator: string) {
 
 export const LINKS = {
   keys: 'https://fish.audio/app/api-keys',
-  discovery: 'https://fish.audio/discovery'
+  discovery: 'https://fish.audio/discovery',
+  account: 'https://fish.audio/app/developers/billing'
 }
 
 // Voice-language filter codes; each locale bundle names them under `languages`.

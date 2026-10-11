@@ -49,10 +49,10 @@ afterEach(() => {
 })
 
 describe('locale completeness', () => {
-  it.each(Object.entries(locales))('%s has exactly 113 English keys, matching leaf types and arities, and no empty messages', (_locale, messages) => {
+  it.each(Object.entries(locales))('%s has exactly 145 English keys, matching leaf types and arities, and no empty messages', (_locale, messages) => {
     const english = leaves(en)
     const translated = leaves(messages)
-    expect(Object.keys(english)).toHaveLength(113)
+    expect(Object.keys(english)).toHaveLength(145)
     expect(Object.keys(translated).sort()).toEqual(Object.keys(english).sort())
     for (const [key, value] of Object.entries(translated)) {
       expect(typeof value, key).toBe(typeof english[key])

@@ -116,7 +116,41 @@ export const ru = {
   apiKeys: 'API-ключи',
   chip: (credit: string) => `Fish ${credit}`,
   chipTip: 'Баланс API Fish Audio',
-  usd: (value: string) => `$${Number(value).toFixed(2)}`
+  usd: (value: string) => `$${Number(value).toFixed(2)}`,
+  settings: {
+    restart: 'Перезапустите шлюз этого агента, чтобы завершить обновление Fish Audio.',
+    voicesPage: 'Страница голосов',
+    voiceSection: 'Голос',
+    currentVoice: 'Текущий голос',
+    defaultVoice: 'Голос Fish по умолчанию',
+    change: 'Изменить',
+    reset: 'Сбросить',
+    resetDone: 'Голос сброшен до значения Fish по умолчанию',
+    modelSection: 'Модель речи',
+    model: 'Модель',
+    modelHint: 'Используется для голосовых ответов этого агента.',
+    defaultModel: 'По умолчанию Fish',
+    modelSaved: 'Модель речи сохранена',
+    namesSection: 'Имена голосов',
+    namesHint: 'Используйте имя везде, где вводите ID голоса, например /fish use narrator.',
+    noNames: 'Имён пока нет',
+    addName: 'Добавить имя',
+    name: 'Имя',
+    voice: 'Голос',
+    voicePlaceholder: 'ID голоса или сохранённое имя',
+    add: 'Добавить',
+    remove: 'Удалить',
+    added: (name: string) => `Сохранено: ${name}`,
+    updated: (name: string) => `Обновлено: ${name}`,
+    removed: (name: string) => `Удалено: ${name}`,
+    badName: 'Используйте от 2 до 32 латинских букв, цифр, - или _, начиная с буквы. ID голосов и слова add, remove, list, current и default не допускаются.',
+    linksSection: 'Ссылки',
+    fishAccount: 'Аккаунт Fish Audio',
+    agentSettingsNote: 'API-ключ, адрес сервера, потоковая передача и транспорт находятся в разделе «Настройки агента».',
+    managed: 'Задано оператором этого агента',
+    loadFailed: 'Не удалось загрузить настройки',
+    agentChangedAfterSend: (profile: string) => `Выбранный агент изменился до получения ответа. Изменение применено для ${agentName(profile)}.`
+  }
 } satisfies PluginMessages
 
 function compact(n: number) {

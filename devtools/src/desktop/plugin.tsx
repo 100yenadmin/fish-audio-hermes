@@ -17,6 +17,7 @@ import {
 import { releasePlayback } from './audio'
 import { $account, $available, $availableError, $tab, type Account, bindContext, currentAgentEpoch, endAgentOperations, isNotFoundError, setRefresher } from './api'
 import { VoicesPage } from './page'
+import { SettingsPage } from './settings-page'
 import { en } from './locales/en'
 import { zh } from './locales/zh'
 import { zhHant } from './locales/zh-hant'
@@ -179,7 +180,7 @@ export function registerAvailabilityGate(ctx: PluginContext) {
   }
 
   void probe(true)
-  ctx.setInterval(() => void probe(), PROBE_INTERVAL_MS)
+  const stopInterval = ctx.setInterval(() => void probe(), PROBE_INTERVAL_MS)
   // listen, not subscribe: Nano Stores' subscribe also fires at once, which would triple the first probe.
   // A new agent starts unknown and hidden: one agent's entries, wallet or key state never carry over to another.
   const onAgentChange = () => {
@@ -198,20 +199,49 @@ export function registerAvailabilityGate(ctx: PluginContext) {
     const accountShown = accountRemovers !== null
     show(false)
     show(true, accountShown)
-  })]
-  ctx.onDispose(() => {
+  }), stopInterval]
+  /** Stop probing and listening. `hide` also removes this gate's entries (a re-activation replacing it); a dispose
+   *  leaves them to the host, which removes everything the plugin registered. */
+  const end = (hide = false) => {
+    if (disposed) return
+    if (hide) show(false)
     disposed = true
     cancelRetry?.()
     stops.forEach(stop => stop())
-  })
-  return { probe }
+  }
+  ctx.onDispose(() => end())
+  return { probe, end }
 }
+
+/** Settings ▸ Plugins ▸ Fish Audio (Hermes Desktop 0.21.6+; older hosts and the fork lack the member, so nothing is
+ *  registered there). Registered once, unconditionally: gating it on /available would un-fold and re-fold the host's
+ *  "Agent settings" form (which holds the API key) as availability flaps. Only the page body follows availability.
+ *  The title is the brand in every locale, so a locale change never re-registers it: a re-registered entry loses the
+ *  host's fold of "Agent settings" (seen on 0.21.6, which applies the saved language after plugins activate). The body
+ *  re-renders in the new locale on its own. */
+export function registerSettingsPage(ctx: PluginContext) {
+  const remove = ctx.registerSettingsPage?.({ id: 'fish-audio', title: 'Fish Audio', icon: 'unmute', render: () => <SettingsPage /> })
+  if (!remove) return () => undefined
+  let disposed = false
+  const end = () => {
+    if (disposed) return
+    disposed = true
+    remove()
+  }
+  ctx.onDispose(end)
+  return end
+}
+
+/** Ends the live activation. A second register without a dispose replaces the first, so listeners, probes and the
+ *  settings page never stack. */
+let deactivate: (() => void) | undefined
 
 const plugin: HermesPlugin = {
   id: PLUGIN_ID,
   name: 'Fish Audio',
   description: 'A Voices page for Fish Audio: search and preview the voice library, use a voice, clone or design voices, and see your account.',
   register(ctx) {
+    deactivate?.()
     ctx.i18n.register({ en, zh, 'zh-hant': zhHant, ja, ar, ru, fr, de, es } satisfies PluginLocaleBundles)
     bindContext(ctx)
     ctx.register({
@@ -220,9 +250,21 @@ const plugin: HermesPlugin = {
       data: { path: PAGE_PATH } satisfies RouteContribution,
       render: () => <VoicesPage />
     })
-    setRefresher(registerAvailabilityGate(ctx).probe)
+    const endPage = registerSettingsPage(ctx)
+    const gate = registerAvailabilityGate(ctx)
+    setRefresher(gate.probe)
     ctx.onDispose(releasePlayback)
     ctx.onDispose(endAgentOperations)
+    const mine = () => {
+      endPage()
+      gate.end(true)
+      endAgentOperations()
+    }
+    deactivate = mine
+    // Once disposed, its disposers must never run again: they remove by id, so they would remove a later page.
+    ctx.onDispose(() => {
+      if (deactivate === mine) deactivate = undefined
+    })
   }
 }
 
