@@ -2,6 +2,7 @@
 """Offline-by-default API field coverage; never imported by the plugin."""
 import argparse
 from collections import Counter
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -92,7 +93,8 @@ def fields(spec):
     return result
 
 
-def prune(source):
+def prune(source, fetch_date=None, destination=None):
+    fetch_date = fetch_date or datetime.now(timezone.utc).date().isoformat()
     raw = Path(source).read_bytes()
     spec = json.loads(raw)
     paths = {p: op for p, op in spec["paths"].items() if not p.startswith("/v1/agent/")}
@@ -114,11 +116,12 @@ def prune(source):
     output = {"openapi": spec["openapi"], "info": spec["info"], "paths": paths,
               "components": {"schemas": schemas, "securitySchemes": spec.get("components", {}).get("securitySchemes", {})},
               "x-source": {"url": "https://docs.fish.audio/api-reference/openapi.json",
-                           "sha256": hashlib.sha256(raw).hexdigest(), "fetch_date": "2026-10-05"}}
-    destination = ROOT / "parity/fish-openapi.pruned.json"
+                           "sha256": hashlib.sha256(raw).hexdigest(), "fetch_date": fetch_date}}
+    destination = Path(destination) if destination is not None else ROOT / "parity/fish-openapi.pruned.json"
     destination.parent.mkdir(exist_ok=True)
     destination.write_text(json.dumps(output, indent=2) + "\n")
     print(f"Pruned: {len(paths)} paths, {len(schemas)} schemas")
+    return output
 
 
 def check(spec, mapping, *, collected=None):
@@ -137,7 +140,7 @@ def check(spec, mapping, *, collected=None):
         if entry.get("status") not in STATUSES:
             errors.append(f"Invalid status: {key}")
         if entry.get("status") == "equivalent":
-            target = indexed.get((key[0], key[1], entry.get("equivalent_to"), key[3]), {})
+            target = indexed.get((key[0], key[1], entry.get("equivalent_to"), entry.get("equivalent_field", key[3])), {})
             if target.get("status") not in {"implemented", "verified"}:
                 errors.append(f"Equivalent needs implemented/verified target: {key}")
         if entry.get("status") == "excluded" and not str(entry.get("reason") or "").strip():
@@ -153,6 +156,12 @@ def check(spec, mapping, *, collected=None):
                     errors.append(f"Unknown test id: {test}")
     errors.extend(f"Unmapped field: {key}" for key in sorted(expected.keys() - seen))
     for row in mapping.get("doc_only", []):
+        if row.get("status") not in STATUSES:
+            errors.append(f"Invalid doc_only status: {row.get('field')}")
+        if row.get("status") == "verified" and not row.get("tests"):
+            errors.append(f"Verified doc_only without tests: {row.get('field')}")
+        if collected is not None:
+            errors.extend(f"Unknown test id: {test}" for test in row.get("tests", []) if test not in collected)
         if not str(row.get("url", "")).startswith("https://docs.fish.audio/"):
             errors.append("doc_only entry needs a Fish documentation URL")
     return errors
@@ -163,13 +172,14 @@ def main(argv=None):
     parser.add_argument("--openapi", default=str(ROOT / "parity/fish-openapi.pruned.json"))
     parser.add_argument("--mapping", type=Path, default=ROOT / "parity.yaml")
     parser.add_argument("--prune", type=Path)
+    parser.add_argument("--fetch-date", default=datetime.now(timezone.utc).date().isoformat())
     parser.add_argument("--snapshot", action="store_true")
     parser.add_argument("--no-collect", action="store_true")
     parser.add_argument("--report", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.prune:
-            prune(args.prune)
+            prune(args.prune, fetch_date=args.fetch_date)
             return 0
         spec = load_spec(args.openapi)
         mapping = yaml.safe_load(args.mapping.read_text())

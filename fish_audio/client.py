@@ -12,9 +12,10 @@ import httpx
 
 from .errors import FishAudioError, response_error
 from .media import atomic_write
+from . import models
 from .models import MODEL_IDS
 
-PLUGIN_VERSION = "1.3.2"
+PLUGIN_VERSION = "1.3.3"
 MODEL_HEADER = "model"
 _client = None
 _lock = threading.Lock()
@@ -39,7 +40,7 @@ def _user_agent():
 def request_headers(key, model=None):
     headers = {"Authorization": f"Bearer {key}", "User-Agent": _user_agent()}
     if model is not None:
-        headers[MODEL_HEADER] = model
+        headers[MODEL_HEADER] = models.effective_model(model)
     try:
         from opentelemetry.trace import get_current_span
         context = get_current_span().get_span_context()
@@ -108,7 +109,11 @@ def _transport_retry(exc, progress):
 
 
 def _tts_body(params):
-    return {k: v for k, v in params.items() if k not in {"model", "model_defaulted", "base_url", "streaming"}}
+    from .tags import adapt_tags
+    body = {k: v for k, v in params.items() if k not in {"model", "model_defaulted", "base_url", "streaming"}}
+    family = next(row["family"] for row in models.MODELS if row["id"] == models.effective_model(params["model"]))
+    body["text"] = adapt_tags(body["text"], family)
+    return body
 
 
 # Base64 audio (4/3 of the 64 MiB audio cap) plus alignment metadata.
@@ -164,7 +169,7 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None, events=None):
     """Whole-file synthesis; with an ``events`` list, the SSE with-timestamp endpoint fills it."""
     if not isinstance(params.get("text"), str) or not params["text"].strip():
         raise ValueError("Nothing to say: the text is empty.")
-    model = params.get("model")
+    model = models.effective_model(params.get("model"))
     if not isinstance(model, str) or model not in MODEL_IDS:
         raise ValueError("Unknown Fish Audio TTS model.")
     sleep = time.sleep if sleep is None else sleep
@@ -216,7 +221,7 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None, events=None):
 
 def tts_pcm(params, key, base_url):
     """Chunked PCM over one unretried POST /v1/tts: a spoken sentence is never billed twice."""
-    model = params["model"]
+    model = models.effective_model(params["model"])
     response_headers = None
     try:
         with _http_client().stream("POST", base_url.rstrip("/") + "/v1/tts", headers=request_headers(key, model),
@@ -240,7 +245,7 @@ def tts_live(params, key, base_url, *, timeout=30):
     from websockets.exceptions import InvalidStatus, WebSocketException
     from websockets.sync.client import connect
 
-    model = params["model"]
+    model = models.effective_model(params["model"])
     headers = request_headers(key, model)
     agent = headers.pop("User-Agent")
     request = _tts_body(params)
@@ -263,7 +268,8 @@ def tts_live(params, key, base_url, *, timeout=30):
                 return
             elif kind in {"finish", "error"}:
                 status = message.get("status")
-                raise response_error(status if type(status) is int else None, model=model, key=key)
+                body = json.dumps({"message": message.get("error")}).encode()
+                raise response_error(status if type(status) is int else None, body=body, model=model, key=key)
     except InvalidStatus as exc:
         raise response_error(exc.response.status_code, exc.response.headers, exc.response.body or b"", model, key,
                              defaulted=params.get("model_defaulted", False)) from None

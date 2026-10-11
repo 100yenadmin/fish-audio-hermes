@@ -2988,8 +2988,10 @@ entries:
   method: get
   location: response
   field: max_offset
-  surface: Not exposed in M1; deferred beyond this stage
-  status: excluded
+  surface: Paging window shown as 1000+ via total/window_limited
+  status: equivalent
+  equivalent_to: response
+  equivalent_field: window_limited
   tests: []
   spec:
     type:
@@ -3004,13 +3006,15 @@ entries:
         - 'null'
         enum: null
         required: false
-  reason: Paging-window metadata; the plugin reports total, or 1000+, instead.
+
 - path: /model
   method: get
   location: response
   field: accessible_upper_bound
-  surface: Not exposed in M1; deferred beyond this stage
-  status: excluded
+  surface: Paging window shown as 1000+ via total/window_limited
+  status: equivalent
+  equivalent_to: response
+  equivalent_field: window_limited
   tests: []
   spec:
     type:
@@ -3025,7 +3029,7 @@ entries:
         - 'null'
         enum: null
         required: false
-  reason: Paging-window metadata; the plugin reports total, or 1000+, instead.
+
 - path: /model
   method: get
   location: response
@@ -3099,7 +3103,7 @@ entries:
   method: get
   location: response
   field: has_more
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: Boolean has_more exposed by voice search and mine
   status: verified
   tests:
   - tests/test_w1.py::test_has_more_boolean_only[1-mine]
@@ -5383,52 +5387,88 @@ entries:
 doc_only:
 - field: start
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  live: 2026-10-11 probe; probe-report.json
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/tts-live
 - field: text
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  live: 2026-10-11 probe; probe-report.json
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/tts-live
 - field: flush
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  live: 2026-10-11 probe; probe-report.json
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/tts-live
 - field: stop
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  live: 2026-10-11 probe; probe-report.json
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/tts-live
 - field: audio
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  live: 2026-10-11 probe; probe-report.json
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/tts-live
 - field: finish
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_transport_session_and_aligned_pcm
+  live: 2026-10-11 probe; probe-report.json
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/tts-live
 - field: error
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-live#events
+  status: verified
+  tests:
+  - tests/test_streaming.py::test_ws_bad_reference_maps_to_voice_not_found
+  live: 2026-10-11 probe; probe-report.json
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/tts-live
 - field: diarize
   surface: fish_transcribe / pro ASR
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_asr_fields_exact_model_timeout_and_raw_markers[transcribe-1-pro-synthetic.ogg-transcribe-1-pro]
+  live: 2026-10-11 probe; probe4-plugin-transcribe-tool.json
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#request-fields
 - field: num_speakers
   surface: fish_transcribe / pro ASR
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_valid_speaker_hints_sent[hints0]
+  live: 2026-10-11 probe; probe4-plugin-transcribe-tool.json
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#request-fields
 - field: min_speakers
   surface: fish_transcribe / pro ASR
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_valid_speaker_hints_sent[hints1]
+  live: 2026-10-11 probe; probe4-plugin-transcribe-tool.json
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#request-fields
 - field: max_speakers
   surface: fish_transcribe / pro ASR
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_valid_speaker_hints_sent[hints1]
+  live: 2026-10-11 probe; probe4-plugin-transcribe-tool.json
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#request-fields
 - field: tag_audio_events
   surface: fish_transcribe / pro ASR
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-options
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_asr_fields_exact_model_timeout_and_raw_markers[transcribe-1-pro-synthetic.ogg-transcribe-1-pro]
+  live: 2026-10-11 probe; probe4-plugin-transcribe-tool.json
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#request-fields
 - field: speaker_turns
   surface: fish_transcribe / pro ASR, numbered speaker labels and positive-duration SRT cues
   status: verified
@@ -5440,20 +5480,30 @@ doc_only:
   url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#speaker-turns
 - field: request_id
   surface: fish_transcribe / pro ASR
-  status: implemented
-  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#request-ids
+  status: verified
+  tests:
+  - tests/test_transcribe_tool.py::test_asr_fields_exact_model_timeout_and_raw_markers[transcribe-1-pro-synthetic.ogg-transcribe-1-pro]
+  live: 2026-10-11 probe; probe4-plugin-transcribe-tool.json
+  url: https://docs.fish.audio/api-reference/endpoint/openapi-v1/speech-to-text#read-the-response
 - field: traceparent
   surface: Fish support/error headers
-  status: implemented
-  url: https://docs.fish.audio/api-reference/observability#distributed-tracing
+  status: verified
+  tests:
+  - tests/test_client.py::test_traceparent_optional_valid_context[True-False]
+  live: 2026-10-11 probe; probe-report.json (Fish echo; plugin injection is unit-tested only)
+  url: https://docs.fish.audio/api-reference/observability#bind-business-and-inference-traces
 - field: x-fish-trace-id
   surface: Fish support/error headers
-  status: implemented
+  status: verified
+  tests:
+  - tests/test_client.py::test_defaulted_paid_402_carries_hint_and_trace
+  live: 2026-10-11 probe; probe2-report.json
   url: https://docs.fish.audio/api-reference/observability#bind-business-and-inference-traces
 - field: x-fish-error-code
   surface: Fish support/error headers
-  status: implemented
-  url: https://docs.fish.audio/api-reference/errors#http-status-codes
+  status: excluded
+  reason: defensive; undocumented by Fish and absent from every observed error response (2026-10-11)
+  url: https://docs.fish.audio/api-reference/errors#status-codes
 out_of_scope:
 - path: /v1/agent/*
   reason: later phase

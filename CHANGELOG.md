@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.3 — 2026-10-11
+
+- **S1 is deprecated.** Fish retires S1 on 2026-12-31 and then serves it as S2.1 Pro. `/fish model s1`,
+  `hermes fish status` and `hermes fish doctor` now warn about it. From 2026-12-31 the plugin sends S1 requests as
+  S2.1 Pro, with bracket emotion cues such as `[happy]`.
+- **No development packages on install.** Hermes 0.21.6 offered to install the plugin's build and test tooling
+  (156 Node packages) into the plugin folder. That tooling now lives in `devtools/`; the Desktop bundle is unchanged.
+- **README:** the catalog install comes first. On the same computer, Desktop picks up the Voices page by itself
+  (switch on **Desktop** under Capabilities → Plugins). New Performance section with measured latency and accuracy.
+- **Fixes:** a WebSocket "Reference not found" now says the voice wasn't found instead of "Fish Audio is
+  unavailable". `fish_transcribe` waits up to 900 seconds for long files.
+- **Housekeeping:** parity data refreshed against live probes, a weekly drift check, and CI on Python 3.14 and
+  current Hermes `main`.
+
 ## 1.3.2 — 2026-10-10
 
 - **Streaming voice needs Hermes 0.21.6.** Hermes 0.21.6, released 2026-10-08, is the first release with the plugin

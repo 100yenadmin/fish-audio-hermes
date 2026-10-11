@@ -148,7 +148,7 @@ def execute(args, key, base, session):
     if "language" in args:
         fields["language"] = args["language"]
     data = client.transcribe_audio(audio, path.name, MIMES.get(kind, "audio/aac"), fields,
-                                  key=key, base_url=base, model=model, read_timeout=600)
+                                  key=key, base_url=base, model=model, read_timeout=900)
     segments = data.get("segments", [])
     result = {"text": data["text"], "language_code": data.get("language_code"), "duration": data.get("duration"),
               "segments": segments[:500], "speaker_turns": data.get("speaker_turns", [])}

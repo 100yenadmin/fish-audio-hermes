@@ -7,6 +7,11 @@ Use `fish_speak` when the user asks for expressive or multi-speaker speech. For 
 use Hermes's `text_to_speech`. Calls are billed to the Fish Audio account behind this agent's key. Include the returned
 `media_tag` verbatim so the audio is delivered; the output hook can append missing audio tags.
 
+S1 is deprecated; from 2026-12-31 requests use S2.1 Pro.
+For `drama-3-preview`, direct delivery in plain language and wrap specific words in paired tags such as
+`<whisper>…</whisper>`. Also supported: `<emphasis>`, `<soft>`, `<fast>`, `<slow>`, `<stress>`, `<forceful>`;
+close each tag around the words it controls.
+
 S2 models use square brackets. The documented groups are:
 
 - **Basic Emotions (24 expressions):** `[happy]`, `[sad]`, `[angry]`, `[excited]`, `[calm]`, `[nervous]`, `[confident]`, `[surprised]`, `[satisfied]`, `[delighted]`, `[scared]`, `[worried]`, `[upset]`, `[frustrated]`, `[depressed]`, `[empathetic]`, `[embarrassed]`, `[disgusted]`, `[moved]`, `[proud]`, `[relaxed]`, `[grateful]`, `[curious]`, `[sarcastic]`.
@@ -41,5 +46,5 @@ Worked examples (replace the voice ids with voices the user selected):
    `fish_speak({"text":"<|speaker:0|>[curious] Ready? <|speaker:1|>[confident] Let's begin.","model":"s2.1-pro","speakers":["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]})`.
    Each marker refers to that index in the voice list.
 3. A pronunciation-aware narration:
-   `fish_speak({"text":"[calm] Codex is ready.","model":"s1","pronunciations":{"Codex":"code ex"},"format":"wav"})`.
-   The plugin converts `[calm]` to `(calm)` for S1 and returns a plain audio-file media tag.
+   `fish_speak({"text":"[calm] Codex is ready.","model":"s2.1-pro","pronunciations":{"Codex":"code ex"},"format":"wav"})`.
+   The plugin keeps `[calm]` in bracket syntax and returns a plain audio-file media tag.

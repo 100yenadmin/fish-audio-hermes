@@ -125,16 +125,17 @@ def test_available_reports_version_and_key_state(env, monkeypatch):
 
 def test_versions_agree(env):
     manifest = json.loads((ROOT / "dashboard" / "manifest.json").read_text())
-    package = json.loads((ROOT / "package.json").read_text())
+    package = json.loads((ROOT / "devtools/package.json").read_text())
     assert manifest["name"] == package["name"].removesuffix("-desktop") == "fish-audio"
     assert manifest["tab"]["hidden"] is True
     version = env.api.VERSION
-    assert manifest["version"] == package["version"] == version
+    lock = json.loads((ROOT / "devtools/package-lock.json").read_text())
+    assert manifest["version"] == package["version"] == lock["version"] == lock["packages"][""]["version"] == version
     assert f"version: {version}\n" in (ROOT / "plugin.yaml").read_text()
     assert f'version = "{version}"' in (ROOT / "pyproject.toml").read_text()
     assert env.api._fa("client").PLUGIN_VERSION == version
     assert f'PLUGIN_VERSION = "{version}"' in (ROOT / "fish_audio" / "__init__.py").read_text()
-    assert "fish-audio" in (ROOT / "src" / "desktop" / "plugin.tsx").read_text()
+    assert "fish-audio" in (ROOT / "devtools" / "src" / "desktop" / "plugin.tsx").read_text()
 
 
 def test_private_package_never_touches_hermes_plugins_namespace(env):
@@ -835,3 +836,16 @@ def test_operator_preview_names_no_wallet_chosen_model(env, monkeypatch):
         assert body["ok"] and ("model" in body) is named
     settings["operator_account"] = False
     settings.pop("allow_free_model")
+
+
+from test_v133 import retirement  # noqa: E402, F401
+
+
+def test_preview_retirement_request(retirement, env, monkeypatch):
+    monkeypatch.setattr(env.api._fa("models"), "datetime", __import__("fish_audio.models", fromlist=["datetime"]).datetime)
+    env.active().config["tts"]["fish-audio"]["model"] = "s1"
+    with respx.mock() as mock:
+        route = mock.post(env.active().base + "/v1/tts").respond(content=MP3)
+        assert env.post("/preview", voice=VOICE, text="Hello [happy] there.")["ok"]
+        assert route.calls.last.request.headers["model"] == retirement[0]
+        assert json.loads(route.calls.last.request.content)["text"] == retirement[1]

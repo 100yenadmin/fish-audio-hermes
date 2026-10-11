@@ -1,8 +1,9 @@
-// Fail if src/desktop imports a name from '@hermes/plugin-sdk' that a pinned Hermes Desktop SDK does not export.
+// Fail if devtools/src/desktop imports a name from '@hermes/plugin-sdk' that a pinned Hermes Desktop SDK does not export.
 // A missing named export is an ESM link error that would stop the whole plugin from loading on that build.
-// Usage: node scripts/check-sdk-exports.mjs <path/to/apps/desktop/src/sdk/index.ts> [...more]
+// Usage: node devtools/scripts/check-sdk-exports.mjs <path/to/apps/desktop/src/sdk/index.ts> [...more]
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const sdkFiles = process.argv.slice(2)
 if (!sdkFiles.length) {
@@ -21,7 +22,7 @@ function walk(dir) {
 const NAMESPACE_RE = /(?:import|export)\s*\*\s*(?:as\s+[\w$]+\s*)?from\s*['"]@hermes\/plugin-sdk['"]/
 const DEFAULT_RE = /import\s+(?!type\b)[\w$]+\s*(?:,\s*\{[^}]*\}\s*)?from\s*['"]@hermes\/plugin-sdk['"]/
 const used = new Set()
-for (const file of walk('src/desktop')) {
+for (const file of walk(fileURLToPath(new URL('../src/desktop', import.meta.url)))) {
   const src = readFileSync(file, 'utf8')
   // Only named imports/re-exports can be checked name by name; refuse default and namespace forms.
   if (NAMESPACE_RE.test(src) || DEFAULT_RE.test(src)) {

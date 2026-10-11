@@ -4,19 +4,20 @@
 // to load the plugin. Rather than re-implementing it, this extracts the scanning helpers from each pinned
 // runtime-loader.ts by source text, strips types with esbuild, and evaluates them.
 //
-// Usage: node scripts/check-loader-scan.mjs [--self-test] [--bundle desktop/plugin.js] <runtime-loader.ts> [...]
+// Usage: node devtools/scripts/check-loader-scan.mjs [--self-test] [--bundle desktop/plugin.js] <runtime-loader.ts> [...]
 //   --self-test  also assert the scanners work: a foreign import is flagged by every loader, and the
-//                positive-control fixture (scripts/fixtures/loader-trap.js) is flagged by at least one loader
+//                positive-control fixture (devtools/scripts/fixtures/loader-trap.js) is flagged by at least one loader
 //                (the regex-unaware fork); it must be, or this check could not catch the trap at all.
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { transform } from 'esbuild'
+import { createRequire } from 'node:module'
+const { transform } = createRequire(new URL('../package.json', import.meta.url))('esbuild')
 
 const args = process.argv.slice(2)
 const selfTest = args.includes('--self-test')
 const bundleAt = args.indexOf('--bundle')
-const bundle = bundleAt >= 0 ? args[bundleAt + 1] : 'desktop/plugin.js'
+const bundle = bundleAt >= 0 ? args[bundleAt + 1] : fileURLToPath(new URL('../../desktop/plugin.js', import.meta.url))
 // Drop the --bundle value only when --bundle was given (bundleAt === -1 would otherwise drop argv[0]).
 const loaders = args.filter((arg, i) => !arg.startsWith('--') && !(bundleAt >= 0 && i === bundleAt + 1))
 if (!loaders.length) {
