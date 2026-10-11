@@ -308,6 +308,7 @@ Apache-2.0. Maintained by [Electric Sheep](https://github.com/100yenadmin) with 
 Fish Audio is a trademark of Hanabi AI Inc.
 
 ## Development
+Weekly regression alarm: see [bench/README.md](bench/README.md).
 
 Run JavaScript tooling from `devtools/`: `cd devtools && npm ci && npm run typecheck && npm test`.
 `npm run check:bundle` checks the committed `desktop/plugin.js`; `npm run build` rebuilds it.
