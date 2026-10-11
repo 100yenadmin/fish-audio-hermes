@@ -1,0 +1,54 @@
+name: Fish weekly benchmark
+on:
+  schedule: [{cron: "41 6 * * 3"}]
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency: {group: fish-bench, cancel-in-progress: false}
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with: {python-version: "3.11"}
+      - name: Install plugin dependencies
+        run: python -c 'import subprocess,sys,tomllib; subprocess.check_call([sys.executable,"-m","pip","install",*tomllib.load(open("pyproject.toml","rb"))["project"]["dependencies"]])'
+      - name: Run capped benchmark
+        id: bench
+        continue-on-error: true
+        env:
+          FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
+          HERMES_DISABLE_LAZY_INSTALLS: "1"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          if [ -z "$FISH_API_KEY" ]; then
+            echo 'skipped: no FISH_API_KEY secret' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python bench/weekly.py --out bench-out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ always() && steps.bench.outcome != 'skipped' && hashFiles('bench-out/results.json') != '' }}
+        with:
+          name: fish-bench-results
+          path: bench-out/results.json
+          retention-days: 30
+      - name: Open or comment on one benchmark issue
+        if: ${{ always() && hashFiles('bench-out/report.md') != '' }}
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          gh label create fish-bench --color D93F0B --description 'Fish weekly regression alarm' --force
+          n=$(gh issue list --state open --label fish-bench --json number -q '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue view "$n" --json body,comments > bench-out/issue.json
+            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("bench-out/issue.json").read_text()); comments=issue["comments"]; text=pathlib.Path("bench-out/report.md").read_text().rstrip("\n"); latest=(comments[-1]["body"] if comments else issue["body"]).rstrip("\n"); sys.exit(0 if text == latest else 1)'; then
+              echo 'Unchanged benchmark report; no comment.'; exit 0
+            fi
+            gh issue comment "$n" --body-file bench-out/report.md
+          else gh issue create --title 'Fish benchmark regression detected' --label fish-bench --body-file bench-out/report.md; fi
+      - name: Preserve failed benchmark status
+        if: ${{ always() && steps.bench.outcome == 'failure' }}
+        run: exit 1
