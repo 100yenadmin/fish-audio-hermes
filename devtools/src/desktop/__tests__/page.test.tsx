@@ -312,7 +312,7 @@ describe('review follow-ups', () => {
     expect(screen.getByText(en.pageOf(50))).toBeTruthy()
     expect((screen.getByRole('button', { name: en.next }) as HTMLButtonElement).disabled).toBe(true)
     expect(calls.some(c => c.path.includes('page=51'))).toBe(false)
-  })
+  }, 20_000) // 50 page clicks take about 3 s on a normal runner; the 5 s default timed out on a slow one
 
   it('pages through My voices', async () => {
     $tab.set('mine')

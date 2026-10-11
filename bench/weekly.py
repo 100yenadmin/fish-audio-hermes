@@ -198,7 +198,8 @@ def run(out, *, dry_run=False, backend=None):
                     if result is None:
                         return None
                     if not result.get("success") or not result.get("transcript"):
-                        if not any(s == 429 or s and 500 <= s < 600 for s in api.statuses):  # a rate limit or outage already warned
+                        last = api.statuses[-1] if api.statuses else None  # the terminal response, not an earlier retry
+                        if not (last == 429 or last and 500 <= last < 600):  # an exhausted rate limit or outage already warned
                             record(gate, status=401 if result.get("error_kind") in ("auth", "credential") else None, failed=True)
                         return None
                     return error_rate(lang, text, result["transcript"])
