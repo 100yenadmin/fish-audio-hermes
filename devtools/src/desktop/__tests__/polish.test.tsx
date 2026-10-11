@@ -6,6 +6,7 @@ import { $playing, releasePlayback } from '../audio'
 import { VoicesPage, Onboarding } from '../page'
 import { SettingsPage } from '../settings-page'
 import { compact, number, usd } from '../format'
+import { clamp } from '../limits'
 import { en } from '../locales/en'
 import { de } from '../locales/de'
 import { ja } from '../locales/ja'
@@ -66,7 +67,7 @@ it.each(['en', 'ja', 'ar'] as const)('%s renders the save name in locale order',
   fireEvent.click(screen.getByRole('button', { name: bundles[locale].design }))
   await flush()
   const field = screen.getByRole('textbox', { name: bundles[locale].saveAsN(1) })
-  expect(field.getAttribute('maxlength')).toBe('100')
+  expect(field.getAttribute('maxlength')).toBeNull()
 })
 
 it.each(['en', 'ja', 'ar'] as const)('%s renders the remove alias name and its input limits', async locale => {
@@ -108,19 +109,41 @@ it.each(['en', 'de', 'ja', 'ar', 'ru'])('%s formats compact, currency and groupe
   expect(usd(tag, '12.35')).toBe(new Intl.NumberFormat(tag, { style: 'currency', currency: 'USD' }).format(12.35))
   expect(number(tag, 1234567)).toBe(new Intl.NumberFormat(tag).format(1234567))
 })
-it('selects English and Russian count forms with the unrounded number', () => {
+it('selects count forms for the number shown, not the raw count', () => {
   expect([en.uses(1), en.uses(1500)]).toEqual(['1 use', '1.5k uses'])
   expect([ru.uses(1), ru.uses(2), ru.uses(5), ru.uses(21), ru.uses(1500)])
-    .toEqual(['1 использование', '2 использования', '5 использований', '21 использование', '1,5 тыс. использований'])
+    .toEqual(['1 использование', '2 использования', '5 использований', '21 использование', '1,5\u00a0тыс. использований'])
+  // 1001 and 21000 show as "1 тыс." and "21 тыс.": the noun follows тысяча, not "1" or "21".
+  expect([ru.uses(1001), ru.uses(21000), ru.uses(2_000_001)])
+    .toEqual(['1\u00a0тыс. использований', '21\u00a0тыс. использований', '2\u00a0млн использований'])
+  // Arabic: 1011 shows as one thousand, so it takes the noun form after ألف, not the "many" form of 1011.
+  expect(ar.uses(1011)).toBe(ar.uses(1000))
+  expect(ar.uses(1000)).toMatch(/ استخدام$/)
+  expect(ar.uses(11)).toMatch(/ استخدامًا$/)
 })
 
-it('limits search, clone metadata and design instruction', async () => {
+it('clamps by code points, as the gateway counts', () => {
+  expect(clamp('a🐟b', 2)).toBe('a🐟')
+  expect(clamp('abc', 5)).toBe('abc')
+  expect(clamp('🐟'.repeat(3), 3)).toBe('🐟'.repeat(3))
+})
+it('limits search, clone metadata, design instruction and save names to the gateway limits', async () => {
+  // Emoji are two UTF-16 units each: a maxLength attribute would stop at half the limit, and the host SearchField drops it.
+  const fill = (name: string, limit: number) => {
+    const box = screen.getByRole('textbox', { name }) as HTMLInputElement
+    expect(box.getAttribute('maxlength')).toBeNull()
+    fireEvent.change(box, { target: { value: '🐟'.repeat(limit + 5) } })
+    expect(box.value).toBe('🐟'.repeat(limit))
+  }
   mount('en')
-  expect(screen.getByRole('textbox', { name: en.search }).getAttribute('maxlength')).toBe('100')
+  fill(en.search, 100)
   fireEvent.click(screen.getByRole('tab', { name: en.tabs.create }))
-  expect(screen.getByRole('textbox', { name: en.voiceTitle }).getAttribute('maxlength')).toBe('100')
-  expect(screen.getByRole('textbox', { name: en.descriptionOptional }).getAttribute('maxlength')).toBe('500')
-  expect(screen.getByRole('textbox', { name: en.designTitle }).getAttribute('maxlength')).toBe('500')
+  fill(en.voiceTitle, 100)
+  fill(en.descriptionOptional, 500)
+  fill(en.designTitle, 500)
+  fireEvent.click(screen.getByRole('button', { name: en.design }))
+  await flush()
+  fill(en.saveAsN(1), 100)
 })
 
 it('refuses a zero-byte pick before dispatch and retranslates its notice', async () => {

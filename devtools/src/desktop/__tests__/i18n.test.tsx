@@ -231,7 +231,7 @@ describe('locale change and contribution gate', () => {
   })
 })
 
-function errorLocale(locale: 'en' | 'ja', operator = false) {
+function errorLocale(locale: 'en' | 'ja' | 'zh', operator = false) {
   const test = context()
   test.ctx.i18n.register(locales)
   bindContext(test.ctx as any)
@@ -246,10 +246,22 @@ it.each((['en', 'ja'] as const).flatMap(locale => Array.from({ length: 16 }, (_,
       request_id: mask & 4 ? 'req-1' : null, trace_id: mask & 8 ? 'trace-1' : null }
     const base = locale === 'en' ? `Set a valid Fish Audio API key: ${LINKS.keys}` : `有効な Fish Audio API キーを設定してください：${LINKS.keys}`
     const suffixes = locale === 'en' ? [' Code: custom_code.', ` Switch to s2.1-pro and top up: ${LINKS.account}`, ' (request id req-1)', ' (Fish trace trace-1)']
-      : [' コード：custom_code。', ` s2.1-pro に切り替えてチャージしてください：${LINKS.account}`, '（リクエスト ID：req-1）', '（Fish トレース：trace-1）']
+      : ['コード：custom_code。', `s2.1-pro に切り替えてチャージしてください：${LINKS.account}`, '（リクエスト ID：req-1）', '（Fish トレース：trace-1）']
+    // A space separates a suffix only from text ending in a URL; never after 。 or ）.
+    const join = (text: string, suffix: string) => text + (/[!-~]$/.test(text) && !suffix.startsWith(' ') ? ' ' : '') + suffix
     expect(errorText(new ApiError('credential', 'Do not parse this message', detail)))
-      .toBe(base + suffixes.filter((_, i) => mask & (1 << i)).join(''))
+      .toBe(suffixes.filter((_, i) => mask & (1 << i)).reduce(join, base))
   })
+it('joins CJK suffixes without a stray space, keeping URLs separate', () => {
+  errorLocale('ja')
+  const all = { code: 'c1', hint: 'paid_model', request_id: 'r1', trace_id: null }
+  expect(errorText(new ApiError('quota', 'x', all)))
+    .toBe(`Fish Audio API クレジットをチャージしてください：${LINKS.account}。アプリのプランと API のクレジットは別です。コード：c1。s2.1-pro に切り替えてチャージしてください：${LINKS.account} （リクエスト ID：r1）`)
+  expect(errorText(new ApiError('credential', 'x', { ...all, hint: null, request_id: null })))
+    .toBe(`有効な Fish Audio API キーを設定してください：${LINKS.keys} コード：c1。`)
+  errorLocale('zh')
+  expect(errorText(new ApiError('availability', 'x', { ...all, hint: null }))).toMatch(/。错误代码：c1。（请求 ID：r1）$/)
+})
 it.each(['en', 'ja'] as const)('%s selects operator variants for Fish errors and no_key', locale => {
   errorLocale(locale, true)
   for (const [kind, key] of [['credential', 'credentialOperator'], ['quota', 'quotaOperator'], ['rate_limit', 'rateLimitOperator']])

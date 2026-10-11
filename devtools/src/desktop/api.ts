@@ -145,13 +145,16 @@ export function errorText(error: unknown): string {
   }
   if (error.detail) {
     const url = error.kind === 'credential' ? LINKS.keys : error.kind === 'quota' ? LINKS.account : LINKS.discovery
-    let text = localized('errors', error.kind, url)
-    if (text !== null) {
+    const base = localized('errors', error.kind, url)
+    if (base !== null) {
+      let text = base
       const { code, hint, request_id, trace_id } = error.detail
-      if (code) text += t('errors.code', code)
-      if (hint === 'paid_model') text += t('errors.paidModel', LINKS.account)
-      if (request_id) text += t('errors.requestId', request_id)
-      if (trace_id) text += t('errors.fishTrace', trace_id)
+      // CJK suffixes carry no leading space after 。; one still separates them from a sentence ending in a URL.
+      const append = (suffix: string) => { text += /[!-~]$/.test(text) && /^\S/.test(suffix) ? ` ${suffix}` : suffix }
+      if (code) append(t('errors.code', code))
+      if (hint === 'paid_model') append(t('errors.paidModel', LINKS.account))
+      if (request_id) append(t('errors.requestId', request_id))
+      if (trace_id) append(t('errors.fishTrace', trace_id))
       return text
     }
   } else if (FIXED_TEXT.has(error.kind)) {

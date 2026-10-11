@@ -146,13 +146,17 @@ function errorText(error) {
   };
   if (error.detail) {
     const url = error.kind === "credential" ? LINKS.keys : error.kind === "quota" ? LINKS.account : LINKS.discovery;
-    let text = localized("errors", error.kind, url);
-    if (text !== null) {
+    const base = localized("errors", error.kind, url);
+    if (base !== null) {
+      let text = base;
       const { code, hint, request_id, trace_id } = error.detail;
-      if (code) text += t("errors.code", code);
-      if (hint === "paid_model") text += t("errors.paidModel", LINKS.account);
-      if (request_id) text += t("errors.requestId", request_id);
-      if (trace_id) text += t("errors.fishTrace", trace_id);
+      const append = (suffix) => {
+        text += /[!-~]$/.test(text) && /^\S/.test(suffix) ? ` ${suffix}` : suffix;
+      };
+      if (code) append(t("errors.code", code));
+      if (hint === "paid_model") append(t("errors.paidModel", LINKS.account));
+      if (request_id) append(t("errors.requestId", request_id));
+      if (trace_id) append(t("errors.fishTrace", trace_id));
       return text;
     }
   } else if (FIXED_TEXT.has(error.kind)) {
@@ -185,6 +189,7 @@ function gatewayAtLeast(min) {
 }
 
 // src/desktop/limits.ts
+var clamp = (value, limit) => value.length <= limit ? value : Array.from(value).slice(0, limit).join("");
 var LIMITS = { title: 100, description: 500, instruction: 500, sampleText: 500, aliasName: 32, aliasVoice: 128, search: 100 };
 
 // src/desktop/page.tsx
@@ -398,11 +403,11 @@ function CloneCard({ pin }) {
       ] }),
       /* @__PURE__ */ jsxs2("label", { style: label, children: [
         t("voiceTitle"),
-        /* @__PURE__ */ jsx2(Input, { maxLength: LIMITS.title, disabled: busy, onChange: (e) => setTitle(e.target.value), value: title })
+        /* @__PURE__ */ jsx2(Input, { disabled: busy, onChange: (e) => setTitle(clamp(e.target.value, LIMITS.title)), value: title })
       ] }),
       /* @__PURE__ */ jsxs2("label", { style: label, children: [
         t("descriptionOptional"),
-        /* @__PURE__ */ jsx2(Input, { maxLength: LIMITS.description, disabled: busy, onChange: (e) => setDescription(e.target.value), value: description })
+        /* @__PURE__ */ jsx2(Input, { disabled: busy, onChange: (e) => setDescription(clamp(e.target.value, LIMITS.description)), value: description })
       ] }),
       /* @__PURE__ */ jsxs2("label", { style: { alignItems: "flex-start", display: "flex", fontSize: 12, gap: 8, lineHeight: 1.4 }, children: [
         /* @__PURE__ */ jsx2(
@@ -486,8 +491,7 @@ function DesignCard({ pin }) {
         {
           "aria-label": t("designTitle"),
           disabled: busy !== null,
-          maxLength: LIMITS.instruction,
-          onChange: (e) => setInstruction(e.target.value),
+          onChange: (e) => setInstruction(clamp(e.target.value, LIMITS.instruction)),
           placeholder: t("designPlaceholder"),
           rows: 3,
           value: instruction
@@ -520,8 +524,7 @@ function DesignCard({ pin }) {
                   Input,
                   {
                     "aria-label": t("saveAsN", i + 1),
-                    maxLength: LIMITS.title,
-                    onChange: (e) => setNames({ ...names, [candidate.design_token]: e.target.value }),
+                    onChange: (e) => setNames({ ...names, [candidate.design_token]: clamp(e.target.value, LIMITS.title) }),
                     placeholder: t("saveAs"),
                     value: names[candidate.design_token] ?? ""
                   }
@@ -676,7 +679,7 @@ function Library({ pin }) {
   const more = !favouritesOnly && hasMore(voices.data?.items.length, page, voices.data?.total);
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsxs3("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }, children: [
-      /* @__PURE__ */ jsx3("div", { style: { width: 280 }, children: /* @__PURE__ */ jsx3(SearchField, { maxLength: LIMITS.search, "aria-label": t("search"), onChange: setText, placeholder: t("search"), value: text }) }),
+      /* @__PURE__ */ jsx3("div", { style: { width: 280 }, children: /* @__PURE__ */ jsx3(SearchField, { "aria-label": t("search"), onChange: (v) => setText(clamp(v, LIMITS.search)), placeholder: t("search"), value: text }) }),
       /* @__PURE__ */ jsx3("div", { style: { width: 160 }, children: /* @__PURE__ */ jsxs3(Select, { onValueChange: setLanguage, value: language, children: [
         /* @__PURE__ */ jsx3(SelectTrigger, { "aria-label": t("language"), children: /* @__PURE__ */ jsx3(SelectValue, {}) }),
         /* @__PURE__ */ jsxs3(SelectContent, { children: [
@@ -1251,7 +1254,7 @@ function Sections({ pin, operator }) {
 var compact = (tag10, n) => new Intl.NumberFormat(tag10, { notation: "compact", maximumFractionDigits: 1 }).format(n);
 var usd = (tag10, value) => new Intl.NumberFormat(tag10, { style: "currency", currency: "USD" }).format(Number(value));
 var number = (tag10, n) => new Intl.NumberFormat(tag10).format(n);
-var plural = (tag10, n, forms) => forms[new Intl.PluralRules(tag10).select(n)] ?? forms.other;
+var plural = (tag10, n, forms) => forms[new Intl.PluralRules(tag10).select(n >= 1e3 ? 1e3 : n)] ?? forms.other;
 
 // src/desktop/locales/en.ts
 var tag = "en";
@@ -1586,8 +1589,8 @@ var zh = {
     rateLimitOperator: `\u8BED\u97F3\u670D\u52A1\u7E41\u5FD9\u3002\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`,
     error: `\u51FA\u73B0\u4E86\u95EE\u9898`,
     badChunkSize: `\u7F51\u5173\u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4E0A\u4F20\u5206\u5757\u5927\u5C0F\u3002`,
-    code: (code) => ` \u9519\u8BEF\u4EE3\u7801\uFF1A${code}\u3002`,
-    paidModel: (url) => ` \u8BF7\u5207\u6362\u5230 s2.1-pro \u5E76\u5145\u503C\uFF1A${url}`,
+    code: (code) => `\u9519\u8BEF\u4EE3\u7801\uFF1A${code}\u3002`,
+    paidModel: (url) => `\u8BF7\u5207\u6362\u5230 s2.1-pro \u5E76\u5145\u503C\uFF1A${url}`,
     requestId: (id) => `\uFF08\u8BF7\u6C42 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u8DDF\u8E2A\uFF1A${id}\uFF09`
   },
@@ -1778,8 +1781,8 @@ var zhHant = {
     rateLimitOperator: `\u8A9E\u97F3\u670D\u52D9\u5FD9\u788C\u3002\u8ACB\u7A0D\u5F8C\u91CD\u8A66\u3002`,
     error: `\u767C\u751F\u4E86\u554F\u984C`,
     badChunkSize: `\u9598\u9053\u50B3\u56DE\u4E86\u7121\u6548\u7684\u4E0A\u50B3\u5340\u584A\u5927\u5C0F\u3002`,
-    code: (code) => ` \u932F\u8AA4\u4EE3\u78BC\uFF1A${code}\u3002`,
-    paidModel: (url) => ` \u8ACB\u5207\u63DB\u81F3 s2.1-pro \u4E26\u5132\u503C\uFF1A${url}`,
+    code: (code) => `\u932F\u8AA4\u4EE3\u78BC\uFF1A${code}\u3002`,
+    paidModel: (url) => `\u8ACB\u5207\u63DB\u81F3 s2.1-pro \u4E26\u5132\u503C\uFF1A${url}`,
     requestId: (id) => `\uFF08\u8ACB\u6C42 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u8FFD\u8E64\uFF1A${id}\uFF09`
   },
@@ -1970,8 +1973,8 @@ var ja = {
     rateLimitOperator: `\u97F3\u58F0\u30B5\u30FC\u30D3\u30B9\u304C\u6DF7\u307F\u5408\u3063\u3066\u3044\u307E\u3059\u3002\u5C11\u3057\u5F85\u3063\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
     error: `\u554F\u984C\u304C\u767A\u751F\u3057\u307E\u3057\u305F`,
     badChunkSize: `\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u304B\u3089\u7121\u52B9\u306A\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u30C1\u30E3\u30F3\u30AF\u30B5\u30A4\u30BA\u304C\u8FD4\u3055\u308C\u307E\u3057\u305F\u3002`,
-    code: (code) => ` \u30B3\u30FC\u30C9\uFF1A${code}\u3002`,
-    paidModel: (url) => ` s2.1-pro \u306B\u5207\u308A\u66FF\u3048\u3066\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
+    code: (code) => `\u30B3\u30FC\u30C9\uFF1A${code}\u3002`,
+    paidModel: (url) => `s2.1-pro \u306B\u5207\u308A\u66FF\u3048\u3066\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
     requestId: (id) => `\uFF08\u30EA\u30AF\u30A8\u30B9\u30C8 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u30C8\u30EC\u30FC\u30B9\uFF1A${id}\uFF09`
   },

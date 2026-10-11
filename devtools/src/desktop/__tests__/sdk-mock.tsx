@@ -176,8 +176,8 @@ export const EmptyState = ({ title, description }: { title: string; description?
   createElement('div', { 'data-testid': 'empty' }, title, description ? createElement('p', null, description) : null)
 export const ErrorState = ({ title, description, children }: { title: ReactNode; description?: ReactNode; children?: ReactNode }) =>
   createElement('div', { role: 'alert' }, createElement('h2', null, title), description, children)
-export const SearchField = ({ value, onChange, placeholder, maxLength, 'aria-label': label }: any) =>
-  createElement('input', { 'aria-label': label ?? placeholder, placeholder, maxLength, value, onChange: (e: any) => onChange(e.target.value) })
+export const SearchField = ({ value, onChange, placeholder, 'aria-label': label }: any) =>
+  createElement('input', { 'aria-label': label ?? placeholder, placeholder, value, onChange: (e: any) => onChange(e.target.value) })
 export const Checkbox = ({ checked, onCheckedChange, 'aria-label': label }: any) =>
   createElement('input', { type: 'checkbox', 'aria-label': label, checked: Boolean(checked), onChange: () => onCheckedChange?.(!checked) })
 export const Input = passthrough('input')

@@ -1,4 +1,4 @@
-import { LIMITS } from './limits'
+import { LIMITS, clamp } from './limits'
 // The Voices page: header, tabs (Library, My voices, Create, Account) and the no-key onboarding card.
 import {
   atom,
@@ -231,7 +231,7 @@ function Library({ pin }: { pin: AgentPin }) {
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ width: 280 }}>
-          <SearchField maxLength={LIMITS.search} aria-label={t('search')} onChange={setText} placeholder={t('search')} value={text} />
+          <SearchField aria-label={t('search')} onChange={(v: string) => setText(clamp(v, LIMITS.search))} placeholder={t('search')} value={text} />
         </div>
         <div style={{ width: 160 }}>
           <Select onValueChange={setLanguage} value={language}>
