@@ -8,8 +8,8 @@
   "scripts": {
     "build": "node scripts/build-desktop.mjs",
     "check:bundle": "node scripts/build-desktop.mjs --check",
-    "check:sdk": "node scripts/check-sdk-exports.mjs pinned/floor/apps/desktop/src/sdk/index.ts pinned/release/apps/desktop/src/sdk/index.ts pinned/main/apps/desktop/src/sdk/index.ts pinned/fork/apps/desktop/src/sdk/index.ts",
-    "check:loader": "node scripts/check-loader-scan.mjs pinned/floor/apps/desktop/src/contrib/runtime-loader.ts pinned/release/apps/desktop/src/contrib/runtime-loader.ts pinned/main/apps/desktop/src/contrib/runtime-loader.ts pinned/fork/apps/desktop/src/contrib/runtime-loader.ts && node scripts/check-loader-scan.mjs --self-test pinned/floor/apps/desktop/src/contrib/runtime-loader.ts pinned/release/apps/desktop/src/contrib/runtime-loader.ts pinned/main/apps/desktop/src/contrib/runtime-loader.ts pinned/fork/apps/desktop/src/contrib/runtime-loader.ts",
+    "check:sdk": "node scripts/check-sdk-exports.mjs pinned/floor/apps/desktop/src/sdk/index.ts pinned/catalog/apps/desktop/src/sdk/index.ts pinned/release/apps/desktop/src/sdk/index.ts pinned/main/apps/desktop/src/sdk/index.ts pinned/fork/apps/desktop/src/sdk/index.ts",
+    "check:loader": "node scripts/check-loader-scan.mjs pinned/floor/apps/desktop/src/contrib/runtime-loader.ts pinned/catalog/apps/desktop/src/contrib/runtime-loader.ts pinned/release/apps/desktop/src/contrib/runtime-loader.ts pinned/main/apps/desktop/src/contrib/runtime-loader.ts pinned/fork/apps/desktop/src/contrib/runtime-loader.ts && node scripts/check-loader-scan.mjs --self-test pinned/floor/apps/desktop/src/contrib/runtime-loader.ts pinned/catalog/apps/desktop/src/contrib/runtime-loader.ts pinned/release/apps/desktop/src/contrib/runtime-loader.ts pinned/main/apps/desktop/src/contrib/runtime-loader.ts pinned/fork/apps/desktop/src/contrib/runtime-loader.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
