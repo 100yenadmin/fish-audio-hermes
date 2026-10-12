@@ -1,7 +1,5 @@
 import base64
 import copy
-from types import ModuleType
-import sys
 
 import pytest
 import respx
@@ -17,12 +15,6 @@ def expected(env, **overrides):
         {"id": "s1", "display": "S1 (deprecated)", "deprecated": True},
         {"id": "drama-3-preview", "display": "Drama 3 Preview", "deprecated": False}],
         "aliases": [], "managed": [], **overrides}
-
-
-def managed(monkeypatch, layer):
-    module = ModuleType("hermes_cli.managed_scope")
-    module.load_managed_config = lambda: layer
-    monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", module)
 
 
 def test_settings_exact_offline_operator_and_profile(env):
@@ -69,8 +61,8 @@ def test_settings_invalid_flat_envelope(env, body):
 
 
 @pytest.mark.parametrize("leaf", ["voice", "model", "aliases"])
-def test_managed_flat_envelope(env, monkeypatch, leaf):
-    managed(monkeypatch, {"tts": {"fish-audio": {leaf: None}}})
+def test_managed_flat_envelope(env, managed_layer, leaf):
+    managed_layer({"tts": {"fish-audio": {leaf: None}}})
     assert env.get("/settings") == expected(env, managed=[leaf])
     refusal = {"ok": False, "kind": "managed", "message": "This setting is set by the operator of this agent."}
     if leaf == "aliases":
@@ -79,6 +71,12 @@ def test_managed_flat_envelope(env, monkeypatch, leaf):
     else:
         assert env.post("/settings", **{leaf: None}) == refusal
     assert env.active().saves == 0
+
+
+@pytest.mark.parametrize("rule,managed", [("upstream", ["model"]), ("fork", [])])
+def test_settings_managed_list_follows_core_rule(env, managed_layer, rule, managed):
+    managed_layer({"tts": {"fish-audio": {"model": {}}}}, rule=rule)
+    assert env.get("/settings")["managed"] == managed
 
 
 def test_alias_routes_and_use_exact(env):

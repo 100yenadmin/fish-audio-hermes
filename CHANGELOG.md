@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.2 — 2026-10-13
+
+- **No false "set by the operator" lock on managed agents.** The plugin now asks Hermes which settings the operator's
+  managed layer pins, instead of keeping its own copy of that rule. On Hermes builds where an empty section in the
+  managed config pins nothing, voice, model and saved voice names are no longer refused or shown as locked because of
+  one. Upstream Hermes, which still treats an empty section as pinned, behaves as before.
+- **Tested against Hermes 0.21.7.** CI now runs against Hermes 0.21.5, 0.21.6, 0.21.7, current `main` and the Electric
+  Sheep fleet runtime.
+- **README:** Desktop 0.21.7 and newer switches on the desktop half when you install with **Enable after install**. A
+  troubleshooting row covers Fish tools that go missing after turning the plugin off and on in Hermes 0.21.6 and older.
+
 ## 1.5.1 — 2026-10-12
 
 - **Fish Audio errors in your language on the Desktop Voices page.** Errors from Fish (key, credit, rate limit, voice not
