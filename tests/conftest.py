@@ -8,13 +8,37 @@ without importing Hermes. Integration tests that mount through Hermes's real loa
 from __future__ import annotations
 
 import importlib.util
+import copy
 import sys
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Dict, List
 
 import pytest
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.fixture
+def managed_layer(monkeypatch):
+    def install(layer, *, rule="upstream"):
+        assert rule in {"upstream", "fork"}
+        def flatten(node, prefix=""):
+            keys = set()
+            for name, value in node.items():
+                dotted = f"{prefix}.{name}" if prefix else name
+                if isinstance(value, dict) and (value or rule == "fork"):
+                    keys.update(flatten(value, dotted))
+                else:
+                    keys.add(dotted)
+            return keys
+        module = ModuleType("hermes_cli.managed_scope")
+        module.load_managed_config = lambda: copy.deepcopy(layer)
+        module.managed_config_keys = lambda: flatten(module.load_managed_config())
+        monkeypatch.setattr(sys.modules["hermes_cli"], "managed_scope", module, raising=False)
+        monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", module)
+        return module
+    return install
 
 
 class FakeCtx:

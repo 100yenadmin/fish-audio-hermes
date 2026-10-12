@@ -131,8 +131,8 @@ For Desktop connected to an agent on another machine, install from Desktop:
 1. Open **Capabilities → Plugins → Install from Git**, enter `https://github.com/100yenadmin/fish-audio-hermes`,
    choose **Review repository**, then **Install**. Desktop installs the agent half into the connected agent and
    the desktop half on this computer.
-2. In **Capabilities → Plugins**, open **Fish Audio** and switch on **Desktop**. Desktop plugins stay off until
-   you turn them on.
+2. On Desktop 0.21.7 and newer, **Install** with **Enable after install** also switches on the desktop half. On
+   older Desktop, open **Fish Audio** in **Capabilities → Plugins** and switch on **Desktop**.
 3. **Restart the agent's gateway** once. Hermes mounts plugin routes only at startup.
 
 The **Voices** row appears only
@@ -288,6 +288,7 @@ word error rate (WER) 1.8% and Japanese/Chinese character error rate (CER) 0. Th
 | "Fish Audio concurrency limit reached" | Fish allows 5 concurrent requests below $100 of lifetime top-ups, 15 from $100, and 50 from $1,000. |
 | "The voice id was not found" | The id is wrong or the voice is private to another account. Try `/fish voices`. |
 | Voice replies stay silent | Run `/fish status`; it shows the last Fish error, with its Fish trace id when Fish sent one. |
+| Fish tools missing after turning the plugin off and on (Hermes 0.21.6 and older) | Add them back with `hermes tools`. Hermes 0.21.7 and newer restore them. |
 | Anything else | Run `hermes fish doctor`, and quote the Fish trace id from the error when you contact Fish Audio support. |
 
 ## Known limitations

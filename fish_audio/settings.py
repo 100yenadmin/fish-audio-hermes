@@ -93,15 +93,11 @@ def resolve_voice(value) -> str | None:
 
 def managed_leaf(*path) -> bool:
     try:
-        from hermes_cli.managed_scope import load_managed_config
-        node = root = load_managed_config()
-        for part in path:
-            if not isinstance(node, dict) or (node is not root and not node):
-                return True  # Hermes core treats a scalar or an empty mapping as a managed leaf.
-            if part not in node:
-                return False
-            node = node[part]
-        return True
+        from hermes_cli.managed_scope import managed_config_keys
+        dotted = ".".join(path)
+        prefixes = {".".join(path[:i]) for i in range(1, len(path) + 1)}
+        # Follow core's managed_config_keys(): strip a parent/leaf, or change a pinned descendant.
+        return any(k in prefixes or k.startswith(dotted + ".") for k in managed_config_keys())
     except Exception:
         return False
 

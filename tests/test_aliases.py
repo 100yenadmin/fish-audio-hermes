@@ -1,4 +1,5 @@
 import json
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -7,7 +8,7 @@ import respx
 from fish_audio import cli, commands, settings, tools
 from fish_audio.tool_support import ToolInputError
 from fish_audio.tts import FishAudioTTSProvider
-from test_commands import BASE, VOICE, config, managed_layer
+from test_commands import BASE, VOICE, config
 
 OTHER = "c" * 32
 
@@ -120,9 +121,11 @@ def test_speak_resolves_request(config, args, expected, monkeypatch):
 
 @pytest.mark.parametrize("leaf,operation", [("aliases", "add"), ("aliases", "remove"),
     ("model", "model"), ("voice", "use")])
-def test_managed_writes(config, monkeypatch, leaf, operation):
+@pytest.mark.parametrize("rule", ["upstream", "fork"])
+def test_managed_writes(config, managed_layer, leaf, operation, rule):
     seed(config)
-    managed_layer(monkeypatch, {"tts": {"fish-audio": {leaf: {}}}})
+    value = {"narrator": VOICE} if leaf == "aliases" else None
+    managed_layer({"tts": {"fish-audio": {leaf: value}}}, rule=rule)
     raw = {"add": "alias add newname " + VOICE, "remove": "alias remove narrator",
            "model": "model s1", "use": "use narrator"}[operation]
     with respx.mock as mock:
@@ -131,12 +134,55 @@ def test_managed_writes(config, monkeypatch, leaf, operation):
     assert not config[1]
 
 
-@pytest.mark.parametrize("layer,expected", [({"tts": None}, True),
-    ({"tts": {"fish-audio": None}}, True), ({"tts": {"fish-audio": {}}}, True), ({}, False),
-    ({"tts": {"provider": "edge"}}, False)])
-def test_managed_parents(config, monkeypatch, layer, expected):
-    managed_layer(monkeypatch, layer)
-    assert settings.managed_leaf("tts", "fish-audio", "model") is expected
+@pytest.mark.parametrize("rule", ["upstream", "fork"])
+@pytest.mark.parametrize("layer,leaf,upstream,fork", [
+    pytest.param({"tts": None}, "model", True, True, id="tts-scalar"),
+    pytest.param({"tts": {"fish-audio": None}}, "model", True, True, id="fish-scalar"),
+    pytest.param({"tts": {"fish-audio": {}}}, "model", True, False, id="fish-empty"),
+    pytest.param({}, "model", False, False, id="no-layer"),
+    pytest.param({"tts": {"provider": "edge"}}, "model", False, False, id="provider-only"),
+    pytest.param({"tts": {"fish-audio": {"model": "s1"}}}, "model", True, True, id="model-scalar"),
+    pytest.param({"tts": {"fish-audio": {"voice": "x"}}}, "model", False, False, id="voice-only"),
+    pytest.param({"tts": {"fish-audio": {"aliases": {"narrator": VOICE}}}}, "aliases", True, True, id="alias-child"),
+])
+def test_managed_parents(config, managed_layer, layer, leaf, upstream, fork, rule):
+    managed_layer(layer, rule=rule)
+    assert settings.managed_leaf("tts", "fish-audio", leaf) is (upstream if rule == "upstream" else fork)
+
+
+@pytest.mark.parametrize("leaf,operation", [("aliases", "add"), ("aliases", "remove"),
+    ("model", "model"), ("voice", "use")])
+def test_fork_empty_mapping_allows_writes(config, managed_layer, leaf, operation):
+    seed(config)
+    managed_layer({"tts": {"fish-audio": {leaf: {}}}}, rule="fork")
+    raw = {"add": "alias add newname " + VOICE, "remove": "alias remove narrator",
+           "model": "model s2-pro", "use": "use narrator"}[operation]
+    with respx.mock as mock:
+        if operation in {"add", "use"}:
+            mock.get(BASE + "/model/" + VOICE).respond(json={})
+        assert commands.handle(raw) == ("Removed." if operation == "remove" else "Saved.")
+    assert len(config[1]) == 1
+    nested = config[0]["tts"]["fish-audio"]
+    if operation == "remove":
+        assert "narrator" not in nested["aliases"]
+    elif operation == "add":
+        assert nested["aliases"]["newname"] == VOICE
+    else:
+        assert nested[leaf] == ("s2-pro" if operation == "model" else VOICE)
+
+
+@pytest.mark.parametrize("failure", ["import", "missing", "call"])
+def test_managed_core_unavailable(config, monkeypatch, managed_layer, failure):
+    module = managed_layer({"tts": None})
+    if failure == "import":
+        monkeypatch.setitem(sys.modules, "hermes_cli.managed_scope", None)
+    elif failure == "missing":
+        monkeypatch.delattr(module, "managed_config_keys")
+    else:
+        def fail():
+            raise RuntimeError("synthetic managed config error")
+        monkeypatch.setattr(module, "managed_config_keys", fail)
+    assert settings.managed_leaf("tts", "fish-audio", "model") is False
 
 
 def test_list_voices_current_legacy_and_malformed(config):
