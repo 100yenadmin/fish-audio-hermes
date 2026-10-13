@@ -42,6 +42,15 @@ def test_foreign_legacy_voice_rejected(config, voice):
     assert "reference_id" not in resolve(voice)[0]
 
 
+@pytest.mark.parametrize("model", ["drama-3", "drama-3-preview"])
+def test_configured_drama_model_keeps_exact_id(config, model):
+    config[1]["model"] = model
+    with respx.mock(assert_all_called=True) as mock:
+        assert resolve()[0]["model"] == model
+        assert settings.resolve_model(None, key="", base_url=settings.DEFAULT_BASE_URL) == (model, False)
+        assert not mock.calls
+
+
 def test_default_and_free_policy(config):
     _, nested, transport = config
     assert resolve()[0]["model"] == "s2.1-pro"

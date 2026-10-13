@@ -123,6 +123,15 @@ def test_model_selection_and_unknown_rejected(config):
     assert data["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
 
 
+def test_model_drama_3_selection_is_written(config):
+    data, saves, _ = config
+    with respx.mock(assert_all_called=True) as mock:
+        assert commands.handle("model drama-3") == "Saved."
+        assert not mock.calls
+    assert data["tts"]["fish-audio"]["model"] == "drama-3"
+    assert len(saves) == 1 and saves[0]["tts"]["fish-audio"]["model"] == "drama-3"
+
+
 def test_model_free_selection_under_paid_policy_is_honest(config):
     data = config[0]
     data["plugins"] = {"entries": {"fish-audio": {"settings": {"allow_free_model": False}}}}

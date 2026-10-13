@@ -962,7 +962,7 @@ entries:
   spec:
     type: string
     enum:
-    - drama-3-preview
+    - drama-3
     - s1
     - s2-pro
     - s2.1-pro
@@ -1597,7 +1597,7 @@ entries:
   spec:
     type: string
     enum:
-    - drama-3-preview
+    - drama-3
     - s1
     - s2-pro
     - s2.1-pro
@@ -2336,7 +2336,7 @@ entries:
   spec:
     type: string
     enum:
-    - drama-3-preview
+    - drama-3
     - s1
     - s2-pro
     - s2.1-pro

@@ -49,6 +49,23 @@ def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, voice):
         assert hooks.take("s1")[0][:2] == (str(path), voice)
 
 
+@pytest.mark.parametrize("speakers", [None, [VOICE, "b" * 32]])
+def test_speak_drama_3_model_header_and_tags(speakers):
+    assert "drama-3" in tools.SCHEMAS["fish_speak"]["model"]["enum"]
+    text = "<|speaker:0|>[sound relieved] <soft>Hello</soft> [sigh][pause]"
+    args = {"text": text, "model": "drama-3", "voice": VOICE}
+    if speakers:
+        args["speakers"] = speakers
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
+        result = call(tools.fish_speak, **args)
+        assert result["success"] and result["model"] == "drama-3"
+        request = route.calls.last.request
+        assert request.headers["model"] == "drama-3"
+        body = json.loads(request.content)
+        assert body["text"] == text and body["reference_id"] == (speakers or VOICE)
+
+
 def test_speak_multi_pronunciations():
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
