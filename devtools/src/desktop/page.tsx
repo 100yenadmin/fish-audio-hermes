@@ -130,7 +130,8 @@ function Frame({ children, profile, tabs }: { children: ReactNode; profile: stri
   )
 }
 
-export function Onboarding({ profile, operator, freeModel }: { profile: string; operator: boolean; freeModel?: string }) {
+// freeModel is required (undefined allowed) so every caller passes the /available phase; an omitted prop advertised the free model after it ended.
+export function Onboarding({ profile, operator, freeModel }: { profile: string; operator: boolean; freeModel: string | undefined }) {
   const t = usePluginI18n(PLUGIN_ID)
   const open = (url: string) => void pluginCtx().os.openExternal(url)
   return (

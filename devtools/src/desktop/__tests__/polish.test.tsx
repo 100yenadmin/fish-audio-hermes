@@ -174,7 +174,7 @@ it('clamps details to two lines, isolates the title and uses logical onboarding 
   expect(details.style.webkitLineClamp).toBe('2')
   expect(details.style.webkitBoxOrient).toBe('vertical')
   expect(details.querySelectorAll('bdi')).toHaveLength(2)
-  render(<Onboarding profile="test" operator={false} />)
+  render(<Onboarding profile="test" operator={false} freeModel={undefined} />)
   expect(screen.getByRole('list').style.paddingInlineStart).toBe('20px')
   expect(ar.onboardStep2).toContain('◂')
 })
