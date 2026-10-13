@@ -1,5 +1,6 @@
 """Design receipt ownership and operation-local cleanup, with synthetic Fish responses only."""
 import base64
+import json
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,30 @@ CANDIDATE = {"signature": "synthetic-signature", "audio_base64": base64.b64encod
 def isolated(monkeypatch, tmp_path):
     monkeypatch.setattr(media, "audio_output_dir", lambda: tmp_path)
     voices._DESIGNS.clear()
+
+
+def test_design_accepts_and_sends_fish_character_limits():
+    args = {"action": "design", "instruction": "x" * 2000, "reference_text": "r" * 150}
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/voice-design").respond(json={"candidates": []})
+        voices.execute(args, "synthetic-A", BASE, "")
+        sent = json.loads(route.calls.last.request.content)
+        assert sent["instruction"] == args["instruction"] and sent["reference_text"] == args["reference_text"]
+
+
+@pytest.mark.parametrize("fields,message", [
+    ({"instruction": "x" * 2001}, "instruction must be 1–2000 characters."),
+    ({"instruction": "x" * 2000 + " "}, "instruction must be 1–2000 characters."),
+    ({"reference_text": "r" * 151}, "reference_text must be at most 150 characters."),
+    ({"reference_text": 123}, "reference_text must be at most 150 characters."),
+    ({"reference_text": None}, "reference_text must be at most 150 characters."),
+])
+def test_design_refuses_invalid_character_limits_before_request(fields, message):
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(BASE + "/v1/voice-design").respond(json={"candidates": []})
+        with pytest.raises(ToolInputError, match=message):
+            voices.execute({"action": "design", "instruction": "warm", **fields}, "synthetic-A", BASE, "")
+        assert not mock.calls
 
 
 @pytest.mark.parametrize("other_key,other_base", [("synthetic-B", BASE), ("synthetic-A", "http://localhost:8502")])

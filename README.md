@@ -208,8 +208,8 @@ On Hermes 0.21.6 or newer, set `stt.provider: fish-audio` and `stt.streaming: tr
 voice mode, the TUI and Desktop dictation (the composer mic). Captions appear phrase by phrase after a short pause,
 and the final text arrives about half a second after you stop. Fish transcribes one phrase at a time, so when it is
 slow, consecutive phrases can arrive together. If the live session fails, Hermes quietly transcribes the recording as
-a file instead. If Fish has not answered the last phrase 15 seconds after you stop, the text holds only the phrases it
-already returned.
+a file instead. That includes Fish not answering the last phrase within 15 seconds of you stopping, so a late last
+phrase is never dropped.
 
 Each committed phrase is billed at Fish's ASR price, with its audio rounded up to a whole second. A phrase is committed
 only when it holds at least 300 ms of sound above Hermes's `voice.silence_threshold` (100 ms for a last word after an
@@ -278,6 +278,30 @@ Measured on 2026-10-11 from Tokyo with plugin v1.3.2, N=3, p50: HTTP streaming t
 0.293 s on s2.1-pro, 0.266 s on s2-pro and 0.244 s on s1. Whole-file MP3 synthesis of 310 characters took
 3.605 s on s2.1-pro and 2.209 s on s2-pro. On a clean synthetic speech corpus, transcribe-1-pro had English
 word error rate (WER) 1.8% and Japanese/Chinese character error rate (CER) 0. These numbers depend on region and load.
+
+## Fish Audio's MCP server and this plugin
+
+This plugin is Hermes's speech provider and uses a developer API key, billed to Fish API credit.
+Fish's remote HTTP MCP server uses browser sign-in (OAuth, no API key) and is billed to your Fish plan's package credits.
+
+Which to use:
+
+- Speech replies, voice notes, dictation, the Desktop Voices page and the `fish_speak`, `fish_voices` and
+  `fish_transcribe` tools: this plugin. An MCP server cannot be Hermes's speech provider.
+- Story Studio audiobooks and podcasts, images and video: Fish's MCP server.
+
+In Hermes 0.21.7 or newer, add the MCP server with:
+
+```sh
+hermes mcp add fish-audio --url https://api.fish.audio/mcp --auth oauth --connect-timeout 180
+```
+
+Hermes opens Fish's sign-in page: choose the team whose credits to use, then allow access. Fish may email a 6-digit
+code first, and Hermes waits only 30 seconds for the sign-in unless you pass `--connect-timeout`.
+`hermes mcp login fish-audio` signs in again later.
+Ask for each piece of speech through one tool only.
+Fish's [official plugin](https://github.com/fishaudio/fish-audio-plugin) connects Claude Code, claude.ai, Codex and ChatGPT to its MCP server.
+[Fish Audio voice agents (phone agents)](https://docs.fish.audio/agents/overview) are not in this plugin.
 
 ## Troubleshooting
 

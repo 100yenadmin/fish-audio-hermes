@@ -193,10 +193,12 @@ class FishLiveSession(TranscriptionStreamSession):
                     break
             if self._failed:
                 return self._failure(self._failed)
+            if self._received < self._commits:
+                return self._failure("timeout")  # Hermes re-transcribes the recording on a failed live result.
             text = join_text(self._texts)
             if text:
                 return {"success": True, "transcript": text, "provider": "fish-audio"}
-            return self._failure("timeout" if self._received < self._commits else "no_speech")
+            return self._failure("no_speech")
         except Exception:
             return self._failure("unavailable")
         finally:

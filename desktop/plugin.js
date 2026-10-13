@@ -205,7 +205,7 @@ function gatewayAtLeast(min) {
 
 // src/desktop/limits.ts
 var clamp = (value, limit) => value.length <= limit ? value : Array.from(value).slice(0, limit).join("");
-var LIMITS = { title: 100, description: 500, instruction: 500, sampleText: 500, aliasName: 32, aliasVoice: 128, search: 100 };
+var LIMITS = { title: 100, description: 500, instruction: 2e3, sampleText: 150, aliasName: 32, aliasVoice: 128, search: 100 };
 
 // src/desktop/page.tsx
 import {

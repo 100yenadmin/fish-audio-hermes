@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 
 _HOST_SCOPES = False
 
@@ -411,12 +411,12 @@ def design(body: Design):
     key, base = _scope()
     if type(body.n) is not int or not 1 <= body.n <= 3:
         raise Refusal("invalid", "Ask for 1–3 candidates.")
-    args = {"action": "design", "instruction": _text(body.instruction, "The description", 500), "n": body.n}
+    args = {"action": "design", "instruction": _text(body.instruction, "The description", 2000), "n": body.n}
     if body.language not in (None, ""):
         if not isinstance(body.language, str) or not LANGUAGE_RE.fullmatch(body.language):
             raise Refusal("invalid", "Use a language code like en or ja.")
         args["language"] = body.language
-    reference = _text(body.reference_text, "The sample text", 500, required=False)
+    reference = _text(body.reference_text, "The sample text", 150, required=False)
     if reference:
         args["reference_text"] = reference
     voices = _fa("voices")

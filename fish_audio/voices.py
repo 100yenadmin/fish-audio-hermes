@@ -162,7 +162,11 @@ def execute(args, key, base, session):
         return _summary(item, ("title", "state"))
     if action == "design":
         instruction, n = args.get("instruction"), args.get("n", 2)
-        require(isinstance(instruction, str) and 1 <= len(instruction.strip()) <= 500, "instruction must be 1–500 characters.")
+        require(isinstance(instruction, str) and bool(instruction.strip()) and len(instruction) <= 2000,
+                "instruction must be 1–2000 characters.")
+        if "reference_text" in args:
+            require(isinstance(args["reference_text"], str) and len(args["reference_text"]) <= 150,
+                    "reference_text must be at most 150 characters.")
         require(integer(n, 1, 4), "n must be 1–4.")
         body = {"instruction": instruction, "n": n}
         body.update({name: args[name] for name in ("reference_text", "language", "seed", "speed") if name in args})

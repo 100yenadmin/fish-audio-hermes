@@ -6,7 +6,7 @@ import { $playing, releasePlayback } from '../audio'
 import { VoicesPage, Onboarding } from '../page'
 import { SettingsPage } from '../settings-page'
 import { compact, number, usd } from '../format'
-import { clamp } from '../limits'
+import { LIMITS, clamp } from '../limits'
 import { en } from '../locales/en'
 import { de } from '../locales/de'
 import { ja } from '../locales/ja'
@@ -126,6 +126,7 @@ it('selects count forms for the number shown, not the raw count', () => {
 })
 
 it('clamps by code points, as the gateway counts', () => {
+  expect(LIMITS.sampleText).toBe(150)
   expect(clamp('a🐟b', 2)).toBe('a🐟')
   expect(clamp('abc', 5)).toBe('abc')
   expect(clamp('🐟'.repeat(3), 3)).toBe('🐟'.repeat(3))
@@ -143,7 +144,7 @@ it('limits search, clone metadata, design instruction and save names to the gate
   fireEvent.click(screen.getByRole('tab', { name: en.tabs.create }))
   fill(en.voiceTitle, 100)
   fill(en.descriptionOptional, 500)
-  fill(en.designTitle, 500)
+  fill(en.designTitle, 2000)
   fireEvent.click(screen.getByRole('button', { name: en.design }))
   await flush()
   fill(en.saveAsN(1), 100)

@@ -16,6 +16,7 @@ import sys
 import time
 import threading
 from types import ModuleType, SimpleNamespace
+from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -429,12 +430,26 @@ def test_design_returns_audio_and_tokens_but_never_the_signature(env):
         refused(env.post("/design/save", design_token=first["design_token"], title="Again"), "invalid")
 
 
-@pytest.mark.parametrize("body", [{"instruction": ""}, {"instruction": "x" * 501}, {"instruction": "ok", "n": 4},
+def test_gateway_design_accepts_and_sends_fish_character_limits(env):
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(env.active().base + "/v1/voice-design").respond(json={"candidates": []})
+        result = env.post("/design", instruction="x" * 2000, reference_text="r" * 150)
+        assert result["ok"], result
+        sent = json.loads(route.calls.last.request.content)
+        assert sent["instruction"] == "x" * 2000 and sent["reference_text"] == "r" * 150
+
+
+@pytest.mark.parametrize("body", [{"instruction": ""}, {"instruction": "x" * 2001},
+                                  {"instruction": "ok", "reference_text": "r" * 151}, {"instruction": "ok", "n": 4},
                                   {"instruction": "ok", "n": "2"}, {"instruction": "ok", "language": "e n"}])
-def test_design_limits_without_request(env, body):
+def test_design_limits_without_request(env, monkeypatch, body):
+    voices = env.api._fa("voices")
+    execute = Mock(wraps=voices.execute)
+    monkeypatch.setattr(voices, "execute", execute)
     with respx.mock(assert_all_called=True) as mock:
         refused(env.post("/design", **body), "invalid")
         assert not mock.calls
+        execute.assert_not_called()
 
 
 def test_clone_happy_path_uploads_in_chunks_and_cleans_up(env):
