@@ -8,9 +8,13 @@ use Hermes's `text_to_speech`. Calls are billed to the Fish Audio account behind
 `media_tag` verbatim so the audio is delivered; the output hook can append missing audio tags.
 
 S1 is deprecated; from 2026-12-31 requests use S2.1 Pro.
-For `drama-3-preview`, direct delivery in plain language and wrap specific words in paired tags such as
-`<whisper>…</whisper>`. Also supported: `<emphasis>`, `<soft>`, `<fast>`, `<slow>`, `<stress>`, `<forceful>`;
-close each tag around the words it controls.
+For released `drama-3` (older preview id: `drama-3-preview`), put plain-language directions in square brackets
+before the words they apply to, in any language. Put sounds and pauses such as `[sigh]` and `[pause]` where they happen.
+Wrap only the words to change in paired tags: `<whisper>…</whisper>`, `<emphasis>`, `<soft>`, `<fast>`, `<slow>`,
+`<stress>`, `<forceful>`; close each tag. Experimental language tags and `<|phoneme_start|>…<|phoneme_end|>` are
+also supported. For dialogue, `speakers` sends a `reference_id` array; use `<|speaker:N|>` to select its indexed voice.
+Send angle-bracket tags through `fish_speak`: Hermes's `text_to_speech` cleanup breaks closing tags such as
+`</whisper>`. Square-bracket directions and sounds survive it.
 
 S2 models use square brackets. The documented groups are:
 

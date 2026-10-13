@@ -20,7 +20,7 @@ def test_provider_surface_and_no_network(monkeypatch):
     assert provider.name == "fish-audio" and provider.display_name == "Fish Audio"
     assert provider.default_voice() is None and provider.voice_compatible is True
     assert provider.list_models() == MODELS
-    assert [m["id"] for m in MODELS] == ["s2.1-pro", "s2.1-pro-free", "s2-pro", "s1", "drama-3-preview"]
+    assert [m["id"] for m in MODELS] == ["s2.1-pro", "s2.1-pro-free", "s2-pro", "s1", "drama-3", "drama-3-preview"]
     assert provider.get_setup_schema() == {"name": "Fish Audio", "badge": "free model",
         "tag": "Expressive voices, voice cloning, 80+ languages", "env_vars": [{"key": "FISH_API_KEY",
         "prompt": "Fish Audio API key", "url": "https://fish.audio/app/api-keys"}]}
