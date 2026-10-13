@@ -5,6 +5,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: read
 concurrency: {group: fish-bench, cancel-in-progress: false}
 jobs:
   bench:
@@ -17,6 +18,15 @@ jobs:
         with: {python-version: "3.11"}
       - name: Install plugin dependencies
         run: python -c 'import subprocess,sys,tomllib; subprocess.check_call([sys.executable,"-m","pip","install",*tomllib.load(open("pyproject.toml","rb"))["project"]["dependencies"]])'
+      - name: Fetch up to four previous benchmark artifacts
+        continue-on-error: true
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          mkdir -p bench-history
+          gh run list --workflow fish-bench.yml --status completed --limit 4 --json databaseId -q '.[].databaseId' > bench-history/runs || exit 0
+          while read -r id; do
+            gh run download "$id" --name fish-bench-results --dir "bench-history/$id" || true
+          done < bench-history/runs
       - name: Run capped benchmark
         id: bench
         continue-on-error: true
@@ -31,13 +41,13 @@ jobs:
             exit 0
           fi
           sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
-          python bench/weekly.py --out bench-out
+          python bench/weekly.py --out bench-out --history bench-history
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ always() && steps.bench.outcome != 'skipped' && hashFiles('bench-out/results.json') != '' }}
         with:
           name: fish-bench-results
           path: bench-out/results.json
-          retention-days: 30
+          retention-days: 90
       - name: Report a run that stopped before writing its report
         if: ${{ always() && steps.bench.outcome != 'success' && hashFiles('bench-out/report.md') == '' }}
         env: {RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
