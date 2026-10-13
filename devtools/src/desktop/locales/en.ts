@@ -148,6 +148,7 @@ export const en = {
     error: `Something went wrong`,
     badChunkSize: `The gateway sent an invalid upload chunk size.`,
     code: (code: string) => ` Code: ${code}.`,
+    freeEnded: ' Fish announced the end of the free s2.1-pro-free period on 30 November 2026.',
     paidModel: (url: string) => ` Switch to s2.1-pro and top up: ${url}`,
     requestId: (id: string) => ` (request id ${id})`,
     fishTrace: (id: string) => ` (Fish trace ${id})`,

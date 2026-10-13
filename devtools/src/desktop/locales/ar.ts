@@ -146,6 +146,7 @@ export const ar = {
     error: `حدث خطأ`,
     badChunkSize: `أرسلت البوابة حجمًا غير صالح لجزء الرفع.`,
     code: (code: string) => ` الرمز: ${isolate(code)}.`,
+    freeEnded: ' أعلنت Fish انتهاء الفترة المجانية لـ s2.1-pro-free في 30 November 2026.',
     paidModel: (url: string) => ` بدّل إلى s2.1-pro واشحن الرصيد: ${isolate(url)}`,
     requestId: (id: string) => ` (معرّف الطلب ${isolate(id)})`,
     fishTrace: (id: string) => ` (تتبّع Fish ${isolate(id)})`,

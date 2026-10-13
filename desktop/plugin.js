@@ -167,7 +167,11 @@ function errorText(error) {
         text += /[!-~]$/.test(text) && /^\S/.test(suffix) ? ` ${suffix}` : suffix;
       };
       if (code) append(t("errors.code", code));
-      if (hint === "paid_model") append(t("errors.paidModel", LINKS.account));
+      if (hint === "paid_model") {
+        const available = $available.get();
+        if (available && available.free_model === "ended") append(t("errors.freeEnded"));
+        append(t("errors.paidModel", LINKS.account));
+      }
       if (request_id) append(t("errors.requestId", request_id));
       if (trace_id) append(t("errors.fishTrace", trace_id));
       return text;
@@ -1421,6 +1425,7 @@ var en = {
     error: `Something went wrong`,
     badChunkSize: `The gateway sent an invalid upload chunk size.`,
     code: (code) => ` Code: ${code}.`,
+    freeEnded: " Fish announced the end of the free s2.1-pro-free period on 30 November 2026.",
     paidModel: (url) => ` Switch to s2.1-pro and top up: ${url}`,
     requestId: (id) => ` (request id ${id})`,
     fishTrace: (id) => ` (Fish trace ${id})`
@@ -1615,6 +1620,7 @@ var zh = {
     error: `\u51FA\u73B0\u4E86\u95EE\u9898`,
     badChunkSize: `\u7F51\u5173\u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4E0A\u4F20\u5206\u5757\u5927\u5C0F\u3002`,
     code: (code) => `\u9519\u8BEF\u4EE3\u7801\uFF1A${code}\u3002`,
+    freeEnded: "Fish \u5DF2\u5BA3\u5E03 s2.1-pro-free \u7684\u514D\u8D39\u671F\u4E8E 30 November 2026 \u7ED3\u675F\u3002",
     paidModel: (url) => `\u8BF7\u5207\u6362\u5230 s2.1-pro \u5E76\u5145\u503C\uFF1A${url}`,
     requestId: (id) => `\uFF08\u8BF7\u6C42 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u8DDF\u8E2A\uFF1A${id}\uFF09`
@@ -1809,6 +1815,7 @@ var zhHant = {
     error: `\u767C\u751F\u4E86\u554F\u984C`,
     badChunkSize: `\u9598\u9053\u50B3\u56DE\u4E86\u7121\u6548\u7684\u4E0A\u50B3\u5340\u584A\u5927\u5C0F\u3002`,
     code: (code) => `\u932F\u8AA4\u4EE3\u78BC\uFF1A${code}\u3002`,
+    freeEnded: "Fish \u5DF2\u5BA3\u5E03 s2.1-pro-free \u7684\u514D\u8CBB\u671F\u65BC 30 November 2026 \u7D50\u675F\u3002",
     paidModel: (url) => `\u8ACB\u5207\u63DB\u81F3 s2.1-pro \u4E26\u5132\u503C\uFF1A${url}`,
     requestId: (id) => `\uFF08\u8ACB\u6C42 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u8FFD\u8E64\uFF1A${id}\uFF09`
@@ -2003,6 +2010,7 @@ var ja = {
     error: `\u554F\u984C\u304C\u767A\u751F\u3057\u307E\u3057\u305F`,
     badChunkSize: `\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u304B\u3089\u7121\u52B9\u306A\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u30C1\u30E3\u30F3\u30AF\u30B5\u30A4\u30BA\u304C\u8FD4\u3055\u308C\u307E\u3057\u305F\u3002`,
     code: (code) => `\u30B3\u30FC\u30C9\uFF1A${code}\u3002`,
+    freeEnded: "Fish \u306F s2.1-pro-free \u306E\u7121\u6599\u671F\u9593\u304C 30 November 2026 \u306B\u7D42\u4E86\u3057\u305F\u3068\u767A\u8868\u3057\u307E\u3057\u305F\u3002",
     paidModel: (url) => `s2.1-pro \u306B\u5207\u308A\u66FF\u3048\u3066\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
     requestId: (id) => `\uFF08\u30EA\u30AF\u30A8\u30B9\u30C8 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u30C8\u30EC\u30FC\u30B9\uFF1A${id}\uFF09`
@@ -2199,6 +2207,7 @@ var ar = {
     error: `\u062D\u062F\u062B \u062E\u0637\u0623`,
     badChunkSize: `\u0623\u0631\u0633\u0644\u062A \u0627\u0644\u0628\u0648\u0627\u0628\u0629 \u062D\u062C\u0645\u064B\u0627 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D \u0644\u062C\u0632\u0621 \u0627\u0644\u0631\u0641\u0639.`,
     code: (code) => ` \u0627\u0644\u0631\u0645\u0632: ${isolate(code)}.`,
+    freeEnded: " \u0623\u0639\u0644\u0646\u062A Fish \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0641\u062A\u0631\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 \u0644\u0640 s2.1-pro-free \u0641\u064A 30 November 2026.",
     paidModel: (url) => ` \u0628\u062F\u0651\u0644 \u0625\u0644\u0649 s2.1-pro \u0648\u0627\u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F: ${isolate(url)}`,
     requestId: (id) => ` (\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0637\u0644\u0628 ${isolate(id)})`,
     fishTrace: (id) => ` (\u062A\u062A\u0628\u0651\u0639 Fish ${isolate(id)})`
@@ -2393,6 +2402,7 @@ var ru = {
     error: `\u041F\u0440\u043E\u0438\u0437\u043E\u0448\u043B\u0430 \u043E\u0448\u0438\u0431\u043A\u0430`,
     badChunkSize: `\u0428\u043B\u044E\u0437 \u0432\u0435\u0440\u043D\u0443\u043B \u043D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0440\u0430\u0437\u043C\u0435\u0440 \u0431\u043B\u043E\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438.`,
     code: (code) => ` \u041A\u043E\u0434: ${code}.`,
+    freeEnded: " Fish \u043E\u0431\u044A\u044F\u0432\u0438\u043B\u0430 \u043E\u0431 \u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0438 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0433\u043E \u043F\u0435\u0440\u0438\u043E\u0434\u0430 s2.1-pro-free 30 November 2026.",
     paidModel: (url) => ` \u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0438\u0442\u0435\u0441\u044C \u043D\u0430 s2.1-pro \u0438 \u043F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0431\u0430\u043B\u0430\u043D\u0441: ${url}`,
     requestId: (id) => ` (ID \u0437\u0430\u043F\u0440\u043E\u0441\u0430 ${id})`,
     fishTrace: (id) => ` (\u0442\u0440\u0430\u0441\u0441\u0438\u0440\u043E\u0432\u043A\u0430 Fish ${id})`
@@ -2587,6 +2597,7 @@ var fr = {
     error: `Une erreur est survenue`,
     badChunkSize: `La passerelle a envoy\xE9 une taille de bloc d\u2019envoi non valide.`,
     code: (code) => ` Code : ${code}.`,
+    freeEnded: " Fish a annonc\xE9 la fin de la p\xE9riode gratuite de s2.1-pro-free au 30 November 2026.",
     paidModel: (url) => ` Passez \xE0 s2.1-pro et rechargez : ${url}`,
     requestId: (id) => ` (identifiant de requ\xEAte ${id})`,
     fishTrace: (id) => ` (trace Fish ${id})`
@@ -2781,6 +2792,7 @@ var de = {
     error: `Etwas ist schiefgelaufen`,
     badChunkSize: `Das Gateway hat eine ung\xFCltige Upload-Blockgr\xF6\xDFe gesendet.`,
     code: (code) => ` Code: ${code}.`,
+    freeEnded: " Fish hat das Ende der kostenlosen Phase von s2.1-pro-free zum 30 November 2026 angek\xFCndigt.",
     paidModel: (url) => ` Zu s2.1-pro wechseln und Guthaben aufladen: ${url}`,
     requestId: (id) => ` (Anfrage-ID ${id})`,
     fishTrace: (id) => ` (Fish-Trace ${id})`
@@ -2975,6 +2987,7 @@ var es = {
     error: `Algo sali\xF3 mal`,
     badChunkSize: `La pasarela envi\xF3 un tama\xF1o de bloque de carga no v\xE1lido.`,
     code: (code) => ` C\xF3digo: ${code}.`,
+    freeEnded: " Fish anunci\xF3 el fin del periodo gratuito de s2.1-pro-free el 30 November 2026.",
     paidModel: (url) => ` Cambia a s2.1-pro y recarga: ${url}`,
     requestId: (id) => ` (ID de solicitud ${id})`,
     fishTrace: (id) => ` (traza de Fish ${id})`
@@ -3123,7 +3136,8 @@ function registerAvailabilityGate(ctx) {
         if (mine !== generation || disposed) return;
         cancelRetry?.();
         $availableError.set(null);
-        $available.set({ key: res?.key === true, version: String(res?.version ?? ""), account: res?.account !== false });
+        const free_model = res?.free_model === "active" || res?.free_model === "ending" || res?.free_model === "ended" ? res.free_model : void 0;
+        $available.set({ key: res?.key === true, version: String(res?.version ?? ""), account: res?.account !== false, ...free_model && { free_model } });
         show(true, res?.account !== false);
         if (res?.key !== true || res?.account === false) {
           $account.set(null);

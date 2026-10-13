@@ -61,6 +61,19 @@ describe('availability gate', () => {
     t.dispose()
   })
 
+  it('keeps the free-model phase from /available and ignores unknown values', async () => {
+    let answer: () => Promise<unknown> = async () => ({ ok: true, version: '1.7.0', key: false, free_model: 'ended' })
+    const { t } = backend({ '/available': () => answer() })
+    plugin.register(t.ctx as any)
+    await flush()
+    expect($available.get()).toEqual({ key: false, version: '1.7.0', account: true, free_model: 'ended' })
+    answer = async () => ({ ok: true, version: '1.7.0', key: false, free_model: 'later' })
+    await refreshAvailability()
+    await flush()
+    expect($available.get()).toEqual({ key: false, version: '1.7.0', account: true })
+    t.dispose()
+  })
+
   it('a transient error for an agent that already answered records no failure', async () => {
     let answer: () => Promise<unknown> = async () => ({ ok: true, version: '1.0.4', key: true })
     const { t } = backend({ '/available': () => answer() })

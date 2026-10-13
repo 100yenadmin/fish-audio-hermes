@@ -248,8 +248,9 @@ def resolve_model_source(call_model, *, key, base_url, prefer_call: bool = False
     wallet = cached_wallet(key, base_url) if key else None
     if wallet is None or wallet.credit > 0 or wallet.cumulative_top_up > 0 or wallet.has_free_credit is True:
         return "s2.1-pro", "wallet"
-    if not getattr(_notice_logger, "_fish_notice_logged", False):
-        _notice_logger._fish_notice_logged = True
+    phase = free_model_phase()
+    if getattr(_notice_logger, "_fish_notice_logged", False) != phase:  # once per process per phase
+        _notice_logger._fish_notice_logged = phase
         logger.warning(free_model_notice())
     return "s2.1-pro-free", "wallet"
 

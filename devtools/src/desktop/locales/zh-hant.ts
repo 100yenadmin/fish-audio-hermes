@@ -143,6 +143,7 @@ export const zhHant = {
     error: `發生了問題`,
     badChunkSize: `閘道傳回了無效的上傳區塊大小。`,
     code: (code: string) => `錯誤代碼：${code}。`,
+    freeEnded: 'Fish 已宣布 s2.1-pro-free 的免費期於 30 November 2026 結束。',
     paidModel: (url: string) => `請切換至 s2.1-pro 並儲值：${url}`,
     requestId: (id: string) => `（請求 ID：${id}）`,
     fishTrace: (id: string) => `（Fish 追蹤：${id}）`,

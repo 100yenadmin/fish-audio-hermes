@@ -157,7 +157,11 @@ export function errorText(error: unknown): string {
       // CJK suffixes carry no leading space after 。; one still separates them from a sentence ending in a URL.
       const append = (suffix: string) => { text += /[!-~]$/.test(text) && /^\S/.test(suffix) ? ` ${suffix}` : suffix }
       if (code) append(t('errors.code', code))
-      if (hint === 'paid_model') append(t('errors.paidModel', LINKS.account))
+      if (hint === 'paid_model') {
+        const available = $available.get()
+        if (available && available.free_model === 'ended') append(t('errors.freeEnded'))
+        append(t('errors.paidModel', LINKS.account))
+      }
       if (request_id) append(t('errors.requestId', request_id))
       if (trace_id) append(t('errors.fishTrace', trace_id))
       return text

@@ -143,6 +143,7 @@ export const ja = {
     error: `問題が発生しました`,
     badChunkSize: `ゲートウェイから無効なアップロードチャンクサイズが返されました。`,
     code: (code: string) => `コード：${code}。`,
+    freeEnded: 'Fish は s2.1-pro-free の無料期間が 30 November 2026 に終了したと発表しました。',
     paidModel: (url: string) => `s2.1-pro に切り替えてチャージしてください：${url}`,
     requestId: (id: string) => `（リクエスト ID：${id}）`,
     fishTrace: (id: string) => `（Fish トレース：${id}）`,

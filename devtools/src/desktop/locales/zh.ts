@@ -143,6 +143,7 @@ export const zh = {
     error: `出现了问题`,
     badChunkSize: `网关返回了无效的上传分块大小。`,
     code: (code: string) => `错误代码：${code}。`,
+    freeEnded: 'Fish 已宣布 s2.1-pro-free 的免费期于 30 November 2026 结束。',
     paidModel: (url: string) => `请切换到 s2.1-pro 并充值：${url}`,
     requestId: (id: string) => `（请求 ID：${id}）`,
     fishTrace: (id: string) => `（Fish 跟踪：${id}）`,

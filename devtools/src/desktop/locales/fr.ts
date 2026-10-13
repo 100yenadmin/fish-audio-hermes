@@ -143,6 +143,7 @@ export const fr = {
     error: `Une erreur est survenue`,
     badChunkSize: `La passerelle a envoyé une taille de bloc d’envoi non valide.`,
     code: (code: string) => ` Code : ${code}.`,
+    freeEnded: ' Fish a annoncé la fin de la période gratuite de s2.1-pro-free au 30 November 2026.',
     paidModel: (url: string) => ` Passez à s2.1-pro et rechargez : ${url}`,
     requestId: (id: string) => ` (identifiant de requête ${id})`,
     fishTrace: (id: string) => ` (trace Fish ${id})`,

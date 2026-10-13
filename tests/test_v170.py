@@ -99,6 +99,15 @@ def test_notice_log_once_per_process(empty_account, monkeypatch, clock, caplog):
         assert [r.message for r in caplog.records] == [NOTICES[phase]]
 
 
+def test_notice_logs_again_when_the_phase_changes(empty_account, monkeypatch, clock, caplog):
+    # A gateway process can run from October into December; each phase's notice is logged once.
+    monkeypatch.setattr(settings._notice_logger, "_fish_notice_logged", False, raising=False)
+    for day, _ in DATES:
+        clock(day)
+        settings.resolve_model(None, key="synthetic", base_url=BASE)
+    assert [r.message for r in caplog.records] == [NOTICES["active"], NOTICES["ending"], NOTICES["ended"]]
+
+
 def test_tool_notice(empty_account, monkeypatch, clock, tmp_path):
     monkeypatch.setattr(media, "audio_output_dir", lambda: tmp_path)
     for day, phase in DATES:

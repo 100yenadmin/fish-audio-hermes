@@ -143,6 +143,7 @@ export const de = {
     error: `Etwas ist schiefgelaufen`,
     badChunkSize: `Das Gateway hat eine ungültige Upload-Blockgröße gesendet.`,
     code: (code: string) => ` Code: ${code}.`,
+    freeEnded: ' Fish hat das Ende der kostenlosen Phase von s2.1-pro-free zum 30 November 2026 angekündigt.',
     paidModel: (url: string) => ` Zu s2.1-pro wechseln und Guthaben aufladen: ${url}`,
     requestId: (id: string) => ` (Anfrage-ID ${id})`,
     fishTrace: (id: string) => ` (Fish-Trace ${id})`,

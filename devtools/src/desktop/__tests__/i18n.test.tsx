@@ -51,10 +51,10 @@ afterEach(() => {
 })
 
 describe('locale completeness', () => {
-  it.each(Object.entries(locales))('%s has exactly 183 English keys (151 baseline + 31 error keys + free-model sentence), matching leaf types and arities, and no empty messages', (_locale, messages) => {
+  it.each(Object.entries(locales))('%s has exactly 184 English keys (151 baseline + 32 error keys + free-model sentence), matching leaf types and arities, and no empty messages', (_locale, messages) => {
     const english = leaves(en)
     const translated = leaves(messages)
-    expect(Object.keys(english)).toHaveLength(151 + 31 + 1)
+    expect(Object.keys(english)).toHaveLength(151 + 32 + 1)
     expect(Object.keys(translated).sort()).toEqual(Object.keys(english).sort())
     for (const [key, value] of Object.entries(translated)) {
       expect(typeof value, key).toBe(typeof english[key])
@@ -271,6 +271,19 @@ it.each((['en', 'ja'] as const).flatMap(locale => Array.from({ length: 16 }, (_,
     expect(errorText(new ApiError('credential', 'Do not parse this message', detail)))
       .toBe(suffixes.filter((_, i) => mask & (1 << i)).reduce(join, base))
   })
+it.each(['en', 'ja'] as const)('%s says the free period ended before the paid-model hint, only once it has', locale => {
+  errorLocale(locale)
+  const detail = { text: 'credential', code: null, hint: 'paid_model', request_id: null, trace_id: null }
+  const hinted = errorText(new ApiError('credential', 'x', detail))
+  expect(hinted).not.toContain(locales[locale].errors.freeEnded.trim())
+  $available.set({ key: true, version: '1.7.0', account: true, free_model: 'ending' })
+  expect(errorText(new ApiError('credential', 'x', detail))).toBe(hinted)
+  $available.set({ key: true, version: '1.7.0', account: true, free_model: 'ended' })
+  const ended = errorText(new ApiError('credential', 'x', detail))
+  expect(ended).toContain(locales[locale].errors.freeEnded.trim())
+  expect(ended.indexOf(locales[locale].errors.freeEnded.trim())).toBeLessThan(ended.lastIndexOf(LINKS.account))
+  expect(errorText(new ApiError('credential', 'x', { ...detail, hint: null }))).not.toContain('30 November 2026')
+})
 it('joins CJK suffixes without a stray space, keeping URLs separate', () => {
   errorLocale('ja')
   const all = { code: 'c1', hint: 'paid_model', request_id: 'r1', trace_id: null, text: 'quota' }

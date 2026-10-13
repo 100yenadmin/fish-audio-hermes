@@ -143,6 +143,7 @@ export const ru = {
     error: `Произошла ошибка`,
     badChunkSize: `Шлюз вернул неверный размер блока загрузки.`,
     code: (code: string) => ` Код: ${code}.`,
+    freeEnded: ' Fish объявила об окончании бесплатного периода s2.1-pro-free 30 November 2026.',
     paidModel: (url: string) => ` Переключитесь на s2.1-pro и пополните баланс: ${url}`,
     requestId: (id: string) => ` (ID запроса ${id})`,
     fishTrace: (id: string) => ` (трассировка Fish ${id})`,

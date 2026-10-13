@@ -143,6 +143,7 @@ export const es = {
     error: `Algo salió mal`,
     badChunkSize: `La pasarela envió un tamaño de bloque de carga no válido.`,
     code: (code: string) => ` Código: ${code}.`,
+    freeEnded: ' Fish anunció el fin del periodo gratuito de s2.1-pro-free el 30 November 2026.',
     paidModel: (url: string) => ` Cambia a s2.1-pro y recarga: ${url}`,
     requestId: (id: string) => ` (ID de solicitud ${id})`,
     fishTrace: (id: string) => ` (traza de Fish ${id})`,
