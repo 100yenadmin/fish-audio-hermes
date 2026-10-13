@@ -318,6 +318,33 @@ def test_paced_live_frames_and_caption_clock(monkeypatch):
     assert polls == pytest.approx([.26, .5, .76, 1, 1.26, 1.5])
 
 
+@pytest.mark.parametrize("arrives,lag", [(2.0, 2040), (None, None)])
+def test_caption_after_the_last_frame_is_a_lag_not_a_failure(monkeypatch, arrives, lag):
+    from fish_audio.stt import FishAudioTranscriptionProvider
+    clock, polls = [0.0], []
+    monkeypatch.setattr(w.time, "perf_counter", lambda: clock[0])
+    monkeypatch.setattr(w.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    class Audio:
+        stdout = bytes(1280)  # first clip ends at 40 ms; all 79 frames are pushed by 1.58 s
+    monkeypatch.setattr(w.subprocess, "run", lambda *a, **k: Audio())
+    class Session:
+        def push_audio(self, frame):
+            pass
+        def partial_transcript(self):
+            polls.append(clock[0])
+            return "caption" if arrives is not None and clock[0] >= arrives else ""
+        def finalize(self):
+            return {"success": True, "transcript": "final"}
+    monkeypatch.setattr(FishAudioTranscriptionProvider, "open_stream_session", lambda _: Session())
+    api = object.__new__(w.Plugin)
+    api.ledger = w.Ledger()
+    result, measured = api.live([Path("one"), Path("two")], "final")
+    assert result["transcript"] == "final"
+    assert measured == (None if lag is None else pytest.approx(lag))
+    # Polling after the audio stops at the fail threshold (4 s after the last frame).
+    assert max(polls) <= 1.58 + 4.0 + .25
+
+
 def test_missing_partial_is_a_failed_lag_gate(tmp_path):
     class Missing(w.Fake):
         def live(self, *args):

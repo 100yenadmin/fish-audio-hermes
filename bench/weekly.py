@@ -172,6 +172,12 @@ class Plugin:
                 if partial and lag is None:
                     lag = max(0, (time.perf_counter() - start - len(clips[0]) / 32000) * 1000)
                 poll += .25
+        # A caption that lands after the last frame is still a lag value, not a failure; stop at the fail threshold.
+        deadline = start + len(pcm) / 32000 + GATES["live-lag"][1] / 1000
+        while lag is None and time.perf_counter() < deadline:
+            time.sleep(.25)
+            if session.partial_transcript():
+                lag = max(0, (time.perf_counter() - start - len(clips[0]) / 32000) * 1000)
         return session.finalize(), lag
 
 

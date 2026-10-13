@@ -23,9 +23,10 @@ jobs:
         env: {GH_TOKEN: "${{ github.token }}"}
         run: |
           mkdir -p bench-history
-          gh run list --workflow fish-bench.yml --status completed --limit 4 --json databaseId -q '.[].databaseId' > bench-history/runs || exit 0
-          while read -r id; do
-            gh run download "$id" --name fish-bench-results --dir "bench-history/$id" || true
+          gh run list --workflow fish-bench.yml --status completed --limit 12 --json databaseId -q '.[].databaseId' > bench-history/runs || exit 0
+          got=0
+          while [ "$got" -lt 4 ] && read -r id; do  # runs without results (skipped, errored) do not count
+            if gh run download "$id" --name fish-bench-results --dir "bench-history/$id"; then got=$((got + 1)); fi
           done < bench-history/runs
       - name: Run capped benchmark
         id: bench

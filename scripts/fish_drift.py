@@ -25,7 +25,7 @@ def extra_canaries():
     models = json.loads(request(COMPAT_URL))["data"]
     tables = fetch(PRICE_PATH).decode().split("### Voice Design")[0]
     prices = dict(re.findall(r"^\| `([^`]+)`[^|]*\|\s*([^|]+?)\s*\|", tables, re.M))
-    return {"compat_model_prices": {m["id"].removeprefix("fish-audio/"): [m["pricing"][k] for k in ("prompt", "completion")] for m in models},
+    return {"compat_model_prices": {m["id"].removeprefix("fish-audio/"): [m["pricing"][k] for k in ("prompt", "completion", "audio") if k in m["pricing"]] for m in models},
             "doc_prices": prices,
             "fish_agent_plugin_version": json.loads(request(PLUGIN_URL + ".claude-plugin/plugin.json"))["version"],
             "fish_mcp_config_sha256": hashlib.sha256(request(PLUGIN_URL + ".mcp.json")).hexdigest()}

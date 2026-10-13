@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  issues: write
 concurrency: {group: hermes-latest, cancel-in-progress: false}
 env:
   HERMES_UPSTREAM_REPO: NousResearch/hermes-agent
@@ -54,6 +53,7 @@ jobs:
     needs: [resolve, test]
     if: ${{ always() && (needs.resolve.result == 'failure' || needs.test.result == 'failure') }}
     runs-on: ubuntu-latest
+    permissions: {issues: write}
     env: {GH_TOKEN: "${{ github.token }}", GH_REPO: "${{ github.repository }}"}
     steps:
       - name: Open or comment on one compatibility issue
@@ -67,7 +67,7 @@ jobs:
           n=$(gh issue list --state open --label hermes-latest --json number -q '.[0].number')
           if [ -n "$n" ]; then
             gh issue view "$n" --json body,comments > issue.json
-            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("issue.json").read_text()); comments=issue["comments"]; text=pathlib.Path("report.md").read_text().rstrip("\n"); latest=(comments[-1]["body"] if comments else issue["body"]).rstrip("\n"); sys.exit(0 if text == latest else 1)'; then
+            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("issue.json").read_text()); comments=issue["comments"]; stable=lambda s: [line for line in s.rstrip("\n").splitlines() if not line.startswith("- run: ")]; text=stable(pathlib.Path("report.md").read_text()); latest=stable(comments[-1]["body"] if comments else issue["body"]); sys.exit(0 if text == latest else 1)'; then
               echo 'Unchanged compatibility report; no comment.'; exit 0
             fi
             gh issue comment "$n" --body-file report.md

@@ -87,7 +87,7 @@ def test_new_canary_fetch_and_price_parser(monkeypatch):
     sources = {
         "https://api.fish.audio/compat/openai/v1/models": json.dumps({"data": [
             {"id": "fish-audio/s2.1-pro-free", "pricing": {"prompt": "0", "completion": "0"}},
-            {"id": "fish-audio/transcribe-1", "pricing": {"prompt": "0", "completion": "0"}}]}).encode(),
+            {"id": "fish-audio/transcribe-1", "pricing": {"prompt": "0", "completion": "0", "audio": "0.0001"}}]}).encode(),
         "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits.md": b"""### Text-to-Speech (TTS) Models
 | Model Name | Price (USD) |
 | - | - |
@@ -109,7 +109,7 @@ def test_new_canary_fetch_and_price_parser(monkeypatch):
     monkeypatch.setattr(drift, "request", request)
     result = drift.extra_canaries()
     assert set(calls) == set(sources)
-    assert result["compat_model_prices"] == {"s2.1-pro-free": ["0", "0"], "transcribe-1": ["0", "0"]}
+    assert result["compat_model_prices"] == {"s2.1-pro-free": ["0", "0"], "transcribe-1": ["0", "0", "0.0001"]}
     assert result["doc_prices"] == {"s2.1-pro-free": r"\$0.00 / M UTF-8 bytes", "s1": r"\$15.00 / M UTF-8 bytes",
                                     "transcribe-1-pro": r"\$0.36 / audio hour", "transcribe-1": r"\$0.36 / audio hour"}
     assert result["fish_agent_plugin_version"] == "0.1.4"
@@ -147,6 +147,14 @@ def test_price_entry_drift_and_free_notice(extras, field, change):
         assert "free period ends 30 November 2026; see the plugin's free-model notices" in notices[0]
     else:
         assert notices == []
+
+
+def test_audio_only_price_change_is_drift(extras):
+    before = copy.deepcopy(extras)
+    before["compat_model_prices"]["transcribe-1"] = ["0", "0", "0.0001"]
+    after = copy.deepcopy(before)
+    after["compat_model_prices"]["transcribe-1"] = ["0", "0", "0.0002"]
+    assert compare_extras(before, after) == ["Changed compat_model_prices transcribe-1: ['0', '0', '0.0001'] -> ['0', '0', '0.0002']"]
 
 
 def test_plugin_manifest_and_raw_mcp_hash_drift(extras):
