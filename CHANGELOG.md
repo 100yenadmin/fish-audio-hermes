@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.1 — 2026-10-14
+
+- **Voice design accepts Fish's limits:** 2000-character voice-design descriptions and 150-character sample text,
+  through the tools and Desktop Voices page. Model descriptions and titles keep their existing limits.
+- **Live dictation keeps the last phrase:** when it is still pending, Hermes re-transcribes the recording instead of
+  returning a shorter transcript.
+- **README:** explains how Fish's MCP server and this plugin fit together, their separate credits and which to use.
+- **Expressive speech:** a Drama 3 worked example with a direction, a sound and paired word tags.
+
 ## 1.6.0 — 2026-10-14
 
 - **Drama 3.** Fish's released `drama-3` model is selectable everywhere (`/fish model`, `fish_speak`, the Desktop

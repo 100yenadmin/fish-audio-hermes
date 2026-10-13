@@ -11,7 +11,7 @@ import msgpack
 import pytest
 import respx
 
-from fish_audio import account, client, hooks, media, settings, voices
+from fish_audio import account, client, hooks, media, settings, tools, voices
 from fish_audio.errors import FishAudioError
 
 BASE = "https://api.fish.audio"
@@ -144,6 +144,13 @@ def test_search_response_projection(flags, total, exact):
 
 
 DESIGN_FIELDS = {"reference_text": "Hello preview", "language": "en", "speed": 1.2, "seed": 42}
+
+
+def test_design_schema_matches_fish_character_limits():
+    schema = tools.SCHEMAS["fish_voices"]
+    assert schema["instruction"]["minLength"] == 1
+    assert schema["instruction"]["maxLength"] == 2000
+    assert schema["reference_text"]["maxLength"] == 150
 
 
 @pytest.mark.parametrize("field", DESIGN_FIELDS)

@@ -6,6 +6,7 @@ description: Expressive Fish speech with emotion cues, multiple speakers and pro
 Use `fish_speak` when the user asks for expressive or multi-speaker speech. For plain read-aloud,
 use Hermes's `text_to_speech`. Calls are billed to the Fish Audio account behind this agent's key. Include the returned
 `media_tag` verbatim so the audio is delivered; the output hook can append missing audio tags.
+Use one speech tool per request (`text_to_speech`, `fish_speak`, or a speech tool from Fish's MCP server), never two for the same words.
 
 S1 is deprecated; from 2026-12-31 requests use S2.1 Pro.
 For released `drama-3` (older preview id: `drama-3-preview`), put plain-language directions in square brackets
@@ -52,3 +53,6 @@ Worked examples (replace the voice ids with voices the user selected):
 3. A pronunciation-aware narration:
    `fish_speak({"text":"[calm] Codex is ready.","model":"s2.1-pro","pronunciations":{"Codex":"code ex"},"format":"wav"})`.
    The plugin keeps `[calm]` in bracket syntax and returns a plain audio-file media tag.
+4. A Drama 3 aside:
+   `fish_speak({"text":"[sound relieved] We made it. [sigh] <whisper>Keep this between us.</whisper>","model":"drama-3","format":"ogg"})`.
+   This goes through `fish_speak` for the paired word tags, as explained above.

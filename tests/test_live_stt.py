@@ -153,7 +153,7 @@ def test_server_errors(live, caplog, error, kind):
 
 
 @pytest.mark.parametrize("answers", [0, 1])
-def test_timeout_keeps_received_commits(live, monkeypatch, answers):
+def test_timeout_with_pending_commit_fails_even_after_received_text(live, monkeypatch, answers):
     monkeypatch.setattr(live_stt, "FINALIZE_TIMEOUT", .05)
     _, session = live(answers=answers)
     if answers:
@@ -163,7 +163,8 @@ def test_timeout_keeps_received_commits(live, monkeypatch, answers):
     started = time.monotonic()
     result = session.finalize()
     assert time.monotonic() - started < 1.5
-    assert result["success"] if answers else result["error_kind"] == "timeout"
+    assert result["success"] is False and result["error_kind"] == "timeout"
+    assert result["transcript"] == ""
 
 
 def test_connect_refused(live):

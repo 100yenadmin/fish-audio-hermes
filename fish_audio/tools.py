@@ -127,7 +127,7 @@ SCHEMAS = {
         "visibility": _field("string", enum=["private", "unlist"]),
         "generate_sample": B, "cover_image_path": S,
         "enhance_audio_quality": _field("boolean", default=True), "consent": B,
-        "instruction": _field("string", minLength=1, maxLength=500), "reference_text": S,
+        "instruction": _field("string", minLength=1, maxLength=2000), "reference_text": _field("string", maxLength=150),
         "num_step": _field("integer", minimum=1, maximum=128),
         "guidance_scale": _field("number", minimum=0), "instruct_guidance_scale": _field("number", minimum=0),
         "n": _field("integer", minimum=1, maximum=4, default=2), "seed": _field("integer"),

@@ -66,6 +66,24 @@ def test_speak_drama_3_model_header_and_tags(speakers):
         assert body["text"] == text and body["reference_id"] == (speakers or VOICE)
 
 
+def test_design_tool_accepts_and_sends_fish_character_limits():
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/voice-design").respond(json={"candidates": []})
+        result = call(tools.fish_voices, action="design", instruction="x" * 2000, reference_text="r" * 150)
+        assert result["success"], result
+        sent = json.loads(route.calls.last.request.content)
+        assert sent["instruction"] == "x" * 2000 and sent["reference_text"] == "r" * 150
+
+
+@pytest.mark.parametrize("fields", [{"instruction": "x" * 2001}, {"reference_text": "r" * 151}])
+def test_design_tool_refuses_over_limit_before_request(fields):
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(BASE + "/v1/voice-design").respond(json={"candidates": []})
+        result = call(tools.fish_voices, action="design", **{"instruction": "warm", **fields})
+        assert result["success"] is False
+        assert not mock.calls
+
+
 def test_speak_multi_pronunciations():
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
