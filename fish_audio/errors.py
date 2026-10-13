@@ -3,6 +3,7 @@ import json
 import re
 
 from .secrets import redact
+from .models import free_model_phase
 
 KEY_URL = "https://fish.audio/app/api-keys"
 BILLING_URL = "https://fish.audio/app/developers/billing"
@@ -87,6 +88,8 @@ def response_error(status, headers=None, body=b"", model=None, key="", *, defaul
     hint = None
     if not operator and ((model == "s2.1-pro-free" and status in {402, 403, 429}) or (defaulted and status == 402 and model != "s2.1-pro")):
         hint = "paid_model"
+        if model == "s2.1-pro-free" and free_model_phase() == "ended":
+            message += " Fish announced the end of the free s2.1-pro-free period on 30 November 2026."
         message += f" Switch to s2.1-pro and top up: {BILLING_URL}"
     request_id = headers.get("x-request-id") or data.get("request_id")
     if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", request_id):

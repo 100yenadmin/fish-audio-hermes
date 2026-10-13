@@ -25,7 +25,8 @@ Otherwise, follow the whole skill.
    On Hermes 0.21.6+, `hermes config set stt.streaming true` enables live dictation (`stt.streaming: true`) in CLI voice mode, TUI and the Desktop composer mic.
 3. Run `/fish voices <description>` and choose `/fish use <id>`. An existing provider is preserved.
    Browse more voices at https://fish.audio/discovery.
-4. Use `/fish model s2.1-pro` for paid synthesis, or `/fish model s2.1-pro-free` for the free model.
+4. Use `/fish model s2.1-pro` for paid synthesis. `/fish model s2.1-pro-free` picks Fish's free model, free through
+   30 November 2026; after that the plugin warns on it, so choose s2.1-pro.
    Managed profiles with `allow_free_model: false` substitute the paid model even for explicit free selection.
 5. Check `/fish status`, `hermes fish status`, and `hermes fish doctor --no-synth`.
    A doctor synthesis check is billed; the audio is temporary and deleted afterward.
@@ -33,7 +34,8 @@ Otherwise, follow the whole skill.
 Model defaults use the active account's API wallet: paid credit, a top-up history, or free API credit selects
 `s2.1-pro`. An unknown wallet also uses that model. A confirmed empty wallet may select the free model:
 
-Using Fish Audio's free s2.1-pro-free model (free until 30 November 2026; Fish may use free-tier requests to improve its models). Top up at https://fish.audio/app/developers/billing to use s2.1-pro.
+Before 1 November 2026, the notice says the model is free until 30 November 2026 and that Fish may use free-tier requests to improve its models; during November it adds a reminder to add API credit to keep speaking.
+After 30 November it describes the announced end and suggests adding credit at https://fish.audio/app/developers/billing if speech fails; the model sent stays unchanged.
 
 Calls are billed to the Fish Audio account behind this agent's key. App plan credits are separate from API credits.
 `/fish balance` shows both; API billing is at https://fish.audio/app/developers/billing.

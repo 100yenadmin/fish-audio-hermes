@@ -128,12 +128,13 @@ export function registerAvailabilityGate(ctx: PluginContext) {
       $availableError.set(null)  // a forced probe (Check again, a new agent) shows loading, not the last failure
     }
     const mine = ++generation
-    return ctx.rest<{ key?: boolean; version?: string; account?: boolean }>('/available').then(
+    return ctx.rest<{ key?: boolean; version?: string; account?: boolean; free_model?: string }>('/available').then(
       res => {
         if (mine !== generation || disposed) return
         cancelRetry?.()
         $availableError.set(null)
-        $available.set({ key: res?.key === true, version: String(res?.version ?? ''), account: res?.account !== false })
+        const free_model = res?.free_model === 'active' || res?.free_model === 'ending' || res?.free_model === 'ended' ? res.free_model : undefined
+        $available.set({ key: res?.key === true, version: String(res?.version ?? ''), account: res?.account !== false, ...(free_model && { free_model }) })
         show(true, res?.account !== false)
         if (res?.key !== true || res?.account === false) {
           $account.set(null)

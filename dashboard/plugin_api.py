@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.6.1"
+VERSION = "1.7.0"
 
 _HOST_SCOPES = False
 
@@ -199,7 +199,8 @@ def available() -> dict:
         key = bool(_fa("secrets").fish_api_key())
     except Exception:
         key = False
-    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key, "account": not _fa("settings").operator_account()}
+    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key, "account": not _fa("settings").operator_account(),
+            "free_model": _fa("models").free_model_phase()}
 
 
 @router.get("/voices")
@@ -292,7 +293,7 @@ def get_settings():
     if model == "s2.1-pro-free" and not allow_free:
         model = "s2.1-pro"
     return {"ok": True, "voice": voice if _fa("tool_support").voice_id(voice) else None, "model": model,
-            "models": [{"id": row["id"], "display": row["display"], "deprecated": row.get("deprecated", False)}
+            "models": [{"id": row["id"], "display": _fa("models").display(row), "deprecated": row.get("deprecated", False)}
                        for row in _fa("models").MODELS if row["id"] != "s2.1-pro-free" or allow_free],
             "aliases": _alias_rows(settings.aliases()),
             "managed": [leaf for leaf in ("voice", "model", "aliases") if settings.managed_leaf("tts", "fish-audio", leaf)]}

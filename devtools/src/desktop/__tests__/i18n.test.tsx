@@ -51,10 +51,10 @@ afterEach(() => {
 })
 
 describe('locale completeness', () => {
-  it.each(Object.entries(locales))('%s has exactly 182 English keys (151 baseline + 31 error keys), matching leaf types and arities, and no empty messages', (_locale, messages) => {
+  it.each(Object.entries(locales))('%s has exactly 184 English keys (151 baseline + 32 error keys + free-model sentence), matching leaf types and arities, and no empty messages', (_locale, messages) => {
     const english = leaves(en)
     const translated = leaves(messages)
-    expect(Object.keys(english)).toHaveLength(151 + 31)
+    expect(Object.keys(english)).toHaveLength(151 + 32 + 1)
     expect(Object.keys(translated).sort()).toEqual(Object.keys(english).sort())
     for (const [key, value] of Object.entries(translated)) {
       expect(typeof value, key).toBe(typeof english[key])
@@ -77,6 +77,30 @@ describe('locale completeness', () => {
 })
 
 describe('localized rendering', () => {
+  it.each(Object.entries(locales))('%s hides ended free-model onboarding and keeps old gateways compatible', (locale, messages) => {
+    const t = context()
+    t.ctx.i18n.register(locales)
+    bindContext(t.ctx as any)
+    setLocale(locale as keyof typeof locales)
+    expect(messages.onboardBody('default')).not.toContain('s2.1-pro-free')
+    expect(messages.onboardFreeModel).toContain('s2.1-pro-free')
+    const date: Record<string, string> = { en: '30 November 2026', de: '30. November 2026', es: '30 de noviembre de 2026',
+      fr: '30 novembre 2026', ru: '30 ноября 2026', ar: '30 نوفمبر 2026', ja: '2026年11月30日', zh: '2026年11月30日', 'zh-hant': '2026年11月30日' }
+    // The end date is written the local way, in both the onboarding sentence and the ended-billing sentence.
+    expect(messages.onboardFreeModel).toContain(date[locale])
+    expect(messages.errors.freeEnded).toContain(date[locale])
+    if (locale !== 'en') expect(messages.onboardFreeModel + messages.errors.freeEnded).not.toContain('30 November 2026')
+    for (const free_model of ['active', 'ending', 'ended', undefined] as const) {
+      $available.set({ key: false, account: true, version: '1.6.0', free_model })
+      render(<VoicesPage />)
+      expect(screen.getByText(messages.onboardBody('default'), { exact: false }).textContent)
+        .toBe(messages.onboardBody('default') + (free_model === 'ended' ? '' : ' ' + messages.onboardFreeModel))
+      cleanup()
+    }
+    $available.set({ key: false, account: false, version: '1.6.0', free_model: 'active' })
+    render(<VoicesPage />)
+    expect(screen.queryByText(messages.onboardFreeModel, { exact: false })).toBeNull()
+  })
   it.each(['ja', 'ar'] as const)('%s renders the page header, all tabs and billing notice', async locale => {
     mount(locale)
     await flush()
@@ -252,6 +276,19 @@ it.each((['en', 'ja'] as const).flatMap(locale => Array.from({ length: 16 }, (_,
     expect(errorText(new ApiError('credential', 'Do not parse this message', detail)))
       .toBe(suffixes.filter((_, i) => mask & (1 << i)).reduce(join, base))
   })
+it.each(['en', 'ja'] as const)('%s says the free period ended before the paid-model hint, only once it has', locale => {
+  errorLocale(locale)
+  const detail = { text: 'credential', code: null, hint: 'paid_model', request_id: null, trace_id: null }
+  const hinted = errorText(new ApiError('credential', 'x', detail))
+  expect(hinted).not.toContain(locales[locale].errors.freeEnded.trim())
+  $available.set({ key: true, version: '1.7.0', account: true, free_model: 'ending' })
+  expect(errorText(new ApiError('credential', 'x', detail))).toBe(hinted)
+  $available.set({ key: true, version: '1.7.0', account: true, free_model: 'ended' })
+  const ended = errorText(new ApiError('credential', 'x', detail))
+  expect(ended).toContain(locales[locale].errors.freeEnded.trim())
+  expect(ended.indexOf(locales[locale].errors.freeEnded.trim())).toBeLessThan(ended.lastIndexOf(LINKS.account))
+  expect(errorText(new ApiError('credential', 'x', { ...detail, hint: null }))).not.toContain(locales[locale].errors.freeEnded.trim())
+})
 it('joins CJK suffixes without a stray space, keeping URLs separate', () => {
   errorLocale('ja')
   const all = { code: 'c1', hint: 'paid_model', request_id: 'r1', trace_id: null, text: 'quota' }

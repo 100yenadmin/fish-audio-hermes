@@ -23,7 +23,8 @@ export const ru = {
   operatorDesignBilled: 'Каждое создание генерирует новые варианты голосов.',
   onboardTitle: 'Подключите аккаунт Fish Audio',
   onboardBody: (profile: string) =>
-    `Для голосов нужен API-ключ Fish Audio, настроенный для ${agentName(profile)}. Новые аккаунты могут начать с бесплатной модели s2.1-pro-free.`,
+    `Для голосов нужен API-ключ Fish Audio, настроенный для ${agentName(profile)}.`,
+  onboardFreeModel: 'Новые аккаунты могут начать с бесплатной модели s2.1-pro-free до 30 ноября 2026 г.',
   onboardStep1: 'Создайте бесплатный API-ключ на fish.audio',
   onboardStep2: 'Вставьте его в Настройки ▸ Плагины ▸ Fish Audio (в более ранних версиях: Возможности ▸ Плагины), затем перезапустите шлюз',
   getKey: 'Получить API-ключ',
@@ -142,6 +143,7 @@ export const ru = {
     error: `Произошла ошибка`,
     badChunkSize: `Шлюз вернул неверный размер блока загрузки.`,
     code: (code: string) => ` Код: ${code}.`,
+    freeEnded: ' Fish объявила об окончании бесплатного периода s2.1-pro-free 30 ноября 2026 г.',
     paidModel: (url: string) => ` Переключитесь на s2.1-pro и пополните баланс: ${url}`,
     requestId: (id: string) => ` (ID запроса ${id})`,
     fishTrace: (id: string) => ` (трассировка Fish ${id})`,

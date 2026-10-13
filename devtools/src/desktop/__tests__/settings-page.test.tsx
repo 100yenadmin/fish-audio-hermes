@@ -137,6 +137,15 @@ describe('settings page body', () => {
     expect(calls).toEqual([])
   })
 
+  it('the no-key card in Settings stops advertising the free model once it has ended', () => {
+    mount(gateway(), { key: false, version: '1.7.0', account: true, free_model: 'ending' })
+    expect(screen.getByText(en.onboardFreeModel, { exact: false })).toBeTruthy()
+    cleanup()
+    mount(gateway(), { key: false, version: '1.7.0', account: true, free_model: 'ended' })
+    expect(screen.getByText(en.onboardTitle)).toBeTruthy()
+    expect(screen.queryByText(en.onboardFreeModel, { exact: false })).toBeNull()
+  })
+
   it('a full gateway shows every section, the current voice title, names and links', async () => {
     const open = vi.fn(async () => true)
     const { calls, t } = mount(gateway())

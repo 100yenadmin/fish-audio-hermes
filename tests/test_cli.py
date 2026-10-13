@@ -180,7 +180,7 @@ def test_cli_status_and_login_name_effective_model(config, monkeypatch, capsys, 
         output = capsys.readouterr().out
         assert f"Key saved for this profile. Model: {expected}\n" in output
         if not allowed:
-            assert "s2.1-pro-free" not in output and settings.FREE_MODEL_NOTICE not in output
+            assert "s2.1-pro-free" not in output and settings.free_model_notice() not in output
         assert cli.RESTART_HINT in output and "test-key" not in output
 
 

@@ -23,7 +23,8 @@ export const zh = {
   operatorDesignBilled: '每次设计都会创建新的候选声音。',
   onboardTitle: '连接你的 Fish Audio 账户',
   onboardBody: (profile: string) =>
-    `声音功能需要在${agentName(profile)}上配置 Fish Audio API 密钥。新账户可以先使用免费的 s2.1-pro-free 模型。`,
+    `声音功能需要在${agentName(profile)}上配置 Fish Audio API 密钥。`,
+  onboardFreeModel: '新账户可以先使用免费的 s2.1-pro-free 模型，免费期截至2026年11月30日。',
   onboardStep1: '在 fish.audio 创建免费 API 密钥',
   onboardStep2: '将密钥粘贴到设置 ▸ 插件 ▸ Fish Audio（旧版本中为技能与工具 ▸ 插件），然后重启网关',
   getKey: '获取 API 密钥',
@@ -142,6 +143,7 @@ export const zh = {
     error: `出现了问题`,
     badChunkSize: `网关返回了无效的上传分块大小。`,
     code: (code: string) => `错误代码：${code}。`,
+    freeEnded: 'Fish 已宣布 s2.1-pro-free 的免费期于2026年11月30日结束。',
     paidModel: (url: string) => `请切换到 s2.1-pro 并充值：${url}`,
     requestId: (id: string) => `（请求 ID：${id}）`,
     fishTrace: (id: string) => `（Fish 跟踪：${id}）`,

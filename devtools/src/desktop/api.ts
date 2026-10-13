@@ -46,7 +46,7 @@ export interface Candidate {
 }
 
 /** The selected agent's gateway half: null until the first probe answers, false on a definite 404. */
-export const $available = atom<null | false | { version: string; key: boolean; account: boolean }>(null)
+export const $available = atom<null | false | { version: string; key: boolean; account: boolean; free_model?: 'active' | 'ending' | 'ended' }>(null)
 /** The selected agent's wallet (status-bar chip, Account tab); null when unknown or without a key. */
 export const $account = atom<Account | null>(null)
 /** Which tab the page shows; palette commands set it before navigating. */
@@ -157,7 +157,11 @@ export function errorText(error: unknown): string {
       // CJK suffixes carry no leading space after 。; one still separates them from a sentence ending in a URL.
       const append = (suffix: string) => { text += /[!-~]$/.test(text) && /^\S/.test(suffix) ? ` ${suffix}` : suffix }
       if (code) append(t('errors.code', code))
-      if (hint === 'paid_model') append(t('errors.paidModel', LINKS.account))
+      if (hint === 'paid_model') {
+        const available = $available.get()
+        if (available && available.free_model === 'ended') append(t('errors.freeEnded'))
+        append(t('errors.paidModel', LINKS.account))
+      }
       if (request_id) append(t('errors.requestId', request_id))
       if (trace_id) append(t('errors.fishTrace', trace_id))
       return text

@@ -8,15 +8,30 @@ import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .models import MODEL_IDS
+from .models import MODEL_IDS, free_model_phase
 from .account import cached_wallet
+from .errors import BILLING_URL
 
 DEFAULT_BASE_URL = "https://api.fish.audio"
 logger = logging.getLogger(__name__)
 _warned = set()
-FREE_MODEL_NOTICE = ("Using Fish Audio's free s2.1-pro-free model (free until 30 November 2026; "
-                     "Fish may use free-tier requests to improve its models). Top up at "
-                     "https://fish.audio/app/developers/billing to use s2.1-pro.")
+
+
+def free_model_notice(today=None):
+    phase = free_model_phase(today)
+    if phase == "active":
+        return ("Using Fish Audio's free s2.1-pro-free model (free until 30 November 2026; "
+                "Fish may use free-tier requests to improve its models). Top up at "
+                f"{BILLING_URL} to use s2.1-pro.")
+    if phase == "ending":
+        return ("Using Fish Audio's free s2.1-pro-free model, free until 30 November 2026 (Fish may use free-tier requests "
+                f"to improve its models). To keep speaking after that, add API credit at {BILLING_URL}; "
+                "with credit the plugin uses s2.1-pro.")
+    return ("This Fish account has no API credit, so the plugin is using s2.1-pro-free, whose free period Fish announced "
+            f"would end on 30 November 2026. If speech fails, add API credit at {BILLING_URL}; "
+            "with credit the plugin uses s2.1-pro.")
+
+
 # Hermes loads distinct plugin modules per profile; a named logger is shared by
 # the process, so the notice stays once-per-process across those module copies.
 _notice_logger = logging.getLogger("fish_audio.free_model_notice")
@@ -233,9 +248,10 @@ def resolve_model_source(call_model, *, key, base_url, prefer_call: bool = False
     wallet = cached_wallet(key, base_url) if key else None
     if wallet is None or wallet.credit > 0 or wallet.cumulative_top_up > 0 or wallet.has_free_credit is True:
         return "s2.1-pro", "wallet"
-    if not getattr(_notice_logger, "_fish_notice_logged", False):
-        _notice_logger._fish_notice_logged = True
-        logger.warning(FREE_MODEL_NOTICE)
+    phase = free_model_phase()
+    if getattr(_notice_logger, "_fish_notice_logged", False) != phase:  # once per process per phase
+        _notice_logger._fish_notice_logged = phase
+        logger.warning(free_model_notice())
     return "s2.1-pro-free", "wallet"
 
 

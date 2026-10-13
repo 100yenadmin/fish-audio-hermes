@@ -113,7 +113,7 @@ export function SettingsPage() {
       </Notice>
     )
   } else if (!available.key) {
-    body = <Onboarding operator={available.account === false} profile={profile} />
+    body = <Onboarding operator={available.account === false} profile={profile} freeModel={available.free_model} />
   } else {
     // Keyed by agent: a switch starts a fresh read, and nothing typed for one agent is sent to another.
     body = <Sections key={agentKey(pin)} operator={available.account === false} pin={pin} />
