@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0 — 2026-10-14
+
+- **Free-model wording follows Fish's end date:** Fish announced `s2.1-pro-free` is free through 30 November 2026.
+  Before 1 November nothing changes. During November the notice says how to keep speaking after the end date. From
+  1 December the setup badge and the Desktop onboarding line no longer advertise a free model, an explicit
+  `s2.1-pro-free` choice gets a warning in `/fish status`, `/fish model` and `hermes fish`, and a billing error says
+  the free period ended. Which model the plugin sends does not change on any date.
+
 ## 1.6.1 — 2026-10-14
 
 - **Voice design accepts Fish's limits:** 2000-character voice-design descriptions and 150-character sample text,

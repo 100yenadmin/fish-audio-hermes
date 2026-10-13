@@ -123,7 +123,9 @@ def test_model_reply_notice(empty_account, clock):
     for day, phase in DATES:
         clock(day)
         reply = commands.handle("model s2.1-pro-free")
-        assert reply.splitlines()[-1] == NOTICES[phase]
+        # After the end date an explicit choice gets the warning instead of the empty-wallet notice.
+        assert reply.splitlines()[-1] == (WARNING if phase == "ended" else NOTICES[phase])
+        assert (NOTICES["ended"] in reply) is False
         assert empty_account["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
 
 
