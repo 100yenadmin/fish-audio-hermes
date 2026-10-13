@@ -23,7 +23,8 @@ export const es = {
   operatorDesignBilled: 'Cada diseño crea nuevas voces candidatas.',
   onboardTitle: 'Conecta tu cuenta de Fish Audio',
   onboardBody: (profile: string) =>
-    `Las voces necesitan una clave API de Fish Audio en ${agentName(profile)}. Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free.`,
+    `Las voces necesitan una clave API de Fish Audio en ${agentName(profile)}.`,
+  onboardFreeModel: 'Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 November 2026.',
   onboardStep1: 'Crea una clave API gratuita en fish.audio',
   onboardStep2: 'Pégala en Configuración ▸ Plugins ▸ Fish Audio (en versiones anteriores: Capacidades ▸ Plugins) y reinicia el gateway',
   getKey: 'Obtener una clave API',

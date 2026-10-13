@@ -33,7 +33,8 @@ Otherwise, follow the whole skill.
 Model defaults use the active account's API wallet: paid credit, a top-up history, or free API credit selects
 `s2.1-pro`. An unknown wallet also uses that model. A confirmed empty wallet may select the free model:
 
-Using Fish Audio's free s2.1-pro-free model (free until 30 November 2026; Fish may use free-tier requests to improve its models). Top up at https://fish.audio/app/developers/billing to use s2.1-pro.
+Before 1 November 2026, the notice says the model is free until 30 November 2026 and that Fish may use free-tier requests to improve its models; during November it adds a reminder to add API credit to keep speaking.
+After 30 November it describes the announced end and suggests adding credit at https://fish.audio/app/developers/billing if speech fails; the model sent stays unchanged.
 
 Calls are billed to the Fish Audio account behind this agent's key. App plan credits are separate from API credits.
 `/fish balance` shows both; API billing is at https://fish.audio/app/developers/billing.

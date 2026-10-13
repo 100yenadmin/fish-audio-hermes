@@ -23,7 +23,8 @@ export const ja = {
   operatorDesignBilled: 'デザインのたびに新しいボイス候補が作成されます。',
   onboardTitle: 'Fish Audio アカウントを接続',
   onboardBody: (profile: string) =>
-    `ボイスを使うには、${agentName(profile)}に Fish Audio API キーが必要です。新しいアカウントでは、無料の s2.1-pro-free モデルから始められます。`,
+    `ボイスを使うには、${agentName(profile)}に Fish Audio API キーが必要です。`,
+  onboardFreeModel: '新しいアカウントでは、30 November 2026 まで無料の s2.1-pro-free モデルから始められます。',
   onboardStep1: 'fish.audio で無料の API キーを作成',
   onboardStep2: '設定 ▸ プラグイン ▸ Fish Audio（旧バージョンでは スキルとツール ▸ プラグイン）にキーを貼り付け、ゲートウェイを再起動',
   getKey: 'API キーを取得',

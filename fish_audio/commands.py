@@ -55,10 +55,12 @@ def status(key=None):
     failure = state.last_failure()
     if operator and failure:
         failure = failure[:2]  # Stored pre-toggle messages can contain account links.
+    free_warning = models.free_model_warning() if nested.get("model") == "s2.1-pro-free" and not managed else None
     return "\n".join((f"Key set: {'yes' if key else 'no'}", f"TTS: {tts.get('provider') or 'unset'} (Fish: {tts.get('provider') == 'fish-audio'})",
         f"STT: {stt.get('provider') or 'unset'} (Fish: {stt.get('provider') == 'fish-audio'})",
         f"Voice: {nested.get('voice') or tts.get('voice') or 'Fish default'}", f"Model: {model} ({reason})",
         *(("warn: " + models.s1_warning(),) if nested.get("model") == "s1" else ()),
+        *(("warn: " + free_warning,) if free_warning else ()),
         *(("Account: managed by the operator",) if operator else
           (f"API credit: {wallet.credit if wallet else 'unknown'}", f"Plan: {package.get('type', 'unknown') if package else 'unknown'}")),
         f"Last failure: {' · '.join(failure) if failure else 'none'}", f"Plugin: {client.PLUGIN_VERSION}",
@@ -217,7 +219,9 @@ def handle(raw_args=""):
                 return "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
             if rest == "s1":
                 return "Saved.\n" + models.s1_warning()
-            return "Saved." + ("\n" + settings.FREE_MODEL_NOTICE if model == "s2.1-pro-free" and not settings.operator_account() else "")
+            warning = models.free_model_warning() if model == "s2.1-pro-free" else None
+            return ("Saved." + ("\n" + warning if warning else "")
+                    + ("\n" + settings.free_model_notice() if model == "s2.1-pro-free" and not warning and not settings.operator_account() else ""))
         if command == "preview":
             ident, _, text = rest.partition(" ")
             ident = settings.resolve_voice(ident)

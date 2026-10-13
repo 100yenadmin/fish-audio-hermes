@@ -24,7 +24,8 @@ export const en = {
   operatorDesignBilled: 'Each design creates new candidate voices.',
   onboardTitle: 'Connect your Fish Audio account',
   onboardBody: (profile: string) =>
-    `Voices need a Fish Audio API key on ${agentName(profile)}. New accounts can start on the free s2.1-pro-free model.`,
+    `Voices need a Fish Audio API key on ${agentName(profile)}.`,
+  onboardFreeModel: 'New accounts can start on the free s2.1-pro-free model until 30 November 2026.',
   onboardStep1: 'Create a free API key on fish.audio',
   onboardStep2: 'Paste it in Settings ▸ Plugins ▸ Fish Audio (in older versions: Capabilities ▸ Plugins), then restart the gateway',
   getKey: 'Get an API key',

@@ -77,7 +77,7 @@ def _speak(args, key, base, session, *, record_media=True):
     if source == "wallet" and settings.operator_account():
         del result["model"]  # A wallet-chosen default follows the operator's wallet, which the agent's users don't see.
     elif defaulted and model == "s2.1-pro-free":
-        result["notice"] = settings.FREE_MODEL_NOTICE
+        result["notice"] = settings.free_model_notice()
     if events is not None:
         from .transcribe import speech_timestamps
         # The billed audio is already saved: a subtitle failure must not hide it.

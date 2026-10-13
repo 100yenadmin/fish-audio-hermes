@@ -58,7 +58,7 @@ def _login(args):
     model, defaulted = settings.resolve_model(None, key=key, base_url=base)
     print(f"Key saved for this profile. Model: {model}")
     if defaulted and model == "s2.1-pro-free":
-        print(settings.FREE_MODEL_NOTICE)
+        print(settings.free_model_notice())
     print(RESTART_HINT)
     return 0
 
@@ -97,6 +97,11 @@ def _doctor(args):
     key, base, cfg = fish_api_key(), commands.base_url(), settings._config()
     if settings._mapping(settings._mapping(cfg.get("tts")).get("fish-audio")).get("model") == "s1":
         line("warn", models.s1_warning())
+    if (settings._mapping(settings._mapping(cfg.get("tts")).get("fish-audio")).get("model") == "s2.1-pro-free"
+            and settings.transport_settings().get("allow_free_model", True) is not False):
+        warning = models.free_model_warning()
+        if warning:
+            line("warn", warning)
     line("ok" if key else "fail", "Key present" if key else "Key absent; run hermes fish login")
     if key:
         started = time.monotonic()

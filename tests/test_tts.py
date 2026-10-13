@@ -15,6 +15,7 @@ def no_live_wallet(monkeypatch):
     monkeypatch.setattr("fish_audio.settings.cached_wallet", lambda *args: None)
 
 
+@pytest.mark.usefixtures("active_free_model_date")
 def test_provider_surface_and_no_network(monkeypatch):
     provider = tts.FishAudioTTSProvider()
     assert provider.name == "fish-audio" and provider.display_name == "Fish Audio"
@@ -89,7 +90,7 @@ def test_resolved_family_and_free_metadata(monkeypatch, tmp_path):
     p = tts.FishAudioTTSProvider()
     p.synthesize("(happy) Hi", str(tmp_path / "out.mp3"), result_metadata=metadata)
     assert calls[-1][0]["text"] == "[happy] Hi"
-    assert metadata["fish_audio_notice"] == settings.FREE_MODEL_NOTICE
+    assert metadata["fish_audio_notice"] == settings.free_model_notice()
     p.synthesize("[happy] Hi [free-form]", str(tmp_path / "out.mp3"), model="s1")
     assert calls[-1][0]["text"] == "(happy) Hi "
 

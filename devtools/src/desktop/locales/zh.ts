@@ -23,7 +23,8 @@ export const zh = {
   operatorDesignBilled: '每次设计都会创建新的候选声音。',
   onboardTitle: '连接你的 Fish Audio 账户',
   onboardBody: (profile: string) =>
-    `声音功能需要在${agentName(profile)}上配置 Fish Audio API 密钥。新账户可以先使用免费的 s2.1-pro-free 模型。`,
+    `声音功能需要在${agentName(profile)}上配置 Fish Audio API 密钥。`,
+  onboardFreeModel: '新账户可以先使用免费的 s2.1-pro-free 模型，免费期截至 30 November 2026。',
   onboardStep1: '在 fish.audio 创建免费 API 密钥',
   onboardStep2: '将密钥粘贴到设置 ▸ 插件 ▸ Fish Audio（旧版本中为技能与工具 ▸ 插件），然后重启网关',
   getKey: '获取 API 密钥',

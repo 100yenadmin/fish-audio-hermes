@@ -62,7 +62,7 @@ def test_notice_once_and_tts_uses_one_resolver(config, monkeypatch, caplog):
     for _ in range(2):
         params, _ = settings.resolve_tts(None, None, None, "mp3", "out.mp3", key="test-key")
         assert params["model"] == "s2.1-pro-free" and params["model_defaulted"]
-    assert [r.message for r in caplog.records if r.name == settings.logger.name] == [settings.FREE_MODEL_NOTICE]
+    assert [r.message for r in caplog.records if r.name == settings.logger.name] == [settings.free_model_notice()]
 
 
 def test_resolver_without_key_has_no_network(config, monkeypatch):

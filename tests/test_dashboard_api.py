@@ -119,7 +119,8 @@ def upload(env, data, chunk=None):
 
 
 def test_available_reports_version_and_key_state(env, monkeypatch):
-    assert env.get("/available") == {"ok": True, "plugin": "fish-audio", "version": env.api.VERSION, "key": True, "account": True}
+    assert env.get("/available") == {"ok": True, "plugin": "fish-audio", "version": env.api.VERSION, "key": True, "account": True,
+                                    "free_model": env.api._fa("models").free_model_phase()}
     monkeypatch.setattr(env.api._fa("secrets"), "fish_api_key", lambda: "")
     assert env.get("/available")["key"] is False
 

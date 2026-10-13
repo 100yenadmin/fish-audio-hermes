@@ -590,7 +590,7 @@ function VoicesPage() {
     return /* @__PURE__ */ jsx3(Frame, { profile, children: availableError ? /* @__PURE__ */ jsx3("div", { style: { padding: pad }, children: /* @__PURE__ */ jsx3(ErrorState2, { description: errorText(availableError), title: t("unreachable", profile), children: /* @__PURE__ */ jsx3(Button3, { onClick: () => void refreshAvailability(), size: "xs", variant: "secondary", children: t("checkAgain") }) }) }) : /* @__PURE__ */ jsx3(Rows, {}) });
   }
   if (!available.key) {
-    return /* @__PURE__ */ jsx3(Frame, { profile, children: /* @__PURE__ */ jsx3(Onboarding, { profile, operator: available.account === false }) });
+    return /* @__PURE__ */ jsx3(Frame, { profile, children: /* @__PURE__ */ jsx3(Onboarding, { profile, operator: available.account === false, freeModel: available.free_model }) });
   }
   return /* @__PURE__ */ jsx3(Body, { pin }, agentKey(pin));
 }
@@ -608,12 +608,18 @@ function Frame({ children, profile, tabs }) {
     /* @__PURE__ */ jsx3("div", { style: { flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: 24 }, children })
   ] });
 }
-function Onboarding({ profile, operator }) {
+function Onboarding({ profile, operator, freeModel }) {
   const t = usePluginI18n4(PLUGIN_ID);
   const open = (url) => void pluginCtx().os.openExternal(url);
   return /* @__PURE__ */ jsx3("div", { style: { padding: pad }, children: /* @__PURE__ */ jsxs3("div", { style: { ...card, maxWidth: 560 }, children: [
     /* @__PURE__ */ jsx3("h2", { style: { fontSize: 15, fontWeight: 600, margin: "0 0 6px" }, children: operator ? t("operatorOnboardTitle") : t("onboardTitle") }),
-    /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }, children: operator ? t("operatorOnboardBody") : t("onboardBody", profile) }),
+    /* @__PURE__ */ jsx3("p", { style: { ...muted, fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }, children: operator ? t("operatorOnboardBody") : /* @__PURE__ */ jsxs3(Fragment2, { children: [
+      t("onboardBody", profile),
+      freeModel !== "ended" && /* @__PURE__ */ jsxs3(Fragment2, { children: [
+        " ",
+        t("onboardFreeModel")
+      ] })
+    ] }) }),
     !operator && /* @__PURE__ */ jsxs3("ol", { style: { fontSize: 13, lineHeight: 1.8, listStyle: "decimal", margin: "0 0 14px", paddingInlineStart: 20 }, children: [
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep1") }),
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep2") })
@@ -1291,7 +1297,8 @@ var en = {
   operatorCloneBilled: "Cloning creates a new voice for this agent.",
   operatorDesignBilled: "Each design creates new candidate voices.",
   onboardTitle: "Connect your Fish Audio account",
-  onboardBody: (profile) => `Voices need a Fish Audio API key on ${agentName(profile)}. New accounts can start on the free s2.1-pro-free model.`,
+  onboardBody: (profile) => `Voices need a Fish Audio API key on ${agentName(profile)}.`,
+  onboardFreeModel: "New accounts can start on the free s2.1-pro-free model until 30 November 2026.",
   onboardStep1: "Create a free API key on fish.audio",
   onboardStep2: "Paste it in Settings \u25B8 Plugins \u25B8 Fish Audio (in older versions: Capabilities \u25B8 Plugins), then restart the gateway",
   getKey: "Get an API key",
@@ -1488,7 +1495,8 @@ var zh = {
   operatorCloneBilled: "\u514B\u9686\u4F1A\u4E3A\u6B64\u667A\u80FD\u4F53\u521B\u5EFA\u4E00\u4E2A\u65B0\u58F0\u97F3\u3002",
   operatorDesignBilled: "\u6BCF\u6B21\u8BBE\u8BA1\u90FD\u4F1A\u521B\u5EFA\u65B0\u7684\u5019\u9009\u58F0\u97F3\u3002",
   onboardTitle: "\u8FDE\u63A5\u4F60\u7684 Fish Audio \u8D26\u6237",
-  onboardBody: (profile) => `\u58F0\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName2(profile)}\u4E0A\u914D\u7F6E Fish Audio API \u5BC6\u94A5\u3002\u65B0\u8D26\u6237\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8D39\u7684 s2.1-pro-free \u6A21\u578B\u3002`,
+  onboardBody: (profile) => `\u58F0\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName2(profile)}\u4E0A\u914D\u7F6E Fish Audio API \u5BC6\u94A5\u3002`,
+  onboardFreeModel: "\u65B0\u8D26\u6237\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8D39\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8D39\u671F\u622A\u81F3 30 November 2026\u3002",
   onboardStep1: "\u5728 fish.audio \u521B\u5EFA\u514D\u8D39 API \u5BC6\u94A5",
   onboardStep2: "\u5C06\u5BC6\u94A5\u7C98\u8D34\u5230\u8BBE\u7F6E \u25B8 \u63D2\u4EF6 \u25B8 Fish Audio\uFF08\u65E7\u7248\u672C\u4E2D\u4E3A\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\uFF09\uFF0C\u7136\u540E\u91CD\u542F\u7F51\u5173",
   getKey: "\u83B7\u53D6 API \u5BC6\u94A5",
@@ -1681,7 +1689,8 @@ var zhHant = {
   operatorCloneBilled: "\u514B\u9686\u6703\u70BA\u6B64\u4EE3\u7406\u5EFA\u7ACB\u4E00\u500B\u65B0\u8072\u97F3\u3002",
   operatorDesignBilled: "\u6BCF\u6B21\u8A2D\u8A08\u90FD\u6703\u5EFA\u7ACB\u65B0\u7684\u5019\u9078\u8072\u97F3\u3002",
   onboardTitle: "\u9023\u63A5\u60A8\u7684 Fish Audio \u5E33\u6236",
-  onboardBody: (profile) => `\u8072\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName3(profile)}\u4E0A\u8A2D\u5B9A Fish Audio API \u91D1\u9470\u3002\u65B0\u5E33\u6236\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8CBB\u7684 s2.1-pro-free \u6A21\u578B\u3002`,
+  onboardBody: (profile) => `\u8072\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName3(profile)}\u4E0A\u8A2D\u5B9A Fish Audio API \u91D1\u9470\u3002`,
+  onboardFreeModel: "\u65B0\u5E33\u6236\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8CBB\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8CBB\u671F\u622A\u81F3 30 November 2026\u3002",
   onboardStep1: "\u5728 fish.audio \u5EFA\u7ACB\u514D\u8CBB API \u91D1\u9470",
   onboardStep2: "\u5C07\u91D1\u9470\u8CBC\u5230\u8A2D\u5B9A \u25B8 \u5916\u639B \u25B8 Fish Audio\uFF08\u820A\u7248\u672C\u4E2D\u70BA\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\uFF09\uFF0C\u7136\u5F8C\u91CD\u65B0\u555F\u52D5\u9598\u9053",
   getKey: "\u53D6\u5F97 API \u91D1\u9470",
@@ -1874,7 +1883,8 @@ var ja = {
   operatorCloneBilled: "\u30AF\u30ED\u30FC\u30F3\u4F5C\u6210\u3067\u306F\u3001\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u7528\u306E\u65B0\u3057\u3044\u30DC\u30A4\u30B9\u304C\u4F5C\u6210\u3055\u308C\u307E\u3059\u3002",
   operatorDesignBilled: "\u30C7\u30B6\u30A4\u30F3\u306E\u305F\u3073\u306B\u65B0\u3057\u3044\u30DC\u30A4\u30B9\u5019\u88DC\u304C\u4F5C\u6210\u3055\u308C\u307E\u3059\u3002",
   onboardTitle: "Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u3092\u63A5\u7D9A",
-  onboardBody: (profile) => `\u30DC\u30A4\u30B9\u3092\u4F7F\u3046\u306B\u306F\u3001${agentName4(profile)}\u306B Fish Audio API \u30AD\u30FC\u304C\u5FC5\u8981\u3067\u3059\u3002\u65B0\u3057\u3044\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u306F\u3001\u7121\u6599\u306E s2.1-pro-free \u30E2\u30C7\u30EB\u304B\u3089\u59CB\u3081\u3089\u308C\u307E\u3059\u3002`,
+  onboardBody: (profile) => `\u30DC\u30A4\u30B9\u3092\u4F7F\u3046\u306B\u306F\u3001${agentName4(profile)}\u306B Fish Audio API \u30AD\u30FC\u304C\u5FC5\u8981\u3067\u3059\u3002`,
+  onboardFreeModel: "\u65B0\u3057\u3044\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u306F\u300130 November 2026 \u307E\u3067\u7121\u6599\u306E s2.1-pro-free \u30E2\u30C7\u30EB\u304B\u3089\u59CB\u3081\u3089\u308C\u307E\u3059\u3002",
   onboardStep1: "fish.audio \u3067\u7121\u6599\u306E API \u30AD\u30FC\u3092\u4F5C\u6210",
   onboardStep2: "\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u25B8 Fish Audio\uFF08\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F \u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3\uFF09\u306B\u30AD\u30FC\u3092\u8CBC\u308A\u4ED8\u3051\u3001\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u3092\u518D\u8D77\u52D5",
   getKey: "API \u30AD\u30FC\u3092\u53D6\u5F97",
@@ -2069,7 +2079,8 @@ var ar = {
   operatorCloneBilled: "\u064A\u0646\u0634\u0626 \u0627\u0644\u0627\u0633\u062A\u0646\u0633\u0627\u062E \u0635\u0648\u062A\u064B\u0627 \u062C\u062F\u064A\u062F\u064B\u0627 \u0644\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644.",
   operatorDesignBilled: "\u064A\u0646\u0634\u0626 \u0643\u0644 \u062A\u0635\u0645\u064A\u0645 \u0623\u0635\u0648\u0627\u062A\u064B\u0627 \u0645\u0631\u0634\u062D\u0629 \u062C\u062F\u064A\u062F\u0629.",
   onboardTitle: "\u0627\u0631\u0628\u0637 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio",
-  onboardBody: (profile) => `\u062A\u062D\u062A\u0627\u062C \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0625\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}. \u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free.`,
+  onboardBody: (profile) => `\u062A\u062D\u062A\u0627\u062C \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0625\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}.`,
+  onboardFreeModel: "\u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free \u062D\u062A\u0649 30 November 2026.",
   onboardStep1: "\u0623\u0646\u0634\u0626 \u0645\u0641\u062A\u0627\u062D API \u0645\u062C\u0627\u0646\u064A\u064B\u0627 \u0639\u0644\u0649 fish.audio",
   onboardStep2: "\u0627\u0644\u0635\u0642\u0647 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629",
   getKey: "\u0627\u0644\u062D\u0635\u0648\u0644 \u0639\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API",
@@ -2262,7 +2273,8 @@ var ru = {
   operatorCloneBilled: "\u041A\u043B\u043E\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0441\u043E\u0437\u0434\u0430\u0451\u0442 \u043D\u043E\u0432\u044B\u0439 \u0433\u043E\u043B\u043E\u0441 \u0434\u043B\u044F \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430.",
   operatorDesignBilled: "\u041A\u0430\u0436\u0434\u043E\u0435 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u0433\u0435\u043D\u0435\u0440\u0438\u0440\u0443\u0435\u0442 \u043D\u043E\u0432\u044B\u0435 \u0432\u0430\u0440\u0438\u0430\u043D\u0442\u044B \u0433\u043E\u043B\u043E\u0441\u043E\u0432.",
   onboardTitle: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442 Fish Audio",
-  onboardBody: (profile) => `\u0414\u043B\u044F \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u043D\u0443\u0436\u0435\u043D API-\u043A\u043B\u044E\u0447 Fish Audio, \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u043D\u044B\u0439 \u0434\u043B\u044F ${agentName6(profile)}. \u041D\u043E\u0432\u044B\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0447\u0430\u0442\u044C \u0441 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0439 \u043C\u043E\u0434\u0435\u043B\u0438 s2.1-pro-free.`,
+  onboardBody: (profile) => `\u0414\u043B\u044F \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u043D\u0443\u0436\u0435\u043D API-\u043A\u043B\u044E\u0447 Fish Audio, \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u043D\u044B\u0439 \u0434\u043B\u044F ${agentName6(profile)}.`,
+  onboardFreeModel: "\u041D\u043E\u0432\u044B\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0447\u0430\u0442\u044C \u0441 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0439 \u043C\u043E\u0434\u0435\u043B\u0438 s2.1-pro-free \u0434\u043E 30 November 2026.",
   onboardStep1: "\u0421\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u044B\u0439 API-\u043A\u043B\u044E\u0447 \u043D\u0430 fish.audio",
   onboardStep2: "\u0412\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u0435\u0433\u043E \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u25B8 Fish Audio (\u0432 \u0431\u043E\u043B\u0435\u0435 \u0440\u0430\u043D\u043D\u0438\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445: \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B), \u0437\u0430\u0442\u0435\u043C \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0448\u043B\u044E\u0437",
   getKey: "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u044C API-\u043A\u043B\u044E\u0447",
@@ -2455,7 +2467,8 @@ var fr = {
   operatorCloneBilled: "Le clonage cr\xE9e une nouvelle voix pour cet agent.",
   operatorDesignBilled: "Chaque conception cr\xE9e de nouvelles voix propos\xE9es.",
   onboardTitle: "Connectez votre compte Fish Audio",
-  onboardBody: (profile) => `Les voix n\xE9cessitent une cl\xE9 API Fish Audio pour ${agentName7(profile)}. Les nouveaux comptes peuvent commencer avec le mod\xE8le gratuit s2.1-pro-free.`,
+  onboardBody: (profile) => `Les voix n\xE9cessitent une cl\xE9 API Fish Audio pour ${agentName7(profile)}.`,
+  onboardFreeModel: "Les nouveaux comptes peuvent commencer avec le mod\xE8le gratuit s2.1-pro-free jusqu\u2019au 30 November 2026.",
   onboardStep1: "Cr\xE9ez une cl\xE9 API gratuite sur fish.audio",
   onboardStep2: "Collez-la dans Param\xE8tres \u25B8 Plugins \u25B8 Fish Audio (dans les versions ant\xE9rieures : Capacit\xE9s \u25B8 Plugins), puis red\xE9marrez le gateway",
   getKey: "Obtenir une cl\xE9 API",
@@ -2648,7 +2661,8 @@ var de = {
   operatorCloneBilled: "Beim Klonen entsteht eine neue Stimme f\xFCr diesen Agenten.",
   operatorDesignBilled: "Jeder Entwurf erstellt neue Stimmen zur Auswahl.",
   onboardTitle: "Verbinden Sie Ihr Fish Audio-Konto",
-  onboardBody: (profile) => `F\xFCr ${agentName8(profile)} wird ein Fish Audio API-Schl\xFCssel ben\xF6tigt. Neue Konten k\xF6nnen mit dem kostenlosen Modell s2.1-pro-free beginnen.`,
+  onboardBody: (profile) => `F\xFCr ${agentName8(profile)} wird ein Fish Audio API-Schl\xFCssel ben\xF6tigt.`,
+  onboardFreeModel: "Neue Konten k\xF6nnen bis zum 30 November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.",
   onboardStep1: "Erstellen Sie einen kostenlosen API-Schl\xFCssel auf fish.audio",
   onboardStep2: "F\xFCgen Sie ihn unter Einstellungen \u25B8 Plugins \u25B8 Fish Audio ein (in \xE4lteren Versionen: F\xE4higkeiten \u25B8 Plugins) und starten Sie dann das Gateway neu",
   getKey: "API-Schl\xFCssel erhalten",
@@ -2841,7 +2855,8 @@ var es = {
   operatorCloneBilled: "La clonaci\xF3n crea una voz nueva para este agente.",
   operatorDesignBilled: "Cada dise\xF1o crea nuevas voces candidatas.",
   onboardTitle: "Conecta tu cuenta de Fish Audio",
-  onboardBody: (profile) => `Las voces necesitan una clave API de Fish Audio en ${agentName9(profile)}. Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free.`,
+  onboardBody: (profile) => `Las voces necesitan una clave API de Fish Audio en ${agentName9(profile)}.`,
+  onboardFreeModel: "Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 November 2026.",
   onboardStep1: "Crea una clave API gratuita en fish.audio",
   onboardStep2: "P\xE9gala en Configuraci\xF3n \u25B8 Plugins \u25B8 Fish Audio (en versiones anteriores: Capacidades \u25B8 Plugins) y reinicia el gateway",
   getKey: "Obtener una clave API",

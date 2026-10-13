@@ -51,10 +51,10 @@ afterEach(() => {
 })
 
 describe('locale completeness', () => {
-  it.each(Object.entries(locales))('%s has exactly 182 English keys (151 baseline + 31 error keys), matching leaf types and arities, and no empty messages', (_locale, messages) => {
+  it.each(Object.entries(locales))('%s has exactly 183 English keys (151 baseline + 31 error keys + free-model sentence), matching leaf types and arities, and no empty messages', (_locale, messages) => {
     const english = leaves(en)
     const translated = leaves(messages)
-    expect(Object.keys(english)).toHaveLength(151 + 31)
+    expect(Object.keys(english)).toHaveLength(151 + 31 + 1)
     expect(Object.keys(translated).sort()).toEqual(Object.keys(english).sort())
     for (const [key, value] of Object.entries(translated)) {
       expect(typeof value, key).toBe(typeof english[key])
@@ -77,6 +77,25 @@ describe('locale completeness', () => {
 })
 
 describe('localized rendering', () => {
+  it.each(Object.entries(locales))('%s hides ended free-model onboarding and keeps old gateways compatible', (locale, messages) => {
+    const t = context()
+    t.ctx.i18n.register(locales)
+    bindContext(t.ctx as any)
+    setLocale(locale as keyof typeof locales)
+    expect(messages.onboardBody('default')).not.toContain('s2.1-pro-free')
+    expect(messages.onboardFreeModel).toContain('s2.1-pro-free')
+    expect(messages.onboardFreeModel).toContain('30 November 2026')
+    for (const free_model of ['active', 'ending', 'ended', undefined] as const) {
+      $available.set({ key: false, account: true, version: '1.6.0', free_model })
+      render(<VoicesPage />)
+      expect(screen.getByText(messages.onboardBody('default'), { exact: false }).textContent)
+        .toBe(messages.onboardBody('default') + (free_model === 'ended' ? '' : ' ' + messages.onboardFreeModel))
+      cleanup()
+    }
+    $available.set({ key: false, account: false, version: '1.6.0', free_model: 'active' })
+    render(<VoicesPage />)
+    expect(screen.queryByText(messages.onboardFreeModel, { exact: false })).toBeNull()
+  })
   it.each(['ja', 'ar'] as const)('%s renders the page header, all tabs and billing notice', async locale => {
     mount(locale)
     await flush()

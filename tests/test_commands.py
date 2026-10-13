@@ -116,11 +116,23 @@ def test_managed_write_refused(config):
     assert "managed" in commands.handle("model s1") and not saves
 
 
+@pytest.mark.usefixtures("active_free_model_date")
 def test_model_selection_and_unknown_rejected(config):
     data, saves, _ = config
     assert "Unknown" in commands.handle("model unknown") and not saves
-    assert commands.handle("model s2.1-pro-free") == "Saved.\n" + settings.FREE_MODEL_NOTICE
+    assert commands.handle("model s2.1-pro-free") == "Saved.\n" + settings.free_model_notice()
     assert data["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
+
+
+def test_explicit_free_choice_after_end_gets_warning_without_wallet_notice(config, monkeypatch):
+    from datetime import datetime
+    from types import SimpleNamespace
+    from fish_audio import models
+    monkeypatch.setattr(models, "datetime", SimpleNamespace(now=lambda tz: datetime(2026, 12, 1, tzinfo=tz)))
+    data, saves, _ = config
+    reply = commands.handle("model s2.1-pro-free")
+    assert reply == "Saved.\n" + models.free_model_warning()
+    assert "no API credit" not in reply and data["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
 
 
 def test_model_drama_3_selection_is_written(config):
@@ -138,7 +150,7 @@ def test_model_free_selection_under_paid_policy_is_honest(config):
     with respx.mock(assert_all_called=True) as mock:
         reply = commands.handle("model s2.1-pro-free")
         assert reply == "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
-        assert settings.FREE_MODEL_NOTICE not in reply and not mock.calls
+        assert settings.free_model_notice() not in reply and not mock.calls
     assert data["tts"]["fish-audio"]["model"] == "s2.1-pro-free"
     assert settings.resolve_model(None, key="test-key", base_url=BASE) == ("s2.1-pro", False)
 
@@ -153,7 +165,7 @@ def test_chat_status_names_effective_model(config, allowed, expected):
         output = commands.handle("status")
         assert output.split("Model: ", 1)[1].split()[0] == expected
         assert expected == settings.resolve_model(None, key="test-key", base_url=BASE)[0]
-        assert settings.FREE_MODEL_NOTICE not in output
+        assert settings.free_model_notice() not in output
 
 
 def test_voices_top_five_and_status_balance(config):

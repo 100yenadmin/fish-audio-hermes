@@ -3,8 +3,10 @@
 Every pin receives real ?profile= requests through the mount and middleware.
 """
 import importlib.util
+from datetime import datetime
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import pytest
 import respx
@@ -34,12 +36,14 @@ def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_
     module = sys.modules["hermes_dashboard_plugin_fish-audio"]
     assert Path(module.__file__).is_relative_to(home / "plugins" / "fish-audio")
     assert not any(name.startswith("hermes_plugins") and "fish_audio_dashboard" in name for name in sys.modules)
+    monkeypatch.setattr(module._fa("models"), "datetime", SimpleNamespace(now=lambda tz: datetime(2026, 10, 31, tzinfo=tz)))
 
     assert TestClient(server.app).get(PREFIX + "/available").status_code == 401  # the dashboard's auth, not ours
     client = TestClient(server.app, headers={server._SESSION_HEADER_NAME: server._SESSION_TOKEN})
     available = client.get(PREFIX + "/available")
     assert available.status_code == 200
-    assert available.json() == {"ok": True, "plugin": "fish-audio", "version": module.VERSION, "key": True, "account": True}
+    assert available.json() == {"ok": True, "plugin": "fish-audio", "version": module.VERSION, "key": True, "account": True,
+                                "free_model": "active"}
     # The routes load the plugin's own package under a private name, beside (not inside) the agent loader's.
     assert module._PACKAGE in sys.modules and not module._PACKAGE.startswith("hermes_plugins")
     assert Path(sys.modules[module._PACKAGE].__file__).is_relative_to(home / "plugins" / "fish-audio")

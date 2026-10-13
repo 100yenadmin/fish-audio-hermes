@@ -105,7 +105,7 @@ def test_speak_voice_precedence_and_free_notice(monkeypatch):
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"audio")
         result = call(tools.fish_speak, text="hello", voice=VOICE)
-        assert result["notice"] == settings.FREE_MODEL_NOTICE and result["voice"] == VOICE
+        assert result["notice"] == settings.free_model_notice() and result["voice"] == VOICE
         assert json.loads(route.calls.last.request.content)["reference_id"] == VOICE
         result = call(tools.fish_speak, text="hello")
         assert result["voice"] == "b" * 32

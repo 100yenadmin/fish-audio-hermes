@@ -3,7 +3,7 @@ from ._compat import TTSProvider
 from . import client, models, settings
 from .models import MODELS
 from .secrets import fish_api_key
-from .settings import FREE_MODEL_NOTICE, resolve_tts
+from .settings import free_model_notice, resolve_tts
 from .tags import adapt_tags
 from .errors import FishAudioError
 from .state import record_failure
@@ -42,7 +42,7 @@ class FishAudioTTSProvider(TTSProvider):
             return False
 
     def get_setup_schema(self):
-        return {"name": "Fish Audio", "badge": "free model", "tag": "Expressive voices, voice cloning, 80+ languages",
+        return {"name": "Fish Audio", "badge": "free model" if models.free_model_phase() != "ended" else "", "tag": "Expressive voices, voice cloning, 80+ languages",
                 "env_vars": [{"key": "FISH_API_KEY", "prompt": "Fish Audio API key", "url": "https://fish.audio/app/api-keys"}]}
 
     def list_models(self):
@@ -82,7 +82,7 @@ class FishAudioTTSProvider(TTSProvider):
         params["text"] = adapt_tags(text, family)
         metadata = extra.get("result_metadata")
         if isinstance(metadata, dict) and params["model_defaulted"] and params["model"] == "s2.1-pro-free" and not settings.operator_account():
-            metadata["fish_audio_notice"] = FREE_MODEL_NOTICE
+            metadata["fish_audio_notice"] = free_model_notice()
         try:
             client.tts_to_file(params, key, base_url, final_path)
         except FishAudioError as exc:

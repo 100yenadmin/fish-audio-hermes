@@ -20,6 +20,14 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture
+def active_free_model_date(monkeypatch):
+    from datetime import datetime
+    from types import SimpleNamespace
+    from fish_audio import models
+    monkeypatch.setattr(models, "datetime", SimpleNamespace(now=lambda tz: datetime(2026, 10, 31, tzinfo=tz)))
+
+
+@pytest.fixture
 def managed_layer(monkeypatch):
     def install(layer, *, rule="upstream"):
         assert rule in {"upstream", "fork"}

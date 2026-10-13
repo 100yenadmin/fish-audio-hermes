@@ -199,7 +199,8 @@ def available() -> dict:
         key = bool(_fa("secrets").fish_api_key())
     except Exception:
         key = False
-    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key, "account": not _fa("settings").operator_account()}
+    return {"ok": True, "plugin": PLUGIN_NAME, "version": VERSION, "key": key, "account": not _fa("settings").operator_account(),
+            "free_model": _fa("models").free_model_phase()}
 
 
 @router.get("/voices")

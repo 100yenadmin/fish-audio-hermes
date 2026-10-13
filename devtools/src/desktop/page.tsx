@@ -105,7 +105,7 @@ export function VoicesPage() {
   if (!available.key) {
     return (
       <Frame profile={profile}>
-        <Onboarding profile={profile} operator={available.account === false} />
+        <Onboarding profile={profile} operator={available.account === false} freeModel={available.free_model} />
       </Frame>
     )
   }
@@ -130,14 +130,14 @@ function Frame({ children, profile, tabs }: { children: ReactNode; profile: stri
   )
 }
 
-export function Onboarding({ profile, operator }: { profile: string; operator: boolean }) {
+export function Onboarding({ profile, operator, freeModel }: { profile: string; operator: boolean; freeModel?: string }) {
   const t = usePluginI18n(PLUGIN_ID)
   const open = (url: string) => void pluginCtx().os.openExternal(url)
   return (
     <div style={{ padding: pad }}>
       <div style={{ ...card, maxWidth: 560 }}>
         <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>{operator ? t('operatorOnboardTitle') : t('onboardTitle')}</h2>
-        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{operator ? t('operatorOnboardBody') : t('onboardBody', profile)}</p>
+        <p style={{ ...muted, fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>{operator ? t('operatorOnboardBody') : <>{t('onboardBody', profile)}{freeModel !== 'ended' && <> {t('onboardFreeModel')}</>}</>}</p>
         {!operator && <ol style={{ fontSize: 13, lineHeight: 1.8, listStyle: 'decimal', margin: '0 0 14px', paddingInlineStart: 20 }}>
           <li>{t('onboardStep1')}</li>
           <li>{t('onboardStep2')}</li>
