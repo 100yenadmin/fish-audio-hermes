@@ -5,7 +5,7 @@
 - **Drama 3.** Fish's released `drama-3` model is selectable everywhere (`/fish model`, `fish_speak`, the Desktop
   settings page); `drama-3-preview` keeps working. The expressive-speech skill covers Drama 3's directions, sounds and
   word tags, and sends angle-bracket tags through `fish_speak`, because Hermes's `text_to_speech` cleanup breaks
-  closing tags such as `</whisper>`. Parity pins follow Fish's 2026-10-14 API.
+  closing tags such as `</whisper>`. Parity pins follow Fish's API after the Drama 3 release.
 
 ## 1.5.2 — 2026-10-13
 
