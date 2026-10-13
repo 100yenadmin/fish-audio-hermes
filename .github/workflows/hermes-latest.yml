@@ -1,0 +1,74 @@
+name: Hermes latest compatibility
+on:
+  schedule: [{cron: "29 6 * * 5"}]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency: {group: hermes-latest, cancel-in-progress: false}
+env:
+  HERMES_UPSTREAM_REPO: NousResearch/hermes-agent
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      main: ${{ steps.refs.outputs.main }}
+      release: ${{ steps.refs.outputs.release }}
+    steps:
+      - id: refs
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          branch=$(gh api "repos/$HERMES_UPSTREAM_REPO" --jq .default_branch)
+          tag=$(gh api "repos/$HERMES_UPSTREAM_REPO/releases/latest" --jq .tag_name)
+          main=$(gh api "repos/$HERMES_UPSTREAM_REPO/commits/$branch" --jq .sha)
+          release=$(gh api "repos/$HERMES_UPSTREAM_REPO/commits/$tag" --jq .sha)
+          printf 'main=%s\nrelease=%s\n' "$main" "$release" >> "$GITHUB_OUTPUT"
+  test:
+    needs: resolve
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: {target: [main, release]}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false, path: plugin}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          repository: ${{ env.HERMES_UPSTREAM_REPO }}
+          ref: ${{ needs.resolve.outputs[matrix.target] }}
+          path: hermes
+      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6
+      - name: Install Hermes from its own lockfile
+        run: |
+          cd hermes
+          uv sync --frozen --no-dev
+          uv pip install --python .venv/bin/python "msgpack>=1.0,<2" "pyyaml>=6,<7" "pytest==8.4.2" "respx==0.22.0"
+      - name: hermes plugins validate (catalog admission checks)
+        env: {HERMES_HOME: "${{ runner.temp }}/hermes-home"}
+        run: hermes/.venv/bin/hermes plugins validate plugin
+      - name: Tests inside a real Hermes install (unit + loader integration)
+        env: {HERMES_HOME: "${{ runner.temp }}/hermes-home", FISH_AUDIO_HERMES_INTEGRATION: "1"}
+        run: cd plugin && ../hermes/.venv/bin/python -m pytest -q
+  report:
+    needs: [resolve, test]
+    if: ${{ always() && (needs.resolve.result == 'failure' || needs.test.result == 'failure') }}
+    runs-on: ubuntu-latest
+    permissions: {issues: write}
+    env: {GH_TOKEN: "${{ github.token }}", GH_REPO: "${{ github.repository }}"}
+    steps:
+      - name: Open or comment on one compatibility issue
+        env:
+          MAIN_SHA: ${{ needs.resolve.outputs.main }}
+          RELEASE_SHA: ${{ needs.resolve.outputs.release }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          printf 'Hermes latest compatibility failed.\n- default-branch SHA: %s\n- latest-release SHA: %s\n- run: %s\n' "${MAIN_SHA:-unresolved}" "${RELEASE_SHA:-unresolved}" "$RUN_URL" > report.md
+          gh label create hermes-latest --color D93F0B --description 'Hermes latest compatibility alarm' --force
+          n=$(gh issue list --state open --label hermes-latest --json number -q '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue view "$n" --json body,comments > issue.json
+            if python -c 'import json,pathlib,sys; issue=json.loads(pathlib.Path("issue.json").read_text()); comments=issue["comments"]; stable=lambda s: [line for line in s.rstrip("\n").splitlines() if not line.startswith("- run: ")]; text=stable(pathlib.Path("report.md").read_text()); latest=stable(comments[-1]["body"] if comments else issue["body"]); sys.exit(0 if text == latest else 1)'; then
+              echo 'Unchanged compatibility report; no comment.'; exit 0
+            fi
+            gh issue comment "$n" --body-file report.md
+          else gh issue create --title 'Hermes latest compatibility failed' --label hermes-latest --body-file report.md; fi
