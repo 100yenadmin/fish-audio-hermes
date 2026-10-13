@@ -24,7 +24,7 @@ export const es = {
   onboardTitle: 'Conecta tu cuenta de Fish Audio',
   onboardBody: (profile: string) =>
     `Las voces necesitan una clave API de Fish Audio en ${agentName(profile)}.`,
-  onboardFreeModel: 'Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 November 2026.',
+  onboardFreeModel: 'Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 de noviembre de 2026.',
   onboardStep1: 'Crea una clave API gratuita en fish.audio',
   onboardStep2: 'Pégala en Configuración ▸ Plugins ▸ Fish Audio (en versiones anteriores: Capacidades ▸ Plugins) y reinicia el gateway',
   getKey: 'Obtener una clave API',
@@ -143,7 +143,7 @@ export const es = {
     error: `Algo salió mal`,
     badChunkSize: `La pasarela envió un tamaño de bloque de carga no válido.`,
     code: (code: string) => ` Código: ${code}.`,
-    freeEnded: ' Fish anunció el fin del periodo gratuito de s2.1-pro-free el 30 November 2026.',
+    freeEnded: ' Fish anunció el fin del periodo gratuito de s2.1-pro-free el 30 de noviembre de 2026.',
     paidModel: (url: string) => ` Cambia a s2.1-pro y recarga: ${url}`,
     requestId: (id: string) => ` (ID de solicitud ${id})`,
     fishTrace: (id: string) => ` (traza de Fish ${id})`,

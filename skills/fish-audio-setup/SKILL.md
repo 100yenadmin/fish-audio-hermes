@@ -25,7 +25,8 @@ Otherwise, follow the whole skill.
    On Hermes 0.21.6+, `hermes config set stt.streaming true` enables live dictation (`stt.streaming: true`) in CLI voice mode, TUI and the Desktop composer mic.
 3. Run `/fish voices <description>` and choose `/fish use <id>`. An existing provider is preserved.
    Browse more voices at https://fish.audio/discovery.
-4. Use `/fish model s2.1-pro` for paid synthesis, or `/fish model s2.1-pro-free` for the free model.
+4. Use `/fish model s2.1-pro` for paid synthesis. `/fish model s2.1-pro-free` picks Fish's free model, free through
+   30 November 2026; after that the plugin warns on it, so choose s2.1-pro.
    Managed profiles with `allow_free_model: false` substitute the paid model even for explicit free selection.
 5. Check `/fish status`, `hermes fish status`, and `hermes fish doctor --no-synth`.
    A doctor synthesis check is billed; the audio is temporary and deleted afterward.

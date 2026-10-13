@@ -84,7 +84,12 @@ describe('localized rendering', () => {
     setLocale(locale as keyof typeof locales)
     expect(messages.onboardBody('default')).not.toContain('s2.1-pro-free')
     expect(messages.onboardFreeModel).toContain('s2.1-pro-free')
-    expect(messages.onboardFreeModel).toContain('30 November 2026')
+    const date: Record<string, string> = { en: '30 November 2026', de: '30. November 2026', es: '30 de noviembre de 2026',
+      fr: '30 novembre 2026', ru: '30 ноября 2026', ar: '30 نوفمبر 2026', ja: '2026年11月30日', zh: '2026年11月30日', 'zh-hant': '2026年11月30日' }
+    // The end date is written the local way, in both the onboarding sentence and the ended-billing sentence.
+    expect(messages.onboardFreeModel).toContain(date[locale])
+    expect(messages.errors.freeEnded).toContain(date[locale])
+    if (locale !== 'en') expect(messages.onboardFreeModel + messages.errors.freeEnded).not.toContain('30 November 2026')
     for (const free_model of ['active', 'ending', 'ended', undefined] as const) {
       $available.set({ key: false, account: true, version: '1.6.0', free_model })
       render(<VoicesPage />)
@@ -282,7 +287,7 @@ it.each(['en', 'ja'] as const)('%s says the free period ended before the paid-mo
   const ended = errorText(new ApiError('credential', 'x', detail))
   expect(ended).toContain(locales[locale].errors.freeEnded.trim())
   expect(ended.indexOf(locales[locale].errors.freeEnded.trim())).toBeLessThan(ended.lastIndexOf(LINKS.account))
-  expect(errorText(new ApiError('credential', 'x', { ...detail, hint: null }))).not.toContain('30 November 2026')
+  expect(errorText(new ApiError('credential', 'x', { ...detail, hint: null }))).not.toContain(locales[locale].errors.freeEnded.trim())
 })
 it('joins CJK suffixes without a stray space, keeping URLs separate', () => {
   errorLocale('ja')

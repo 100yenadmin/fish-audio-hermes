@@ -24,7 +24,7 @@ export const zhHant = {
   onboardTitle: '連接您的 Fish Audio 帳戶',
   onboardBody: (profile: string) =>
     `聲音功能需要在${agentName(profile)}上設定 Fish Audio API 金鑰。`,
-  onboardFreeModel: '新帳戶可以先使用免費的 s2.1-pro-free 模型，免費期截至 30 November 2026。',
+  onboardFreeModel: '新帳戶可以先使用免費的 s2.1-pro-free 模型，免費期截至2026年11月30日。',
   onboardStep1: '在 fish.audio 建立免費 API 金鑰',
   onboardStep2: '將金鑰貼到設定 ▸ 外掛 ▸ Fish Audio（舊版本中為技能與工具 ▸ 外掛），然後重新啟動閘道',
   getKey: '取得 API 金鑰',
@@ -143,7 +143,7 @@ export const zhHant = {
     error: `發生了問題`,
     badChunkSize: `閘道傳回了無效的上傳區塊大小。`,
     code: (code: string) => `錯誤代碼：${code}。`,
-    freeEnded: 'Fish 已宣布 s2.1-pro-free 的免費期於 30 November 2026 結束。',
+    freeEnded: 'Fish 已宣布 s2.1-pro-free 的免費期於2026年11月30日結束。',
     paidModel: (url: string) => `請切換至 s2.1-pro 並儲值：${url}`,
     requestId: (id: string) => `（請求 ID：${id}）`,
     fishTrace: (id: string) => `（Fish 追蹤：${id}）`,

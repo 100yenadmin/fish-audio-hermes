@@ -24,7 +24,7 @@ export const ja = {
   onboardTitle: 'Fish Audio アカウントを接続',
   onboardBody: (profile: string) =>
     `ボイスを使うには、${agentName(profile)}に Fish Audio API キーが必要です。`,
-  onboardFreeModel: '新しいアカウントでは、30 November 2026 まで無料の s2.1-pro-free モデルから始められます。',
+  onboardFreeModel: '新しいアカウントでは、2026年11月30日まで無料の s2.1-pro-free モデルから始められます。',
   onboardStep1: 'fish.audio で無料の API キーを作成',
   onboardStep2: '設定 ▸ プラグイン ▸ Fish Audio（旧バージョンでは スキルとツール ▸ プラグイン）にキーを貼り付け、ゲートウェイを再起動',
   getKey: 'API キーを取得',
@@ -143,7 +143,7 @@ export const ja = {
     error: `問題が発生しました`,
     badChunkSize: `ゲートウェイから無効なアップロードチャンクサイズが返されました。`,
     code: (code: string) => `コード：${code}。`,
-    freeEnded: 'Fish は s2.1-pro-free の無料期間が 30 November 2026 に終了したと発表しました。',
+    freeEnded: 'Fish は s2.1-pro-free の無料期間が2026年11月30日に終了したと発表しました。',
     paidModel: (url: string) => `s2.1-pro に切り替えてチャージしてください：${url}`,
     requestId: (id: string) => `（リクエスト ID：${id}）`,
     fishTrace: (id: string) => `（Fish トレース：${id}）`,

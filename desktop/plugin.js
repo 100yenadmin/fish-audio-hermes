@@ -1044,7 +1044,7 @@ function SettingsPage() {
   } else if (!gatewayAtLeast(SETTINGS_VERSION)) {
     body = /* @__PURE__ */ jsx4(Notice, { text: t("settings.restart"), children: /* @__PURE__ */ jsx4(Button4, { onClick: () => host4.navigate(PAGE_PATH), size: "xs", variant: "secondary", children: t("settings.voicesPage") }) });
   } else if (!available.key) {
-    body = /* @__PURE__ */ jsx4(Onboarding, { operator: available.account === false, profile });
+    body = /* @__PURE__ */ jsx4(Onboarding, { operator: available.account === false, profile, freeModel: available.free_model });
   } else {
     body = /* @__PURE__ */ jsx4(Sections, { operator: available.account === false, pin }, agentKey(pin));
   }
@@ -1501,7 +1501,7 @@ var zh = {
   operatorDesignBilled: "\u6BCF\u6B21\u8BBE\u8BA1\u90FD\u4F1A\u521B\u5EFA\u65B0\u7684\u5019\u9009\u58F0\u97F3\u3002",
   onboardTitle: "\u8FDE\u63A5\u4F60\u7684 Fish Audio \u8D26\u6237",
   onboardBody: (profile) => `\u58F0\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName2(profile)}\u4E0A\u914D\u7F6E Fish Audio API \u5BC6\u94A5\u3002`,
-  onboardFreeModel: "\u65B0\u8D26\u6237\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8D39\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8D39\u671F\u622A\u81F3 30 November 2026\u3002",
+  onboardFreeModel: "\u65B0\u8D26\u6237\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8D39\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8D39\u671F\u622A\u81F32026\u5E7411\u670830\u65E5\u3002",
   onboardStep1: "\u5728 fish.audio \u521B\u5EFA\u514D\u8D39 API \u5BC6\u94A5",
   onboardStep2: "\u5C06\u5BC6\u94A5\u7C98\u8D34\u5230\u8BBE\u7F6E \u25B8 \u63D2\u4EF6 \u25B8 Fish Audio\uFF08\u65E7\u7248\u672C\u4E2D\u4E3A\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\uFF09\uFF0C\u7136\u540E\u91CD\u542F\u7F51\u5173",
   getKey: "\u83B7\u53D6 API \u5BC6\u94A5",
@@ -1620,7 +1620,7 @@ var zh = {
     error: `\u51FA\u73B0\u4E86\u95EE\u9898`,
     badChunkSize: `\u7F51\u5173\u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4E0A\u4F20\u5206\u5757\u5927\u5C0F\u3002`,
     code: (code) => `\u9519\u8BEF\u4EE3\u7801\uFF1A${code}\u3002`,
-    freeEnded: "Fish \u5DF2\u5BA3\u5E03 s2.1-pro-free \u7684\u514D\u8D39\u671F\u4E8E 30 November 2026 \u7ED3\u675F\u3002",
+    freeEnded: "Fish \u5DF2\u5BA3\u5E03 s2.1-pro-free \u7684\u514D\u8D39\u671F\u4E8E2026\u5E7411\u670830\u65E5\u7ED3\u675F\u3002",
     paidModel: (url) => `\u8BF7\u5207\u6362\u5230 s2.1-pro \u5E76\u5145\u503C\uFF1A${url}`,
     requestId: (id) => `\uFF08\u8BF7\u6C42 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u8DDF\u8E2A\uFF1A${id}\uFF09`
@@ -1696,7 +1696,7 @@ var zhHant = {
   operatorDesignBilled: "\u6BCF\u6B21\u8A2D\u8A08\u90FD\u6703\u5EFA\u7ACB\u65B0\u7684\u5019\u9078\u8072\u97F3\u3002",
   onboardTitle: "\u9023\u63A5\u60A8\u7684 Fish Audio \u5E33\u6236",
   onboardBody: (profile) => `\u8072\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName3(profile)}\u4E0A\u8A2D\u5B9A Fish Audio API \u91D1\u9470\u3002`,
-  onboardFreeModel: "\u65B0\u5E33\u6236\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8CBB\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8CBB\u671F\u622A\u81F3 30 November 2026\u3002",
+  onboardFreeModel: "\u65B0\u5E33\u6236\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8CBB\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8CBB\u671F\u622A\u81F32026\u5E7411\u670830\u65E5\u3002",
   onboardStep1: "\u5728 fish.audio \u5EFA\u7ACB\u514D\u8CBB API \u91D1\u9470",
   onboardStep2: "\u5C07\u91D1\u9470\u8CBC\u5230\u8A2D\u5B9A \u25B8 \u5916\u639B \u25B8 Fish Audio\uFF08\u820A\u7248\u672C\u4E2D\u70BA\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\uFF09\uFF0C\u7136\u5F8C\u91CD\u65B0\u555F\u52D5\u9598\u9053",
   getKey: "\u53D6\u5F97 API \u91D1\u9470",
@@ -1815,7 +1815,7 @@ var zhHant = {
     error: `\u767C\u751F\u4E86\u554F\u984C`,
     badChunkSize: `\u9598\u9053\u50B3\u56DE\u4E86\u7121\u6548\u7684\u4E0A\u50B3\u5340\u584A\u5927\u5C0F\u3002`,
     code: (code) => `\u932F\u8AA4\u4EE3\u78BC\uFF1A${code}\u3002`,
-    freeEnded: "Fish \u5DF2\u5BA3\u5E03 s2.1-pro-free \u7684\u514D\u8CBB\u671F\u65BC 30 November 2026 \u7D50\u675F\u3002",
+    freeEnded: "Fish \u5DF2\u5BA3\u5E03 s2.1-pro-free \u7684\u514D\u8CBB\u671F\u65BC2026\u5E7411\u670830\u65E5\u7D50\u675F\u3002",
     paidModel: (url) => `\u8ACB\u5207\u63DB\u81F3 s2.1-pro \u4E26\u5132\u503C\uFF1A${url}`,
     requestId: (id) => `\uFF08\u8ACB\u6C42 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u8FFD\u8E64\uFF1A${id}\uFF09`
@@ -1891,7 +1891,7 @@ var ja = {
   operatorDesignBilled: "\u30C7\u30B6\u30A4\u30F3\u306E\u305F\u3073\u306B\u65B0\u3057\u3044\u30DC\u30A4\u30B9\u5019\u88DC\u304C\u4F5C\u6210\u3055\u308C\u307E\u3059\u3002",
   onboardTitle: "Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u3092\u63A5\u7D9A",
   onboardBody: (profile) => `\u30DC\u30A4\u30B9\u3092\u4F7F\u3046\u306B\u306F\u3001${agentName4(profile)}\u306B Fish Audio API \u30AD\u30FC\u304C\u5FC5\u8981\u3067\u3059\u3002`,
-  onboardFreeModel: "\u65B0\u3057\u3044\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u306F\u300130 November 2026 \u307E\u3067\u7121\u6599\u306E s2.1-pro-free \u30E2\u30C7\u30EB\u304B\u3089\u59CB\u3081\u3089\u308C\u307E\u3059\u3002",
+  onboardFreeModel: "\u65B0\u3057\u3044\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u306F\u30012026\u5E7411\u670830\u65E5\u307E\u3067\u7121\u6599\u306E s2.1-pro-free \u30E2\u30C7\u30EB\u304B\u3089\u59CB\u3081\u3089\u308C\u307E\u3059\u3002",
   onboardStep1: "fish.audio \u3067\u7121\u6599\u306E API \u30AD\u30FC\u3092\u4F5C\u6210",
   onboardStep2: "\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u25B8 Fish Audio\uFF08\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F \u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3\uFF09\u306B\u30AD\u30FC\u3092\u8CBC\u308A\u4ED8\u3051\u3001\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u3092\u518D\u8D77\u52D5",
   getKey: "API \u30AD\u30FC\u3092\u53D6\u5F97",
@@ -2010,7 +2010,7 @@ var ja = {
     error: `\u554F\u984C\u304C\u767A\u751F\u3057\u307E\u3057\u305F`,
     badChunkSize: `\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u304B\u3089\u7121\u52B9\u306A\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u30C1\u30E3\u30F3\u30AF\u30B5\u30A4\u30BA\u304C\u8FD4\u3055\u308C\u307E\u3057\u305F\u3002`,
     code: (code) => `\u30B3\u30FC\u30C9\uFF1A${code}\u3002`,
-    freeEnded: "Fish \u306F s2.1-pro-free \u306E\u7121\u6599\u671F\u9593\u304C 30 November 2026 \u306B\u7D42\u4E86\u3057\u305F\u3068\u767A\u8868\u3057\u307E\u3057\u305F\u3002",
+    freeEnded: "Fish \u306F s2.1-pro-free \u306E\u7121\u6599\u671F\u9593\u304C2026\u5E7411\u670830\u65E5\u306B\u7D42\u4E86\u3057\u305F\u3068\u767A\u8868\u3057\u307E\u3057\u305F\u3002",
     paidModel: (url) => `s2.1-pro \u306B\u5207\u308A\u66FF\u3048\u3066\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A${url}`,
     requestId: (id) => `\uFF08\u30EA\u30AF\u30A8\u30B9\u30C8 ID\uFF1A${id}\uFF09`,
     fishTrace: (id) => `\uFF08Fish \u30C8\u30EC\u30FC\u30B9\uFF1A${id}\uFF09`
@@ -2088,7 +2088,7 @@ var ar = {
   operatorDesignBilled: "\u064A\u0646\u0634\u0626 \u0643\u0644 \u062A\u0635\u0645\u064A\u0645 \u0623\u0635\u0648\u0627\u062A\u064B\u0627 \u0645\u0631\u0634\u062D\u0629 \u062C\u062F\u064A\u062F\u0629.",
   onboardTitle: "\u0627\u0631\u0628\u0637 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio",
   onboardBody: (profile) => `\u062A\u062D\u062A\u0627\u062C \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0625\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}.`,
-  onboardFreeModel: "\u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free \u062D\u062A\u0649 30 November 2026.",
+  onboardFreeModel: "\u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free \u062D\u062A\u0649 30 \u0646\u0648\u0641\u0645\u0628\u0631 2026.",
   onboardStep1: "\u0623\u0646\u0634\u0626 \u0645\u0641\u062A\u0627\u062D API \u0645\u062C\u0627\u0646\u064A\u064B\u0627 \u0639\u0644\u0649 fish.audio",
   onboardStep2: "\u0627\u0644\u0635\u0642\u0647 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629",
   getKey: "\u0627\u0644\u062D\u0635\u0648\u0644 \u0639\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API",
@@ -2207,7 +2207,7 @@ var ar = {
     error: `\u062D\u062F\u062B \u062E\u0637\u0623`,
     badChunkSize: `\u0623\u0631\u0633\u0644\u062A \u0627\u0644\u0628\u0648\u0627\u0628\u0629 \u062D\u062C\u0645\u064B\u0627 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D \u0644\u062C\u0632\u0621 \u0627\u0644\u0631\u0641\u0639.`,
     code: (code) => ` \u0627\u0644\u0631\u0645\u0632: ${isolate(code)}.`,
-    freeEnded: " \u0623\u0639\u0644\u0646\u062A Fish \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0641\u062A\u0631\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 \u0644\u0640 s2.1-pro-free \u0641\u064A 30 November 2026.",
+    freeEnded: " \u0623\u0639\u0644\u0646\u062A Fish \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0641\u062A\u0631\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 \u0644\u0640 s2.1-pro-free \u0641\u064A 30 \u0646\u0648\u0641\u0645\u0628\u0631 2026.",
     paidModel: (url) => ` \u0628\u062F\u0651\u0644 \u0625\u0644\u0649 s2.1-pro \u0648\u0627\u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F: ${isolate(url)}`,
     requestId: (id) => ` (\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0637\u0644\u0628 ${isolate(id)})`,
     fishTrace: (id) => ` (\u062A\u062A\u0628\u0651\u0639 Fish ${isolate(id)})`
@@ -2283,7 +2283,7 @@ var ru = {
   operatorDesignBilled: "\u041A\u0430\u0436\u0434\u043E\u0435 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u0433\u0435\u043D\u0435\u0440\u0438\u0440\u0443\u0435\u0442 \u043D\u043E\u0432\u044B\u0435 \u0432\u0430\u0440\u0438\u0430\u043D\u0442\u044B \u0433\u043E\u043B\u043E\u0441\u043E\u0432.",
   onboardTitle: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442 Fish Audio",
   onboardBody: (profile) => `\u0414\u043B\u044F \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u043D\u0443\u0436\u0435\u043D API-\u043A\u043B\u044E\u0447 Fish Audio, \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u043D\u044B\u0439 \u0434\u043B\u044F ${agentName6(profile)}.`,
-  onboardFreeModel: "\u041D\u043E\u0432\u044B\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0447\u0430\u0442\u044C \u0441 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0439 \u043C\u043E\u0434\u0435\u043B\u0438 s2.1-pro-free \u0434\u043E 30 November 2026.",
+  onboardFreeModel: "\u041D\u043E\u0432\u044B\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0447\u0430\u0442\u044C \u0441 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0439 \u043C\u043E\u0434\u0435\u043B\u0438 s2.1-pro-free \u0434\u043E 30 \u043D\u043E\u044F\u0431\u0440\u044F 2026 \u0433.",
   onboardStep1: "\u0421\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u044B\u0439 API-\u043A\u043B\u044E\u0447 \u043D\u0430 fish.audio",
   onboardStep2: "\u0412\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u0435\u0433\u043E \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u25B8 Fish Audio (\u0432 \u0431\u043E\u043B\u0435\u0435 \u0440\u0430\u043D\u043D\u0438\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445: \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B), \u0437\u0430\u0442\u0435\u043C \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0448\u043B\u044E\u0437",
   getKey: "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u044C API-\u043A\u043B\u044E\u0447",
@@ -2402,7 +2402,7 @@ var ru = {
     error: `\u041F\u0440\u043E\u0438\u0437\u043E\u0448\u043B\u0430 \u043E\u0448\u0438\u0431\u043A\u0430`,
     badChunkSize: `\u0428\u043B\u044E\u0437 \u0432\u0435\u0440\u043D\u0443\u043B \u043D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0440\u0430\u0437\u043C\u0435\u0440 \u0431\u043B\u043E\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438.`,
     code: (code) => ` \u041A\u043E\u0434: ${code}.`,
-    freeEnded: " Fish \u043E\u0431\u044A\u044F\u0432\u0438\u043B\u0430 \u043E\u0431 \u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0438 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0433\u043E \u043F\u0435\u0440\u0438\u043E\u0434\u0430 s2.1-pro-free 30 November 2026.",
+    freeEnded: " Fish \u043E\u0431\u044A\u044F\u0432\u0438\u043B\u0430 \u043E\u0431 \u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0438 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0433\u043E \u043F\u0435\u0440\u0438\u043E\u0434\u0430 s2.1-pro-free 30 \u043D\u043E\u044F\u0431\u0440\u044F 2026 \u0433.",
     paidModel: (url) => ` \u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0438\u0442\u0435\u0441\u044C \u043D\u0430 s2.1-pro \u0438 \u043F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0431\u0430\u043B\u0430\u043D\u0441: ${url}`,
     requestId: (id) => ` (ID \u0437\u0430\u043F\u0440\u043E\u0441\u0430 ${id})`,
     fishTrace: (id) => ` (\u0442\u0440\u0430\u0441\u0441\u0438\u0440\u043E\u0432\u043A\u0430 Fish ${id})`
@@ -2478,7 +2478,7 @@ var fr = {
   operatorDesignBilled: "Chaque conception cr\xE9e de nouvelles voix propos\xE9es.",
   onboardTitle: "Connectez votre compte Fish Audio",
   onboardBody: (profile) => `Les voix n\xE9cessitent une cl\xE9 API Fish Audio pour ${agentName7(profile)}.`,
-  onboardFreeModel: "Les nouveaux comptes peuvent commencer avec le mod\xE8le gratuit s2.1-pro-free jusqu\u2019au 30 November 2026.",
+  onboardFreeModel: "Les nouveaux comptes peuvent commencer avec le mod\xE8le gratuit s2.1-pro-free jusqu\u2019au 30 novembre 2026.",
   onboardStep1: "Cr\xE9ez une cl\xE9 API gratuite sur fish.audio",
   onboardStep2: "Collez-la dans Param\xE8tres \u25B8 Plugins \u25B8 Fish Audio (dans les versions ant\xE9rieures : Capacit\xE9s \u25B8 Plugins), puis red\xE9marrez le gateway",
   getKey: "Obtenir une cl\xE9 API",
@@ -2597,7 +2597,7 @@ var fr = {
     error: `Une erreur est survenue`,
     badChunkSize: `La passerelle a envoy\xE9 une taille de bloc d\u2019envoi non valide.`,
     code: (code) => ` Code : ${code}.`,
-    freeEnded: " Fish a annonc\xE9 la fin de la p\xE9riode gratuite de s2.1-pro-free au 30 November 2026.",
+    freeEnded: " Fish a annonc\xE9 la fin de la p\xE9riode gratuite de s2.1-pro-free au 30 novembre 2026.",
     paidModel: (url) => ` Passez \xE0 s2.1-pro et rechargez : ${url}`,
     requestId: (id) => ` (identifiant de requ\xEAte ${id})`,
     fishTrace: (id) => ` (trace Fish ${id})`
@@ -2673,7 +2673,7 @@ var de = {
   operatorDesignBilled: "Jeder Entwurf erstellt neue Stimmen zur Auswahl.",
   onboardTitle: "Verbinden Sie Ihr Fish Audio-Konto",
   onboardBody: (profile) => `F\xFCr ${agentName8(profile)} wird ein Fish Audio API-Schl\xFCssel ben\xF6tigt.`,
-  onboardFreeModel: "Neue Konten k\xF6nnen bis zum 30 November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.",
+  onboardFreeModel: "Neue Konten k\xF6nnen bis zum 30. November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.",
   onboardStep1: "Erstellen Sie einen kostenlosen API-Schl\xFCssel auf fish.audio",
   onboardStep2: "F\xFCgen Sie ihn unter Einstellungen \u25B8 Plugins \u25B8 Fish Audio ein (in \xE4lteren Versionen: F\xE4higkeiten \u25B8 Plugins) und starten Sie dann das Gateway neu",
   getKey: "API-Schl\xFCssel erhalten",
@@ -2792,7 +2792,7 @@ var de = {
     error: `Etwas ist schiefgelaufen`,
     badChunkSize: `Das Gateway hat eine ung\xFCltige Upload-Blockgr\xF6\xDFe gesendet.`,
     code: (code) => ` Code: ${code}.`,
-    freeEnded: " Fish hat das Ende der kostenlosen Phase von s2.1-pro-free zum 30 November 2026 angek\xFCndigt.",
+    freeEnded: " Fish hat das Ende der kostenlosen Phase von s2.1-pro-free zum 30. November 2026 angek\xFCndigt.",
     paidModel: (url) => ` Zu s2.1-pro wechseln und Guthaben aufladen: ${url}`,
     requestId: (id) => ` (Anfrage-ID ${id})`,
     fishTrace: (id) => ` (Fish-Trace ${id})`
@@ -2868,7 +2868,7 @@ var es = {
   operatorDesignBilled: "Cada dise\xF1o crea nuevas voces candidatas.",
   onboardTitle: "Conecta tu cuenta de Fish Audio",
   onboardBody: (profile) => `Las voces necesitan una clave API de Fish Audio en ${agentName9(profile)}.`,
-  onboardFreeModel: "Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 November 2026.",
+  onboardFreeModel: "Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 de noviembre de 2026.",
   onboardStep1: "Crea una clave API gratuita en fish.audio",
   onboardStep2: "P\xE9gala en Configuraci\xF3n \u25B8 Plugins \u25B8 Fish Audio (en versiones anteriores: Capacidades \u25B8 Plugins) y reinicia el gateway",
   getKey: "Obtener una clave API",
@@ -2987,7 +2987,7 @@ var es = {
     error: `Algo sali\xF3 mal`,
     badChunkSize: `La pasarela envi\xF3 un tama\xF1o de bloque de carga no v\xE1lido.`,
     code: (code) => ` C\xF3digo: ${code}.`,
-    freeEnded: " Fish anunci\xF3 el fin del periodo gratuito de s2.1-pro-free el 30 November 2026.",
+    freeEnded: " Fish anunci\xF3 el fin del periodo gratuito de s2.1-pro-free el 30 de noviembre de 2026.",
     paidModel: (url) => ` Cambia a s2.1-pro y recarga: ${url}`,
     requestId: (id) => ` (ID de solicitud ${id})`,
     fishTrace: (id) => ` (traza de Fish ${id})`

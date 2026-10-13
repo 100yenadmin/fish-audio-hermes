@@ -18,6 +18,13 @@ def free_model_phase(today=None):
     return "ended" if today > ends else "ending" if today >= ends.replace(day=1) else "active"
 
 
+def display(row, today=None):
+    """The picker name; after the free period it says so, so the name alone does not advertise a free model."""
+    if row["id"] == "s2.1-pro-free" and free_model_phase(today) == "ended":
+        return row["display"] + " (free period ended)"
+    return row["display"]
+
+
 def free_model_warning(today=None):
     if free_model_phase(today) == "ended":
         return ("s2.1-pro-free: Fish announced its free period would end on 30 November 2026, so Fish may refuse these requests or "

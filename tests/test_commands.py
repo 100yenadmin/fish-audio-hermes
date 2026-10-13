@@ -116,7 +116,6 @@ def test_managed_write_refused(config):
     assert "managed" in commands.handle("model s1") and not saves
 
 
-@pytest.mark.usefixtures("active_free_model_date")
 def test_model_selection_and_unknown_rejected(config):
     data, saves, _ = config
     assert "Unknown" in commands.handle("model unknown") and not saves

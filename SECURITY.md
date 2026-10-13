@@ -19,8 +19,8 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
   and wallet and plan reads for balance and model choice. Headers name the plugin and its version, and pass on an
   OpenTelemetry trace context when one is active.
 - **Billing.** Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish
-  account, except requests on the free `s2.1-pro-free` model. Fish Audio may use free-model requests to improve
-  its models.
+  account, except requests on `s2.1-pro-free` while Fish offers it free (announced through 30 November 2026). Fish
+  Audio may use free-model requests to improve its models.
 - **Keys.** Hermes stores your key in the active profile's `.env`. The plugin reads it through the profile's secret
   scope, so when one Hermes process serves several profiles each uses its own key; a single-profile install may
   also read `FISH_API_KEY` from the process environment. Keys are never logged or included in error messages, tool

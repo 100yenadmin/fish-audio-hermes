@@ -224,6 +224,45 @@ def test_available_phase(env, clock, monkeypatch):
             assert payload["key"] is bool(key)
 
 
+def test_picker_names_say_when_the_free_period_ended(env, clock):
+    for day, phase in DATES:
+        clock(day)
+        clock(day, env.api._fa("models"))
+        want = "S2.1 Pro Free (free period ended)" if phase == "ended" else "S2.1 Pro Free"
+        rows = {row["id"]: row["display"] for row in tts.FishAudioTTSProvider().list_models()}
+        assert rows["s2.1-pro-free"] == want and rows["s2.1-pro"] == "S2.1 Pro"
+        shown = {row["id"]: row["display"] for row in env.get("/settings")["models"]}
+        assert shown["s2.1-pro-free"] == want and shown["s2.1-pro"] == "S2.1 Pro"
+    assert next(row for row in models.MODELS if row["id"] == "s2.1-pro-free")["display"] == "S2.1 Pro Free"
+
+
+def test_status_label_for_a_wallet_default(empty_account, clock):
+    for day, phase in DATES:
+        clock(day)
+        label = "no API credit" if phase == "ended" else "free tier"
+        assert f"Model: s2.1-pro-free ({label})" in commands.status("synthetic").splitlines()
+
+
+def test_login_with_an_explicit_free_choice_warns_after_the_end(empty_account, clock, capsys):
+    empty_account["tts"]["fish-audio"] = {"model": "s2.1-pro-free"}
+    for day, phase in DATES:
+        clock(day)
+        assert cli._login(SimpleNamespace(key_stdin=False, yes=True)) == 0
+        out = capsys.readouterr().out.splitlines()
+        assert ("warn: " + WARNING in out) == (phase == "ended")
+        assert not any(line in out for line in NOTICES.values())  # an explicit choice is not the wallet default
+
+
+@pytest.mark.parametrize("path", ["plugin.yaml", "README.md", "SECURITY.md", "skills/fish-audio-setup/SKILL.md"])
+def test_static_free_model_text_carries_the_end_date(path):
+    text = (Path(__file__).resolve().parents[1] / path).read_text()
+    assert "30 November 2026" in text
+    for undated in ("the free s2.1-pro-free model excepted", "Allow the free model",
+                    "New accounts can start on the free `s2.1-pro-free` model.",
+                    "except requests on the free `s2.1-pro-free` model", "or `/fish model s2.1-pro-free` for the free model"):
+        assert undated not in text
+
+
 @pytest.mark.parametrize("path", ["README.md", "skills/fish-audio-setup/SKILL.md"])
 def test_notice_docs_cover_each_phase(path):
     text = (Path(__file__).resolve().parents[1] / path).read_text()

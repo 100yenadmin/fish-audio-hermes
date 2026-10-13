@@ -46,7 +46,7 @@ class FishAudioTTSProvider(TTSProvider):
                 "env_vars": [{"key": "FISH_API_KEY", "prompt": "Fish Audio API key", "url": "https://fish.audio/app/api-keys"}]}
 
     def list_models(self):
-        return [dict(row) for row in MODELS]
+        return [dict(row, display=models.display(row)) for row in MODELS]
 
     def default_voice(self):
         return None

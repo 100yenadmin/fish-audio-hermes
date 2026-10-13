@@ -19,8 +19,9 @@ import pytest
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def active_free_model_date(monkeypatch):
+    """Every test sees 31 October 2026 unless it sets its own date, so no expectation changes with the wall clock."""
     from datetime import datetime
     from types import SimpleNamespace
     from fish_audio import models

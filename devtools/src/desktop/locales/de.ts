@@ -24,7 +24,7 @@ export const de = {
   onboardTitle: 'Verbinden Sie Ihr Fish Audio-Konto',
   onboardBody: (profile: string) =>
     `Für ${agentName(profile)} wird ein Fish Audio API-Schlüssel benötigt.`,
-  onboardFreeModel: 'Neue Konten können bis zum 30 November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.',
+  onboardFreeModel: 'Neue Konten können bis zum 30. November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.',
   onboardStep1: 'Erstellen Sie einen kostenlosen API-Schlüssel auf fish.audio',
   onboardStep2: 'Fügen Sie ihn unter Einstellungen ▸ Plugins ▸ Fish Audio ein (in älteren Versionen: Fähigkeiten ▸ Plugins) und starten Sie dann das Gateway neu',
   getKey: 'API-Schlüssel erhalten',
@@ -143,7 +143,7 @@ export const de = {
     error: `Etwas ist schiefgelaufen`,
     badChunkSize: `Das Gateway hat eine ungültige Upload-Blockgröße gesendet.`,
     code: (code: string) => ` Code: ${code}.`,
-    freeEnded: ' Fish hat das Ende der kostenlosen Phase von s2.1-pro-free zum 30 November 2026 angekündigt.',
+    freeEnded: ' Fish hat das Ende der kostenlosen Phase von s2.1-pro-free zum 30. November 2026 angekündigt.',
     paidModel: (url: string) => ` Zu s2.1-pro wechseln und Guthaben aufladen: ${url}`,
     requestId: (id: string) => ` (Anfrage-ID ${id})`,
     fishTrace: (id: string) => ` (Fish-Trace ${id})`,

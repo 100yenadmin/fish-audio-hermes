@@ -59,6 +59,8 @@ def _login(args):
     print(f"Key saved for this profile. Model: {model}")
     if defaulted and model == "s2.1-pro-free":
         print(settings.free_model_notice())
+    elif model == "s2.1-pro-free" and (warning := models.free_model_warning()):
+        print("warn: " + warning)
     print(RESTART_HINT)
     return 0
 

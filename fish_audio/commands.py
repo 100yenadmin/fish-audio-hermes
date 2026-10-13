@@ -46,7 +46,8 @@ def status(key=None):
     managed = settings.transport_settings().get("allow_free_model", True) is False
     reason = ("managed pin" if managed and (defaulted or nested.get("model") == "s2.1-pro-free") else
               "nested" if not defaulted else "unknown wallet" if wallet is None else
-              "free tier" if model == "s2.1-pro-free" else "paid account")
+              ("no API credit" if models.free_model_phase() == "ended" else "free tier") if model == "s2.1-pro-free" else
+              "paid account")
     if operator:
         reason = "operator managed"
         if defaulted and not managed:

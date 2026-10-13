@@ -44,7 +44,8 @@ read-aloud and voice notes go through it.
 
 ## Setup
 
-1. **Get a key** at <https://fish.audio/app/api-keys>. New accounts can start on the free `s2.1-pro-free` model.
+1. **Get a key** at <https://fish.audio/app/api-keys>. New accounts can start on Fish's free `s2.1-pro-free` model, free through 30 November 2026;
+   after that, add API credit.
 2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop ▸ Settings ▸ Plugins ▸ Fish Audio
    (Capabilities ▸ Plugins on older Desktop), or in
    `hermes tools` ▸ Text-to-Speech ▸ Fish Audio. `login` checks the key against your Fish wallet and saves it to the
@@ -254,8 +255,8 @@ the wallet that users can't see.
 
 ## Disclosure
 
-- Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish account (the
-  free `s2.1-pro-free` model excepted).
+- Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish account (except
+  `s2.1-pro-free` while Fish offers it free, announced through 30 November 2026).
 - Fish Audio may use free-model requests to improve its models.
 - The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
   existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a
