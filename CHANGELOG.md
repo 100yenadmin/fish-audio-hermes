@@ -2,11 +2,20 @@
 
 ## 1.7.3 — 2026-10-15
 
-- **Report a problem, finished:** issue search words now come from a file too (`--search "$(cat <search file>)"`), so
-  an apostrophe or quote in them can no longer break or escape the command; without the GitHub CLI the agent searches
-  the issues page with a web tool or hands you the link. A security problem in Hermes itself goes to Hermes's private
-  security page. Reports leave out your API credit amount, your own cloned voice ids and links in the last-failure
-  message. When filing from the CLI fails and a matching issue exists, you get the draft as a comment for that issue.
+- **Report a problem, finished:**
+  - Issue search words now come from a file (`--search "$(cat '<search file>')"`), like the title, so quotes and
+    apostrophes can neither break nor escape the command.
+  - Security: a key leak or data sent somewhere unexpected, found at any step, goes back to the private advisory form,
+    and a possibly exposed key comes with "revoke it and create a new one". A security problem in Hermes itself goes
+    to Hermes's private form.
+  - Approval: the agent shows the exact title and text, says the issue will be public, and asks you to confirm it holds
+    no secrets before your yes.
+  - Reports leave out your API credit amount, any voice id that may be your own clone, and links in the last-failure
+    message.
+  - A matching closed issue gets a "check your version" answer instead of a duplicate, and logs are read for the last
+    hour instead of the last 300 lines.
+  - `/fish status` is run where the failure happened, because its last failure covers only the running process.
+  - If filing from the CLI fails, you get the title and draft to paste yourself.
 
 ## 1.7.2 — 2026-10-15
 
