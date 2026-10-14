@@ -47,6 +47,9 @@ def load_api():
 
 @pytest.fixture
 def env(monkeypatch, tmp_path):
+    # The dashboard's own (process) profile gets a temp home, so a request scope never reads ~/.hermes/.env.
+    (tmp_path / "process-home").mkdir()
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path / "process-home"))
     api = load_api()
     current = {"name": "a"}
     profiles = {}

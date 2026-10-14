@@ -73,7 +73,8 @@ def _speak(args, key, base, session, *, record_media=True):
     if record_media:
         hooks.record(session, path, as_voice)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
-              "note": "Include media_tag verbatim in your reply so the user receives the audio."}
+              "note": ("Include media_tag verbatim on its own line so the user receives the audio, and add one short line "
+                       "of text: a reply that is only media_tag can leave a stray \"MEDIA\" message in streaming chats.")}
     if source == "wallet" and settings.operator_account():
         del result["model"]  # A wallet-chosen default follows the operator's wallet, which the agent's users don't see.
     elif defaulted and model == "s2.1-pro-free":

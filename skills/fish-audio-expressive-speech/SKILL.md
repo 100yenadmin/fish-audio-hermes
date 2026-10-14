@@ -5,7 +5,8 @@ description: Expressive Fish speech with emotion cues, multiple speakers and pro
 
 Use `fish_speak` when the user asks for expressive or multi-speaker speech. For plain read-aloud,
 use Hermes's `text_to_speech`. Calls are billed to the Fish Audio account behind this agent's key. Include the returned
-`media_tag` verbatim so the audio is delivered; the output hook can append missing audio tags.
+`media_tag` verbatim on its own line so the audio is delivered, with one short line of text: a reply that is only the tag
+can leave a stray "MEDIA" message in streaming chats such as Telegram. The output hook can append missing audio tags.
 Use one speech tool per request (`text_to_speech`, `fish_speak`, or a speech tool from Fish's MCP server), never two for the same words.
 
 S1 is deprecated; from 2026-12-31 requests use S2.1 Pro.
