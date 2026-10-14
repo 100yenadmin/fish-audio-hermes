@@ -15,4 +15,4 @@ def test_shipped_instructions_single_quote_model_written_gh_args():
     assert not offenders, offenders
     report = (ROOT / "skills/fish-audio-report-problem/SKILL.md").read_text(encoding="utf-8")
     assert '--title "$(cat <title file>)"' in report and "Never type the title itself into the command." in report
-    assert "letters and digits only" in report
+    assert '--search "$(cat <search file>)"' in report and "Never type the search words themselves into the command." in report

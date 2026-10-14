@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.3 — 2026-10-15
+
+- **Report a problem, finished:** issue search words now come from a file too (`--search "$(cat <search file>)"`), so
+  an apostrophe or quote in them can no longer break or escape the command; without the GitHub CLI the agent searches
+  the issues page with a web tool or hands you the link. A security problem in Hermes itself goes to Hermes's private
+  security page. Reports leave out your API credit amount, your own cloned voice ids and links in the last-failure
+  message. When filing from the CLI fails and a matching issue exists, you get the draft as a comment for that issue.
+
 ## 1.7.2 — 2026-10-15
 
 - **Report a problem, shell-safe:** the agent now saves the issue title to a file and files with
