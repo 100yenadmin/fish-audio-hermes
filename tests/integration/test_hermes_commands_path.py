@@ -39,7 +39,8 @@ def test_real_namespaced_skills_resolve(installed_fish_home):
     from tools.skills_tool import skill_view
     from hermes_cli.plugins import get_plugin_manager
     import yaml
-    for name in ("fish-audio-setup", "fish-audio-expressive-speech", "fish-audio-voice-studio"):
+    for name in ("fish-audio-setup", "fish-audio-expressive-speech", "fish-audio-voice-studio",
+                 "fish-audio-report-problem"):
         result = json.loads(skill_view("fish-audio:" + name, preprocess=False))
         assert result["success"], result
         assert result["name"] == "fish-audio:" + name

@@ -30,7 +30,8 @@ def register_all(ctx) -> None:
     if hasattr(ctx, "register_cli_command"):
         ctx.register_cli_command("fish", help="Fish Audio setup and diagnostics", setup_fn=cli.setup, handler_fn=cli.handle)
     if hasattr(ctx, "register_skill"):
-        for name in ("fish-audio-setup", "fish-audio-expressive-speech", "fish-audio-voice-studio"):
+        for name in ("fish-audio-setup", "fish-audio-expressive-speech", "fish-audio-voice-studio",
+                     "fish-audio-report-problem"):
             path = Path(__file__).resolve().parents[1] / "skills" / name / "SKILL.md"
             ctx.register_skill(name, path, description=_skill_description(path))
 

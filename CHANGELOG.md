@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.1 — 2026-10-15
+
+- **Report a problem:** a new `fish-audio:fish-audio-report-problem` skill. Ask your agent to "report a problem with
+  Fish Audio": it checks setup with `hermes fish doctor --no-synth` and `/fish status` (no billed synthesis unless you
+  say yes), searches existing issues, drafts a report with the bug form's headings, and files it with `gh` only after
+  you approve that draft. Security problems go to the private advisory form instead.
+- **Contributor docs:** `AGENTS.md`, `CONTRIBUTING.md`, a bug report form, a PR template and a troubleshooting section
+  in the README (#40).
+
 ## 1.7.0 — 2026-10-14
 
 - **Free-model wording follows Fish's end date:** Fish announced `s2.1-pro-free` is free through 30 November 2026.

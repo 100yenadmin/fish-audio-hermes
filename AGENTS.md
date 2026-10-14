@@ -14,7 +14,7 @@ Fish Audio is a standalone Hermes Agent plugin for expressive speech, transcript
 - `devtools/`: Desktop TypeScript source, tests and bundle tooling.
 - `desktop/plugin.js`: committed generated Desktop bundle.
 - `dashboard/`: gateway API routes and a hidden manifest; no web-dashboard UI.
-- `skills/`: the three currently shipped user skills.
+- `skills/`: the shipped user skills; each folder must also be listed in `fish_audio/registration.py` (a test checks this).
 - `.github/workflows/`: unit, Desktop, compatibility and scheduled alarm checks.
 
 ## Setup and checks
