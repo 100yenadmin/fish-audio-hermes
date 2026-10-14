@@ -2,10 +2,11 @@
 
 ## 1.7.2 — 2026-10-15
 
-- **Report a problem, shell-safe:** the skill now puts the issue title and search words in single quotes and asks for
-  plain words, so a title like `` `hermes fish doctor` fails `` can no longer run that command (a billed synthesis) when
-  the agent files it. Maintainers filing with it add `--label bug,triage-pending,agent-drafted`. `AGENTS.md` quotes its
-  issue search the same way.
+- **Report a problem, shell-safe:** the agent now saves the issue title to a file and files with
+  `--title "$(cat <title file>)"`, so the shell passes the title unchanged: backticks, `$`, quotes and apostrophes
+  included. Before, a title like `` `hermes fish doctor` fails `` could run that command (a billed synthesis). Issue
+  search words are letters and digits inside single quotes. Maintainers filing with it add
+  `--label bug,triage-pending,agent-drafted`. `AGENTS.md` quotes its issue search the same way.
 
 ## 1.7.1 — 2026-10-15
 
