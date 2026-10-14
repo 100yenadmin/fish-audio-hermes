@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the report. From the next release, your Hermes agent can draft it for you: ask it to "report a problem with Fish Audio".
+        Thanks for the report. Your Hermes agent can draft it for you (plugin 1.7.1 or newer): ask it to "report a problem with Fish Audio".
         **Security problems** (API key exposure, unintended data destinations, or unauthorized file reads, or anything that exposes a secret) go to a [private advisory](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new), not here.
         **Problems in Hermes itself** belong in [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent/issues).
   - type: textarea

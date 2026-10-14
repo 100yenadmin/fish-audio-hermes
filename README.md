@@ -93,8 +93,9 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
-through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`
-and `fish-audio:fish-audio-voice-studio`.
+through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
+`fish-audio:fish-audio-voice-studio` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
+`gh` only after you approve the draft).
 
 ## Hermes Desktop
 
@@ -350,6 +351,6 @@ Run `hermes fish doctor --no-synth` to check setup without billed synthesis; it 
 Use `/fish status` for key presence, providers, voice, model, credit and the last failure; operator-managed accounts hide credit.
 Under plugin-host isolation the terminal command is unavailable, so use `/fish status`.
 Plain `hermes fish doctor` makes a billed synthesis; only run it with the user's OK.
-From the next release, ask your Hermes agent to "report a problem with Fish Audio" to draft a report for your review.
+Ask your Hermes agent to "report a problem with Fish Audio": it drafts a report and files nothing until you approve the draft.
 Use the [bug report form](https://github.com/100yenadmin/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
 Report security problems through the [private advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
