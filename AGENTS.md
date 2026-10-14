@@ -54,7 +54,7 @@ CI also checks the plugin inside pinned Hermes builds (`hermes plugins validate`
 
 ## Filing issues
 
-- Search first: `gh issue list -R 100yenadmin/fish-audio-hermes --state all --search "<key words>"`.
+- Search first: `gh issue list -R 100yenadmin/fish-audio-hermes --state all --search '<key words>'` (single quotes, so the shell does not expand anything in the search words).
 - Use the bug form headings: What happened, What you expected, Steps to reproduce, Plugin version, Hermes version, Where it happened, Operating system, Diagnostics, Relevant log lines.
 - Maintainers filing from the CLI always pass labels: `--label bug,triage-pending` (or `triaged` once triaged), plus `agent-drafted` when an agent wrote it.
 

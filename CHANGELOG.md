@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.2 — 2026-10-15
+
+- **Report a problem, shell-safe:** the skill now puts the issue title and search words in single quotes and asks for
+  plain words, so a title like `` `hermes fish doctor` fails `` can no longer run that command (a billed synthesis) when
+  the agent files it. Maintainers filing with it add `--label bug,triage-pending,agent-drafted`. `AGENTS.md` quotes its
+  issue search the same way.
+
 ## 1.7.1 — 2026-10-15
 
 - **Report a problem:** a new `fish-audio:fish-audio-report-problem` skill. Ask your agent to "report a problem with
