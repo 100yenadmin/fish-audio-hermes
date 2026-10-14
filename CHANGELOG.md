@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.7.3 — 2026-10-15
+
+- **Report a problem, finished:**
+  - Issue search words now come from a file (`--search "$(cat '<search file>')"`), like the title, so quotes and
+    apostrophes can neither break nor escape the command.
+  - Security: a key leak or data sent somewhere unexpected, found at any step, goes back to the private advisory form,
+    and a possibly exposed key comes with "revoke it and create a new one". A security problem in Hermes itself goes
+    to Hermes's private form.
+  - Approval: the agent shows the title and text exactly as saved for filing, says the issue or comment will be public,
+    asks you to confirm it holds no secrets, and shows it again after any change before your yes. A possibly exposed
+    key on Desktop or an operator-managed account gets the right way to replace it.
+  - Reports leave out your API credit amount, any voice id that may be your own clone, and links in the last-failure
+    message.
+  - A matching closed issue gets a "check your version" answer instead of a duplicate, and logs are read for the last
+    hour instead of the last 300 lines.
+  - `/fish status` is run where the failure happened, because its last failure covers only the running process.
+  - If filing from the CLI fails, you get the title and draft to paste yourself.
+
 ## 1.7.2 — 2026-10-15
 
 - **Report a problem, shell-safe:** the agent now saves the issue title to a file and files with
