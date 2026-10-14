@@ -1,5 +1,19 @@
 # Security policy
 
+Report privately using [the GitHub advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
+We aim to acknowledge reports within 3 business days and to share a decision or fix plan within 14 days.
+
+## Scope
+
+- Exposure of the Fish API key through the plugin.
+- Audio or text sent to a destination the user did not choose.
+- Reads outside the plugin's own data, including protected files or another profile's data.
+
+## Out of scope
+
+- Fish Audio's own API or service: report to Fish Audio.
+- Hermes Agent core: report to the upstream security channel linked below.
+
 ## Reporting a vulnerability
 
 Please report vulnerabilities privately through GitHub's **Report a vulnerability** button (Security ▸ Advisories)

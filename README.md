@@ -316,7 +316,7 @@ Fish's [official plugin](https://github.com/fishaudio/fish-audio-plugin) connect
 | "The voice id was not found" | The id is wrong or the voice is private to another account. Try `/fish voices`. |
 | Voice replies stay silent | Run `/fish status`; it shows the last Fish error, with its Fish trace id when Fish sent one. |
 | Fish tools missing after turning the plugin off and on (Hermes 0.21.6 and older) | Add them back with `hermes tools`. Hermes 0.21.7 and newer restore them. |
-| Anything else | Run `hermes fish doctor`, and quote the Fish trace id from the error when you contact Fish Audio support. |
+| Anything else | Run `hermes fish doctor --no-synth`; when speech itself fails, plain `hermes fish doctor` adds one short billed synthesis. Quote the Fish trace id from the error when you contact Fish Audio support. |
 
 ## Known limitations
 
@@ -343,3 +343,13 @@ Weekly regression alarm: see [bench/README.md](bench/README.md).
 
 Run JavaScript tooling from `devtools/`: `cd devtools && npm ci && npm run typecheck && npm test`.
 `npm run check:bundle` checks the committed `desktop/plugin.js`; `npm run build` rebuilds it.
+
+## Troubleshooting and reporting a bug
+
+Run `hermes fish doctor --no-synth` to check setup without billed synthesis; it can read Fish account metadata.
+Use `/fish status` for key presence, providers, voice, model, credit and the last failure; operator-managed accounts hide credit.
+Under plugin-host isolation the terminal command is unavailable, so use `/fish status`.
+Plain `hermes fish doctor` makes a billed synthesis; only run it with the user's OK.
+From the next release, ask your Hermes agent to "report a problem with Fish Audio" to draft a report for your review.
+Use the [bug report form](https://github.com/100yenadmin/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
+Report security problems through the [private advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
