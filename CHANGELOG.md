@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.2 — 2026-10-15
+
+- **Report a problem, shell-safe:** the agent now saves the issue title to a file and files with
+  `--title "$(cat <title file>)"`, so the shell passes the title unchanged: backticks, `$`, quotes and apostrophes
+  included. Before, a title like `` `hermes fish doctor` fails `` could run that command (a billed synthesis). Issue
+  search words are letters and digits inside single quotes. Maintainers filing with it add
+  `--label bug,triage-pending,agent-drafted`. `AGENTS.md` quotes its issue search the same way.
+
 ## 1.7.1 — 2026-10-15
 
 - **Report a problem:** a new `fish-audio:fish-audio-report-problem` skill. Ask your agent to "report a problem with
