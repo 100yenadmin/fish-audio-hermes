@@ -343,3 +343,13 @@ Weekly regression alarm: see [bench/README.md](bench/README.md).
 
 Run JavaScript tooling from `devtools/`: `cd devtools && npm ci && npm run typecheck && npm test`.
 `npm run check:bundle` checks the committed `desktop/plugin.js`; `npm run build` rebuilds it.
+
+## Troubleshooting and reporting a bug
+
+Run `hermes fish doctor --no-synth` to check setup without billed synthesis; it can read Fish account metadata.
+Use `/fish status` for key presence, providers, voice, model, credit and the last failure; operator-managed accounts hide credit.
+Under plugin-host isolation the terminal command is unavailable, so use `/fish status`.
+Plain `hermes fish doctor` makes a billed synthesis; only run it with the user's OK.
+From the next release, ask your Hermes agent to "report a problem with Fish Audio" to draft a report for your review.
+Use the [bug report form](https://github.com/100yenadmin/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
+Report security problems through the [private advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
