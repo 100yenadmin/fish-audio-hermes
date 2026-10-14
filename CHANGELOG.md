@@ -8,8 +8,9 @@
   - Security: a key leak or data sent somewhere unexpected, found at any step, goes back to the private advisory form,
     and a possibly exposed key comes with "revoke it and create a new one". A security problem in Hermes itself goes
     to Hermes's private form.
-  - Approval: the agent shows the exact title and text, says the issue will be public, and asks you to confirm it holds
-    no secrets before your yes.
+  - Approval: the agent shows the title and text exactly as saved for filing, says the issue or comment will be public,
+    asks you to confirm it holds no secrets, and shows it again after any change before your yes. A possibly exposed
+    key on Desktop or an operator-managed account gets the right way to replace it.
   - Reports leave out your API credit amount, any voice id that may be your own clone, and links in the last-failure
     message.
   - A matching closed issue gets a "check your version" answer instead of a duplicate, and logs are read for the last
