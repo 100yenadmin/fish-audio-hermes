@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.4 — 2026-10-15
+
+- **Report a problem:** a yes to "does this hold any secrets?" no longer counts as approval to publish. Only an
+  explicit yes to publishing, given after you have seen the final text, files the issue or comment. This matches
+  the shared plugin community kit.
+- **Voice replies on Telegram:** `fish_speak` now asks the agent to add one short line of text next to the audio
+  tag. A streamed reply that was only the tag left a stray "MEDIA" message in the chat; Hermes's streaming display
+  never cleared it.
+- **Tests:** the Desktop gateway tests use a temporary Hermes home for the dashboard's own profile, so they no
+  longer read `~/.hermes/.env`.
+
 ## 1.7.3 — 2026-10-15
 
 - **Report a problem, finished:**

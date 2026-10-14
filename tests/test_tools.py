@@ -42,6 +42,8 @@ def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, voice):
         assert path.read_bytes() == b"synthetic audio"
         assert result["media_tag"] == ("[[audio_as_voice]]\n" if voice else "") + f"MEDIA:{path}"
         assert result["billing"] == "fish-audio"
+        # A reply that is only the tag freezes a "MEDIA" fragment in streamed chats, so the note asks for a text line too.
+        assert "one short line of text" in result["note"] and "on its own line" in result["note"]
         body = json.loads(route.calls.last.request.content)
         assert body["format"] == wire and body["reference_id"] == VOICE
         assert body["text"] == "[excited] hello <|speaker:0|>"
