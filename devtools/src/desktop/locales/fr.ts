@@ -150,7 +150,7 @@ export const fr = {
     fishTrace: (id: string) => ` (trace Fish ${id})`,
   },
   refusals: {
-    no_key: `Fish Audio n’est pas encore configuré pour ce profil. Ajoutez une clé dans Paramètres ▸ Plugins ▸ Fish Audio (dans les anciennes versions : Capacités ▸ Plugins), ou exécutez \`hermes fish login\` sur la machine où tourne Hermes.`,
+    no_key: `Fish Audio n’est pas encore configuré pour ce profil. Ajoutez une clé dans Paramètres ▸ Plugins ▸ Fish Audio ▸ Réglages de l’agent (dans les anciennes versions : la roue dentée de la ligne fish-audio dans Capacités ▸ Plugins), ou exécutez \`hermes fish login\` sur la machine où tourne Hermes.`,
     no_keyOperator: `Demandez à l’opérateur de cet agent de terminer la configuration de Fish Audio.`,
     not_owner: `Vous pouvez uniquement supprimer les voix créées par votre compte Fish Audio.`,
     gone: `L’envoi n’est plus disponible ; ajoutez à nouveau le fichier.`,

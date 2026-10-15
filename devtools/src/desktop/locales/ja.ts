@@ -150,7 +150,7 @@ export const ja = {
     fishTrace: (id: string) => `（Fish トレース：${id}）`,
   },
   refusals: {
-    no_key: `このプロファイルの Fish Audio は未設定です。設定 ▸ プラグイン ▸ Fish Audio（旧バージョンでは スキルとツール ▸ プラグイン）にキーを追加するか、Hermes が動作するマシンで \`hermes fish login\` を実行してください。`,
+    no_key: `このプロファイルの Fish Audio は未設定です。設定 ▸ プラグイン ▸ Fish Audio ▸ エージェント設定（旧バージョンでは スキルとツール ▸ プラグイン の fish-audio の行の歯車アイコン）にキーを追加するか、Hermes が動作するマシンで \`hermes fish login\` を実行してください。`,
     no_keyOperator: `このエージェントの運用者に Fish Audio の設定を完了するよう依頼してください。`,
     not_owner: `削除できるのは、ご自身の Fish Audio アカウントで作成したボイスだけです。`,
     gone: `アップロードが利用できなくなりました。ファイルを追加し直してください。`,

@@ -150,7 +150,7 @@ export const de = {
     fishTrace: (id: string) => ` (Fish-Trace ${id})`,
   },
   refusals: {
-    no_key: `Fish Audio ist für dieses Profil noch nicht eingerichtet. Einen Schlüssel unter Einstellungen ▸ Plugins ▸ Fish Audio (bei älteren Versionen: Fähigkeiten ▸ Plugins) hinzufügen oder \`hermes fish login\` auf dem Rechner mit Hermes ausführen.`,
+    no_key: `Fish Audio ist für dieses Profil noch nicht eingerichtet. Einen Schlüssel unter Einstellungen ▸ Plugins ▸ Fish Audio ▸ Agent-Einstellungen (bei älteren Versionen: Zahnrad in der Zeile fish-audio unter Fähigkeiten ▸ Plugins) hinzufügen oder \`hermes fish login\` auf dem Rechner mit Hermes ausführen.`,
     no_keyOperator: `Den Betreiber dieses Agenten bitten, Fish Audio fertig einzurichten.`,
     not_owner: `Nur Stimmen aus dem eigenen Fish Audio-Konto können gelöscht werden.`,
     gone: `Der Upload ist nicht mehr verfügbar; die Datei erneut hinzufügen.`,

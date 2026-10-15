@@ -155,7 +155,7 @@ export const en = {
     fishTrace: (id: string) => ` (Fish trace ${id})`,
   },
   refusals: {
-    no_key: `Fish Audio isn't set up for this profile yet. Add a key in Settings ▸ Plugins ▸ Fish Audio (Capabilities ▸ Plugins on older Desktop), or run \`hermes fish login\` on the machine running Hermes.`,
+    no_key: `Fish Audio isn't set up for this profile yet. Add a key in Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings (on older Desktop, the gear on the fish-audio row in Capabilities ▸ Plugins), or run \`hermes fish login\` on the machine running Hermes.`,
     no_keyOperator: `Ask the operator of this agent to finish the Fish Audio setup.`,
     not_owner: `You can delete only voices your Fish Audio account created.`,
     gone: `The upload is no longer available; add the file again.`,

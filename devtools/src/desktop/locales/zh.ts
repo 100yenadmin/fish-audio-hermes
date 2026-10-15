@@ -150,7 +150,7 @@ export const zh = {
     fishTrace: (id: string) => `（Fish 跟踪：${id}）`,
   },
   refusals: {
-    no_key: `此配置尚未设置 Fish Audio。请在设置 ▸ 插件 ▸ Fish Audio（旧版本为技能与工具 ▸ 插件）中添加密钥，或在运行 Hermes 的机器上执行 \`hermes fish login\`。`,
+    no_key: `此配置尚未设置 Fish Audio。请在设置 ▸ 插件 ▸ Fish Audio ▸ 智能体设置（旧版本为技能与工具 ▸ 插件中 fish-audio 行的齿轮图标）中添加密钥，或在运行 Hermes 的机器上执行 \`hermes fish login\`。`,
     no_keyOperator: `请联系此智能体的运营者完成 Fish Audio 设置。`,
     not_owner: `只能删除您自己的 Fish Audio 账户创建的声音。`,
     gone: `上传已不可用；请重新添加文件。`,

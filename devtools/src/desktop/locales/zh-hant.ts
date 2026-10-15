@@ -150,7 +150,7 @@ export const zhHant = {
     fishTrace: (id: string) => `（Fish 追蹤：${id}）`,
   },
   refusals: {
-    no_key: `此設定檔尚未設定 Fish Audio。請在設定 ▸ 外掛 ▸ Fish Audio（舊版本為技能與工具 ▸ 外掛）中加入金鑰，或在執行 Hermes 的機器上執行 \`hermes fish login\`。`,
+    no_key: `此設定檔尚未設定 Fish Audio。請在設定 ▸ 外掛 ▸ Fish Audio ▸ 代理程式設定（舊版本為技能與工具 ▸ 外掛中 fish-audio 列的齒輪圖示）中加入金鑰，或在執行 Hermes 的機器上執行 \`hermes fish login\`。`,
     no_keyOperator: `請聯絡此代理的營運者完成 Fish Audio 設定。`,
     not_owner: `只能刪除您自己的 Fish Audio 帳號建立的聲音。`,
     gone: `上傳已無法使用；請重新加入檔案。`,
