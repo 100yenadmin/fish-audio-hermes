@@ -32,6 +32,10 @@ Fixtures for the report gate run separately:
 <cached-host>/.venv/bin/python -m pytest -q acceptance/test_report.py
 ```
 
+Run one acceptance run at a time per Fish key. Accounts with less than $100 of top-ups get 5 concurrent
+requests, and parallel runs (or a second lane on the same key) trip "concurrency limit" errors. A row that fails
+on a Fish outage, a rate limit or the concurrency limit is retried once, 15 s later, and the report says so.
+
 Budget is $0.30 by default, checked against the real wallet before and after each
 paid probe; a spent budget refuses subsequent calls. It is a measured spending
 guard, not a provider-side hard billing limit. Account credits can settle late.

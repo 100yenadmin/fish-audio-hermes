@@ -21,7 +21,7 @@ PIN = 'evaos-runtime-es.12-v0.21.5-r34.13'
 REPOS = {'upstream': 'NousResearch/hermes-agent', 'evaos': 'electricsheephq/evaOS-hermes-desktop-app-adapter'}
 
 
-TRANSIENT = re.compile(r'(?i)Fish Audio is unavailable|try again later|rate.?limit|\b(429|500|502|503|504)\b')
+TRANSIENT = re.compile(r'(?i)Fish Audio is unavailable|try again later|concurrency limit|rate.?limit|\b(429|500|502|503|504)\b')
 
 
 def scrub(value):
@@ -310,6 +310,7 @@ def run(args):
             rows = json.loads((out / 'rows-a.json').read_text()) if (out / 'rows-a.json').exists() else []
             transient = [r['id'] for r in rows if r['status'] == 'fail' and TRANSIENT.search(r['reason'])]
             if transient:
+                time.sleep(15)  # let the account's concurrent-request slots drain before the retry
                 p = subprocess.run([str(src / '.venv/bin/python'), '-m', 'pytest', '-q',
                                     str(ROOT / 'acceptance/test_layer_a.py'), '-p', 'no:cacheprovider', '--tb=no'],
                                    cwd=ROOT, env={**env, 'ACCEPTANCE_RERUN': ','.join(transient)},
