@@ -13,3 +13,4 @@ pinned/
 coverage/
 devtools/node_modules/
 devtools/pinned/
+acceptance-out/

@@ -1,0 +1,5 @@
+(version 1)
+(allow default)
+(deny file-write*)
+(allow file-write* (subpath (param "RUN_DIR")) (subpath (param "CACHE_DIR")) (subpath (param "TEMP_DIR")))
+(allow file-write* (literal "/dev/null") (literal "/dev/tty") (literal "/dev/stdout") (literal "/dev/stderr"))
