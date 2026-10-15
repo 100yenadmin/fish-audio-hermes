@@ -307,9 +307,9 @@ def test_plugin_versions_agree():
 
 
 def test_desktop_disclosure_worded_identically():
-    # SECURITY.md, the README and plugin.yaml carry the same Desktop-routes disclosure sentence.
+    # SECURITY.md and the README carry the same Desktop-routes disclosure sentence.
     root = Path(__file__).resolve().parents[1]
-    texts = [" ".join((root / name).read_text().split()) for name in ("SECURITY.md", "README.md", "plugin.yaml")]
+    texts = [" ".join((root / name).read_text().split()) for name in ("SECURITY.md", "README.md")]
     start = "The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/"
     end = "until it closes."
     sentence = texts[0][texts[0].index(start):].split(end, 1)[0] + end
@@ -317,6 +317,20 @@ def test_desktop_disclosure_worded_identically():
     assert sentence == expected
     assert "approval gate" in sentence and "billed" in sentence
     assert all(sentence in text for text in texts)
+
+
+def test_manifest_description_is_short_and_the_readme_carries_the_disclosure():
+    # Desktop shows the manifest description above the key field (#47), so it stays short and points to the README.
+    import yaml
+    root = Path(__file__).resolve().parents[1]
+    description = yaml.safe_load((root / "plugin.yaml").read_text())["description"]
+    assert len(description) <= 400 and "Disclosure section of the README" in description
+    readme = " ".join((root / "README.md").read_text().split())
+    disclosure = readme[readme.index("## Disclosure"):readme.index("## Compatibility")]
+    for fact in ("microphone audio streams to `api.fish.audio` while you speak", "billed per committed phrase",
+                 "stores your key in Hermes's `.env`", "collects no telemetry", "reads your wallet",
+                 "The Desktop Voices page adds gateway routes"):
+        assert fact in disclosure
 
 
 @pytest.mark.parametrize("tail, ok", [(b'}', True), (b'} ', False)])
