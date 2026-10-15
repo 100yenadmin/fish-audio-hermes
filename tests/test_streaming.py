@@ -12,7 +12,7 @@ import msgpack
 import pytest
 import respx
 
-from fish_audio import settings, state, streaming, tts
+from fish_audio import client, settings, state, streaming, tts
 from fish_audio.errors import FishAudioError
 
 VOICE = "a" * 32
@@ -94,7 +94,14 @@ def test_s1_model_adapts_tags_and_empty_result_makes_no_request(monkeypatch):
         assert json.loads(route.calls.last.request.content)["text"] == "(excited) Hi there."
 
 
-def test_http_errors_are_mapped_redacted_and_recorded():
+@pytest.fixture
+def sleeps(monkeypatch):
+    delays = []
+    monkeypatch.setattr(client.time, "sleep", delays.append)
+    return delays
+
+
+def test_http_errors_are_mapped_redacted_and_recorded(sleeps):
     with respx.mock(assert_all_called=True) as mock:
         mock.post("https://api.fish.audio/v1/tts").respond(
             401, json={"status": 401, "message": f"Invalid Token {KEY}"}, headers={"x-fish-error-code": "invalid_api_key"})
@@ -106,7 +113,95 @@ def test_http_errors_are_mapped_redacted_and_recorded():
         route = mock.post("https://api.fish.audio/v1/tts").mock(side_effect=httpx.ConnectError("refused"))
         with pytest.raises(FishAudioError) as exc:
             speak()
-        assert exc.value.kind == "availability" and route.call_count == 1  # never retried: no double bill
+        assert exc.value.kind == "availability" and route.call_count == 3
+    assert len(sleeps) == 2
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_http_retries_before_audio(status, sleeps):
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").mock(side_effect=[
+            httpx.Response(status), httpx.Response(200, content=b"\x01\x02")])
+        assert speak() == [b"\x01\x02"]
+        assert route.call_count == 2
+    assert len(sleeps) == 1 and 0.5 <= sleeps[0] <= 0.6
+    assert state.last_failure() is None
+
+
+def test_http_retry_exhaustion_records_only_the_final_failure(monkeypatch, sleeps):
+    failures = []
+    record = streaming.record_failure
+
+    def recorded(kind, message):
+        failures.append((kind, message))
+        record(kind, message)
+
+    monkeypatch.setattr(streaming, "record_failure", recorded)
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").mock(side_effect=[
+            httpx.Response(503, headers={"x-request-id": f"attempt-{n}"}) for n in range(3)])
+        with pytest.raises(FishAudioError) as exc:
+            speak()
+        assert route.call_count == 3
+    assert exc.value.kind == "availability" and exc.value.request_id == "attempt-2"
+    assert exc.value.__suppress_context__
+    assert len(failures) == 1 and state.last_failure()[1] == "availability"
+    assert len(sleeps) == 2 and 0.5 <= sleeps[0] <= 0.6 and 1.0 <= sleeps[1] <= 1.1
+
+
+@pytest.mark.parametrize("status,kind", [(502, "availability"), (504, "availability"),
+                                       (401, "credential"), (402, "quota")])
+def test_http_does_not_retry_ambiguous_or_client_errors(status, kind, sleeps):
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").respond(status)
+        with pytest.raises(FishAudioError) as exc:
+            speak()
+        assert exc.value.kind == kind and route.call_count == 1
+    assert sleeps == []
+
+
+def test_http_retries_connect_error_before_audio(sleeps):
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").mock(side_effect=[
+            httpx.ConnectError(f"refused {KEY}"), httpx.Response(200, content=b"\x01\x02")])
+        assert speak() == [b"\x01\x02"]
+        assert route.call_count == 2
+    assert len(sleeps) == 1
+    assert state.last_failure() is None
+
+
+def test_http_never_retries_after_audio(monkeypatch, sleeps):
+    class Body(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b"\x01\x02"
+            raise httpx.ReadError(f"private {KEY}")
+
+    # Even a transport normally eligible for retry cannot replay delivered audio.
+    monkeypatch.setattr(client, "_transport_retry", lambda *args: True)
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").mock(return_value=httpx.Response(200, stream=Body()))
+        stream = streaming.stream_pcm("Hello there.")
+        assert next(stream) == b"\x01\x02"
+        with pytest.raises(FishAudioError) as exc:
+            next(stream)
+        assert exc.value.kind == "availability" and KEY not in str(exc.value)
+        assert exc.value.__suppress_context__ and route.call_count == 1
+    assert sleeps == []
+
+
+def test_http_never_retries_a_read_error_after_the_request_was_sent(sleeps):
+    class Body(httpx.SyncByteStream):
+        def __iter__(self):
+            raise httpx.ReadError("connection lost")
+            yield b""
+
+    # Fish received the whole request and may have billed it, so no second POST, even with no audio yet.
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").mock(return_value=httpx.Response(200, stream=Body()))
+        with pytest.raises(FishAudioError) as exc:
+            speak()
+        assert exc.value.kind == "availability" and route.call_count == 1
+    assert sleeps == []
 
 
 def test_missing_key_raises_setup_message(monkeypatch):
@@ -135,6 +230,28 @@ def test_consumer_close_closes_the_http_response():
         assert next(stream) == b"\x01\x02"
         stream.close()  # barge-in
     assert closed.is_set()
+
+
+def test_consumer_close_after_retry_closes_the_http_response(sleeps):
+    closed = threading.Event()
+
+    class Body(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b"\x01\x02"
+            yield b"\x03\x04"
+
+        def close(self):
+            closed.set()
+
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").mock(side_effect=[
+            httpx.Response(429), httpx.Response(200, stream=Body())])
+        stream = streaming.stream_pcm("Hello there.")
+        assert next(stream) == b"\x01\x02"
+        assert not closed.is_set()
+        stream.close()  # barge-in after a successful retry
+        assert route.call_count == 2
+    assert closed.is_set() and len(sleeps) == 1
 
 
 def test_streaming_available_is_offline_and_checks_key_setting_and_host(monkeypatch):
@@ -306,12 +423,14 @@ def test_hook_stream_applies_speed_like_synthesize():
 
 
 @pytest.mark.parametrize("body", [b"", b"\x01"])
-def test_successful_stream_without_a_whole_sample_raises_and_records(body):
+def test_successful_stream_without_a_whole_sample_raises_and_records(body, sleeps):
     with respx.mock(assert_all_called=True) as mock:
-        mock.post("https://api.fish.audio/v1/tts").respond(content=body, headers={"content-type": "audio/pcm"})
+        route = mock.post("https://api.fish.audio/v1/tts").respond(content=body, headers={"content-type": "audio/pcm"})
         with pytest.raises(FishAudioError, match="no audio") as exc:
             speak()
+        assert route.call_count == 1
     assert exc.value.kind == "availability" and state.last_failure()[1] == "availability"
+    assert sleeps == []
 
 
 def test_plugin_register_leaves_core_streaming_alone(plugin, fake_ctx, monkeypatch):

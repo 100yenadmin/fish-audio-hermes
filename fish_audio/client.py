@@ -15,7 +15,7 @@ from .media import atomic_write
 from . import models
 from .models import MODEL_IDS
 
-PLUGIN_VERSION = "1.7.5"
+PLUGIN_VERSION = "1.7.6"
 MODEL_HEADER = "model"
 _client = None
 _lock = threading.Lock()
@@ -219,24 +219,40 @@ def tts_to_file(params, key, base_url, out_path, *, sleep=None, events=None):
         sleep((0.5, 1.0, 2.0)[attempt] + random.uniform(0, 0.1))
 
 
-def tts_pcm(params, key, base_url):
-    """Chunked PCM over one unretried POST /v1/tts: a spoken sentence is never billed twice."""
+def tts_pcm(params, key, base_url, *, sleep=None):
+    """Chunked PCM; retry only before the first byte and where Fish cannot have done the work."""
     model = models.effective_model(params["model"])
-    response_headers = None
-    try:
-        with _http_client().stream("POST", base_url.rstrip("/") + "/v1/tts", headers=request_headers(key, model),
-                                   json=_tts_body(params)) as response:
-            response_headers = response.headers
-            if not 200 <= response.status_code < 300:
-                try:
-                    body = _error_body(response)
-                except httpx.TransportError:
-                    body = b""
-                raise response_error(response.status_code, response.headers, body, model, key,
-                                     defaulted=params.get("model_defaulted", False))
-            yield from response.iter_bytes()
-    except httpx.TransportError:
-        raise response_error(None, response_headers, model=model, key=key) from None
+    sleep = time.sleep if sleep is None else sleep
+    headers = request_headers(key, model)
+    body = _tts_body(params)
+    for attempt in range(3):
+        written = False
+        progress = {}
+        response_headers = None
+        try:
+            with _stream("POST", base_url.rstrip("/") + "/v1/tts", progress, headers=headers, json=body) as response:
+                response_headers = response.headers
+                if not 200 <= response.status_code < 300:
+                    try:
+                        error_body = _error_body(response)
+                    except httpx.TransportError:
+                        error_body = b""
+                    raise response_error(response.status_code, response.headers, error_body, model, key,
+                                         defaulted=params.get("model_defaulted", False))
+                for chunk in response.iter_bytes():
+                    if chunk:
+                        written = True
+                        yield chunk
+                return
+        except httpx.TransportError as exc:
+            error = response_error(None, response_headers, model=model, key=key)
+            retryable = _transport_retry(exc, progress)
+        except FishAudioError as exc:
+            error = exc
+            retryable = _billed_retryable(exc)
+        if written or not retryable or attempt == 2:
+            raise error from None
+        sleep((0.5, 1.0)[attempt] + random.uniform(0, 0.1))
 
 
 def tts_live(params, key, base_url, *, timeout=30):
