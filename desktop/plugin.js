@@ -67,6 +67,10 @@ import { atom as atom2, host } from "@hermes/plugin-sdk";
 import { usePluginI18n, useValue } from "@hermes/plugin-sdk";
 var PLUGIN_ID = "fish-audio";
 var PAGE_PATH = "/fish-audio";
+function keySettingsPath(profile) {
+  const base = "/settings?tab=plugins&agent=fish-audio&plugin=fish-audio";
+  return profile ? `${base}&profile=${encodeURIComponent(profile)}` : base;
+}
 function useAccountText(normal, operator) {
   const t = usePluginI18n(PLUGIN_ID);
   const available = useValue($available);
@@ -628,10 +632,10 @@ function Onboarding({ profile, operator, freeModel }) {
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep1") }),
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep2") })
     ] }),
-    /* @__PURE__ */ jsxs3("div", { style: { display: "flex", gap: 8 }, children: [
+    /* @__PURE__ */ jsxs3("div", { style: { display: "flex", flexWrap: "wrap", gap: 8 }, children: [
       !operator && /* @__PURE__ */ jsxs3(Fragment2, { children: [
-        /* @__PURE__ */ jsx3(Button3, { onClick: () => open(LINKS.keys), children: t("getKey") }),
-        /* @__PURE__ */ jsx3(Button3, { onClick: () => host3.navigate("/settings?tab=plugins&agent=fish-audio&plugin=fish-audio"), variant: "secondary", children: t("openPlugins") })
+        /* @__PURE__ */ jsx3(Button3, { onClick: () => host3.navigate(keySettingsPath(profile)), children: t("enterKey") }),
+        /* @__PURE__ */ jsx3(Button3, { onClick: () => open(LINKS.keys), variant: "secondary", children: t("getKey") })
       ] }),
       /* @__PURE__ */ jsx3(Button3, { onClick: () => void refreshAvailability(), variant: "ghost", children: t("checkAgain") })
     ] })
@@ -1304,8 +1308,9 @@ var en = {
   onboardBody: (profile) => `Voices need a Fish Audio API key on ${agentName(profile)}.`,
   onboardFreeModel: "New accounts can start on the free s2.1-pro-free model until 30 November 2026.",
   onboardStep1: "Create a free API key on fish.audio",
-  onboardStep2: "Paste it in Settings \u25B8 Plugins \u25B8 Fish Audio (in older versions: Capabilities \u25B8 Plugins), then restart the gateway",
+  onboardStep2: "Choose Enter API key, paste the key into the Fish Audio API key field under Agent settings, and save it. Older Desktop has no Settings \u25B8 Plugins: there, use the gear on the fish-audio row in Capabilities \u25B8 Plugins.",
   getKey: "Get an API key",
+  enterKey: "Enter API key",
   openPlugins: "Open Plugins",
   checkAgain: "Check again",
   unreachable: (profile) => `Couldn't reach Fish Audio on ${agentName(profile)}`,
@@ -1431,7 +1436,7 @@ var en = {
     fishTrace: (id) => ` (Fish trace ${id})`
   },
   refusals: {
-    no_key: `Fish Audio isn't set up for this profile yet. Add a key in Settings \u25B8 Plugins \u25B8 Fish Audio (Capabilities \u25B8 Plugins on older Desktop), or run \`hermes fish login\` on the machine running Hermes.`,
+    no_key: `Fish Audio isn't set up for this profile yet. Add a key in Settings \u25B8 Plugins \u25B8 Fish Audio \u25B8 Agent settings (on older Desktop, the gear on the fish-audio row in Capabilities \u25B8 Plugins), or run \`hermes fish login\` on the machine running Hermes.`,
     no_keyOperator: `Ask the operator of this agent to finish the Fish Audio setup.`,
     not_owner: `You can delete only voices your Fish Audio account created.`,
     gone: `The upload is no longer available; add the file again.`,
@@ -1503,8 +1508,9 @@ var zh = {
   onboardBody: (profile) => `\u58F0\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName2(profile)}\u4E0A\u914D\u7F6E Fish Audio API \u5BC6\u94A5\u3002`,
   onboardFreeModel: "\u65B0\u8D26\u6237\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8D39\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8D39\u671F\u622A\u81F32026\u5E7411\u670830\u65E5\u3002",
   onboardStep1: "\u5728 fish.audio \u521B\u5EFA\u514D\u8D39 API \u5BC6\u94A5",
-  onboardStep2: "\u5C06\u5BC6\u94A5\u7C98\u8D34\u5230\u8BBE\u7F6E \u25B8 \u63D2\u4EF6 \u25B8 Fish Audio\uFF08\u65E7\u7248\u672C\u4E2D\u4E3A\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\uFF09\uFF0C\u7136\u540E\u91CD\u542F\u7F51\u5173",
+  onboardStep2: "\u9009\u62E9\u201C\u8F93\u5165 API \u5BC6\u94A5\u201D\uFF0C\u5728\u201C\u667A\u80FD\u4F53\u8BBE\u7F6E\u201D\u7684 Fish Audio API key \u5B57\u6BB5\u4E2D\u7C98\u8D34\u5BC6\u94A5\u5E76\u4FDD\u5B58\u3002\u65E7\u7248 Desktop \u6CA1\u6709\u8BBE\u7F6E \u25B8 \u63D2\u4EF6\uFF1A\u8BF7\u4F7F\u7528\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\u4E2D fish-audio \u884C\u7684\u9F7F\u8F6E\u56FE\u6807\u3002",
   getKey: "\u83B7\u53D6 API \u5BC6\u94A5",
+  enterKey: "\u8F93\u5165 API \u5BC6\u94A5",
   openPlugins: "\u6253\u5F00\u63D2\u4EF6",
   checkAgain: "\u518D\u6B21\u68C0\u67E5",
   unreachable: (profile) => `\u65E0\u6CD5\u8FDE\u63A5${agentName2(profile)}\u4E0A\u7684 Fish Audio`,
@@ -1626,7 +1632,7 @@ var zh = {
     fishTrace: (id) => `\uFF08Fish \u8DDF\u8E2A\uFF1A${id}\uFF09`
   },
   refusals: {
-    no_key: `\u6B64\u914D\u7F6E\u5C1A\u672A\u8BBE\u7F6E Fish Audio\u3002\u8BF7\u5728\u8BBE\u7F6E \u25B8 \u63D2\u4EF6 \u25B8 Fish Audio\uFF08\u65E7\u7248\u672C\u4E3A\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\uFF09\u4E2D\u6DFB\u52A0\u5BC6\u94A5\uFF0C\u6216\u5728\u8FD0\u884C Hermes \u7684\u673A\u5668\u4E0A\u6267\u884C \`hermes fish login\`\u3002`,
+    no_key: `\u6B64\u914D\u7F6E\u5C1A\u672A\u8BBE\u7F6E Fish Audio\u3002\u8BF7\u5728\u8BBE\u7F6E \u25B8 \u63D2\u4EF6 \u25B8 Fish Audio \u25B8 \u667A\u80FD\u4F53\u8BBE\u7F6E\uFF08\u65E7\u7248\u672C\u4E3A\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\u4E2D fish-audio \u884C\u7684\u9F7F\u8F6E\u56FE\u6807\uFF09\u4E2D\u6DFB\u52A0\u5BC6\u94A5\uFF0C\u6216\u5728\u8FD0\u884C Hermes \u7684\u673A\u5668\u4E0A\u6267\u884C \`hermes fish login\`\u3002`,
     no_keyOperator: `\u8BF7\u8054\u7CFB\u6B64\u667A\u80FD\u4F53\u7684\u8FD0\u8425\u8005\u5B8C\u6210 Fish Audio \u8BBE\u7F6E\u3002`,
     not_owner: `\u53EA\u80FD\u5220\u9664\u60A8\u81EA\u5DF1\u7684 Fish Audio \u8D26\u6237\u521B\u5EFA\u7684\u58F0\u97F3\u3002`,
     gone: `\u4E0A\u4F20\u5DF2\u4E0D\u53EF\u7528\uFF1B\u8BF7\u91CD\u65B0\u6DFB\u52A0\u6587\u4EF6\u3002`,
@@ -1698,8 +1704,9 @@ var zhHant = {
   onboardBody: (profile) => `\u8072\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName3(profile)}\u4E0A\u8A2D\u5B9A Fish Audio API \u91D1\u9470\u3002`,
   onboardFreeModel: "\u65B0\u5E33\u6236\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8CBB\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8CBB\u671F\u622A\u81F32026\u5E7411\u670830\u65E5\u3002",
   onboardStep1: "\u5728 fish.audio \u5EFA\u7ACB\u514D\u8CBB API \u91D1\u9470",
-  onboardStep2: "\u5C07\u91D1\u9470\u8CBC\u5230\u8A2D\u5B9A \u25B8 \u5916\u639B \u25B8 Fish Audio\uFF08\u820A\u7248\u672C\u4E2D\u70BA\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\uFF09\uFF0C\u7136\u5F8C\u91CD\u65B0\u555F\u52D5\u9598\u9053",
+  onboardStep2: "\u9078\u64C7\u300C\u8F38\u5165 API \u91D1\u9470\u300D\uFF0C\u5728\u300C\u4EE3\u7406\u7A0B\u5F0F\u8A2D\u5B9A\u300D\u7684 Fish Audio API key \u6B04\u4F4D\u8CBC\u4E0A\u91D1\u9470\u4E26\u5132\u5B58\u3002\u820A\u7248 Desktop \u6C92\u6709\u8A2D\u5B9A \u25B8 \u5916\u639B\uFF1A\u8ACB\u4F7F\u7528\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\u4E2D fish-audio \u5217\u7684\u9F52\u8F2A\u5716\u793A\u3002",
   getKey: "\u53D6\u5F97 API \u91D1\u9470",
+  enterKey: "\u8F38\u5165 API \u91D1\u9470",
   openPlugins: "\u958B\u555F\u5916\u639B",
   checkAgain: "\u518D\u6B21\u6AA2\u67E5",
   unreachable: (profile) => `\u7121\u6CD5\u9023\u7DDA\u81F3${agentName3(profile)}\u4E0A\u7684 Fish Audio`,
@@ -1821,7 +1828,7 @@ var zhHant = {
     fishTrace: (id) => `\uFF08Fish \u8FFD\u8E64\uFF1A${id}\uFF09`
   },
   refusals: {
-    no_key: `\u6B64\u8A2D\u5B9A\u6A94\u5C1A\u672A\u8A2D\u5B9A Fish Audio\u3002\u8ACB\u5728\u8A2D\u5B9A \u25B8 \u5916\u639B \u25B8 Fish Audio\uFF08\u820A\u7248\u672C\u70BA\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\uFF09\u4E2D\u52A0\u5165\u91D1\u9470\uFF0C\u6216\u5728\u57F7\u884C Hermes \u7684\u6A5F\u5668\u4E0A\u57F7\u884C \`hermes fish login\`\u3002`,
+    no_key: `\u6B64\u8A2D\u5B9A\u6A94\u5C1A\u672A\u8A2D\u5B9A Fish Audio\u3002\u8ACB\u5728\u8A2D\u5B9A \u25B8 \u5916\u639B \u25B8 Fish Audio \u25B8 \u4EE3\u7406\u7A0B\u5F0F\u8A2D\u5B9A\uFF08\u820A\u7248\u672C\u70BA\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\u4E2D fish-audio \u5217\u7684\u9F52\u8F2A\u5716\u793A\uFF09\u4E2D\u52A0\u5165\u91D1\u9470\uFF0C\u6216\u5728\u57F7\u884C Hermes \u7684\u6A5F\u5668\u4E0A\u57F7\u884C \`hermes fish login\`\u3002`,
     no_keyOperator: `\u8ACB\u806F\u7D61\u6B64\u4EE3\u7406\u7684\u71DF\u904B\u8005\u5B8C\u6210 Fish Audio \u8A2D\u5B9A\u3002`,
     not_owner: `\u53EA\u80FD\u522A\u9664\u60A8\u81EA\u5DF1\u7684 Fish Audio \u5E33\u865F\u5EFA\u7ACB\u7684\u8072\u97F3\u3002`,
     gone: `\u4E0A\u50B3\u5DF2\u7121\u6CD5\u4F7F\u7528\uFF1B\u8ACB\u91CD\u65B0\u52A0\u5165\u6A94\u6848\u3002`,
@@ -1893,8 +1900,9 @@ var ja = {
   onboardBody: (profile) => `\u30DC\u30A4\u30B9\u3092\u4F7F\u3046\u306B\u306F\u3001${agentName4(profile)}\u306B Fish Audio API \u30AD\u30FC\u304C\u5FC5\u8981\u3067\u3059\u3002`,
   onboardFreeModel: "\u65B0\u3057\u3044\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u306F\u30012026\u5E7411\u670830\u65E5\u307E\u3067\u7121\u6599\u306E s2.1-pro-free \u30E2\u30C7\u30EB\u304B\u3089\u59CB\u3081\u3089\u308C\u307E\u3059\u3002",
   onboardStep1: "fish.audio \u3067\u7121\u6599\u306E API \u30AD\u30FC\u3092\u4F5C\u6210",
-  onboardStep2: "\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u25B8 Fish Audio\uFF08\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F \u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3\uFF09\u306B\u30AD\u30FC\u3092\u8CBC\u308A\u4ED8\u3051\u3001\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u3092\u518D\u8D77\u52D5",
+  onboardStep2: "\u300CAPI \u30AD\u30FC\u3092\u5165\u529B\u300D\u3092\u9078\u3073\u3001\u300C\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u8A2D\u5B9A\u300D\u306E Fish Audio API key \u6B04\u306B\u30AD\u30FC\u3092\u8CBC\u308A\u4ED8\u3051\u3066\u4FDD\u5B58\u3057\u307E\u3059\u3002\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u304C\u306A\u3044\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F\u3001\u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u306E fish-audio \u306E\u884C\u306E\u6B6F\u8ECA\u30A2\u30A4\u30B3\u30F3\u3092\u4F7F\u3044\u307E\u3059\u3002",
   getKey: "API \u30AD\u30FC\u3092\u53D6\u5F97",
+  enterKey: "API \u30AD\u30FC\u3092\u5165\u529B",
   openPlugins: "\u30D7\u30E9\u30B0\u30A4\u30F3\u3092\u958B\u304F",
   checkAgain: "\u518D\u78BA\u8A8D",
   unreachable: (profile) => `${agentName4(profile)}\u306E Fish Audio \u306B\u63A5\u7D9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F`,
@@ -2016,7 +2024,7 @@ var ja = {
     fishTrace: (id) => `\uFF08Fish \u30C8\u30EC\u30FC\u30B9\uFF1A${id}\uFF09`
   },
   refusals: {
-    no_key: `\u3053\u306E\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u306E Fish Audio \u306F\u672A\u8A2D\u5B9A\u3067\u3059\u3002\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u25B8 Fish Audio\uFF08\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F \u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3\uFF09\u306B\u30AD\u30FC\u3092\u8FFD\u52A0\u3059\u308B\u304B\u3001Hermes \u304C\u52D5\u4F5C\u3059\u308B\u30DE\u30B7\u30F3\u3067 \`hermes fish login\` \u3092\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    no_key: `\u3053\u306E\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u306E Fish Audio \u306F\u672A\u8A2D\u5B9A\u3067\u3059\u3002\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u25B8 Fish Audio \u25B8 \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u8A2D\u5B9A\uFF08\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F \u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u306E fish-audio \u306E\u884C\u306E\u6B6F\u8ECA\u30A2\u30A4\u30B3\u30F3\uFF09\u306B\u30AD\u30FC\u3092\u8FFD\u52A0\u3059\u308B\u304B\u3001Hermes \u304C\u52D5\u4F5C\u3059\u308B\u30DE\u30B7\u30F3\u3067 \`hermes fish login\` \u3092\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
     no_keyOperator: `\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u904B\u7528\u8005\u306B Fish Audio \u306E\u8A2D\u5B9A\u3092\u5B8C\u4E86\u3059\u308B\u3088\u3046\u4F9D\u983C\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
     not_owner: `\u524A\u9664\u3067\u304D\u308B\u306E\u306F\u3001\u3054\u81EA\u8EAB\u306E Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u4F5C\u6210\u3057\u305F\u30DC\u30A4\u30B9\u3060\u3051\u3067\u3059\u3002`,
     gone: `\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u304C\u5229\u7528\u3067\u304D\u306A\u304F\u306A\u308A\u307E\u3057\u305F\u3002\u30D5\u30A1\u30A4\u30EB\u3092\u8FFD\u52A0\u3057\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
@@ -2090,8 +2098,9 @@ var ar = {
   onboardBody: (profile) => `\u062A\u062D\u062A\u0627\u062C \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0625\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}.`,
   onboardFreeModel: "\u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free \u062D\u062A\u0649 30 \u0646\u0648\u0641\u0645\u0628\u0631 2026.",
   onboardStep1: "\u0623\u0646\u0634\u0626 \u0645\u0641\u062A\u0627\u062D API \u0645\u062C\u0627\u0646\u064A\u064B\u0627 \u0639\u0644\u0649 fish.audio",
-  onboardStep2: "\u0627\u0644\u0635\u0642\u0647 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629",
+  onboardStep2: "\u0627\u062E\u062A\u0631 \xAB\u0625\u062F\u062E\u0627\u0644 \u0645\u0641\u062A\u0627\u062D API\xBB\u060C \u0648\u0627\u0644\u0635\u0642 \u0627\u0644\u0645\u0641\u062A\u0627\u062D \u0641\u064A \u062D\u0642\u0644 Fish Audio API key \u0636\u0645\u0646 \xAB\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0648\u0643\u064A\u0644\xBB \u062B\u0645 \u0627\u062D\u0641\u0638\u0647. \u0644\u0627 \u062A\u062D\u062A\u0648\u064A \u0625\u0635\u062F\u0627\u0631\u0627\u062A Desktop \u0627\u0644\u0623\u0642\u062F\u0645 \u0639\u0644\u0649 \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A: \u0627\u0633\u062A\u062E\u062F\u0645 \u0641\u064A\u0647\u0627 \u0631\u0645\u0632 \u0627\u0644\u062A\u0631\u0633 \u0641\u064A \u0635\u0641 fish-audio \u0636\u0645\u0646 \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A.",
   getKey: "\u0627\u0644\u062D\u0635\u0648\u0644 \u0639\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API",
+  enterKey: "\u0625\u062F\u062E\u0627\u0644 \u0645\u0641\u062A\u0627\u062D API",
   openPlugins: "\u0641\u062A\u062D \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A",
   checkAgain: "\u0627\u0644\u062A\u062D\u0642\u0642 \u0645\u062C\u062F\u062F\u064B\u0627",
   unreachable: (profile) => `\u062A\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}`,
@@ -2213,7 +2222,7 @@ var ar = {
     fishTrace: (id) => ` (\u062A\u062A\u0628\u0651\u0639 Fish ${isolate(id)})`
   },
   refusals: {
-    no_key: `\u0644\u0645 \u064A\u064F\u0639\u062F\u0651 Fish Audio \u0644\u0647\u0630\u0627 \u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062E\u0635\u064A \u0628\u0639\u062F. \u0623\u0636\u0641 \u0645\u0641\u062A\u0627\u062D\u064B\u0627 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u0623\u0648 \u0634\u063A\u0651\u0644 \`hermes fish login\` \u0639\u0644\u0649 \u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0630\u064A \u064A\u0634\u063A\u0651\u0644 Hermes.`,
+    no_key: `\u0644\u0645 \u064A\u064F\u0639\u062F\u0651 Fish Audio \u0644\u0647\u0630\u0627 \u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062E\u0635\u064A \u0628\u0639\u062F. \u0623\u0636\u0641 \u0645\u0641\u062A\u0627\u062D\u064B\u0627 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio \u25C2 \xAB\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0648\u0643\u064A\u0644\xBB (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0631\u0645\u0632 \u0627\u0644\u062A\u0631\u0633 \u0641\u064A \u0635\u0641 fish-audio \u0636\u0645\u0646 \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u0623\u0648 \u0634\u063A\u0651\u0644 \`hermes fish login\` \u0639\u0644\u0649 \u0627\u0644\u062C\u0647\u0627\u0632 \u0627\u0644\u0630\u064A \u064A\u0634\u063A\u0651\u0644 Hermes.`,
     no_keyOperator: `\u0627\u0637\u0644\u0628 \u0645\u0646 \u0645\u0634\u063A\u0651\u0644 \u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644 \u0625\u0643\u0645\u0627\u0644 \u0625\u0639\u062F\u0627\u062F Fish Audio.`,
     not_owner: `\u064A\u0645\u0643\u0646\u0643 \u062D\u0630\u0641 \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0627\u0644\u062A\u064A \u0623\u0646\u0634\u0623\u0647\u0627 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio \u0641\u0642\u0637.`,
     gone: `\u0644\u0645 \u064A\u0639\u062F \u0627\u0644\u0631\u0641\u0639 \u0645\u062A\u0627\u062D\u064B\u0627\u061B \u0623\u0636\u0641 \u0627\u0644\u0645\u0644\u0641 \u0645\u062C\u062F\u062F\u064B\u0627.`,
@@ -2285,8 +2294,9 @@ var ru = {
   onboardBody: (profile) => `\u0414\u043B\u044F \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u043D\u0443\u0436\u0435\u043D API-\u043A\u043B\u044E\u0447 Fish Audio, \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u043D\u044B\u0439 \u0434\u043B\u044F ${agentName6(profile)}.`,
   onboardFreeModel: "\u041D\u043E\u0432\u044B\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0447\u0430\u0442\u044C \u0441 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0439 \u043C\u043E\u0434\u0435\u043B\u0438 s2.1-pro-free \u0434\u043E 30 \u043D\u043E\u044F\u0431\u0440\u044F 2026 \u0433.",
   onboardStep1: "\u0421\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u044B\u0439 API-\u043A\u043B\u044E\u0447 \u043D\u0430 fish.audio",
-  onboardStep2: "\u0412\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u0435\u0433\u043E \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u25B8 Fish Audio (\u0432 \u0431\u043E\u043B\u0435\u0435 \u0440\u0430\u043D\u043D\u0438\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445: \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B), \u0437\u0430\u0442\u0435\u043C \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0448\u043B\u044E\u0437",
+  onboardStep2: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0412\u0432\u0435\u0441\u0442\u0438 API-\u043A\u043B\u044E\u0447\xBB, \u0432\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u043A\u043B\u044E\u0447 \u0432 \u043F\u043E\u043B\u0435 Fish Audio API key \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0430\u0433\u0435\u043D\u0442\u0430\xBB \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435. \u0412 \u0441\u0442\u0430\u0440\u044B\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445 Desktop \u043D\u0435\u0442 \u0440\u0430\u0437\u0434\u0435\u043B\u0430 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B: \u0442\u0430\u043C \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0437\u043D\u0430\u0447\u043E\u043A \u0448\u0435\u0441\u0442\u0435\u0440\u0451\u043D\u043A\u0438 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435 fish-audio \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B.",
   getKey: "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u044C API-\u043A\u043B\u044E\u0447",
+  enterKey: "\u0412\u0432\u0435\u0441\u0442\u0438 API-\u043A\u043B\u044E\u0447",
   openPlugins: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043F\u043B\u0430\u0433\u0438\u043D\u044B",
   checkAgain: "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0435\u0449\u0451 \u0440\u0430\u0437",
   unreachable: (profile) => `\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C\u0441\u044F \u043A Fish Audio \u0434\u043B\u044F ${agentName6(profile)}`,
@@ -2408,7 +2418,7 @@ var ru = {
     fishTrace: (id) => ` (\u0442\u0440\u0430\u0441\u0441\u0438\u0440\u043E\u0432\u043A\u0430 Fish ${id})`
   },
   refusals: {
-    no_key: `Fish Audio \u0435\u0449\u0451 \u043D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D \u0434\u043B\u044F \u044D\u0442\u043E\u0433\u043E \u043F\u0440\u043E\u0444\u0438\u043B\u044F. \u0414\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u043A\u043B\u044E\u0447 \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u25B8 Fish Audio (\u0432 \u0431\u043E\u043B\u0435\u0435 \u0440\u0430\u043D\u043D\u0438\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445: \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B) \u0438\u043B\u0438 \u0432\u044B\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \`hermes fish login\` \u043D\u0430 \u043C\u0430\u0448\u0438\u043D\u0435, \u0433\u0434\u0435 \u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 Hermes.`,
+    no_key: `Fish Audio \u0435\u0449\u0451 \u043D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D \u0434\u043B\u044F \u044D\u0442\u043E\u0433\u043E \u043F\u0440\u043E\u0444\u0438\u043B\u044F. \u0414\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u043A\u043B\u044E\u0447 \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u25B8 Fish Audio \u25B8 \xAB\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0430\u0433\u0435\u043D\u0442\u0430\xBB (\u0432 \u0431\u043E\u043B\u0435\u0435 \u0440\u0430\u043D\u043D\u0438\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445: \u0437\u043D\u0430\u0447\u043E\u043A \u0448\u0435\u0441\u0442\u0435\u0440\u0451\u043D\u043A\u0438 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435 fish-audio \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B) \u0438\u043B\u0438 \u0432\u044B\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \`hermes fish login\` \u043D\u0430 \u043C\u0430\u0448\u0438\u043D\u0435, \u0433\u0434\u0435 \u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 Hermes.`,
     no_keyOperator: `\u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0435 \u043E\u043F\u0435\u0440\u0430\u0442\u043E\u0440\u0430 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0443 Fish Audio.`,
     not_owner: `\u041C\u043E\u0436\u043D\u043E \u0443\u0434\u0430\u043B\u044F\u0442\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0433\u043E\u043B\u043E\u0441\u0430, \u0441\u043E\u0437\u0434\u0430\u043D\u043D\u044B\u0435 \u0432\u0430\u0448\u0438\u043C \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u043E\u043C Fish Audio.`,
     gone: `\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430; \u0434\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u0444\u0430\u0439\u043B \u0437\u0430\u043D\u043E\u0432\u043E.`,
@@ -2480,8 +2490,9 @@ var fr = {
   onboardBody: (profile) => `Les voix n\xE9cessitent une cl\xE9 API Fish Audio pour ${agentName7(profile)}.`,
   onboardFreeModel: "Les nouveaux comptes peuvent commencer avec le mod\xE8le gratuit s2.1-pro-free jusqu\u2019au 30 novembre 2026.",
   onboardStep1: "Cr\xE9ez une cl\xE9 API gratuite sur fish.audio",
-  onboardStep2: "Collez-la dans Param\xE8tres \u25B8 Plugins \u25B8 Fish Audio (dans les versions ant\xE9rieures : Capacit\xE9s \u25B8 Plugins), puis red\xE9marrez le gateway",
+  onboardStep2: "Choisissez Saisir la cl\xE9 API, collez la cl\xE9 dans le champ Fish Audio API key de R\xE9glages de l\u2019agent, puis enregistrez. Les versions ant\xE9rieures de Desktop n\u2019ont pas Param\xE8tres \u25B8 Plugins : utilisez-y la roue dent\xE9e de la ligne fish-audio dans Capacit\xE9s \u25B8 Plugins.",
   getKey: "Obtenir une cl\xE9 API",
+  enterKey: "Saisir la cl\xE9 API",
   openPlugins: "Ouvrir les plugins",
   checkAgain: "V\xE9rifier \xE0 nouveau",
   unreachable: (profile) => `Impossible de joindre Fish Audio sur ${agentName7(profile)}`,
@@ -2603,7 +2614,7 @@ var fr = {
     fishTrace: (id) => ` (trace Fish ${id})`
   },
   refusals: {
-    no_key: `Fish Audio n\u2019est pas encore configur\xE9 pour ce profil. Ajoutez une cl\xE9 dans Param\xE8tres \u25B8 Plugins \u25B8 Fish Audio (dans les anciennes versions : Capacit\xE9s \u25B8 Plugins), ou ex\xE9cutez \`hermes fish login\` sur la machine o\xF9 tourne Hermes.`,
+    no_key: `Fish Audio n\u2019est pas encore configur\xE9 pour ce profil. Ajoutez une cl\xE9 dans Param\xE8tres \u25B8 Plugins \u25B8 Fish Audio \u25B8 R\xE9glages de l\u2019agent (dans les anciennes versions : la roue dent\xE9e de la ligne fish-audio dans Capacit\xE9s \u25B8 Plugins), ou ex\xE9cutez \`hermes fish login\` sur la machine o\xF9 tourne Hermes.`,
     no_keyOperator: `Demandez \xE0 l\u2019op\xE9rateur de cet agent de terminer la configuration de Fish Audio.`,
     not_owner: `Vous pouvez uniquement supprimer les voix cr\xE9\xE9es par votre compte Fish Audio.`,
     gone: `L\u2019envoi n\u2019est plus disponible ; ajoutez \xE0 nouveau le fichier.`,
@@ -2675,8 +2686,9 @@ var de = {
   onboardBody: (profile) => `F\xFCr ${agentName8(profile)} wird ein Fish Audio API-Schl\xFCssel ben\xF6tigt.`,
   onboardFreeModel: "Neue Konten k\xF6nnen bis zum 30. November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.",
   onboardStep1: "Erstellen Sie einen kostenlosen API-Schl\xFCssel auf fish.audio",
-  onboardStep2: "F\xFCgen Sie ihn unter Einstellungen \u25B8 Plugins \u25B8 Fish Audio ein (in \xE4lteren Versionen: F\xE4higkeiten \u25B8 Plugins) und starten Sie dann das Gateway neu",
+  onboardStep2: "W\xE4hlen Sie \u201EAPI-Schl\xFCssel eingeben\u201C, f\xFCgen Sie den Schl\xFCssel unter Agent-Einstellungen in das Feld Fish Audio API key ein und speichern Sie. \xC4ltere Desktop-Versionen haben keine Einstellungen \u25B8 Plugins: Nutzen Sie dort das Zahnrad in der Zeile fish-audio unter F\xE4higkeiten \u25B8 Plugins.",
   getKey: "API-Schl\xFCssel erhalten",
+  enterKey: "API-Schl\xFCssel eingeben",
   openPlugins: "Plugins \xF6ffnen",
   checkAgain: "Erneut pr\xFCfen",
   unreachable: (profile) => `Fish Audio f\xFCr ${agentName8(profile)} war nicht erreichbar`,
@@ -2798,7 +2810,7 @@ var de = {
     fishTrace: (id) => ` (Fish-Trace ${id})`
   },
   refusals: {
-    no_key: `Fish Audio ist f\xFCr dieses Profil noch nicht eingerichtet. Einen Schl\xFCssel unter Einstellungen \u25B8 Plugins \u25B8 Fish Audio (bei \xE4lteren Versionen: F\xE4higkeiten \u25B8 Plugins) hinzuf\xFCgen oder \`hermes fish login\` auf dem Rechner mit Hermes ausf\xFChren.`,
+    no_key: `Fish Audio ist f\xFCr dieses Profil noch nicht eingerichtet. Einen Schl\xFCssel unter Einstellungen \u25B8 Plugins \u25B8 Fish Audio \u25B8 Agent-Einstellungen (bei \xE4lteren Versionen: Zahnrad in der Zeile fish-audio unter F\xE4higkeiten \u25B8 Plugins) hinzuf\xFCgen oder \`hermes fish login\` auf dem Rechner mit Hermes ausf\xFChren.`,
     no_keyOperator: `Den Betreiber dieses Agenten bitten, Fish Audio fertig einzurichten.`,
     not_owner: `Nur Stimmen aus dem eigenen Fish Audio-Konto k\xF6nnen gel\xF6scht werden.`,
     gone: `Der Upload ist nicht mehr verf\xFCgbar; die Datei erneut hinzuf\xFCgen.`,
@@ -2870,8 +2882,9 @@ var es = {
   onboardBody: (profile) => `Las voces necesitan una clave API de Fish Audio en ${agentName9(profile)}.`,
   onboardFreeModel: "Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 de noviembre de 2026.",
   onboardStep1: "Crea una clave API gratuita en fish.audio",
-  onboardStep2: "P\xE9gala en Configuraci\xF3n \u25B8 Plugins \u25B8 Fish Audio (en versiones anteriores: Capacidades \u25B8 Plugins) y reinicia el gateway",
+  onboardStep2: "Elige Introducir clave de API, pega la clave en el campo Fish Audio API key de Ajustes del agente y gu\xE1rdala. Las versiones anteriores de Desktop no tienen Configuraci\xF3n \u25B8 Plugins: all\xED, usa el engranaje de la fila fish-audio en Capacidades \u25B8 Plugins.",
   getKey: "Obtener una clave API",
+  enterKey: "Introducir clave de API",
   openPlugins: "Abrir Plugins",
   checkAgain: "Volver a comprobar",
   unreachable: (profile) => `No se pudo acceder a Fish Audio en ${agentName9(profile)}`,
@@ -2993,7 +3006,7 @@ var es = {
     fishTrace: (id) => ` (traza de Fish ${id})`
   },
   refusals: {
-    no_key: `Fish Audio a\xFAn no est\xE1 configurado para este perfil. A\xF1ade una clave en Configuraci\xF3n \u25B8 Plugins \u25B8 Fish Audio (en versiones anteriores: Capacidades \u25B8 Plugins), o ejecuta \`hermes fish login\` en la m\xE1quina donde se ejecuta Hermes.`,
+    no_key: `Fish Audio a\xFAn no est\xE1 configurado para este perfil. A\xF1ade una clave en Configuraci\xF3n \u25B8 Plugins \u25B8 Fish Audio \u25B8 Ajustes del agente (en versiones anteriores: el engranaje de la fila fish-audio en Capacidades \u25B8 Plugins), o ejecuta \`hermes fish login\` en la m\xE1quina donde se ejecuta Hermes.`,
     no_keyOperator: `Pide al operador de este agente que termine de configurar Fish Audio.`,
     not_owner: `Solo puedes eliminar voces creadas por tu cuenta de Fish Audio.`,
     gone: `La carga ya no est\xE1 disponible; a\xF1ade el archivo de nuevo.`,

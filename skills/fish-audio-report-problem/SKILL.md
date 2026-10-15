@@ -16,7 +16,7 @@ Security problems include exposure of the Fish API key, audio or text sent to a 
 For any of these, or anything that exposes a secret, skip the public issue. Give the user the private reporting form and stop:
 https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new
 If what the user describes is clearly a problem in Hermes itself rather than this plugin, give Hermes' private form instead: https://github.com/NousResearch/hermes-agent/security/advisories/new. If unsure, use this plugin's form. Do not run more diagnostics or read logs to decide.
-If the Fish API key may be exposed, also tell the user to revoke it and create a new one at https://fish.audio/app/api-keys, then save the new key with `hermes fish login` or in Desktop under Settings ▸ Plugins ▸ Fish Audio. If `/fish status` shows "Account: managed by the operator", or the key is pinned by an administrator, tell the user to ask the operator to rotate it instead. Never ask for the key, or for logs that contain it, in chat.
+If the Fish API key may be exposed, also tell the user to revoke it and create a new one at https://fish.audio/app/api-keys, then save the new key with `hermes fish login` or in Desktop under Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings. If `/fish status` shows "Account: managed by the operator", or the key is pinned by an administrator, tell the user to ask the operator to rotate it instead. Never ask for the key, or for logs that contain it, in chat.
 This holds at every later step too: if diagnostics or logs show a key, token or other secret, or data going somewhere the user did not choose, stop the public report and come back here.
 
 ## 2. Use a designated support channel if the deployment has one

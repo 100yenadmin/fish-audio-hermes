@@ -15,7 +15,7 @@ from .media import atomic_write
 from . import models
 from .models import MODEL_IDS
 
-PLUGIN_VERSION = "1.7.4"
+PLUGIN_VERSION = "1.7.5"
 MODEL_HEADER = "model"
 _client = None
 _lock = threading.Lock()
