@@ -5,8 +5,9 @@ macOS uses Homebrew Python and sandbox-exec. Linux CI uses the host venv without
 the macOS sandbox. The ordinary pytest invocation collects only `tests/`.
 
 ```sh
-acceptance/run.sh --host upstream --plugin <ref> --out <empty-output-dir> --layers a
-acceptance/run.sh --host evaos --plugin <ref> --out <another-empty-dir> --layers a
+export FISH_ACCEPTANCE_KEY_FILE=<file with FISH_API_KEY=...> FISH_ACCEPTANCE_GLM_ENV=<env file with GLM_API_KEY=...>
+acceptance/run.sh --host upstream --plugin <ref> --out <empty-output-dir> --layers a,b
+acceptance/run.sh --host evaos --plugin <ref> --out <another-empty-dir> --layers a,b
 ```
 
 `--hermes-ref` overrides the runtime pin; `--port` overrides 9361/9362.
@@ -15,7 +16,11 @@ are in `host.json`; evaOS Desktop resolves the newest app tag independently.
 Host archives and venvs are cached under `~/.cache/fish-audio-acceptance/`.
 Only the cache clone is fetched; existing evaOS and plugin checkouts are read-only.
 
-`with-keys.sh` is the sole local key reader. CI supplies environment secrets.
+`with-keys.sh` is the sole local key reader, and it reads only what you name: `FISH_API_KEY`
+from the environment or from the file in `FISH_ACCEPTANCE_KEY_FILE`. For conversation and
+agent rows it also needs `GLM_API_KEY`, from the environment or from the single
+`GLM_API_KEY=` line of the env file in `FISH_ACCEPTANCE_GLM_ENV`. It has no default paths.
+CI supplies environment secrets.
 No real Fish key is entered through a form: it is written into the disposable
 home by file, mode 0600. The session-token file is also mode 0600. Keep run
 directories private: they contain disposable credentials and synthetic sessions.

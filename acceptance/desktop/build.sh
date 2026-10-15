@@ -3,16 +3,16 @@
 #   build.sh --host upstream|evaos --repo <git dir or URL> --ref <tag> [--cache <dir>] [--seed <built tree>]
 # Prints the tree root on stdout (last line). Patches touch only the cache copy and are listed in <tree>/.acceptance-patches.
 set -euo pipefail
-HOST=""; REPO=""; REF=""; CACHE="${FISH_ACCEPTANCE_CACHE:-$HOME/.cache/fish-audio-acceptance}"; SEED=""
+TARGET=""; REPO=""; REF=""; CACHE="${FISH_ACCEPTANCE_CACHE:-$HOME/.cache/fish-audio-acceptance}"; SEED=""
 while [ $# -gt 0 ]; do case "$1" in
-  --host) HOST=$2; shift 2;; --repo) REPO=$2; shift 2;; --ref) REF=$2; shift 2;;
+  --host) TARGET=$2; shift 2;; --repo) REPO=$2; shift 2;; --ref) REF=$2; shift 2;;
   --cache) CACHE=$2; shift 2;; --seed) SEED=$2; shift 2;; *) echo "unknown arg $1" >&2; exit 2;; esac; done
-[ -n "$HOST" ] && [ -n "$REPO" ] && [ -n "$REF" ] || { echo "need --host --repo --ref" >&2; exit 2; }
+[ -n "$TARGET" ] && [ -n "$REPO" ] && [ -n "$REF" ] || { echo "need --host --repo --ref" >&2; exit 2; }
 NODE_BIN="${ACCEPTANCE_NODE_BIN:-/opt/homebrew/bin}"
 export PATH="$NODE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" npm_config_cache="$CACHE/npm-cache" ELECTRON_CACHE="$CACHE/electron-cache"
 unset NODE_ENV
-BASE="$CACHE/desktop-$HOST-$REF"; TREE="$BASE/src"; mkdir -p "$BASE"
-log() { echo "[build $HOST $REF] $*" >&2; }
+BASE="$CACHE/desktop-$TARGET-$REF"; TREE="$BASE/src"; mkdir -p "$BASE"
+log() { echo "[build $TARGET $REF] $*" >&2; }
 
 if [ ! -f "$TREE/.acceptance-ready" ]; then
   rm -rf "$TREE"
@@ -21,7 +21,7 @@ if [ ! -f "$TREE/.acceptance-ready" ]; then
   else
     SRC="$REPO"
     if [ ! -d "$REPO/.git" ] && [ ! -f "$REPO/HEAD" ]; then
-      SRC="$CACHE/repos/desktop-$HOST.git"
+      SRC="$CACHE/repos/desktop-$TARGET.git"
       [ -d "$SRC" ] || git clone --bare --filter=blob:none "$REPO" "$SRC" >&2
       git -C "$SRC" fetch --tags origin >&2 || true
     fi
@@ -33,7 +33,7 @@ fi
 
 MAIN="$TREE/apps/desktop/electron/main.ts"; PATCHES="$TREE/.acceptance-patches"; : > "$PATCHES"
 # 1. evaOS: a dev build in token mode needs the managed-build switch off.
-if [ "$HOST" = evaos ]; then
+if [ "$TARGET" = evaos ]; then
   sed -i '' 's/^const EVA_MANAGED_BUILD = true$/const EVA_MANAGED_BUILD = false/' "$MAIN"
   ln=$(grep -n '^const EVA_MANAGED_BUILD = false$' "$MAIN" | cut -d: -f1)
   [ -n "$ln" ] || { log "EVA_MANAGED_BUILD line not found"; exit 1; }
