@@ -56,7 +56,15 @@ supports the Desktop driver. `set-real-key` requires FISH_API_KEY in its environ
 use `with-keys.sh` when calling it manually. Gateway shutdown signals only the
 recorded process group after verifying its run-dir command identity.
 
-`--layers a,b` calls `acceptance/desktop/run.mjs` if supplied; absent B rows fail.
+`--layers a,b` also runs Layer B, `acceptance/desktop/run.mjs`; absent B rows fail.
+Layer B is macOS only. It builds a Hermes Desktop dev tree for the host's release (or
+the newest evaOS app tag) into the cache, with Node 24 from `/opt/homebrew/bin` or
+`ACCEPTANCE_NODE_BIN`. It drives the app over CDP in both themes. The patches it applies
+to the cached tree are listed in `<tree>/.acceptance-patches`: evaOS's managed-build
+switch off, and the microphone permission prompt answered "granted" only when
+`HERMES_ACCEPTANCE_FAKE_MIC=1`. Speech goes in through a microphone shim that plays
+`say`-generated audio into `getUserMedia`, so no microphone or TCC prompt is needed.
+Conversation rows need an LLM key: `with-keys.sh` supplies the GLM key.
 The optional PCS overlay is not implemented: requesting it fails setup explicitly.
 Release-script consumption remains external to this public repository.
 
