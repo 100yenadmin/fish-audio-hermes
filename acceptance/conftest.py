@@ -111,7 +111,8 @@ class Host:
                    XDG_CACHE_HOME=str(CACHE / 'xdg'), UV_CACHE_DIR=str(CACHE / 'uv'),
                    XDG_STATE_HOME=str(self.out / 'state'),
                    GLM_BASE_URL='https://api.z.ai/api/coding/paas/v4',
-                   TMPDIR=str(Path(os.environ.get('TMPDIR', self.out / 'tmp')).resolve()))
+                   # Inside the run dir: the sandbox allows writes there, and /var/folders is a symlink it rejects.
+                   TMPDIR=str((self.out / 'tmp').resolve()))
         if os.environ.get('GLM_API_KEY'):
             env['GLM_API_KEY'] = os.environ['GLM_API_KEY']
         if self.meta['host'] == 'upstream':
@@ -128,7 +129,7 @@ class Host:
     def cli(self, *args, python=False, timeout=120):
         binary = self.src / ('.venv/bin/python' if python else '.venv/bin/hermes')
         cmd = self.sandbox([binary, *args])
-        p = subprocess.Popen(cmd, cwd=self.src, env=self.env(), stdout=subprocess.PIPE,
+        p = subprocess.Popen(cmd, cwd=self.out, env=self.env(), stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, text=True, start_new_session=True)
         with (self.out / 'pids.txt').open('a') as f:
             f.write(f'{p.pid} command\n')
@@ -240,7 +241,8 @@ def worker(out):
     h = Host(out)
     port = h.meta['gateway_url'].rsplit(':', 1)[1]
     args = ['dashboard', '--port', port, '--no-open'] if h.meta['host'] == 'upstream' else ['serve', '--isolated', '--port', port]
-    p = subprocess.Popen(h.sandbox([h.src / '.venv/bin/hermes', *args]), cwd=h.src,
+    # cwd is the run dir, never a source tree: agent tool calls run there.
+    p = subprocess.Popen(h.sandbox([h.src / '.venv/bin/hermes', *args]), cwd=h.out,
                          env=h.env(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     with (h.out / 'pids.txt').open('a') as f:
         f.write(f'{p.pid} gateway\n')
@@ -284,7 +286,8 @@ def run(args):
         config = {'plugins': {'enabled': ['fish-audio']}, 'tts': {'provider': 'fish-audio'},
                   'stt': {'provider': 'fish-audio', 'streaming': True},
                   'model': {'provider': 'zai', 'default': 'glm-5.2', 'base_url': 'https://api.z.ai/api/coding/paas/v4'},
-                  'voice': {'voice_chat_mode': 'chained', 'client_direct': False}}
+                  # auto_tts: upstream Desktop speaks conversation replies only with Read replies aloud, which mirrors it.
+                  'voice': {'voice_chat_mode': 'chained', 'client_direct': False, 'auto_tts': True}}
         if args.evaos_overlay:
             raise RuntimeError('PCS overlay loading is outside this core implementation; no private files read')
         (home / 'config.yaml').write_text(json.dumps(config))
