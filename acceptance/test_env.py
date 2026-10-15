@@ -73,7 +73,8 @@ def test_build_failure_keeps_scrubbed_cause(monkeypatch, tmp_path):
     assert 'synthetic-placeholder' not in str(exc.value)
 
 
-@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn', 'port-closed', 'port-closed-stubborn', 'leader-exits'])
+@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn', 'port-closed', 'port-closed-stubborn', 'leader-exits',
+                                  'zombie-elsewhere', 'members-unknown'])
 def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mode):
     host = object.__new__(harness.Host)
     host.out = tmp_path; host.meta = {'gateway_url':'http://127.0.0.1:9361'}
@@ -81,7 +82,14 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
     receipt.write_text('{"pid":12345}')
     state = {'open':True, 'alive':True, 'signals':[], 'sleep':0, 'identity':0}
     identity = f'fixed start gateway-worker --run-dir {tmp_path}'
-    def ps(*a, **kw):
+    def ps(args, **kw):
+        if '-A' in args:  # group membership
+            if mode == 'members-unknown':
+                return SimpleNamespace(stdout='', returncode=1)
+            # Linux lists a dead worker its parent has not reaped (the outer runner, while pytest restarts) as a zombie.
+            zombie = mode == 'zombie-elsewhere' and signal.SIGTERM in state['signals']
+            return SimpleNamespace(stdout=f'    1 Ss\n12345 {"Z" if zombie else "S"}\n', returncode=0)
+        assert '-ww' in args  # GNU ps would truncate the command line to the terminal width
         state['identity'] += 1
         if mode == 'leader-exits' and signal.SIGTERM in state['signals']:
             return SimpleNamespace(stdout='')  # the worker exited on TERM; a descendant still holds the group
@@ -104,15 +112,16 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
     monkeypatch.setattr(harness.os, 'killpg', killpg)
     monkeypatch.setattr(harness.os, 'getpgid', lambda pid: pid)
     monkeypatch.setattr(harness.time, 'sleep', lambda sec: state.update(sleep=state['sleep']+sec))
-    if mode in ('changed','stubborn','port-closed-stubborn'):
+    if mode in ('changed','stubborn','port-closed-stubborn','members-unknown'):
         with pytest.raises(RuntimeError, match='retained'): host.down()
         assert receipt.exists()
     else:
         host.down()
         assert not receipt.exists()
-    assert state['signals'] == ([] if mode == 'gone' else [signal.SIGTERM] if mode in ('term','changed') else [signal.SIGTERM, signal.SIGKILL])
-    if mode not in ('term', 'gone'): assert state['sleep'] >= 9.99
-    if mode in ('stubborn', 'port-closed-stubborn'): assert state['sleep'] >= 14.99
+    assert state['signals'] == ([] if mode == 'gone' else [signal.SIGTERM] if mode in ('term','changed','zombie-elsewhere')
+                                else [signal.SIGTERM, signal.SIGKILL])
+    if mode not in ('term', 'gone', 'zombie-elsewhere'): assert state['sleep'] >= 9.99
+    if mode in ('stubborn', 'port-closed-stubborn', 'members-unknown'): assert state['sleep'] >= 14.99
 
 
 def test_gateway_shutdown_reaps_a_worker_this_process_started(tmp_path):
@@ -152,7 +161,7 @@ def test_gateway_shutdown_kills_a_descendant_that_outlives_the_worker(monkeypatc
         monkeypatch.setattr(harness.time, 'sleep', lambda sec: real_sleep(sec / 10))
         host.down()
         assert not (tmp_path / 'gateway-pid.json').exists()
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises((ProcessLookupError, PermissionError)):  # EPERM: only a zombie awaiting its new parent's reap
             os.killpg(pid, 0)
     finally:
         monkeypatch.undo()

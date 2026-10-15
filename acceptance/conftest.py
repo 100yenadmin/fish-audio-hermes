@@ -217,7 +217,7 @@ class Host:
         pid = json.loads(path.read_text())['pid']
         # Verify custody before signaling a potentially recycled PID.
         def identity():
-            return subprocess.run(['ps', '-p', str(pid), '-o', 'lstart=,command='], capture_output=True, text=True).stdout
+            return subprocess.run(['ps', '-ww', '-p', str(pid), '-o', 'lstart=,command='], capture_output=True, text=True).stdout
         def group_gone():
             # Reap the worker when this process started it: up() keeps no Popen, and until a reap the dead worker is a
             # zombie that still holds its process group.
@@ -227,11 +227,17 @@ class Host:
                 pass
             try:
                 os.killpg(pid, 0)
-                return False
             except (ProcessLookupError, PermissionError):
                 # EPERM: every member is a zombie (macOS) or the id names another user's group. Same-user processes can
                 # always be signalled, so either way none of this gateway's processes is alive.
                 return True
+            # Linux still answers for a group of zombies, such as a dead worker whose parent (the outer runner, while
+            # pytest calls restart()) has not reaped it. Count the live members; when ps cannot tell, keep custody.
+            p = subprocess.run(['ps', '-ww', '-A', '-o', 'pgid=,stat='], capture_output=True, text=True)
+            if p.returncode or not p.stdout.strip():
+                return False
+            rows = [r.split() for r in p.stdout.splitlines()]
+            return not any(len(r) >= 2 and r[0] == str(pid) and not r[1].startswith('Z') for r in rows)
         recorded = identity()
         if 'gateway-worker' in recorded and str(self.out) in recorded:
             for sig, ticks in ((signal.SIGTERM, 100), (signal.SIGKILL, 50)):
