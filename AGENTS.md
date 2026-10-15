@@ -16,6 +16,7 @@ Fish Audio is a standalone Hermes Agent plugin for expressive speech, transcript
 - `dashboard/`: gateway API routes and a hidden manifest; no web-dashboard UI.
 - `skills/`: the shipped user skills; each folder must also be listed in `fish_audio/registration.py` (a test checks this).
 - `.github/workflows/`: unit, Desktop, compatibility and scheduled alarm checks.
+- `acceptance/`: the release acceptance suite. It drives the real product surfaces (gateway routes, CLI, chat commands, tools, Desktop over CDP) on the latest Hermes release and on the evaOS runtime, with a live key. Maintainers run it before every release; see `acceptance/README.md`.
 
 ## Setup and checks
 
@@ -45,8 +46,9 @@ CI also checks the plugin inside pinned Hermes builds (`hermes plugins validate`
 
 - Keep each change small and focused: one change per PR.
 - Don't bump versions, create tags, or add CHANGELOG release headings. Maintainers cut releases.
-- Never call the live Fish API in tests: use `respx.mock`, monkeypatched transports and synthetic audio fixtures, as in `tests/test_cli.py`.
-- Do not run the billed benchmark or network drift jobs as routine local checks.
+- Never call the live Fish API in `tests/`: use `respx.mock`, monkeypatched transports and synthetic audio fixtures, as in `tests/test_cli.py`. Only `acceptance/` calls the live API.
+- Do not run the billed benchmark, the acceptance suite or network drift jobs as routine local checks. The acceptance suite is a maintainer release step.
+- A new user-visible feature adds its row to `acceptance/rows.yaml`, plus the check that proves it.
 - Regenerate `desktop/plugin.js` with the build script when Desktop source changes; CI's bundle check must pass. Do not hand-edit generated files.
 - Preserve per-profile secret/config scopes and Hermes approval gates. Do not expose API keys in output.
 - Never commit secrets, tokens, real user data, or machine-specific paths.
