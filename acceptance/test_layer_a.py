@@ -389,7 +389,8 @@ def fault_proxy(upstream='https://api.fish.audio'):
                 return
             headers = {k: v for k, v in self.headers.items()
                        if k.lower() not in {'host', 'connection', 'content-length', 'accept-encoding'}}
-            with httpx.Client(trust_env=False) as http:
+            # The plugin transport's own timeouts (fish_audio/client.py), so the shim is never less patient than production.
+            with httpx.Client(trust_env=False, timeout=httpx.Timeout(connect=10, read=60, write=60, pool=10)) as http:
                 with http.stream(self.command, upstream + self.path, headers=headers, content=body) as response:
                     server.requests.append((self.command, self.path, response.status_code))
                     self.send_response(response.status_code)
