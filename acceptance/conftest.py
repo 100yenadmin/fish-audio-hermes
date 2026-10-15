@@ -24,6 +24,12 @@ REPOS = {'upstream': 'NousResearch/hermes-agent', 'evaos': 'electricsheephq/evaO
 TRANSIENT = re.compile(r'(?i)Fish Audio is unavailable|try again later|concurrency limit|rate.?limit|\b(429|500|502|503|504)\b')
 
 
+def retry_rows(rows):
+    inventory = json.loads((ROOT / 'acceptance/rows.yaml').read_text())
+    heavy = {s['id'] for s in inventory if s.get('billed') == 'heavy'}
+    return [r['id'] for r in rows if r['id'] not in heavy and r['status'] == 'fail' and TRANSIENT.search(r['reason'])]
+
+
 def scrub(value):
     text = str(value)
     for name in ('FISH_API_KEY', 'GLM_API_KEY', 'HERMES_DASHBOARD_SESSION_TOKEN'):
@@ -56,8 +62,8 @@ def archive(repo, ref, dest):
 
 def build(host, ref):
     repo = CACHE / 'repos' / host
-    local = Path.home() / 'repos/evaOS-hermes-desktop-app-adapter'
-    if host == 'evaos' and local.is_dir():
+    local = Path(os.environ['FISH_ACCEPTANCE_EVAOS_REPO']).expanduser() if os.environ.get('FISH_ACCEPTANCE_EVAOS_REPO') else None
+    if host == 'evaos' and local is not None and local.is_dir():
         repo = local
     elif not repo.exists():
         call(['git', 'clone', '--filter=blob:none', 'https://github.com/' + REPOS[host], repo], timeout=600)
@@ -311,7 +317,7 @@ def run(args):
             (out / 'pytest.txt').write_text(scrub(p.stdout + p.stderr))
             # One retry for rows that failed on a Fish outage or rate limit; the report marks them.
             rows = json.loads((out / 'rows-a.json').read_text()) if (out / 'rows-a.json').exists() else []
-            transient = [r['id'] for r in rows if r['status'] == 'fail' and TRANSIENT.search(r['reason'])]
+            transient = retry_rows(rows)
             if transient:
                 time.sleep(15)  # let the account's concurrent-request slots drain before the retry
                 p = subprocess.run([str(src / '.venv/bin/python'), '-m', 'pytest', '-q',

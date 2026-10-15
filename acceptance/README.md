@@ -15,6 +15,7 @@ The upstream release resolves at run time. Runtime and candidate commit identiti
 are in `host.json`; evaOS Desktop resolves the newest app tag independently.
 Host archives and venvs are cached under `~/.cache/fish-audio-acceptance/`.
 Only the cache clone is fetched; existing evaOS and plugin checkouts are read-only.
+Set `FISH_ACCEPTANCE_EVAOS_REPO` to use a local evaOS checkout; otherwise the cache clone is used.
 
 `with-keys.sh` is the sole local key reader, and it reads only what you name: `FISH_API_KEY`
 from the environment or from the file in `FISH_ACCEPTANCE_KEY_FILE`. For conversation and
@@ -33,8 +34,10 @@ host/version features need an explicit reason. Only `no LLM key` and
 `billed:heavy not enabled` are allowed skips. Gate failures return exit 1.
 
 A failure caused by a filed host bug is listed under the row's `known_host_bugs`,
-pinned to the exact host builds (`refs`) it was seen on. On those builds it reports
-`xfail` and does not block. Any other build re-arms the row, so every host release is
+pinned to the exact host builds (`refs`) and a required reason regex (`match`). Only
+producer failures matching that regex on those builds report
+`xfail` and do not block. Missing, duplicate or invalid receipts are never waived.
+Any other build re-arms the row, so every host release is
 checked again. When the row passes on a listed build, the report asks for the entry to
 be dropped, unless the entry says `"intermittent": true`. Rows with `"required": false`
 are advisory: their failures report `advisory-fail` and never block.
@@ -47,10 +50,12 @@ Fixtures for the report gate run separately:
 
 Run one acceptance run at a time per Fish key. Accounts with less than $100 of top-ups get 5 concurrent
 requests, and parallel runs (or a second lane on the same key) trip "concurrency limit" errors. A row that fails
-on a Fish outage, a rate limit or the concurrency limit is retried once, 15 s later, and the report says so.
+on a Fish outage, a rate limit or the concurrency limit is retried once, 15 s later, and the report says so;
+`billed: heavy` rows are never automatically retried.
 
-Budget is $0.30 by default, checked against the real wallet before and after each
-paid probe; a spent budget refuses subsequent calls. It is a measured spending
+Budget is $0.30 by default; Layer A checks the real wallet before and after each
+paid probe and refuses subsequent calls once spent. Layer B does not stop mid-run;
+its spend is measured from its wallet readings and counted in the gate total. It is a measured spending
 guard, not a provider-side hard billing limit. Account credits can settle late.
 `--billed-heavy` enables design/save/delete and synthetic clone/delete. Those
 probes delete only voices they create. Clone needs macOS `say`; Linux reports
