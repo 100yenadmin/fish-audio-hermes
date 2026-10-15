@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.7 — 2026-10-16
+
+- **Errors that will not go away are shown at once:** when Fish answers a request with a permanent error inside a
+  temporary-looking status (for example an HTTP 500 that says the key is invalid or the account is out of credit),
+  the plugin no longer tries again. You see the real error after one request instead of about 1.7 seconds and two
+  more requests later. This applies to streamed sentences, whole-file synthesis and transcription. Busy and
+  temporarily-unavailable answers are still retried (#52).
+- **Release acceptance:** a new row, A-STREAM-5, points the plugin at a local stand-in that refuses the first
+  streamed sentence with 503 and checks the sentence is still spoken, so the 1.7.6 retry is now proven live on
+  every release without ever pushing a shared key into Fish's real concurrency limit.
+
 ## 1.7.6 — 2026-10-15
 
 - **No more dropped sentences when Fish is busy:** in a live conversation or a streamed voice reply, a sentence

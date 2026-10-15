@@ -88,6 +88,29 @@ def test_nonretryable_status(tmp_path, status):
         assert not list(tmp_path.iterdir())
 
 
+@pytest.mark.parametrize("code,kind", [("quota", "quota"), ("invalid_api_key", "credential")])
+def test_tts_to_file_permanent_500(tmp_path, code, kind):
+    delays = []
+    with respx.mock() as mock:
+        route = mock.post(URL).respond(500, json={"code": code} if code == "quota" else {},
+                                      headers={"x-fish-error-code": code} if kind == "credential" else {})
+        with pytest.raises(FishAudioError) as exc:
+            call(tmp_path / "out.mp3", sleep=delays.append)
+        assert exc.value.kind == kind and route.call_count == 1
+    assert delays == []
+
+
+@pytest.mark.parametrize("code", ["rate_limit", "custom_code"])
+def test_tts_to_file_transient_500(tmp_path, code):
+    delays = []
+    with respx.mock() as mock:
+        route = mock.post(URL).mock(side_effect=[httpx.Response(500, json={"code": code}),
+                                               httpx.Response(200, content=b"audio")])
+        path = tmp_path / "out.mp3"
+        assert call(path, sleep=delays.append) == str(path) and path.read_bytes() == b"audio"
+        assert route.call_count == 2 and delays == [0.5]
+
+
 class Stream(httpx.SyncByteStream):
     def __init__(self, first=b"", fail=False):
         self.first, self.fail, self.closed = first, fail, False
