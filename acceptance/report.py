@@ -60,6 +60,8 @@ def merge(out, layers=('a', 'b'), budget=.30, catalog=CATALOG):
             bug = known_bug(spec, host)
             if bug and row['status'] == 'fail':
                 row.update(status='xfail', reason=f"known host bug {bug['issue']}: {row['reason']}")
+            elif bug and row['status'] == 'pass' and bug.get('intermittent'):
+                row['reason'] += f" (intermittent known host bug {bug['issue']} did not show in this run)"
             elif bug and row['status'] == 'pass':
                 row['reason'] += f" (known host bug {bug['issue']} no longer reproduces on this version: drop the entry)"
             if row['status'] == 'fail' and not spec['required']:

@@ -26,6 +26,14 @@ Each marked pytest row writes `rows-a.json`; `report.py` merges selected layers
 against `rows.yaml` (JSON-compatible YAML). Missing required rows fail. Unavailable
 host/version features need an explicit reason. Only `no LLM key` and
 `billed:heavy not enabled` are allowed skips. Gate failures return exit 1.
+
+A failure caused by a filed host bug is listed under the row's `known_host_bugs`,
+pinned to the exact host builds (`refs`) it was seen on. On those builds it reports
+`xfail` and does not block. Any other build re-arms the row, so every host release is
+checked again. When the row passes on a listed build, the report asks for the entry to
+be dropped, unless the entry says `"intermittent": true`. Rows with `"required": false`
+are advisory: their failures report `advisory-fail` and never block.
+
 Fixtures for the report gate run separately:
 
 ```sh
