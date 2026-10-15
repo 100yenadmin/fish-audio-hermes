@@ -11,6 +11,7 @@ import * as c from './cdp.mjs'
 import { keyFieldProbe } from './probes.mjs'
 import { convRows } from './conv.mjs'
 
+const buildEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !/(?:API_KEY|TOKEN|SECRET)$/.test(k)))
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '..', '..')
 const FAKE_KEY = 'sk-fish-acceptance-fake-000000'
@@ -71,7 +72,7 @@ function buildTree() {
   const seed = args.seed || process.env.ACCEPTANCE_DESKTOP_SEED
   if (seed) a.push('--seed', seed)
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const r = spawnSync(path.join(HERE, 'build.sh'), a, { encoding: 'utf8', timeout: 1800000 })
+    const r = spawnSync(path.join(HERE, 'build.sh'), a, { encoding: 'utf8', timeout: 1800000, env: buildEnv() })
     if (r.status === 0) return r.stdout.trim().split('\n').pop()
     console.error(`build attempt ${attempt} failed: ${(r.stderr || '').split('\n').slice(-4).join(' ')}`)
   }
@@ -84,7 +85,7 @@ function launch(tree) {
   // upstream has no bundled Fish Audio: install the plugin's desktop half the way Install from Git does.
   // es.20 bundles its own desktop half (src/plugins/fish-audio), which is what an evaOS user runs.
   if (H === 'upstream' && fs.existsSync(half)) a.push('--desktop-half', half)
-  execFileSync(path.join(HERE, 'launch.sh'), a, { stdio: ['ignore', 'inherit', 'inherit'], timeout: 300000 })
+  execFileSync(path.join(HERE, 'launch.sh'), a, { stdio: ['ignore', 'inherit', 'inherit'], timeout: 300000, env: buildEnv() })
 }
 
 // --- shared UI steps ---
@@ -297,9 +298,9 @@ async function libraryRows(s, theme, account) {
       ev.push(await c.shot(s, shotPath('B-LIB-4', theme, tab.replace(' ', '-').toLowerCase())))
     }
     const t = await c.text(s)
-    const credit = account && Number(account.credit)
-    const shown = credit != null && (t.includes(credit.toFixed(2)) || t.includes(String(account.credit)))
-    const r = row('B-LIB-4', !errs.length && shown ? 'pass' : 'fail', `${errs.length ? errs.join('; ') : 'both tabs render, no error banner'}; Account shows credit ${shown ? credit.toFixed(2) : 'NOT matching ' + account?.credit}`, { theme, evidence: ev })
+    const credit = account?.credit == null || account.credit === '' ? NaN : Number(account.credit)
+    const shown = Number.isFinite(credit) && t.includes(credit.toFixed(2))
+    const r = row('B-LIB-4', !errs.length && shown ? 'pass' : 'fail', `${errs.length ? errs.join('; ') : 'both tabs render, no error banner'}; Account shows credit ${shown ? credit.toFixed(2) : (Number.isFinite(credit) ? 'NOT matching ' + credit.toFixed(2) : 'missing or non-finite wallet value')}`, { theme, evidence: ev })
     r.metrics = { account_credit: account?.credit }
   }
 }
@@ -326,7 +327,7 @@ async function main() {
     await guard(`palette ${theme}`, () => paletteRow(s, theme))
     await guard(`key entry ${theme}`, () => keyEntryRow(s, theme))
   }
-  const needReal = ['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
+  const needReal = ['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
   if (needReal) {
     let walletBefore = null
     try { hostctl('set-real-key'); await waitGateway(); await c.sleep(3000); meta.reload_after_key = await reloadRenderer(s) } catch (e) { row('B-LIB-1', 'fail', `could not place the real key: ${e.message}`); return finish(meta, s) }
@@ -337,7 +338,11 @@ async function main() {
     for (const theme of THEMES) { if (await guard(`theme ${theme}`, () => c.setTheme(s, theme))) await guard(`library ${theme}`, () => libraryRows(s, theme, account)) }
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue
-      await guard(`conversation ${theme}`, () => convRows({ s, host, OUT, SHOTS, row, want, gw, hostctl, theme, shotPath }))
+      const convWant = id => want(id) && (!!process.env.GLM_API_KEY || id === 'B-DICT-1')
+      if (!process.env.GLM_API_KEY) for (const id of ['B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-EVAOS-CONV-1']) {
+        if (want(id) && (H === 'evaos') === (id === 'B-EVAOS-CONV-1')) row(id, 'skip', 'no LLM key', { theme })
+      }
+      await guard(`conversation ${theme}`, () => convRows({ s, host, OUT, SHOTS, row, want: convWant, gw, hostctl, theme, shotPath }))
     }
     const after = (await gw('/api/plugins/fish-audio/account')).body
     meta.wallet = { before: walletBefore, after: after?.credit ?? null }

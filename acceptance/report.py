@@ -104,14 +104,14 @@ def merge(out, layers=('a', 'b'), budget=.30, catalog=CATALOG):
         rows.append(row)
     cost_path = out / 'cost.json'
     cost = json.loads(cost_path.read_text()) if cost_path.exists() else {'usd': None}
-    usd_a, usd_b, usd = cost.get('usd'), None if 'b' in layers else 0, None
+    usd_a, usd_b, usd = cost.get('usd') if 'a' in layers else 0, None if 'b' in layers else 0, None
     try:
         b = Decimal(0)
         if 'b' in layers:
             wallet = json.loads((out / 'rows-b.meta.json').read_text())['wallet']
             before, after = (Decimal(wallet[k]) for k in ('before', 'after'))
-            if not before.is_finite() or not after.is_finite():
-                raise ValueError('non-finite wallet')
+            if not before.is_finite() or not after.is_finite() or before < 0 or after < 0:
+                raise ValueError('negative or non-finite wallet')
             b = before - after
             usd_b = float(b)
         a = Decimal(str(usd_a))

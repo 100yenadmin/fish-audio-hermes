@@ -257,11 +257,13 @@ def test_agent(paid, n, tool, request):
     prompts = [f'Use fish_speak exactly once to say: {TEXT} Include its MEDIA tag and one short text line.',
                'Use fish_voices to search for narrator. Return at least one voice.',
                f'Use fish_transcribe on {CORPUS}. Return the transcript.']
+    with sqlite3.connect(f'file:{paid.home / "state.db"}?mode=ro', uri=True) as db:
+        baseline = db.execute('SELECT coalesce(max(id), 0) FROM messages').fetchone()[0]
     reply = paid.cli('chat', '-q', prompts[n - 1], '--provider', 'zai', '-m', 'glm-5.2',
                      '-t', 'fish_audio', timeout=180)
     db = sqlite3.connect(f'file:{paid.home / "state.db"}?mode=ro', uri=True)
     try:
-        rows = db.execute('SELECT content FROM messages WHERE tool_name=? ORDER BY id DESC LIMIT 1', (tool,)).fetchall()
+        rows = db.execute('SELECT content FROM messages WHERE tool_name=? AND id>? ORDER BY id DESC LIMIT 1', (tool, baseline)).fetchall()
     finally:
         db.close()
     assert rows, f'state.db has no {tool} tool result'

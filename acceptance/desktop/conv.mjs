@@ -116,8 +116,8 @@ async function turn(s, rec, dir, text, { timeout = 90000, onSpeaking, onThinking
   const realEnd = st.filter(x => !x.v.startsWith('(')).at(-1)
   const tEnd = spoke && realEnd?.v === 'Listening' ? realEnd.t : Infinity
   const inTurn = a => a.t >= tSpeak - 100 && a.t < tEnd
-  const audio = after.audio.slice(before.audio.length).map(a => ({ t: rec.timeOrigin + a.t, d: a.d })).filter(inTurn)
-  const media = after.media.slice(before.media.length).map(m => ({ t: rec.timeOrigin + m.t, d: m.d })).filter(inTurn)
+  const audio = after.audio.slice(before.audio.length).filter(a => a.playedAt != null).map(a => ({ t: rec.timeOrigin + a.playedAt, d: a.d })).filter(inTurn)
+  const media = after.media.slice(before.media.length).filter(m => m.playedAt != null).map(m => ({ t: rec.timeOrigin + m.playedAt, d: m.d })).filter(inTurn)
   const firstAudio = Math.min(...[...audio, ...media].map(a => a.t), Infinity)
   const replyDone = st.filter(x => x.v === '(reply done)' && x.t <= firstAudio).at(-1)?.t
   const startFrame = speakRecv.find(f => f.json?.type === 'start')
@@ -142,7 +142,8 @@ async function turn(s, rec, dir, text, { timeout = 90000, onSpeaking, onThinking
   return m
 }
 const seq = (statuses, want) => { let i = 0; for (const v of statuses) if (v === want[i]) i++; return i === want.length }
-const brief = m => `statuses ${m.statuses.join('→')}; submits ${m.submits}; PCM frames ${m.pcm_frames}; VAD end→first audio ${m.vad_end_to_first_audio_ms} ms${m.speak_streams && !m.spoken_text ? '; Desktop sent speak-stream only ' + JSON.stringify(m.speak_sent) + ' (no reply text)' : ''}`
+const onlyDone = m => m.speak_streams > 0 && !m.spoken_text && JSON.stringify(m.speak_sent) === '["done"]'
+const brief = (m, valid = false) => `statuses ${m.statuses.join('→')}; submits ${m.submits}; PCM frames ${m.pcm_frames}; VAD end→first audio ${m.vad_end_to_first_audio_ms} ms${valid && onlyDone(m) ? '; Desktop sent speak-stream only ' + JSON.stringify(m.speak_sent) + ' (no reply text)' : ''}`
 
 // Desktop speaks conversation replies only with "Read replies aloud" on (it mirrors voice.auto_tts). Turn it on
 // through the composer's own voice fan, as a user would; returns what was done.
@@ -177,22 +178,24 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
     return
   }
   const rec = await recorder(s)
+  if (['B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5'].some(want)) {
   const readAloud = await ensureReadAloud(s)
   // B-CONV-1 + B-CONV-4: one turn.
   if (!(await startConversation(s))) { row('B-CONV-1', 'fail', 'conversation never reached Listening (mic gate or shim)', { theme, evidence: [await c.shot(s, shotPath('B-CONV-1', theme))] }); return }
   const m1 = await turn(s, rec, dir, PROMPTS[0], { onSpeaking: async () => { await c.sleep(300); await c.shot(s, shotPath('B-CONV-1', theme, 'speaking')) } })
   const ok1 = seq(m1.statuses, ['Listening', 'Transcribing', 'Thinking', 'Speaking', 'Listening']) || seq(m1.statuses, ['Transcribing', 'Thinking', 'Speaking', 'Listening'])
   const match1 = overlap(PROMPTS[0], m1.user_text)
+  const valid1 = ok1 && match1 >= 0.8 && m1.submits === 1
   if (want('B-CONV-1')) {
     // Received PCM is not enough: the reply must have been played (sources started or media played in this turn).
-    const pass = ok1 && m1.pcm_frames >= 1 && m1.played && match1 >= 0.8 && m1.submits === 1
-    const r = row('B-CONV-1', pass ? 'pass' : 'fail', `${brief(m1)}; reply playback ${m1.audio_buffers} buffers/${m1.media_plays} plays; user text match ${(match1 * 100).toFixed(0)}% ("${m1.user_text}")`, { theme })
+    const pass = valid1 && m1.pcm_frames >= 1 && m1.played
+    const r = row('B-CONV-1', pass ? 'pass' : 'fail', `${brief(m1, valid1)}; reply playback ${m1.audio_buffers} buffers/${m1.media_plays} plays; user text match ${(match1 * 100).toFixed(0)}% ("${m1.user_text}")`, { theme })
     r.metrics = { ...m1, read_aloud: readAloud }; r.evidence.push(shotPath('B-CONV-1', theme, 'speaking'), await c.shot(s, shotPath('B-CONV-1', theme)))
   }
   if (want('B-CONV-4')) {
     const a = norm(m1.spoken_text), b = norm(m1.reply)
     // Equality of the text sent to speak-stream only counts for a turn whose reply was actually played.
-    const r = row('B-CONV-4', a && a === b && m1.played ? 'pass' : 'fail', a && a === b ? `spoken text == reply (${b.length} chars, normalised)${m1.played ? '' : ', but the turn played no reply audio'}` : `spoken ${JSON.stringify(m1.spoken_text.slice(0, 120))} vs reply ${JSON.stringify((m1.reply || '').slice(0, 120))}`, { theme })
+    const r = row('B-CONV-4', valid1 && a && a === b && m1.played && m1.pcm_frames >= 1 ? 'pass' : 'fail', a && a === b ? `spoken text == reply (${b.length} chars, normalised)${m1.played ? '' : ', but the turn played no reply audio'}` : `${valid1 && b ? 'valid turn; ' : ''}spoken ${JSON.stringify(m1.spoken_text.slice(0, 120))} vs reply ${JSON.stringify((m1.reply || '').slice(0, 120))}`, { theme })
     r.metrics = { spoken: m1.spoken_text, reply: m1.reply, played: m1.played }
   }
   // B-CONV-2: five more turns in the same conversation.
@@ -205,13 +208,13 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
     const respoken = texts.length - new Set(texts).size + ms.filter(m => m.speak_streams > 1).length
     const silent = ms.filter(m => !m.played).length // no reply playback in that turn
     const pass = submits === 5 && !stuck && !respoken && !silent
-    const noText = ms.filter(m => m.speak_streams && !m.spoken_text).length
+    const noText = ms.filter(m => !m.played && onlyDone(m)).length
     const r = row('B-CONV-2', pass ? 'pass' : 'fail', `5 turns: submits ${submits}, stuck ${stuck}, re-spoken ${respoken}, silent ${silent} (${noText} with no reply text sent to speak-stream); first-audio ms ${ms.map(m => m.vad_end_to_first_audio_ms).join('/')}`, { theme })
     r.metrics = { turns: ms.map(m => ({ statuses: m.statuses, submits: m.submits, first_audio_ms: m.vad_end_to_first_audio_ms, user: m.user_text, pcm: m.pcm_frames, buffers: m.audio_buffers, plays: m.media_plays, sent: m.speak_sent, timeline: m.timeline })) }
     r.evidence.push(await c.shot(s, shotPath('B-CONV-2', theme)))
   }
   // B-CONV-3: barge-in 1.5 s after the first audio of a long reply.
-  if (want('B-CONV-3')) {
+  if (want('B-CONV-3') || want('B-CONV-3L')) {
     // Barge captures transcribe through window.hermesDesktop.api('/api/audio/transcribe') in the main process,
     // which CDP Network cannot see; wrap the bridge call to record request size and the returned transcript.
     const txWrap = await s.page.evaluate(() => {
@@ -263,7 +266,7 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
           // A source is silenced by its ended event, its stop() (at the stop's scheduled time) or its context's close().
           const end = e => Math.min(e.endedAt ?? Infinity, e.stopAt != null ? Math.max(e.stopAt, e.stopSched ?? e.stopAt) : Infinity, window.__ctxClosed?.[e.ctx] ?? Infinity)
           const active = window.__audioLog.slice(n).filter(e => e.t < tBperf && end(e) > tBperf)
-          const playing = active.filter(e => e.sched <= tBperf && (tSub == null || e.t >= tSub))
+          const playing = active.filter(e => window.__audioPlaying(e, tBperf) && (tSub == null || e.t >= tSub))
           return { submit_to_onset_ms: tSub != null ? Math.round(tBperf - tSub) : null, active_at_onset: active.length, playing_at_onset: playing.length,
             stop_ms: active.map(e => Number.isFinite(end(e)) ? Math.round(end(e) - tBperf) : null) }
         }, { n: nLong, tBperf, tBpage })
@@ -323,35 +326,30 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
   // a wrong path on api.fish.audio once the turn reaches Thinking (the v1.5.1 error trick), then restored.
   if (want('B-CONV-5')) {
     const cfg = path.join(host.hermes_home, 'config.yaml')
-    const GOOD = 'base_url: https://api.fish.audio', BAD = 'base_url: https://api.fish.audio/acceptance-forced-failure'
-    // The setting line must exist. The form does not persist a value equal to the default, so when the line is
-    // missing it is written (as the default) under tts.fish-audio in the YAML Hermes saved after B-LIB-3.
-    const y = fs.readFileSync(cfg, 'utf8')
-    if (!y.includes(GOOD)) {
-      const line = `    ${GOOD}\n`
-      const next = /^tts:\n(?:  .*\n|    .*\n)*?  fish-audio:\n/m.test(y) ? y.replace(/^(tts:\n(?:  .*\n|    .*\n)*?  fish-audio:\n)/m, `$1${line}`)
-        : y.replace(/^tts:\n/m, `tts:\n  fish-audio:\n${line}`)
-      fs.writeFileSync(cfg, next); await c.sleep(1000)
-    }
-    const ready = fs.readFileSync(cfg, 'utf8').includes(GOOD)
-    const flip = (a, b) => fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace(a, b))
+    const original = fs.readFileSync(cfg)
+    // settings.py reads the transport block, not tts.fish-audio; restore even an inserted key byte-for-byte.
+    const failConfig = () => execFileSync(path.join(host.cache_dir, '.venv/bin/python'), ['-c', `import pathlib,sys,yaml
+p=pathlib.Path(sys.argv[1]); c=yaml.safe_load(p.read_text())
+c.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['base_url']='https://api.fish.audio/acceptance-forced-failure'
+p.write_text(yaml.safe_dump(c))`, cfg], { env: Object.fromEntries(Object.entries(process.env).filter(([k]) => !/(?:API_KEY|TOKEN|SECRET)$/.test(k))) })
     const t0 = Date.now()
     let m = null
     try {
-      if (ready && await startConversation(s)) m = await turn(s, rec, dir, PROMPTS[3], { timeout: 60000, onThinking: async () => flip(GOOD, BAD) })
-    } finally { flip(BAD, GOOD) }
+      if (await startConversation(s)) m = await turn(s, rec, dir, PROMPTS[3], { timeout: 60000, onThinking: failConfig })
+    } finally { fs.writeFileSync(cfg, original) }
     await endConversation(s)
     const toasts = (await s.page.evaluate(() => window.__toasts)).filter(x => x.t > t0).map(x => x.text.replace(/\s+/g, ' ').slice(0, 140))
     const shot = await c.shot(s, shotPath('B-CONV-5', theme))
     const fb = m && m.speak_frames.includes('fallback'), err = m && m.speak_frames.includes('error')
-    const noText = m && !m.spoken_text
+    const noText = m && onlyDone(m)
     // Judged as the user meets it: after the protocol fallback/error the user must hear the reply (whole-text path)
     // or see a toast. A fallback frame followed by nothing is still silent to the user (F1).
     const silent = m && !m.pcm_frames && !m.media_plays && !m.audio_buffers && !toasts.length
-    const pass = !!m && m.submits === 1 && !noText && !silent
-    const r = row('B-CONV-5', pass ? 'pass' : 'fail', !m ? `could not set up the failure (base_url line ${ready ? 'present' : 'missing'}) or start the conversation`
-      : `${noText ? 'Desktop sent no reply text to speak-stream (only done); ' : ''}speak-stream frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames}; whole-text plays ${m.media_plays}; toasts ${JSON.stringify(toasts.slice(0, 2))}${silent ? `; SILENT to the user (F1)${fb ? ': fallback frame sent, but no whole-text playback and no toast followed' : ''}` : ''}`, { theme, evidence: [shot] })
+    const pass = !!m && m.submits === 1 && !!m.spoken_text && !silent
+    const r = row('B-CONV-5', pass ? 'pass' : 'fail', !m ? 'could not start the forced-failure conversation'
+      : `${m.submits === 1 ? 'submitted turn; ' : ''}${noText ? 'Desktop sent no reply text to speak-stream (only done); ' : ''}speak-stream frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames}; whole-text plays ${m.media_plays}; toasts ${JSON.stringify(toasts.slice(0, 2))}${silent ? `; SILENT to the user (F1)${fb ? ': fallback frame sent, but no whole-text playback and no toast followed' : ''}` : ''}`, { theme, evidence: [shot] })
     r.metrics = { ...(m || {}), toasts }
+  }
   }
   // B-DICT-1: composer-mic dictation over transcribe-stream.
   if (want('B-DICT-1')) {

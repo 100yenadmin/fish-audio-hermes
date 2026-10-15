@@ -132,3 +132,34 @@ def test_heavy_rows_are_never_retried():
                                  {'id':'A-TWO', 'status':'fail', 'reason':'assertion failed'}])
     assert 'A-ROUTE-11' not in selected and 'A-ROUTE-12' not in selected
     assert 'A-CLI-3' in selected and 'A-ONE' not in selected and 'A-TWO' not in selected
+
+
+@pytest.mark.parametrize('layers,exit_code', [(['b'], 0), (['a', 'b'], 1)])
+def test_only_unselected_layer_a_may_default_to_zero(tmp_path, layers, exit_code):
+    (tmp_path / 'host.json').write_text('{"host":"upstream","plugin_ref":"fixture","hermes_ref":"v0.22.2","plugin_version":"1.7.5"}')
+    (tmp_path / 'catalog.json').write_text('[]')
+    (tmp_path / 'rows-b.meta.json').write_text('{"wallet":{"before":"1.00","after":"0.99"}}')
+    assert merge(tmp_path, layers, catalog=tmp_path / 'catalog.json') == exit_code
+    cost = json.loads((tmp_path / 'report.json').read_text())['cost']
+    assert cost['usd_a'] == (0 if layers == ['b'] else None)
+
+
+def test_only_done_with_other_turn_failures_cannot_pass_real_catalog(tmp_path):
+    inventory = json.loads((HERE / 'rows.yaml').read_text())
+    host = {'host':'upstream', 'plugin_ref':'fixture', 'hermes_ref':'v0.22.2', 'plugin_version':'1.7.5'}
+    (tmp_path / 'host.json').write_text(json.dumps(host))
+    for layer in ('a', 'b'):
+        rows = [{'id':s['id'], 'status':'pass', **({'theme':t} if t else {})}
+                for s in inventory if s['layer'] == layer and 'upstream' in s['hosts']
+                for t in (['light','dark'] if layer == 'b' else [None])]
+        if layer == 'b':
+            bad = next(r for r in rows if r['id'] == 'B-CONV-1' and r['theme'] == 'dark')
+            case = next(c for c in CASES['producer_reasons'] if c['source'] == 'invalid-turn')
+            bad.update(status='fail', reason=case['reason'])
+        (tmp_path / f'rows-{layer}.json').write_text(json.dumps(rows))
+    (tmp_path / 'cost.json').write_text('{"usd":0}')
+    (tmp_path / 'rows-b.meta.json').write_text('{"wallet":{"before":"1","after":"1"}}')
+    assert merge(tmp_path) == 1
+    row = next(r for r in json.loads((tmp_path / 'report.json').read_text())['rows']
+               if r['id'] == 'B-CONV-1' and r['theme'] == 'dark')
+    assert row['status'] == 'fail'

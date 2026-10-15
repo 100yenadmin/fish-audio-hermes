@@ -21,13 +21,19 @@ PIN = 'evaos-runtime-es.12-v0.21.5-r34.13'
 REPOS = {'upstream': 'NousResearch/hermes-agent', 'evaos': 'electricsheephq/evaOS-hermes-desktop-app-adapter'}
 
 
-TRANSIENT = re.compile(r'(?i)Fish Audio is unavailable|try again later|concurrency limit|rate.?limit|\b(429|500|502|503|504)\b')
+TRANSIENT = re.compile(r'(?i)Fish Audio is unavailable|try again later|concurrency limit|rate.?limit|\bHTTP (429|500|502|503|504):')
 
 
 def retry_rows(rows):
     inventory = json.loads((ROOT / 'acceptance/rows.yaml').read_text())
     heavy = {s['id'] for s in inventory if s.get('billed') == 'heavy'}
     return [r['id'] for r in rows if r['id'] not in heavy and r['status'] == 'fail' and TRANSIENT.search(r['reason'])]
+
+
+def build_env():
+    return {k: v for k, v in os.environ.items()
+            if k not in {'FISH_API_KEY', 'GLM_API_KEY', 'GH_TOKEN', 'GITHUB_TOKEN', 'HERMES_DASHBOARD_SESSION_TOKEN'}
+            and not k.endswith(('API_KEY', 'TOKEN', 'SECRET'))}
 
 
 def scrub(value):
@@ -77,21 +83,20 @@ def build(host, ref):
     dest = CACHE / f'{host}-{ref.replace("/", "_")}-{sha[:12]}'
     if not (dest / 'pyproject.toml').exists():
         archive(repo, sha, dest)
-    env = {**os.environ, 'UV_CACHE_DIR': str(CACHE / 'uv'), 'UV_CONCURRENT_BUILDS': '1',
+    env = {**build_env(), 'UV_CACHE_DIR': str(CACHE / 'uv'), 'UV_CONCURRENT_BUILDS': '1',
            'UV_CONCURRENT_INSTALLS': '2', 'UV_CONCURRENT_DOWNLOADS': '4', 'CMAKE_BUILD_PARALLEL_LEVEL': '4'}
     marker = dest / '.acceptance-built'
     if not marker.exists():
         for attempt in range(2):
             try:
-                call(['pwd'], cwd=dest)
                 call(['uv', 'sync', '--frozen', '--no-dev'], cwd=dest, env=env, timeout=600)
                 call(['uv', 'pip', 'install', '--python', dest / '.venv/bin/python',
                       'msgpack>=1.0,<2', 'pytest==8.4.2', 'respx==0.22.0', 'pyyaml>=6,<7'], cwd=dest, env=env, timeout=300)
                 marker.write_text(sha)
                 break
-            except Exception:
+            except Exception as exc:
                 if attempt == 1:
-                    raise RuntimeError(f'{host} venv build failed twice') from None
+                    raise RuntimeError(f'{host} venv build failed twice: {scrub(exc)}') from exc
     if host == 'upstream' and not (dest / 'hermes_cli/web_dist/index.html').exists():
         node_dir = '/opt/homebrew/bin' if sys.platform == 'darwin' else str(Path(shutil.which('node')).parent)
         jsenv = {**env, 'PATH': node_dir + os.pathsep + env['PATH'], 'npm_config_userconfig': os.devnull,
@@ -111,7 +116,7 @@ class Host:
         self.token = Path(self.meta['session_token_file']).read_text().strip()
 
     def env(self):
-        env = {k: v for k, v in os.environ.items() if not k.endswith(('API_KEY', 'TOKEN', 'SECRET'))}
+        env = build_env()
         env.update(HERMES_HOME=str(self.home), HERMES_DISABLE_LAZY_INSTALLS='1',
                    HERMES_DASHBOARD_SESSION_TOKEN=self.token, PYTHONDONTWRITEBYTECODE='1',
                    XDG_CACHE_HOME=str(CACHE / 'xdg'), UV_CACHE_DIR=str(CACHE / 'uv'),
@@ -211,29 +216,38 @@ class Host:
             return
         pid = json.loads(path.read_text())['pid']
         # Verify custody before signaling a potentially recycled PID.
-        p = subprocess.run(['ps', '-p', str(pid), '-o', 'command='], capture_output=True, text=True)
-        if 'gateway-worker' in p.stdout and str(self.out) in p.stdout:
-            tree = [pid]
-            listing = call(['ps', '-axo', 'pid=,ppid='])
-            pairs = [tuple(map(int, line.split())) for line in listing.splitlines()]
-            for parent in tree:
-                tree.extend(child for child, ppid in pairs if ppid == parent and child not in tree)
-            with (self.out / 'pids.txt').open('a') as f:
-                for child in tree:
-                    f.write(f'{child} shutdown-tree\n')
-            for child in reversed(tree):
+        def identity():
+            return subprocess.run(['ps', '-p', str(pid), '-o', 'lstart=,command='], capture_output=True, text=True).stdout
+        def listening():
+            with socket.socket() as s:
+                return s.connect_ex(('127.0.0.1', int(self.meta['gateway_url'].rsplit(':', 1)[1]))) == 0
+        def group_gone():
+            try:
+                os.killpg(pid, 0)
+                return False
+            except ProcessLookupError:
+                return True
+        recorded = identity()
+        if 'gateway-worker' in recorded and str(self.out) in recorded:
+            for sig, ticks in ((signal.SIGTERM, 100), (signal.SIGKILL, 50)):
+                if identity() != recorded:
+                    break
                 try:
-                    os.kill(child, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-            # Wait for the listener to disappear before a restart (TIME_WAIT is harmless).
-            port = int(self.meta['gateway_url'].rsplit(':', 1)[1])
-            for _ in range(50):
-                with socket.socket() as s:
-                    if s.connect_ex(('127.0.0.1', port)):
+                    if os.getpgid(pid) != pid:
                         break
-                time.sleep(.1)
-        path.unlink()
+                    os.killpg(pid, sig)
+                except ProcessLookupError:
+                    break
+                for _ in range(ticks):
+                    if not listening():
+                        break
+                    time.sleep(.1)
+                if not listening():
+                    break
+        if not listening() or group_gone():
+            path.unlink()
+        else:
+            raise RuntimeError('gateway still listening; retained gateway-pid.json')
 
     def restart(self):
         self.down()
