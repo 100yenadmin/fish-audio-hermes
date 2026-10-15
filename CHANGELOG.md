@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.5 — 2026-10-15
+
+- **A place to enter your key:** the Voices card's main button is now **Enter API key**. It opens the Fish Audio API
+  key field (Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings) for the agent you are looking at. On the plugin's own
+  Settings page the same card used to send you back to itself; its button now goes to the field too. A key saved
+  there works right away, without a restart.
+- **Clearer steps:** the card's steps, the Desktop and chat "no key" messages, the setup skill and the README now name
+  the Agent settings field and, on older Desktop without Settings ▸ Plugins, the gear on the fish-audio row in
+  Capabilities ▸ Plugins.
+- Known host issue, outside this plugin: in the dark theme an empty key field in Settings is very hard to see. A fix
+  (a placeholder in the empty field) is proposed to Hermes and to the evaOS app.
+
 ## 1.7.4 — 2026-10-15
 
 - **Report a problem:** a yes to "does this hold any secrets?" no longer counts as approval to publish. Only an
