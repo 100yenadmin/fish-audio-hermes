@@ -21,6 +21,9 @@ PIN = 'evaos-runtime-es.12-v0.21.5-r34.13'
 REPOS = {'upstream': 'NousResearch/hermes-agent', 'evaos': 'electricsheephq/evaOS-hermes-desktop-app-adapter'}
 
 
+TRANSIENT = re.compile(r'(?i)Fish Audio is unavailable|try again later|rate.?limit|\b(429|500|502|503|504)\b')
+
+
 def scrub(value):
     text = str(value)
     for name in ('FISH_API_KEY', 'GLM_API_KEY', 'HERMES_DASHBOARD_SESSION_TOKEN'):
@@ -303,6 +306,15 @@ def run(args):
                                 str(ROOT / 'acceptance/test_layer_a.py'), '-p', 'no:cacheprovider',
                                 '--tb=no'], cwd=ROOT, env=env, capture_output=True, text=True)
             (out / 'pytest.txt').write_text(scrub(p.stdout + p.stderr))
+            # One retry for rows that failed on a Fish outage or rate limit; the report marks them.
+            rows = json.loads((out / 'rows-a.json').read_text()) if (out / 'rows-a.json').exists() else []
+            transient = [r['id'] for r in rows if r['status'] == 'fail' and TRANSIENT.search(r['reason'])]
+            if transient:
+                p = subprocess.run([str(src / '.venv/bin/python'), '-m', 'pytest', '-q',
+                                    str(ROOT / 'acceptance/test_layer_a.py'), '-p', 'no:cacheprovider', '--tb=no'],
+                                   cwd=ROOT, env={**env, 'ACCEPTANCE_RERUN': ','.join(transient)},
+                                   capture_output=True, text=True)
+                (out / 'pytest-retry.txt').write_text(scrub(p.stdout + p.stderr))
         if 'b' in args.layers.split(',') and (ROOT / 'acceptance/desktop/run.mjs').exists():
             p = subprocess.run(['/opt/homebrew/bin/node' if sys.platform == 'darwin' else 'node',
                                 str(ROOT / 'acceptance/desktop/run.mjs'), '--host-json', str(out / 'host.json'),
@@ -319,6 +331,18 @@ def run(args):
 def pytest_configure(config):
     config.addinivalue_line('markers', 'row(id): acceptance row identifier')
     config._acceptance_rows = []
+    out = os.environ.get('ACCEPTANCE_OUT')
+    if os.environ.get('ACCEPTANCE_RERUN') and out and (Path(out) / 'rows-a.json').exists():
+        config._acceptance_rows = json.loads((Path(out) / 'rows-a.json').read_text())
+
+
+def pytest_collection_modifyitems(config, items):
+    wanted = set(filter(None, os.environ.get('ACCEPTANCE_RERUN', '').split(',')))
+    if not wanted:
+        return
+    keep = [i for i in items if i.get_closest_marker('row') and i.get_closest_marker('row').args[0] in wanted]
+    config.hook.pytest_deselected(items=[i for i in items if i not in keep])
+    items[:] = keep
 
 
 def pytest_runtest_makereport(item, call):
@@ -338,6 +362,8 @@ def pytest_runtest_makereport(item, call):
         status = 'na'
     row = {'id': marker.args[0], 'status': status, 'reason': reason or 'assertions passed',
            'evidence': props.get('evidence', []), 'metrics': props.get('metrics', {})}
+    if os.environ.get('ACCEPTANCE_RERUN'):
+        row['flaky'] = True  # failed once on a Fish outage or rate limit; this is the retry's result
     item.config._acceptance_rows = [r for r in item.config._acceptance_rows if r['id'] != row['id']] + [row]
     # Flush each row so interruptions cannot turn missing coverage green.
     out = os.environ.get('ACCEPTANCE_OUT')

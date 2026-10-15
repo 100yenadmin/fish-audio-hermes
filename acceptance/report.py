@@ -36,6 +36,8 @@ def merge(out, layers=('a', 'b'), budget=.30, catalog=CATALOG):
             row.setdefault('metrics', {})
             if theme:
                 row['theme'] = theme
+            if row.get('flaky'):
+                row['reason'] = f"{row['reason']} (retried once after a Fish outage or rate limit)"
             if version(host.get('plugin_version', '0')) < version(spec['min_plugin']):
                 row.update(status='na', reason=f"requires plugin {spec['min_plugin']}")
             if key in duplicates:

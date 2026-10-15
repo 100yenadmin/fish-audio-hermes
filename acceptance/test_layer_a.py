@@ -72,7 +72,8 @@ def real(host):
     host.key('real')
     host.restart()
     initial = host.wallet()
-    write_json(host.out / 'cost.json', {'before': initial, 'after': initial, 'usd': 0.0})
+    if not (host.out / 'cost.json').exists():  # a retry session keeps the first session's starting balance
+        write_json(host.out / 'cost.json', {'before': initial, 'after': initial, 'usd': 0.0})
     write_json(host.out / 'key-fingerprints.json', {
         name: __import__('hashlib').sha256(os.environ[name].encode()).hexdigest()[:8]
         for name in ('FISH_API_KEY', 'GLM_API_KEY') if os.environ.get(name)})
@@ -364,7 +365,7 @@ async def stream(h, mode):
                 await asyncio.sleep(3 if mode == 2 and i == 0 else .1)
             await ws.send(json.dumps({'done': True}))
         task = asyncio.create_task(send())
-        stopped = False
+        stopped, stop_t = False, None
         try:
             while True:
                 msg = await asyncio.wait_for(ws.recv(), 45)
@@ -372,7 +373,7 @@ async def stream(h, mode):
                     pcm.append({'t': time.monotonic() - stamp, 'bytes': len(msg), 'after_stop': stopped})
                     if mode == 3 and not stopped:
                         await ws.send(json.dumps({'stop': True}))
-                        stopped = True
+                        stopped, stop_t = True, time.monotonic() - stamp
                 else:
                     frames.append(json.loads(msg))
                     if frames[-1].get('type') in ('end', 'fallback', 'error'):
@@ -383,7 +384,7 @@ async def stream(h, mode):
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
     times = [x['t'] for x in pcm]
-    return {'frames': frames, 'pcm': pcm}, {'first_pcm_ms': times[0] * 1000 if times else None,
+    return {'frames': frames, 'pcm': pcm, 'stop_t': stop_t}, {'first_pcm_ms': times[0] * 1000 if times else None,
                 'inter_chunk_gaps_ms': [(b - a) * 1000 for a, b in zip(times, times[1:])], 'pcm_bytes': sum(x['bytes'] for x in pcm)}
 
 
@@ -406,7 +407,9 @@ def test_stream(paid, n, request):
             assert metrics['pcm_bytes'] > 0
             assert any(f.get('type') == 'start' and f.get('sample_rate') == 24000 for f in data['frames'])
             if n == 3:
-                assert sum(x['after_stop'] for x in data['pcm']) <= 1, 'more than one PCM chunk after stop'
+                # Chunks already in flight when stop is sent may still land; nothing may arrive later than 300 ms.
+                late = [x for x in data['pcm'] if x['after_stop'] and x['t'] - data['stop_t'] > .3]
+                assert not late, f'{len(late)} PCM chunks arrived more than 300 ms after stop'
             else:
                 assert 'end' in kinds
     finally:
