@@ -26,7 +26,7 @@ export const es = {
     `Las voces necesitan una clave API de Fish Audio en ${agentName(profile)}.`,
   onboardFreeModel: 'Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 de noviembre de 2026.',
   onboardStep1: 'Crea una clave API gratuita en fish.audio',
-  onboardStep2: 'Elige Introducir clave de API, pega la clave en el campo Fish Audio API key de Ajustes del agente y guárdala. En Capacidades ▸ Plugins, el campo se abre con el engranaje de la fila fish-audio.',
+  onboardStep2: 'Elige Introducir clave de API, pega la clave en el campo Fish Audio API key de Ajustes del agente y guárdala. Las versiones anteriores de Desktop no tienen Configuración ▸ Plugins: allí, usa el engranaje de la fila fish-audio en Capacidades ▸ Plugins.',
   getKey: 'Obtener una clave API',
   enterKey: 'Introducir clave de API',
   openPlugins: 'Abrir Plugins',

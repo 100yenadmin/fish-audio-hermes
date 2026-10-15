@@ -26,7 +26,7 @@ export const zh = {
     `声音功能需要在${agentName(profile)}上配置 Fish Audio API 密钥。`,
   onboardFreeModel: '新账户可以先使用免费的 s2.1-pro-free 模型，免费期截至2026年11月30日。',
   onboardStep1: '在 fish.audio 创建免费 API 密钥',
-  onboardStep2: '选择“输入 API 密钥”，在“智能体设置”的 Fish Audio API key 字段中粘贴密钥并保存。在技能与工具 ▸ 插件中，点击 fish-audio 行的齿轮图标打开该字段。',
+  onboardStep2: '选择“输入 API 密钥”，在“智能体设置”的 Fish Audio API key 字段中粘贴密钥并保存。旧版 Desktop 没有设置 ▸ 插件：请使用技能与工具 ▸ 插件中 fish-audio 行的齿轮图标。',
   getKey: '获取 API 密钥',
   enterKey: '输入 API 密钥',
   openPlugins: '打开插件',

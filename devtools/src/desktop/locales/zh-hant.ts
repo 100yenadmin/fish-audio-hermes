@@ -26,7 +26,7 @@ export const zhHant = {
     `聲音功能需要在${agentName(profile)}上設定 Fish Audio API 金鑰。`,
   onboardFreeModel: '新帳戶可以先使用免費的 s2.1-pro-free 模型，免費期截至2026年11月30日。',
   onboardStep1: '在 fish.audio 建立免費 API 金鑰',
-  onboardStep2: '選擇「輸入 API 金鑰」，在「代理程式設定」的 Fish Audio API key 欄位貼上金鑰並儲存。在技能與工具 ▸ 外掛中，點選 fish-audio 列的齒輪圖示開啟該欄位。',
+  onboardStep2: '選擇「輸入 API 金鑰」，在「代理程式設定」的 Fish Audio API key 欄位貼上金鑰並儲存。舊版 Desktop 沒有設定 ▸ 外掛：請使用技能與工具 ▸ 外掛中 fish-audio 列的齒輪圖示。',
   getKey: '取得 API 金鑰',
   enterKey: '輸入 API 金鑰',
   openPlugins: '開啟外掛',

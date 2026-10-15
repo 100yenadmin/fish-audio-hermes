@@ -26,7 +26,7 @@ export const de = {
     `Für ${agentName(profile)} wird ein Fish Audio API-Schlüssel benötigt.`,
   onboardFreeModel: 'Neue Konten können bis zum 30. November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.',
   onboardStep1: 'Erstellen Sie einen kostenlosen API-Schlüssel auf fish.audio',
-  onboardStep2: 'Wählen Sie „API-Schlüssel eingeben“, fügen Sie den Schlüssel unter Agent-Einstellungen in das Feld Fish Audio API key ein und speichern Sie. Unter Fähigkeiten ▸ Plugins öffnet das Zahnrad in der Zeile fish-audio dieses Feld.',
+  onboardStep2: 'Wählen Sie „API-Schlüssel eingeben“, fügen Sie den Schlüssel unter Agent-Einstellungen in das Feld Fish Audio API key ein und speichern Sie. Ältere Desktop-Versionen haben keine Einstellungen ▸ Plugins: Nutzen Sie dort das Zahnrad in der Zeile fish-audio unter Fähigkeiten ▸ Plugins.',
   getKey: 'API-Schlüssel erhalten',
   enterKey: 'API-Schlüssel eingeben',
   openPlugins: 'Plugins öffnen',

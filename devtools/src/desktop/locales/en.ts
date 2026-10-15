@@ -27,7 +27,7 @@ export const en = {
     `Voices need a Fish Audio API key on ${agentName(profile)}.`,
   onboardFreeModel: 'New accounts can start on the free s2.1-pro-free model until 30 November 2026.',
   onboardStep1: 'Create a free API key on fish.audio',
-  onboardStep2: 'Choose Enter API key, paste the key into the Fish Audio API key field under Agent settings, and save it. In Capabilities ▸ Plugins, open that field with the gear on the fish-audio row.',
+  onboardStep2: 'Choose Enter API key, paste the key into the Fish Audio API key field under Agent settings, and save it. Older Desktop has no Settings ▸ Plugins: there, use the gear on the fish-audio row in Capabilities ▸ Plugins.',
   getKey: 'Get an API key',
   enterKey: 'Enter API key',
   openPlugins: 'Open Plugins',

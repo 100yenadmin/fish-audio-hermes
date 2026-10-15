@@ -29,7 +29,7 @@ export const ar = {
     `تحتاج الأصوات إلى مفتاح API لـ Fish Audio لدى ${isolate(agentName(profile))}.`,
   onboardFreeModel: 'يمكن للحسابات الجديدة البدء بالنموذج المجاني s2.1-pro-free حتى 30 نوفمبر 2026.',
   onboardStep1: 'أنشئ مفتاح API مجانيًا على fish.audio',
-  onboardStep2: 'اختر «إدخال مفتاح API»، والصق المفتاح في حقل Fish Audio API key ضمن «إعدادات الوكيل» ثم احفظه. في المهارات ◂ الإضافات، يُفتح هذا الحقل من رمز الترس في صف fish-audio.',
+  onboardStep2: 'اختر «إدخال مفتاح API»، والصق المفتاح في حقل Fish Audio API key ضمن «إعدادات الوكيل» ثم احفظه. لا تحتوي إصدارات Desktop الأقدم على الإعدادات ◂ الإضافات: استخدم فيها رمز الترس في صف fish-audio ضمن المهارات ◂ الإضافات.',
   getKey: 'الحصول على مفتاح API',
   enterKey: 'إدخال مفتاح API',
   openPlugins: 'فتح الإضافات',

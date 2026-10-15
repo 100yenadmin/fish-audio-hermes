@@ -26,7 +26,7 @@ export const ja = {
     `ボイスを使うには、${agentName(profile)}に Fish Audio API キーが必要です。`,
   onboardFreeModel: '新しいアカウントでは、2026年11月30日まで無料の s2.1-pro-free モデルから始められます。',
   onboardStep1: 'fish.audio で無料の API キーを作成',
-  onboardStep2: '「API キーを入力」を選び、「エージェント設定」の Fish Audio API key 欄にキーを貼り付けて保存します。スキルとツール ▸ プラグイン では、fish-audio の行の歯車アイコンからこの欄を開きます。',
+  onboardStep2: '「API キーを入力」を選び、「エージェント設定」の Fish Audio API key 欄にキーを貼り付けて保存します。設定 ▸ プラグイン がない旧バージョンでは、スキルとツール ▸ プラグイン の fish-audio の行の歯車アイコンを使います。',
   getKey: 'API キーを取得',
   enterKey: 'API キーを入力',
   openPlugins: 'プラグインを開く',
