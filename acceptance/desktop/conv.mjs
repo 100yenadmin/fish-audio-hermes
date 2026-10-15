@@ -348,7 +348,8 @@ p.write_text(yaml.safe_dump(c))`, cfg], { env: Object.fromEntries(Object.entries
     const failed = fb || err || toasts.some(t => /error|fail|unavailable|could not/i.test(t))
     const pass = !!m && m.submits === 1 && !!m.spoken_text && failed && !silent
     const r = row('B-CONV-5', pass ? 'pass' : 'fail', !m ? 'could not start the forced-failure conversation'
-      : !failed ? `forced failure did not take effect (frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames})`
+      // With no reply text sent, no synthesis ran, so the injected failure could not show; report the host's cause.
+      : !failed && !noText ? `forced failure did not take effect (frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames})`
       : `${m.submits === 1 ? 'submitted turn; ' : ''}${noText ? 'Desktop sent no reply text to speak-stream (only done); ' : ''}speak-stream frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames}; whole-text plays ${m.media_plays}; toasts ${JSON.stringify(toasts.slice(0, 2))}${silent ? `; SILENT to the user (F1)${fb ? ': fallback frame sent, but no whole-text playback and no toast followed' : ''}` : ''}`, { theme, evidence: [shot] })
     r.metrics = { ...(m || {}), toasts }
   }

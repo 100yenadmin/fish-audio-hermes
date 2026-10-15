@@ -149,7 +149,9 @@ test('B-CONV-5 requires an injected failure and preserves both host-bug waiver r
     [[], 'reply', 0, ['Speech failed'], 'pass', false],
     [['start','end'], 'reply', 3, ['Saved'], 'fail', false],
     [['error'], '', 0, [], 'fail', true],
-    [['fallback'], 'reply', 0, [], 'fail', true]]) await t.test(JSON.stringify({frames, spoken, pcm, toast}), async () => {
+    [['fallback'], 'reply', 0, [], 'fail', true],
+    [['start','end'], '', 0, [], 'fail', true],
+    [[], '', 0, [], 'fail', false]]) await t.test(JSON.stringify({frames, spoken, pcm, toast}), async () => {
     const rows = [], m = {submits:1, spoken_text:spoken, speak_frames:frames, speak_sent:['done'],
       speak_streams:1, pcm_frames:pcm, media_plays:0, audio_buffers:0}
     await vm.runInNewContext(`(async()=>{${onlyDone}\n${conv.slice(start,end)}})()`, {
@@ -157,7 +159,8 @@ test('B-CONV-5 requires an injected failure and preserves both host-bug waiver r
       c:{shot:async()=>''}, shotPath(){}, row:(id,status,reason)=>{rows.push({status,reason}); return {}} })
     assert.equal(rows[0].status, status)
     assert.equal(waiver.test(rows[0].reason), waived, rows[0].reason)
-    if (status === 'fail' && !waived) assert.match(rows[0].reason, /forced failure did not take effect/)
+    if (status === 'fail' && !waived && spoken) assert.match(rows[0].reason, /forced failure did not take effect/)
+    if (!spoken) assert.match(rows[0].reason, /Desktop sent no reply text to speak-stream/)
   })
 })
 
