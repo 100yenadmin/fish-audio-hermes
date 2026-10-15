@@ -46,8 +46,9 @@ read-aloud and voice notes go through it.
 
 1. **Get a key** at <https://fish.audio/app/api-keys>. New accounts can start on Fish's free `s2.1-pro-free` model, free through 30 November 2026;
    after that, add API credit.
-2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop ▸ Settings ▸ Plugins ▸ Fish Audio
-   (Capabilities ▸ Plugins on older Desktop), or in
+2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop: **Voices ▸ Enter API key** opens
+   the key field in Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings (on older Desktop, open it with the gear on the
+   fish-audio row in Capabilities ▸ Plugins). Or use
    `hermes tools` ▸ Text-to-Speech ▸ Fish Audio. `login` checks the key against your Fish wallet and saves it to the
    active profile. It makes Fish Audio the speech and transcription provider where none is set; it replaces another
    provider only if you confirm at the prompt or pass `--yes`. `--key-stdin` reads the key from standard input.
@@ -178,8 +179,8 @@ plugins:
 ```
 
 The `plugins.entries.fish-audio.settings` keys (`base_url`, `streaming`, `transport`, `allow_free_model`,
-`operator_account`) and the API key also appear in Desktop ▸ Settings ▸ Plugins ▸ Fish Audio (Capabilities ▸
-Plugins on older Desktop). Set the voice and model from the Fish Audio settings page, the Voices page, `/fish use` or
+`operator_account`) and the API key also appear in Desktop ▸ Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings (on
+older Desktop, the gear on the fish-audio row in Capabilities ▸ Plugins). Set the voice and model from the Fish Audio settings page, the Voices page, `/fish use` or
 `/fish model`. Saved voice names live in `tts.fish-audio.aliases` (name → voice id). On a managed agent, when the
 operator sets the voice, model or names, the plugin says so instead of saving.
 

@@ -130,11 +130,16 @@ describe('settings page body', () => {
     expect(calls).toEqual([])
   })
 
-  it('no key shows the existing no-key card', () => {
+  it('no key: the card on this page sends Enter API key to the Agent settings field, not back to itself', () => {
+    const navigate = vi.spyOn(host, 'navigate')
     const { calls } = mount(gateway(), { key: false, version: '1.4.0', account: true })
     expect(screen.getByText(en.onboardTitle)).toBeTruthy()
+    expect(screen.getByText(en.onboardStep2)).toBeTruthy()
     expect(screen.queryByText(en.settings.restart)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: en.enterKey }))
+    expect(navigate).toHaveBeenCalledWith('/settings?tab=plugins&agent=fish-audio&plugin=fish-audio&profile=default')
     expect(calls).toEqual([])
+    navigate.mockRestore()
   })
 
   it('the no-key card in Settings stops advertising the free model once it has ended', () => {

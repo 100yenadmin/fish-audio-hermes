@@ -39,14 +39,21 @@ describe('Voices page', () => {
     expect(calls).toEqual([])
   })
 
-  it('opens the Fish Audio form in Settings ▸ Plugins from the onboarding card', () => {
+  it('Enter API key opens the key field in Settings ▸ Plugins for the agent on screen', () => {
     $available.set({ key: false, version: '1.2.1', account: true })
     const navigate = vi.spyOn(host, 'navigate')
     mount(async () => ({ ok: true }))
-    fireEvent.click(screen.getByRole('button', { name: en.openPlugins }))
-    // A string literal, not the SDK's pluginSettingsHref: older hosts lack that export. Newer hosts open the form
-    // from agent=; hosts that redirect Settings ▸ Plugins to Capabilities keep only plugin= and highlight that row.
-    expect(navigate).toHaveBeenCalledWith('/settings?tab=plugins&agent=fish-audio&plugin=fish-audio')
+    fireEvent.click(screen.getByRole('button', { name: en.enterKey }))
+    // A string literal, not the SDK's pluginSettingsRouteHref: older hosts lack that export. Newer hosts open Agent
+    // settings from agent= and adopt profile= as the Settings scope; hosts that redirect Settings ▸ Plugins to
+    // Capabilities keep only plugin= and highlight that row.
+    expect(navigate).toHaveBeenCalledWith('/settings?tab=plugins&agent=fish-audio&plugin=fish-audio&profile=default')
+    cleanup()
+    navigate.mockClear()
+    host.state.profile.set('other')
+    mount(async () => ({ ok: true }))
+    fireEvent.click(screen.getByRole('button', { name: en.enterKey }))
+    expect(navigate).toHaveBeenCalledWith('/settings?tab=plugins&agent=fish-audio&plugin=fish-audio&profile=other')
     navigate.mockRestore()
   })
 
@@ -576,7 +583,7 @@ describe('operator account page', () => {
     expect(screen.getByText(en.operatorOnboardBody)).toBeTruthy()
     expect(screen.getAllByRole('button')).toHaveLength(1)
     expect(screen.queryByText(en.getKey)).toBeNull()
-    expect(screen.queryByText(en.openPlugins)).toBeNull()
+    expect(screen.queryByText(en.enterKey)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: en.checkAgain }))
     expect(refresh).toHaveBeenCalled()
     expect(calls).toEqual([])

@@ -51,7 +51,7 @@ import {
 import { $playing, cachedPreview, play, playbackEpoch, releasePlayback, rememberPreview, stop } from './audio'
 import { CreateTab } from './create'
 import { $favouritesRevision, forgetFavourite, readFavourites, writeFavourites } from './favourites'
-import { LANGUAGES, LINKS, PLUGIN_ID, useAccountText } from './strings'
+import { keySettingsPath, LANGUAGES, LINKS, PLUGIN_ID, useAccountText } from './strings'
 import { BilledNote, card, LoadError, muted, Rows } from './ui'
 
 const pad = '0 24px'
@@ -143,10 +143,10 @@ export function Onboarding({ profile, operator, freeModel }: { profile: string; 
           <li>{t('onboardStep1')}</li>
           <li>{t('onboardStep2')}</li>
         </ol>}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {!operator && <><Button onClick={() => open(LINKS.keys)}>{t('getKey')}</Button>
-          <Button onClick={() => host.navigate('/settings?tab=plugins&agent=fish-audio&plugin=fish-audio')} variant="secondary">
-            {t('openPlugins')}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {!operator && <><Button onClick={() => host.navigate(keySettingsPath(profile))}>{t('enterKey')}</Button>
+          <Button onClick={() => open(LINKS.keys)} variant="secondary">
+            {t('getKey')}
           </Button></>}
           <Button onClick={() => void refreshAvailability()} variant="ghost">
             {t('checkAgain')}

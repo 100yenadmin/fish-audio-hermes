@@ -67,6 +67,10 @@ import { atom as atom2, host } from "@hermes/plugin-sdk";
 import { usePluginI18n, useValue } from "@hermes/plugin-sdk";
 var PLUGIN_ID = "fish-audio";
 var PAGE_PATH = "/fish-audio";
+function keySettingsPath(profile) {
+  const base = "/settings?tab=plugins&agent=fish-audio&plugin=fish-audio";
+  return profile ? `${base}&profile=${encodeURIComponent(profile)}` : base;
+}
 function useAccountText(normal, operator) {
   const t = usePluginI18n(PLUGIN_ID);
   const available = useValue($available);
@@ -628,10 +632,10 @@ function Onboarding({ profile, operator, freeModel }) {
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep1") }),
       /* @__PURE__ */ jsx3("li", { children: t("onboardStep2") })
     ] }),
-    /* @__PURE__ */ jsxs3("div", { style: { display: "flex", gap: 8 }, children: [
+    /* @__PURE__ */ jsxs3("div", { style: { display: "flex", flexWrap: "wrap", gap: 8 }, children: [
       !operator && /* @__PURE__ */ jsxs3(Fragment2, { children: [
-        /* @__PURE__ */ jsx3(Button3, { onClick: () => open(LINKS.keys), children: t("getKey") }),
-        /* @__PURE__ */ jsx3(Button3, { onClick: () => host3.navigate("/settings?tab=plugins&agent=fish-audio&plugin=fish-audio"), variant: "secondary", children: t("openPlugins") })
+        /* @__PURE__ */ jsx3(Button3, { onClick: () => host3.navigate(keySettingsPath(profile)), children: t("enterKey") }),
+        /* @__PURE__ */ jsx3(Button3, { onClick: () => open(LINKS.keys), variant: "secondary", children: t("getKey") })
       ] }),
       /* @__PURE__ */ jsx3(Button3, { onClick: () => void refreshAvailability(), variant: "ghost", children: t("checkAgain") })
     ] })
@@ -1304,8 +1308,9 @@ var en = {
   onboardBody: (profile) => `Voices need a Fish Audio API key on ${agentName(profile)}.`,
   onboardFreeModel: "New accounts can start on the free s2.1-pro-free model until 30 November 2026.",
   onboardStep1: "Create a free API key on fish.audio",
-  onboardStep2: "Paste it in Settings \u25B8 Plugins \u25B8 Fish Audio (in older versions: Capabilities \u25B8 Plugins), then restart the gateway",
+  onboardStep2: "Choose Enter API key, paste the key into the Fish Audio API key field under Agent settings, and save it. In Capabilities \u25B8 Plugins, open that field with the gear on the fish-audio row.",
   getKey: "Get an API key",
+  enterKey: "Enter API key",
   openPlugins: "Open Plugins",
   checkAgain: "Check again",
   unreachable: (profile) => `Couldn't reach Fish Audio on ${agentName(profile)}`,
@@ -1503,8 +1508,9 @@ var zh = {
   onboardBody: (profile) => `\u58F0\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName2(profile)}\u4E0A\u914D\u7F6E Fish Audio API \u5BC6\u94A5\u3002`,
   onboardFreeModel: "\u65B0\u8D26\u6237\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8D39\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8D39\u671F\u622A\u81F32026\u5E7411\u670830\u65E5\u3002",
   onboardStep1: "\u5728 fish.audio \u521B\u5EFA\u514D\u8D39 API \u5BC6\u94A5",
-  onboardStep2: "\u5C06\u5BC6\u94A5\u7C98\u8D34\u5230\u8BBE\u7F6E \u25B8 \u63D2\u4EF6 \u25B8 Fish Audio\uFF08\u65E7\u7248\u672C\u4E2D\u4E3A\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\uFF09\uFF0C\u7136\u540E\u91CD\u542F\u7F51\u5173",
+  onboardStep2: "\u9009\u62E9\u201C\u8F93\u5165 API \u5BC6\u94A5\u201D\uFF0C\u5728\u201C\u667A\u80FD\u4F53\u8BBE\u7F6E\u201D\u7684 Fish Audio API key \u5B57\u6BB5\u4E2D\u7C98\u8D34\u5BC6\u94A5\u5E76\u4FDD\u5B58\u3002\u5728\u6280\u80FD\u4E0E\u5DE5\u5177 \u25B8 \u63D2\u4EF6\u4E2D\uFF0C\u70B9\u51FB fish-audio \u884C\u7684\u9F7F\u8F6E\u56FE\u6807\u6253\u5F00\u8BE5\u5B57\u6BB5\u3002",
   getKey: "\u83B7\u53D6 API \u5BC6\u94A5",
+  enterKey: "\u8F93\u5165 API \u5BC6\u94A5",
   openPlugins: "\u6253\u5F00\u63D2\u4EF6",
   checkAgain: "\u518D\u6B21\u68C0\u67E5",
   unreachable: (profile) => `\u65E0\u6CD5\u8FDE\u63A5${agentName2(profile)}\u4E0A\u7684 Fish Audio`,
@@ -1698,8 +1704,9 @@ var zhHant = {
   onboardBody: (profile) => `\u8072\u97F3\u529F\u80FD\u9700\u8981\u5728${agentName3(profile)}\u4E0A\u8A2D\u5B9A Fish Audio API \u91D1\u9470\u3002`,
   onboardFreeModel: "\u65B0\u5E33\u6236\u53EF\u4EE5\u5148\u4F7F\u7528\u514D\u8CBB\u7684 s2.1-pro-free \u6A21\u578B\uFF0C\u514D\u8CBB\u671F\u622A\u81F32026\u5E7411\u670830\u65E5\u3002",
   onboardStep1: "\u5728 fish.audio \u5EFA\u7ACB\u514D\u8CBB API \u91D1\u9470",
-  onboardStep2: "\u5C07\u91D1\u9470\u8CBC\u5230\u8A2D\u5B9A \u25B8 \u5916\u639B \u25B8 Fish Audio\uFF08\u820A\u7248\u672C\u4E2D\u70BA\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\uFF09\uFF0C\u7136\u5F8C\u91CD\u65B0\u555F\u52D5\u9598\u9053",
+  onboardStep2: "\u9078\u64C7\u300C\u8F38\u5165 API \u91D1\u9470\u300D\uFF0C\u5728\u300C\u4EE3\u7406\u7A0B\u5F0F\u8A2D\u5B9A\u300D\u7684 Fish Audio API key \u6B04\u4F4D\u8CBC\u4E0A\u91D1\u9470\u4E26\u5132\u5B58\u3002\u5728\u6280\u80FD\u8207\u5DE5\u5177 \u25B8 \u5916\u639B\u4E2D\uFF0C\u9EDE\u9078 fish-audio \u5217\u7684\u9F52\u8F2A\u5716\u793A\u958B\u555F\u8A72\u6B04\u4F4D\u3002",
   getKey: "\u53D6\u5F97 API \u91D1\u9470",
+  enterKey: "\u8F38\u5165 API \u91D1\u9470",
   openPlugins: "\u958B\u555F\u5916\u639B",
   checkAgain: "\u518D\u6B21\u6AA2\u67E5",
   unreachable: (profile) => `\u7121\u6CD5\u9023\u7DDA\u81F3${agentName3(profile)}\u4E0A\u7684 Fish Audio`,
@@ -1893,8 +1900,9 @@ var ja = {
   onboardBody: (profile) => `\u30DC\u30A4\u30B9\u3092\u4F7F\u3046\u306B\u306F\u3001${agentName4(profile)}\u306B Fish Audio API \u30AD\u30FC\u304C\u5FC5\u8981\u3067\u3059\u3002`,
   onboardFreeModel: "\u65B0\u3057\u3044\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u306F\u30012026\u5E7411\u670830\u65E5\u307E\u3067\u7121\u6599\u306E s2.1-pro-free \u30E2\u30C7\u30EB\u304B\u3089\u59CB\u3081\u3089\u308C\u307E\u3059\u3002",
   onboardStep1: "fish.audio \u3067\u7121\u6599\u306E API \u30AD\u30FC\u3092\u4F5C\u6210",
-  onboardStep2: "\u8A2D\u5B9A \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u25B8 Fish Audio\uFF08\u65E7\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F \u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3\uFF09\u306B\u30AD\u30FC\u3092\u8CBC\u308A\u4ED8\u3051\u3001\u30B2\u30FC\u30C8\u30A6\u30A7\u30A4\u3092\u518D\u8D77\u52D5",
+  onboardStep2: "\u300CAPI \u30AD\u30FC\u3092\u5165\u529B\u300D\u3092\u9078\u3073\u3001\u300C\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u8A2D\u5B9A\u300D\u306E Fish Audio API key \u6B04\u306B\u30AD\u30FC\u3092\u8CBC\u308A\u4ED8\u3051\u3066\u4FDD\u5B58\u3057\u307E\u3059\u3002\u30B9\u30AD\u30EB\u3068\u30C4\u30FC\u30EB \u25B8 \u30D7\u30E9\u30B0\u30A4\u30F3 \u3067\u306F\u3001fish-audio \u306E\u884C\u306E\u6B6F\u8ECA\u30A2\u30A4\u30B3\u30F3\u304B\u3089\u3053\u306E\u6B04\u3092\u958B\u304D\u307E\u3059\u3002",
   getKey: "API \u30AD\u30FC\u3092\u53D6\u5F97",
+  enterKey: "API \u30AD\u30FC\u3092\u5165\u529B",
   openPlugins: "\u30D7\u30E9\u30B0\u30A4\u30F3\u3092\u958B\u304F",
   checkAgain: "\u518D\u78BA\u8A8D",
   unreachable: (profile) => `${agentName4(profile)}\u306E Fish Audio \u306B\u63A5\u7D9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F`,
@@ -2090,8 +2098,9 @@ var ar = {
   onboardBody: (profile) => `\u062A\u062D\u062A\u0627\u062C \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0625\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API \u0644\u0640 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}.`,
   onboardFreeModel: "\u064A\u0645\u0643\u0646 \u0644\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062C\u062F\u064A\u062F\u0629 \u0627\u0644\u0628\u062F\u0621 \u0628\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u062C\u0627\u0646\u064A s2.1-pro-free \u062D\u062A\u0649 30 \u0646\u0648\u0641\u0645\u0628\u0631 2026.",
   onboardStep1: "\u0623\u0646\u0634\u0626 \u0645\u0641\u062A\u0627\u062D API \u0645\u062C\u0627\u0646\u064A\u064B\u0627 \u0639\u0644\u0649 fish.audio",
-  onboardStep2: "\u0627\u0644\u0635\u0642\u0647 \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u25C2 Fish Audio (\u0641\u064A \u0627\u0644\u0625\u0635\u062F\u0627\u0631\u0627\u062A \u0627\u0644\u0623\u0642\u062F\u0645: \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A)\u060C \u062B\u0645 \u0623\u0639\u062F \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u0628\u0648\u0627\u0628\u0629",
+  onboardStep2: "\u0627\u062E\u062A\u0631 \xAB\u0625\u062F\u062E\u0627\u0644 \u0645\u0641\u062A\u0627\u062D API\xBB\u060C \u0648\u0627\u0644\u0635\u0642 \u0627\u0644\u0645\u0641\u062A\u0627\u062D \u0641\u064A \u062D\u0642\u0644 Fish Audio API key \u0636\u0645\u0646 \xAB\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0648\u0643\u064A\u0644\xBB \u062B\u0645 \u0627\u062D\u0641\u0638\u0647. \u0641\u064A \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A \u25C2 \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A\u060C \u064A\u064F\u0641\u062A\u062D \u0647\u0630\u0627 \u0627\u0644\u062D\u0642\u0644 \u0645\u0646 \u0631\u0645\u0632 \u0627\u0644\u062A\u0631\u0633 \u0641\u064A \u0635\u0641 fish-audio.",
   getKey: "\u0627\u0644\u062D\u0635\u0648\u0644 \u0639\u0644\u0649 \u0645\u0641\u062A\u0627\u062D API",
+  enterKey: "\u0625\u062F\u062E\u0627\u0644 \u0645\u0641\u062A\u0627\u062D API",
   openPlugins: "\u0641\u062A\u062D \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A",
   checkAgain: "\u0627\u0644\u062A\u062D\u0642\u0642 \u0645\u062C\u062F\u062F\u064B\u0627",
   unreachable: (profile) => `\u062A\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 Fish Audio \u0644\u062F\u0649 ${isolate(agentName5(profile))}`,
@@ -2285,8 +2294,9 @@ var ru = {
   onboardBody: (profile) => `\u0414\u043B\u044F \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u043D\u0443\u0436\u0435\u043D API-\u043A\u043B\u044E\u0447 Fish Audio, \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u043D\u044B\u0439 \u0434\u043B\u044F ${agentName6(profile)}.`,
   onboardFreeModel: "\u041D\u043E\u0432\u044B\u0435 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0430\u0447\u0430\u0442\u044C \u0441 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u043E\u0439 \u043C\u043E\u0434\u0435\u043B\u0438 s2.1-pro-free \u0434\u043E 30 \u043D\u043E\u044F\u0431\u0440\u044F 2026 \u0433.",
   onboardStep1: "\u0421\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u044B\u0439 API-\u043A\u043B\u044E\u0447 \u043D\u0430 fish.audio",
-  onboardStep2: "\u0412\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u0435\u0433\u043E \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u25B8 Fish Audio (\u0432 \u0431\u043E\u043B\u0435\u0435 \u0440\u0430\u043D\u043D\u0438\u0445 \u0432\u0435\u0440\u0441\u0438\u044F\u0445: \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B), \u0437\u0430\u0442\u0435\u043C \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u0448\u043B\u044E\u0437",
+  onboardStep2: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0412\u0432\u0435\u0441\u0442\u0438 API-\u043A\u043B\u044E\u0447\xBB, \u0432\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u043A\u043B\u044E\u0447 \u0432 \u043F\u043E\u043B\u0435 Fish Audio API key \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0430\u0433\u0435\u043D\u0442\u0430\xBB \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435. \u0412 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \u0412\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u25B8 \u041F\u043B\u0430\u0433\u0438\u043D\u044B \u044D\u0442\u043E \u043F\u043E\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u0437\u043D\u0430\u0447\u043A\u043E\u043C \u0448\u0435\u0441\u0442\u0435\u0440\u0451\u043D\u043A\u0438 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435 fish-audio.",
   getKey: "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u044C API-\u043A\u043B\u044E\u0447",
+  enterKey: "\u0412\u0432\u0435\u0441\u0442\u0438 API-\u043A\u043B\u044E\u0447",
   openPlugins: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043F\u043B\u0430\u0433\u0438\u043D\u044B",
   checkAgain: "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0435\u0449\u0451 \u0440\u0430\u0437",
   unreachable: (profile) => `\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C\u0441\u044F \u043A Fish Audio \u0434\u043B\u044F ${agentName6(profile)}`,
@@ -2480,8 +2490,9 @@ var fr = {
   onboardBody: (profile) => `Les voix n\xE9cessitent une cl\xE9 API Fish Audio pour ${agentName7(profile)}.`,
   onboardFreeModel: "Les nouveaux comptes peuvent commencer avec le mod\xE8le gratuit s2.1-pro-free jusqu\u2019au 30 novembre 2026.",
   onboardStep1: "Cr\xE9ez une cl\xE9 API gratuite sur fish.audio",
-  onboardStep2: "Collez-la dans Param\xE8tres \u25B8 Plugins \u25B8 Fish Audio (dans les versions ant\xE9rieures : Capacit\xE9s \u25B8 Plugins), puis red\xE9marrez le gateway",
+  onboardStep2: "Choisissez Saisir la cl\xE9 API, collez la cl\xE9 dans le champ Fish Audio API key de R\xE9glages de l\u2019agent, puis enregistrez. Dans Capacit\xE9s \u25B8 Plugins, ce champ s\u2019ouvre avec la roue dent\xE9e de la ligne fish-audio.",
   getKey: "Obtenir une cl\xE9 API",
+  enterKey: "Saisir la cl\xE9 API",
   openPlugins: "Ouvrir les plugins",
   checkAgain: "V\xE9rifier \xE0 nouveau",
   unreachable: (profile) => `Impossible de joindre Fish Audio sur ${agentName7(profile)}`,
@@ -2675,8 +2686,9 @@ var de = {
   onboardBody: (profile) => `F\xFCr ${agentName8(profile)} wird ein Fish Audio API-Schl\xFCssel ben\xF6tigt.`,
   onboardFreeModel: "Neue Konten k\xF6nnen bis zum 30. November 2026 mit dem kostenlosen Modell s2.1-pro-free beginnen.",
   onboardStep1: "Erstellen Sie einen kostenlosen API-Schl\xFCssel auf fish.audio",
-  onboardStep2: "F\xFCgen Sie ihn unter Einstellungen \u25B8 Plugins \u25B8 Fish Audio ein (in \xE4lteren Versionen: F\xE4higkeiten \u25B8 Plugins) und starten Sie dann das Gateway neu",
+  onboardStep2: "W\xE4hlen Sie \u201EAPI-Schl\xFCssel eingeben\u201C, f\xFCgen Sie den Schl\xFCssel unter Agent-Einstellungen in das Feld Fish Audio API key ein und speichern Sie. Unter F\xE4higkeiten \u25B8 Plugins \xF6ffnet das Zahnrad in der Zeile fish-audio dieses Feld.",
   getKey: "API-Schl\xFCssel erhalten",
+  enterKey: "API-Schl\xFCssel eingeben",
   openPlugins: "Plugins \xF6ffnen",
   checkAgain: "Erneut pr\xFCfen",
   unreachable: (profile) => `Fish Audio f\xFCr ${agentName8(profile)} war nicht erreichbar`,
@@ -2870,8 +2882,9 @@ var es = {
   onboardBody: (profile) => `Las voces necesitan una clave API de Fish Audio en ${agentName9(profile)}.`,
   onboardFreeModel: "Las cuentas nuevas pueden empezar con el modelo gratuito s2.1-pro-free hasta el 30 de noviembre de 2026.",
   onboardStep1: "Crea una clave API gratuita en fish.audio",
-  onboardStep2: "P\xE9gala en Configuraci\xF3n \u25B8 Plugins \u25B8 Fish Audio (en versiones anteriores: Capacidades \u25B8 Plugins) y reinicia el gateway",
+  onboardStep2: "Elige Introducir clave de API, pega la clave en el campo Fish Audio API key de Ajustes del agente y gu\xE1rdala. En Capacidades \u25B8 Plugins, el campo se abre con el engranaje de la fila fish-audio.",
   getKey: "Obtener una clave API",
+  enterKey: "Introducir clave de API",
   openPlugins: "Abrir Plugins",
   checkAgain: "Volver a comprobar",
   unreachable: (profile) => `No se pudo acceder a Fish Audio en ${agentName9(profile)}`,
