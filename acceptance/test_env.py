@@ -108,19 +108,23 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
     if mode != 'term': assert state['sleep'] >= 9.99
 
 
-@pytest.mark.parametrize('case', ['no-key','files','missing-fish','missing-glm'])
+@pytest.mark.parametrize('case', ['no-key','files','missing-fish','missing-glm','keyless-fish','keyless-glm','twice-glm'])
 def test_key_wrapper_only_reads_explicit_fake_files(tmp_path, case):
     # Do not inherit or inspect any real key values or machine-local key file paths.
     env = {'PATH':os.defpath, 'HOME':str(tmp_path)}
     for variable, name, key in [('FISH_ACCEPTANCE_KEY_FILE','fish','FISH_API_KEY'),
                                ('FISH_ACCEPTANCE_GLM_ENV','glm','GLM_API_KEY')]:
         file = tmp_path / name
-        file.write_text(f'{key}="synthetic-{name}"\nUNRELATED=ignored\n')
+        line = f'{key}="synthetic-{name}"\n'
+        if case == f'keyless-{name}': line = ''
+        if case == f'twice-{name}': line *= 2
+        file.write_text(line + 'UNRELATED=ignored\n')
         if case != 'no-key': env[variable] = str(file if case != f'missing-{name}' else tmp_path / 'absent')
     command = [sys.executable, '-c', 'import os; assert os.getenv("FISH_API_KEY")=="synthetic-fish"; assert os.getenv("GLM_API_KEY")=="synthetic-glm"; assert "UNRELATED" not in os.environ']
     p = subprocess.run(['/bin/bash', str(HERE / 'with-keys.sh'), *command], env=env, capture_output=True, text=True)
     assert p.returncode == (0 if case == 'files' else 2), p.stderr
     if case.startswith('missing'): assert 'named key file missing' in p.stderr
+    if case.startswith(('keyless','twice')): assert 'must set' in p.stderr and 'synthetic' not in p.stderr
 
 
 def test_seed_must_have_node_modules(tmp_path):

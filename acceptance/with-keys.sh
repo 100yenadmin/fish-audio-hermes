@@ -19,8 +19,15 @@ PYKEY
 for file in "$KEY_FILE" "$GLM_ENV"; do
   if [[ -n "$file" && ! -f "$file" ]]; then echo "with-keys.sh: named key file missing: $file" >&2; exit 2; fi
 done
-if [[ -z ${FISH_API_KEY:-} && -n "$KEY_FILE" ]]; then export FISH_API_KEY=$(read_key "$KEY_FILE" FISH_API_KEY); fi
-if [[ -z ${GLM_API_KEY:-} && -n "$GLM_ENV" ]]; then export GLM_API_KEY=$(read_key "$GLM_ENV" GLM_API_KEY); fi
+# A named file must supply its key exactly once; an empty GLM key would turn every agent row into an allowed skip.
+load_key() {  # load_key FILE NAME
+  local value
+  value=$(read_key "$1" "$2")
+  if [[ -z "$value" ]]; then echo "with-keys.sh: $1 must set $2 exactly once" >&2; exit 2; fi
+  export "$2=$value"
+}
+if [[ -z ${FISH_API_KEY:-} && -n "$KEY_FILE" ]]; then load_key "$KEY_FILE" FISH_API_KEY; fi
+if [[ -z ${GLM_API_KEY:-} && -n "$GLM_ENV" ]]; then load_key "$GLM_ENV" GLM_API_KEY; fi
 if [[ -z ${FISH_API_KEY:-} ]]; then
   echo "with-keys.sh: set FISH_API_KEY, or FISH_ACCEPTANCE_KEY_FILE to a file that sets it" >&2
   exit 2
