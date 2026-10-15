@@ -260,6 +260,11 @@ the wallet that users can't see.
 - Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish account (except
   `s2.1-pro-free` while Fish offers it free, announced through 30 November 2026).
 - Fish Audio may use free-model requests to improve its models.
+- With live dictation on (`stt.streaming: true`), microphone audio streams to `api.fish.audio` while you speak,
+  through its ElevenLabs-compatible realtime STT endpoint, billed per committed phrase rounded up to a second.
+- The plugin sends your key and the text, audio, file names and voice details you ask it to process to
+  `api.fish.audio` (or the `base_url` you configure), reads your wallet for balance and model choice, stores your key
+  in Hermes's `.env`, and collects no telemetry. [SECURITY.md](SECURITY.md) lists what each request carries.
 - The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
   existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a
   designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a
