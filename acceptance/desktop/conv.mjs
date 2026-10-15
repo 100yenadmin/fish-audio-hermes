@@ -110,10 +110,14 @@ async function turn(s, rec, dir, text, { timeout = 90000, onSpeaking, onThinking
   const speakSent = frames.filter(f => f.kind === 'speak' && f.dir === 'sent' && f.json)
   const speakRecv = frames.filter(f => f.kind === 'speak' && f.dir === 'recv')
   const at = v => st.find(x => x.v === v)?.t
-  // Reply audio only: UI earcons can play earlier in the turn, so count buffers/plays from the Speaking status on.
+  // Reply audio only, scoped to this turn: sources started (or media played) from this turn's Speaking status, which
+  // follows its submit, until the Listening that ends the turn. UI earcons play outside that window.
   const tSpeak = at('Speaking') ?? Infinity
-  const audio = after.audio.slice(before.audio.length).map(a => ({ t: rec.timeOrigin + a.t, d: a.d })).filter(a => a.t >= tSpeak - 100)
-  const media = after.media.slice(before.media.length).map(m => ({ t: rec.timeOrigin + m.t, d: m.d })).filter(a => a.t >= tSpeak - 100)
+  const realEnd = st.filter(x => !x.v.startsWith('(')).at(-1)
+  const tEnd = spoke && realEnd?.v === 'Listening' ? realEnd.t : Infinity
+  const inTurn = a => a.t >= tSpeak - 100 && a.t < tEnd
+  const audio = after.audio.slice(before.audio.length).map(a => ({ t: rec.timeOrigin + a.t, d: a.d })).filter(inTurn)
+  const media = after.media.slice(before.media.length).map(m => ({ t: rec.timeOrigin + m.t, d: m.d })).filter(inTurn)
   const firstAudio = Math.min(...[...audio, ...media].map(a => a.t), Infinity)
   const replyDone = st.filter(x => x.v === '(reply done)' && x.t <= firstAudio).at(-1)?.t
   const startFrame = speakRecv.find(f => f.json?.type === 'start')
@@ -122,7 +126,7 @@ async function turn(s, rec, dir, text, { timeout = 90000, onSpeaking, onThinking
     submits: after.users.length - before.users.length, user_text: after.users.at(-1) || null, reply: after.replies.at(-1) || null,
     speak_streams: [...rec.sockets.values()].slice(sock0).filter(x => x.url.includes('speak-stream')).length,
     pcm_frames: speakRecv.filter(f => f.op === 2).length, speak_frames: speakRecv.filter(f => f.json).map(f => f.json.type),
-    spoken_text: speakSent.map(f => f.json.text || '').join(''), speak_sent: speakSent.map(f => Object.keys(f.json).join('+')), audio_buffers: audio.length, media_plays: media.length,
+    spoken_text: speakSent.map(f => f.json.text || '').join(''), speak_sent: speakSent.map(f => Object.keys(f.json).join('+')), audio_buffers: audio.length, media_plays: media.length, played: audio.length + media.length > 0,
     vad_end_to_transcribing_ms: at('Transcribing') && at('Transcribing') - speechEnd,
     vad_end_to_thinking_ms: at('Thinking') && at('Thinking') - speechEnd,
     vad_end_to_first_delta_ms: at('(reply streaming)') && at('(reply streaming)') - speechEnd,
@@ -180,14 +184,16 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
   const ok1 = seq(m1.statuses, ['Listening', 'Transcribing', 'Thinking', 'Speaking', 'Listening']) || seq(m1.statuses, ['Transcribing', 'Thinking', 'Speaking', 'Listening'])
   const match1 = overlap(PROMPTS[0], m1.user_text)
   if (want('B-CONV-1')) {
-    const pass = ok1 && m1.pcm_frames >= 1 && match1 >= 0.8 && m1.submits === 1
-    const r = row('B-CONV-1', pass ? 'pass' : 'fail', `${brief(m1)}; user text match ${(match1 * 100).toFixed(0)}% ("${m1.user_text}")`, { theme })
+    // Received PCM is not enough: the reply must have been played (sources started or media played in this turn).
+    const pass = ok1 && m1.pcm_frames >= 1 && m1.played && match1 >= 0.8 && m1.submits === 1
+    const r = row('B-CONV-1', pass ? 'pass' : 'fail', `${brief(m1)}; reply playback ${m1.audio_buffers} buffers/${m1.media_plays} plays; user text match ${(match1 * 100).toFixed(0)}% ("${m1.user_text}")`, { theme })
     r.metrics = { ...m1, read_aloud: readAloud }; r.evidence.push(shotPath('B-CONV-1', theme, 'speaking'), await c.shot(s, shotPath('B-CONV-1', theme)))
   }
   if (want('B-CONV-4')) {
     const a = norm(m1.spoken_text), b = norm(m1.reply)
-    const r = row('B-CONV-4', a && a === b ? 'pass' : 'fail', a && a === b ? `spoken text == reply (${b.length} chars, normalised)` : `spoken ${JSON.stringify(m1.spoken_text.slice(0, 120))} vs reply ${JSON.stringify((m1.reply || '').slice(0, 120))}`, { theme })
-    r.metrics = { spoken: m1.spoken_text, reply: m1.reply }
+    // Equality of the text sent to speak-stream only counts for a turn whose reply was actually played.
+    const r = row('B-CONV-4', a && a === b && m1.played ? 'pass' : 'fail', a && a === b ? `spoken text == reply (${b.length} chars, normalised)${m1.played ? '' : ', but the turn played no reply audio'}` : `spoken ${JSON.stringify(m1.spoken_text.slice(0, 120))} vs reply ${JSON.stringify((m1.reply || '').slice(0, 120))}`, { theme })
+    r.metrics = { spoken: m1.spoken_text, reply: m1.reply, played: m1.played }
   }
   // B-CONV-2: five more turns in the same conversation.
   if (want('B-CONV-2')) {
@@ -197,11 +203,11 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
     const stuck = ms.filter(m => m.statuses.at(-1) !== 'Listening').length
     const texts = ms.map(m => norm(m.spoken_text)).filter(Boolean)
     const respoken = texts.length - new Set(texts).size + ms.filter(m => m.speak_streams > 1).length
-    const silent = ms.filter(m => !m.pcm_frames).length
+    const silent = ms.filter(m => !m.played).length // no reply playback in that turn
     const pass = submits === 5 && !stuck && !respoken && !silent
     const noText = ms.filter(m => m.speak_streams && !m.spoken_text).length
     const r = row('B-CONV-2', pass ? 'pass' : 'fail', `5 turns: submits ${submits}, stuck ${stuck}, re-spoken ${respoken}, silent ${silent} (${noText} with no reply text sent to speak-stream); first-audio ms ${ms.map(m => m.vad_end_to_first_audio_ms).join('/')}`, { theme })
-    r.metrics = { turns: ms.map(m => ({ statuses: m.statuses, submits: m.submits, first_audio_ms: m.vad_end_to_first_audio_ms, user: m.user_text, pcm: m.pcm_frames, sent: m.speak_sent, timeline: m.timeline })) }
+    r.metrics = { turns: ms.map(m => ({ statuses: m.statuses, submits: m.submits, first_audio_ms: m.vad_end_to_first_audio_ms, user: m.user_text, pcm: m.pcm_frames, buffers: m.audio_buffers, plays: m.media_plays, sent: m.speak_sent, timeline: m.timeline })) }
     r.evidence.push(await c.shot(s, shotPath('B-CONV-2', theme)))
   }
   // B-CONV-3: barge-in 1.5 s after the first audio of a long reply.
@@ -224,16 +230,19 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
       } catch (err) { window.__apiWrapped = 'wrap error: ' + err.message }
       return window.__apiWrapped
     })
-    let barge = null, usersAtBarge = null, tBpage = null, tBwall = null
+    let barge = null, usersAtBarge = null, tBpage = null, tBwall = null, tBperf = null
+    // Only this turn's playback counts: sources logged after this index belong to the long reply (or later).
+    const nLong = await s.page.evaluate(() => (window.__audioLog || []).length)
     const m = await turn(s, rec, dir, LONG, {
       timeout: 120000,
       onSpeaking: async () => {
         const t0 = Date.now()
-        while (Date.now() - t0 < 15000 && !(await s.page.evaluate(() => (window.__audioLog || []).length))) await c.sleep(50)
+        while (Date.now() - t0 < 15000 && !(await s.page.evaluate(n => (window.__audioLog || []).length > n, nLong))) await c.sleep(50)
         await c.sleep(1500)
         const n0 = (await s.page.evaluate(() => window.__audioLog.length)), c0 = rec.closed.length
         usersAtBarge = (await pageState(s)).users
-        const u = utter(dir, BARGE); const tB = Date.now(); tBwall = tB; tBpage = await s.page.evaluate(() => Date.now())
+        const u = utter(dir, BARGE); const tB = Date.now(); tBwall = tB
+        ;({ wall: tBpage, perf: tBperf } = await s.page.evaluate(() => ({ wall: Date.now(), perf: performance.now() })))
         s.page.evaluate(b => window.__mic.say(b), u.b64).catch(() => {})
         let cut = null, wsClosed = null
         while (Date.now() - tB < 6000 && cut == null) {
@@ -244,7 +253,21 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
         }
         await c.sleep(800)
         const late = (await s.page.evaluate(n => window.__audioLog.slice(n).map(a => a.t), n0)).map(t => rec.timeOrigin + t).filter(t => t > tB + (cut ?? 0) + 300)
-        barge = { cut_ms: cut, ws_closed_ms: wsClosed ? wsClosed.t - tB : null, buffers_after_cut: late.length }
+        // Cancellation of what was playing: the long reply's sources active at onset (started, not yet ended or
+        // stopped) and when each stopped or ended. Judged 2 s after onset, past the 1.5 s budget.
+        const rest = 2000 - (Date.now() - tB); if (rest > 0) await c.sleep(rest)
+        const src = await s.page.evaluate(({ n, tBperf, tBpage }) => {
+          const off = Date.now() - performance.now()
+          const think = window.__st.filter(x => x.v === 'Thinking' && x.t < tBpage).at(-1)?.t
+          const tSub = think != null ? think - off : null
+          // A source is silenced by its ended event, its stop() (at the stop's scheduled time) or its context's close().
+          const end = e => Math.min(e.endedAt ?? Infinity, e.stopAt != null ? Math.max(e.stopAt, e.stopSched ?? e.stopAt) : Infinity, window.__ctxClosed?.[e.ctx] ?? Infinity)
+          const active = window.__audioLog.slice(n).filter(e => e.t < tBperf && end(e) > tBperf)
+          const playing = active.filter(e => e.sched <= tBperf && (tSub == null || e.t >= tSub))
+          return { submit_to_onset_ms: tSub != null ? Math.round(tBperf - tSub) : null, active_at_onset: active.length, playing_at_onset: playing.length,
+            stop_ms: active.map(e => Number.isFinite(end(e)) ? Math.round(end(e) - tBperf) : null) }
+        }, { n: nLong, tBperf, tBpage })
+        barge = { cut_ms: cut, ws_closed_ms: wsClosed ? wsClosed.t - tB : null, buffers_after_cut: late.length, ...src }
         await c.shot(s, shotPath('B-CONV-3', theme, 'barge'))
       }
     })
@@ -284,11 +307,14 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
     // Required: the agent stops talking within 1.5 s, no audio plays after the cut, and the interruption becomes the
     // next turn. How fast Desktop's own VAD trips (SUSTAINED_MS 300 + majority window) is host behaviour, so the
     // 600 ms latency bar is the advisory row B-CONV-3L.
-    const pass = barge && barge.cut_ms != null && barge.cut_ms <= 1500 && barge.buffers_after_cut === 0 && bargeSubmitted && !echo
+    // The long reply must be audibly playing at onset, and every source active then must stop or end within 1.5 s.
+    const playingAtOnset = barge && barge.playing_at_onset > 0
+    const allStopped = barge && barge.stop_ms.every(x => x != null && x <= 1500)
+    const pass = barge && playingAtOnset && allStopped && barge.cut_ms != null && barge.cut_ms <= 1500 && barge.buffers_after_cut === 0 && bargeSubmitted && !echo
     const fast = barge && barge.cut_ms != null && barge.cut_ms <= 600
     row('B-CONV-3L', fast ? 'pass' : 'fail', barge ? `cut ${barge.cut_ms} ms after barge onset (advisory bar ≤600 ms)` : 'never reached Speaking with audio', { theme, advisory: true })
-    const r = row('B-CONV-3', pass ? 'pass' : 'fail', barge ? `cut ${barge.cut_ms} ms after barge onset (bar ≤1500 ms), WS closed ${barge.ws_closed_ms} ms, buffers after cut ${barge.buffers_after_cut}; barge submitted ${bargeSubmitted} (shown in transcript ${bargeShown}); echo submit ${echo}` : 'never reached Speaking with audio', { theme })
-    r.metrics = { ...barge, long_turn: { statuses: m.statuses, first_audio_ms: m.vad_end_to_first_audio_ms }, barge_text: BARGE, transcribe_wrap: txWrap, transcribe_requests: tx.map(e => ({ ...e, t: tBpage != null ? e.t - tBpage : e.t })), composer_after: composerText, statuses_after_barge: statusesAfterBarge, users_at_barge: usersAtBarge, users_after_barge: after, stored_users_after_barge: stored, barge_transcribing_ms: tTx != null && tBpage != null ? tTx - tBpage : null, users: st.users, reply_head: (m.reply || '').slice(0, 300), m2: !!m2 }
+    const r = row('B-CONV-3', pass ? 'pass' : 'fail', barge ? `cut ${barge.cut_ms} ms after barge onset (bar ≤1500 ms); reply sources playing at onset ${barge.playing_at_onset} of ${barge.active_at_onset} active, stopped/ended at ${JSON.stringify(barge.stop_ms)} ms (bar ≤1500 ms); WS closed ${barge.ws_closed_ms} ms, buffers after cut ${barge.buffers_after_cut}; barge submitted ${bargeSubmitted}; echo submit ${echo}` : 'never reached Speaking with audio', { theme })
+    r.metrics = { ...barge, long_turn: { statuses: m.statuses, first_audio_ms: m.vad_end_to_first_audio_ms }, barge_text: BARGE, transcribe_wrap: txWrap, transcribe_requests: tx.map(e => ({ ...e, t: tBpage != null ? e.t - tBpage : e.t })), composer_after: composerText, statuses_after_barge: statusesAfterBarge, users_at_barge: usersAtBarge, users_after_barge: after, stored_users_after_barge: stored, barge_shown_in_transcript: bargeShown, barge_transcribing_ms: tTx != null && tBpage != null ? tTx - tBpage : null, users: st.users, reply_head: (m.reply || '').slice(0, 300), m2: !!m2 }
     r.evidence.push(shotPath('B-CONV-3', theme, 'barge'), shotPath('B-CONV-3', theme, 'after'))
     await waitStatus(s, /^Listening$/, 60000)
   }
@@ -330,6 +356,8 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
   // B-DICT-1: composer-mic dictation over transcribe-stream.
   if (want('B-DICT-1')) {
     await c.page_escape(s); await c.nav(s, '#/'); await c.sleep(800)
+    const readComposer = () => s.page.evaluate(() => { const e = document.querySelector('textarea, [contenteditable=true]'); return e ? (e.value ?? e.innerText).trim() : null })
+    const composerBefore = await readComposer() // baseline: only text this capture adds is judged
     const f0 = rec.frames.length, s0 = rec.sockets.size
     await s.page.locator('[aria-label="Voice dictation"]').first().click({ timeout: 8000 })
     const u = utter(dir, DICTATE); const tS = Date.now()
@@ -338,16 +366,25 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
     for (let i = 0; i < 60 && !rec.frames.slice(f0).some(f => f.json?.type === 'partial'); i++) await c.sleep(100)
     await c.sleep(300); const pill = await c.shot(s, shotPath('B-DICT-1', theme, 'caption'))
     await said
-    await s.page.locator('[aria-label="Stop dictation"]').first().click({ timeout: 5000 }).catch(() => {})
+    const stopped = await s.page.locator('[aria-label="Stop dictation"]').first().click({ timeout: 5000 }).then(() => true, () => false)
     let fin = null
     for (let i = 0; i < 80 && !fin; i++) { fin = rec.frames.slice(f0).find(f => f.kind === 'transcribe' && f.json?.type === 'final'); if (!fin) await c.sleep(200) }
+    // Back to idle: the dictation control offers "Voice dictation" again and no "Stop dictation" remains.
+    let idle = false
+    for (let i = 0; i < 50 && !idle; i++) {
+      idle = !(await s.page.locator('[aria-label="Stop dictation"]').count()) && (await s.page.locator('[aria-label="Voice dictation"]').count()) > 0
+      if (!idle) await c.sleep(200)
+    }
     await c.sleep(1200)
-    const composer = await s.page.evaluate(() => { const e = document.querySelector('textarea, [contenteditable=true]'); return e ? (e.value ?? e.innerText).trim() : null })
+    const composer = await readComposer()
+    const added = composer == null ? null : composerBefore && composer.startsWith(composerBefore) ? composer.slice(composerBefore.length).trim() : composer
     const ws = [...rec.sockets.values()].slice(s0).some(x => x.url.includes('transcribe-stream'))
     const partial = rec.frames.slice(f0).find(f => f.kind === 'transcribe' && f.json?.type === 'partial')
-    const match = overlap(DICTATE, composer)
-    const r = row('B-DICT-1', ws && match >= 0.8 ? 'pass' : 'fail', `transcribe-stream WS ${ws ? 'opened' : 'NOT opened'}; first caption ${partial ? partial.t - tS + ' ms' : 'none'}; final ${fin ? JSON.stringify(fin.json.transcript) : 'none'}; composer match ${(match * 100).toFixed(0)}%`, { theme, evidence: [pill] })
-    r.metrics = { composer, first_caption_ms: partial ? partial.t - tS : null, final: fin?.json?.transcript ?? null }
+    const match = overlap(DICTATE, added)
+    // The caption screenshot is evidence only; the row asserts the final frame, a clean stop and the inserted text.
+    const pass = ws && !!fin && stopped && idle && match >= 0.8
+    const r = row('B-DICT-1', pass ? 'pass' : 'fail', `transcribe-stream WS ${ws ? 'opened' : 'NOT opened'}; first caption ${partial ? partial.t - tS + ' ms' : 'none'}; final ${fin ? JSON.stringify(fin.json.transcript) : 'none'}; Stop dictation ${stopped ? 'clicked' : 'NOT clickable'}, control ${idle ? 'back to idle' : 'NOT back to idle'}; new composer text match ${(match * 100).toFixed(0)}%`, { theme, evidence: [pill] })
+    r.metrics = { composer_before: composerBefore, composer, added, stopped, idle, first_caption_ms: partial ? partial.t - tS : null, final: fin?.json?.transcript ?? null }
     r.evidence.push(await c.shot(s, shotPath('B-DICT-1', theme)))
     await s.page.evaluate(() => { const e = document.querySelector('textarea, [contenteditable=true]'); e?.focus() })
     await s.page.keyboard.press('Meta+a'); await s.page.keyboard.press('Backspace')

@@ -220,15 +220,17 @@ async function keyEntryRow(s, theme) {
   await input.scrollIntoViewIfNeeded(); await input.fill(FAKE_KEY)
   await s.page.evaluate(() => { window.__toasts = []; new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { const t = (n.innerText || n.textContent || '').trim(); if (t) window.__toasts.push(t.slice(0, 160)) }))).observe(document.body, { childList: true, subtree: true }) })
   await c.clickText(s, 'Save settings', { role: 'button' })
-  let toast = null
-  for (let i = 0; i < 30 && !toast; i++) { await c.sleep(150); toast = (await s.page.evaluate(() => window.__toasts)).find(t => /saved|updated|error|fail|could not/i.test(t)) || null }
+  // Up to 15 s: the first save on a cold Desktop can keep its spinner for several seconds. toast_ms records how long.
+  let toast = null; const tSave = Date.now()
+  for (let i = 0; i < 100 && !toast; i++) { await c.sleep(150); toast = (await s.page.evaluate(() => window.__toasts)).find(t => /saved|updated|error|fail|could not/i.test(t)) || null }
+  const toastMs = toast ? Date.now() - tSave : null
   // Positive control for the conversation rows' toast probe (role=region > role=alert|status).
   const regionToast = await s.page.evaluate(() => [...document.querySelectorAll('[role=region] [role=alert], [role=region] [role=status]')].map(e => e.innerText.trim()).filter(Boolean)[0] || null)
   const shot = await c.shot(s, shotPath('B-KEY-1', theme))
   const avail = (await gw('/api/plugins/fish-audio/available')).body || {}
   const ok = /saved|updated/i.test(toast || '') && !/error|fail|could not/i.test(toast || '') && avail.key === true
   const r = row('B-KEY-1', ok ? 'pass' : 'fail', `fake key typed via ${via}, Save → toast ${JSON.stringify(toast)}; /available key:${avail.key} (no restart)`, { theme, evidence: [shot] })
-  r.metrics = { toast, key_after_save: avail.key, region_toast_probe: regionToast }
+  r.metrics = { toast, toast_ms: toastMs, key_after_save: avail.key, region_toast_probe: regionToast }
   // Back to no key for the next theme / phase: remove the line and restart the gateway.
   hostctl('clear-key'); await waitGateway(); await c.sleep(3000)
 }
@@ -239,11 +241,14 @@ async function libraryRows(s, theme, account) {
   await c.clickText(s, 'Library', { timeout: 5000 }).catch(() => {}) // the page remembers the last tab
   let uses = 0
   for (let i = 0; i < 60 && !uses; i++) { uses = await s.page.getByRole('button', { name: 'Use', exact: true }).count(); if (!uses) await c.sleep(250) }
-  let chip = null // the status-bar credit chip loads asynchronously after the key lands
-  for (let i = 0; i < 60 && !chip; i++) { chip = (await c.text(s)).match(/Fish \$\s?([\d.,]+)/); if (!chip) await c.sleep(250) }
+  // The status-bar credit chip loads asynchronously after the key lands. If the first /account read fails (for example a
+  // busy shared key), the plugin reads it again on its next /available probe, every 60 s: so allow one probe cycle.
+  let chip = null; const tChip = Date.now()
+  for (let i = 0; i < 300 && !chip; i++) { chip = (await c.text(s)).match(/Fish \$\s?([\d.,]+)/); if (!chip) await c.sleep(250) }
+  const chipMs = chip ? Date.now() - tChip : null
   if (want('B-LIB-1')) {
     const r = row('B-LIB-1', uses && chip ? 'pass' : 'fail', `Library lists ${uses} voices; credit chip ${chip ? chip[0] : 'missing'}`, { theme })
-    r.metrics = { voices: uses, chip: chip && chip[0] }; r.evidence.push(await c.shot(s, shotPath('B-LIB-1', theme)))
+    r.metrics = { voices: uses, chip: chip && chip[0], chip_ms: chipMs }; r.evidence.push(await c.shot(s, shotPath('B-LIB-1', theme)))
   }
   if (!uses) { for (const id of ['B-LIB-2', 'B-LIB-3']) if (want(id)) row(id, 'fail', 'Library listed no voices', { theme }) }
   if (want('B-LIB-2') && !args['no-billed'] && uses) {
@@ -277,10 +282,11 @@ async function libraryRows(s, theme, account) {
     const changed = !!set.voice && set.voice !== prior
     const yaml = fs.existsSync(cfg) ? fs.readFileSync(cfg, 'utf8') : ''
     const inYaml = set.voice && yaml.includes(set.voice)
-    let ui = null
-    for (let i = 0; i < 24 && !ui; i++) { ui = await s.page.evaluate(() => document.body.innerText.match(/(In use|Using|Current voice|Active)[^\n]{0,60}/)?.[0] || null); if (!ui) await c.sleep(250) }
+    let ui = null; const tUi = Date.now()
+    for (let i = 0; i < 60 && !ui; i++) { ui = await s.page.evaluate(() => document.body.innerText.match(/(In use|Using|Current voice|Active)[^\n]{0,60}/)?.[0] || null); if (!ui) await c.sleep(250) }
+    const uiMs = ui ? Date.now() - tUi : null
     const r = row('B-LIB-3', changed && inYaml && ui ? 'pass' : 'fail', `Use on "${name}" → tts.fish-audio.voice=${set.voice || 'unset'}${changed ? '' : ` (unchanged from ${prior || 'unset'})`} (config.yaml ${inYaml ? 'has it' : 'lacks it'}); UI marker ${JSON.stringify(ui)}`, { theme })
-    r.metrics = { voice_name: name, voice_id: set.voice, prior_voice_id: prior, ui }; r.evidence.push(await c.shot(s, shotPath('B-LIB-3', theme)))
+    r.metrics = { voice_name: name, voice_id: set.voice, prior_voice_id: prior, ui, ui_ms: uiMs }; r.evidence.push(await c.shot(s, shotPath('B-LIB-3', theme)))
   }
   if (want('B-LIB-4')) {
     const errs = []; const ev = []
@@ -309,7 +315,7 @@ async function main() {
   meta.desktop_half = H === 'upstream' ? `plugin ${host.plugin_ref} desktop/plugin.js (Install-from-Git layout)` : `bundled in ${host.desktop_ref} (src/plugins/fish-audio)`
   try { hostctl('clear-key') } catch (e) { console.error(e.message) }
   await waitGateway()
-  if (!args['no-launch']) launch(tree)
+  if (!args['no-launch']) { launched = true; launch(tree) }
   const s = await c.connect({ tree, cdpPort: CDP, vitePort: VITE })
   meta.desktop_half_setup = await setup(s)
   meta.mic_gate = await s.page.evaluate(() => Promise.race([window.hermesDesktop?.requestMicrophoneAccess?.(), new Promise(r => setTimeout(() => r('TIMEOUT'), 3000))]).then(String, e => 'ERR ' + e.message))
@@ -353,7 +359,17 @@ async function finish(meta, s) {
   fs.writeFileSync(path.join(OUT, 'rows-b.json'), JSON.stringify(all, null, 1))
   fs.writeFileSync(path.join(OUT, 'rows-b.meta.json'), JSON.stringify(meta, null, 1))
   fs.rmSync(path.join(OUT, 'rows-b.partial.json'), { force: true })
-  if (s && !args['keep-up']) spawnSync(path.join(HERE, 'launch.sh'), ['down', '--out', OUT])
+  teardown()
   process.exit(0)
 }
-await main()
+// Desktop teardown runs on every exit path, including an exception before finish().
+let launched = false, tornDown = false
+function teardown() {
+  if (!launched || tornDown || args['keep-up']) return
+  tornDown = true
+  spawnSync(path.join(HERE, 'launch.sh'), ['down', '--out', OUT], { stdio: ['ignore', 'inherit', 'inherit'] })
+}
+try { await main() } catch (e) {
+  console.error(`[${H}] run aborted: ${e.stack}`)
+  process.exitCode = 1
+} finally { teardown() }
