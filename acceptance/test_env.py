@@ -73,7 +73,7 @@ def test_build_failure_keeps_scrubbed_cause(monkeypatch, tmp_path):
     assert 'synthetic-placeholder' not in str(exc.value)
 
 
-@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn', 'port-closed', 'port-closed-stubborn'])
+@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn', 'port-closed', 'port-closed-stubborn', 'leader-exits'])
 def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mode):
     host = object.__new__(harness.Host)
     host.out = tmp_path; host.meta = {'gateway_url':'http://127.0.0.1:9361'}
@@ -83,6 +83,8 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
     identity = f'fixed start gateway-worker --run-dir {tmp_path}'
     def ps(*a, **kw):
         state['identity'] += 1
+        if mode == 'leader-exits' and signal.SIGTERM in state['signals']:
+            return SimpleNamespace(stdout='')  # the worker exited on TERM; a descendant still holds the group
         return SimpleNamespace(stdout='changed' if mode == 'changed' and state['identity'] > 2 else identity)
     class Socket:
         def __enter__(self): return self
@@ -95,7 +97,7 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
             return
         state['signals'].append(sig)
         if mode.startswith('port-closed'): state['open'] = False
-        if mode == 'term' or mode in ('kill', 'port-closed') and sig == signal.SIGKILL:
+        if mode == 'term' or mode in ('kill', 'port-closed', 'leader-exits') and sig == signal.SIGKILL:
             state.update(open=False, alive=False)
     monkeypatch.setattr(harness.subprocess, 'run', ps)
     monkeypatch.setattr(harness.socket, 'socket', Socket)
@@ -130,6 +132,30 @@ def test_gateway_shutdown_reaps_a_worker_this_process_started(tmp_path):
         with pytest.raises(ProcessLookupError):
             os.killpg(pid, 0)
     finally:
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+
+def test_gateway_shutdown_kills_a_descendant_that_outlives_the_worker(monkeypatch, tmp_path):
+    # The worker exits on TERM while a descendant in its process group ignores TERM: down() must SIGKILL the group.
+    host = object.__new__(harness.Host)
+    host.out = tmp_path; host.meta = {'gateway_url': 'http://127.0.0.1:9'}
+    child = 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)'
+    code = f'import subprocess, sys, time; subprocess.Popen([sys.executable, "-c", {child!r}]); time.sleep(60)'
+    pid = subprocess.Popen([sys.executable, '-c', code, 'gateway-worker', '--run-dir', str(tmp_path)], start_new_session=True).pid
+    (tmp_path / 'gateway-pid.json').write_text(json.dumps({'pid': pid}))
+    real_sleep = time.sleep
+    try:
+        real_sleep(1)  # until the descendant has started and ps shows the worker's command line
+        monkeypatch.setattr(harness.time, 'sleep', lambda sec: real_sleep(sec / 10))
+        host.down()
+        assert not (tmp_path / 'gateway-pid.json').exists()
+        with pytest.raises(ProcessLookupError):
+            os.killpg(pid, 0)
+    finally:
+        monkeypatch.undo()
         try:
             os.killpg(pid, signal.SIGKILL)
         except (ProcessLookupError, PermissionError):

@@ -459,8 +459,8 @@ def test_live_stt(paid, request):
                 frames.append(frame)
             except TimeoutError:
                 pass
-        ws.send(json.dumps({'eos': True}))
         eos_ms = (time.monotonic() - started) * 1000
+        ws.send(json.dumps({'eos': True}))
         while not frames or frames[-1]['type'] not in ('final', 'error'):
             frame = json.loads(ws.recv(timeout=25))
             frame['received_ms'] = (time.monotonic() - started) * 1000

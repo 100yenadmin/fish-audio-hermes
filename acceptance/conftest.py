@@ -228,18 +228,24 @@ class Host:
             try:
                 os.killpg(pid, 0)
                 return False
-            except (ProcessLookupError, PermissionError):  # macOS answers EPERM for a group of zombies only
+            except (ProcessLookupError, PermissionError):
+                # EPERM: every member is a zombie (macOS) or the id names another user's group. Same-user processes can
+                # always be signalled, so either way none of this gateway's processes is alive.
                 return True
         recorded = identity()
         if 'gateway-worker' in recorded and str(self.out) in recorded:
             for sig, ticks in ((signal.SIGTERM, 100), (signal.SIGKILL, 50)):
-                if identity() != recorded:
+                now = identity()
+                # The worker can exit on TERM while a descendant ignores it. Its group keeps the worker's id, and a group
+                # id is not reused while any member lives, so the group is still this gateway's: escalate to it.
+                leader_gone = sig == signal.SIGKILL and not now and not group_gone()
+                if now != recorded and not leader_gone:
                     break
                 try:
-                    if os.getpgid(pid) != pid:
+                    if not leader_gone and os.getpgid(pid) != pid:
                         break
                     os.killpg(pid, sig)
-                except ProcessLookupError:
+                except (ProcessLookupError, PermissionError):
                     break
                 for _ in range(ticks):
                     if group_gone():
