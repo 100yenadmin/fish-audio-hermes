@@ -297,7 +297,9 @@ async function libraryRows(s, theme, account) {
       if (/something went wrong|failed to load|error/i.test(t.split('Voices').slice(1).join(' ').slice(0, 2000))) errs.push(`${tab}: error text on page`)
       ev.push(await c.shot(s, shotPath('B-LIB-4', theme, tab.replace(' ', '-').toLowerCase())))
     }
-    const t = await c.text(s)
+    // The Account card owns this label; the separate status-bar chip cannot satisfy this row.
+    const t = await s.page.evaluate(() => [...document.querySelectorAll('div')]
+      .find(e => e.textContent.trim() === 'API credit')?.parentElement?.innerText || '')
     const credit = account?.credit == null || account.credit === '' ? NaN : Number(account.credit)
     const shown = Number.isFinite(credit) && t.includes(credit.toFixed(2))
     const r = row('B-LIB-4', !errs.length && shown ? 'pass' : 'fail', `${errs.length ? errs.join('; ') : 'both tabs render, no error banner'}; Account shows credit ${shown ? credit.toFixed(2) : (Number.isFinite(credit) ? 'NOT matching ' + credit.toFixed(2) : 'missing or non-finite wallet value')}`, { theme, evidence: ev })

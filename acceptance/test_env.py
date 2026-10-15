@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -11,7 +12,7 @@ import pytest
 import conftest as harness
 
 HERE = Path(__file__).parent
-NODE = '/opt/homebrew/bin/node'
+NODE = os.environ.get('ACCEPTANCE_NODE') or shutil.which('node') or '/opt/homebrew/bin/node'
 SECRET_NAMES = ('FISH_API_KEY', 'GLM_API_KEY', 'GH_TOKEN', 'GITHUB_TOKEN',
                 'HERMES_DASHBOARD_SESSION_TOKEN', 'OTHER_API_KEY', 'OTHER_TOKEN')
 
@@ -71,13 +72,13 @@ def test_build_failure_keeps_scrubbed_cause(monkeypatch, tmp_path):
     assert 'synthetic-placeholder' not in str(exc.value)
 
 
-@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn'])
+@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn', 'port-closed', 'port-closed-stubborn'])
 def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mode):
     host = object.__new__(harness.Host)
     host.out = tmp_path; host.meta = {'gateway_url':'http://127.0.0.1:9361'}
     receipt = tmp_path / 'gateway-pid.json'
     receipt.write_text('{"pid":12345}')
-    state = {'open':True, 'signals':[], 'sleep':0, 'identity':0}
+    state = {'open':True, 'alive':True, 'signals':[], 'sleep':0, 'identity':0}
     identity = f'fixed start gateway-worker --run-dir {tmp_path}'
     def ps(*a, **kw):
         state['identity'] += 1
@@ -88,24 +89,42 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
         def connect_ex(self, address): return 0 if state['open'] else 1
     def killpg(pid, sig):
         assert pid == 12345
+        if mode == 'gone' or not state['alive']: raise ProcessLookupError
         if sig == 0:
-            if mode == 'gone': raise ProcessLookupError
             return
         state['signals'].append(sig)
-        if mode == 'term' or mode == 'kill' and sig == signal.SIGKILL: state['open'] = False
+        if mode.startswith('port-closed'): state['open'] = False
+        if mode == 'term' or mode in ('kill', 'port-closed') and sig == signal.SIGKILL:
+            state.update(open=False, alive=False)
     monkeypatch.setattr(harness.subprocess, 'run', ps)
     monkeypatch.setattr(harness.socket, 'socket', Socket)
     monkeypatch.setattr(harness.os, 'killpg', killpg)
     monkeypatch.setattr(harness.os, 'getpgid', lambda pid: pid)
     monkeypatch.setattr(harness.time, 'sleep', lambda sec: state.update(sleep=state['sleep']+sec))
-    if mode in ('changed','stubborn'):
+    if mode in ('changed','stubborn','port-closed-stubborn'):
         with pytest.raises(RuntimeError, match='retained'): host.down()
         assert receipt.exists()
     else:
         host.down()
         assert not receipt.exists()
-    assert state['signals'] == ([signal.SIGTERM] if mode in ('term','changed') else [signal.SIGTERM, signal.SIGKILL])
-    if mode != 'term': assert state['sleep'] >= 9.99
+    assert state['signals'] == ([] if mode == 'gone' else [signal.SIGTERM] if mode in ('term','changed') else [signal.SIGTERM, signal.SIGKILL])
+    if mode not in ('term', 'gone'): assert state['sleep'] >= 9.99
+    if mode in ('stubborn', 'port-closed-stubborn'): assert state['sleep'] >= 14.99
+
+
+@pytest.mark.parametrize('caption_ms,expected', [(1200, False), (500, True), (1000, False), (None, False)])
+def test_live_stt_caption_must_precede_eos(caption_ms, expected):
+    import ast
+    module = ast.parse((HERE / 'test_layer_a.py').read_text())
+    helper = next(n for n in module.body if isinstance(n, ast.FunctionDef) and n.name == 'live_caption_metrics')
+    namespace = {}
+    exec(compile(ast.Module(body=[helper], type_ignores=[]), '<live_caption_metrics>', 'exec'), namespace)
+    frames = [{'type':'final', 'transcript':'synthetic', 'received_ms':1500}]
+    if caption_ms is not None:
+        frames.insert(0, {'type':'partial', 'text':'synthetic', 'received_ms':caption_ms})
+    metrics, passed = namespace['live_caption_metrics'](frames, 1000)
+    assert passed is expected
+    assert metrics == {'first_caption_ms':caption_ms, 'eos_ms':1000}
 
 
 @pytest.mark.parametrize('case', ['no-key','files','missing-fish','missing-glm','keyless-fish','keyless-glm','twice-glm'])

@@ -218,9 +218,6 @@ class Host:
         # Verify custody before signaling a potentially recycled PID.
         def identity():
             return subprocess.run(['ps', '-p', str(pid), '-o', 'lstart=,command='], capture_output=True, text=True).stdout
-        def listening():
-            with socket.socket() as s:
-                return s.connect_ex(('127.0.0.1', int(self.meta['gateway_url'].rsplit(':', 1)[1]))) == 0
         def group_gone():
             try:
                 os.killpg(pid, 0)
@@ -239,12 +236,12 @@ class Host:
                 except ProcessLookupError:
                     break
                 for _ in range(ticks):
-                    if not listening():
+                    if group_gone():
                         break
                     time.sleep(.1)
-                if not listening():
+                if group_gone():
                     break
-        if not listening() or group_gone():
+        if group_gone():
             path.unlink()
         else:
             raise RuntimeError('gateway still listening; retained gateway-pid.json')
