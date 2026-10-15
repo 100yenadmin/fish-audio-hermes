@@ -16,7 +16,11 @@ from conftest import FAKE, Host, ROOT, call, scrub, write_json
 TEXT = 'Hello from the Fish Audio acceptance check.'
 SENTENCES = 'The sun is shining over the garden. A little bird is singing nearby. We can hear the wind in the trees. It is a lovely morning for a walk.'
 CORPUS = ROOT / 'bench/corpus/en01.webm'
-REFERENCE = json.loads((ROOT / 'bench/texts.json').read_text())['asr_corpus'][0]['text']
+ASR_TEXTS = {x['id']: x['text'] for x in json.loads((ROOT / 'bench/texts.json').read_text())['asr_corpus']}
+REFERENCE = ASR_TEXTS['en01']
+# A-STT-3 speaks two phrases. The plugin commits a phrase of at least 1 s at a 700 ms pause (fish_audio/live_stt.py), so
+# the gap commits the first phrase while the second still streams, and its caption must arrive before EOS.
+LIVE_CLIPS = ('en02', 'en05')
 
 
 @pytest.fixture(scope='session')
@@ -114,8 +118,8 @@ def audio(path, opus=False):
     return {'duration': float(data['format']['duration']), 'codec': data['streams'][0]['codec_name']}
 
 
-def wer(text):
-    a, b = [re.findall(r'\w+', s.lower()) for s in (REFERENCE, text)]
+def wer(text, reference=REFERENCE):
+    a, b = [re.findall(r'\w+', s.lower()) for s in (reference, text)]
     prev = list(range(len(b) + 1))
     for i, x in enumerate(a, 1):
         cur = [i]
@@ -425,14 +429,23 @@ def test_batch_stt(paid, request):
     evidence(request, paid, result, {'wer': wer(result['transcript'])})
 
 
+def live_caption_metrics(frames, eos_ms):
+    first = next((f['received_ms'] for f in frames if (f.get('text') or '').strip()), None)
+    return {'first_caption_ms': first, 'eos_ms': eos_ms}, first is not None and first < eos_ms
+
+
 @pytest.mark.row('A-STT-3')
 def test_live_stt(paid, request):
     if paid.meta['host'] == 'evaos':
         na(request, 'matrix O: fork has no live STT seam or transcribe-stream route')
     pcm = paid.out / 'dictation.pcm'
-    call(['ffmpeg', '-y', '-i', CORPUS, '-ar', '48000', '-ac', '1', '-f', 's16le', pcm])
+    phrases = []
+    for clip in LIVE_CLIPS:
+        call(['ffmpeg', '-y', '-i', ROOT / f'bench/corpus/{clip}.webm', '-ar', '48000', '-ac', '1', '-f', 's16le', pcm])
+        phrases.append(pcm.read_bytes())
+    pcm.write_bytes(phrases[0] + bytes(115200) + phrases[1])  # 48 kHz s16 mono: 1.2 s of silence between the phrases
     from websockets.sync.client import connect
-    frames, first, started = [], None, time.monotonic()
+    frames, started = [], time.monotonic()
     with connect(paid.meta['gateway_url'].replace('http:', 'ws:') + '/api/audio/transcribe-stream?token=' + paid.token,
                  additional_headers={'Authorization': 'Bearer ' + paid.token}) as ws:
         ws.send(json.dumps({'sample_rate': 48000}))
@@ -442,19 +455,21 @@ def test_live_stt(paid, request):
             time.sleep(.1)
             try:
                 frame = json.loads(ws.recv(timeout=.001))
+                frame['received_ms'] = (time.monotonic() - started) * 1000
                 frames.append(frame)
-                if first is None and frame.get('text'):
-                    first = (time.monotonic() - started) * 1000
             except TimeoutError:
                 pass
+        eos_ms = (time.monotonic() - started) * 1000
         ws.send(json.dumps({'eos': True}))
         while not frames or frames[-1]['type'] not in ('final', 'error'):
-            frames.append(json.loads(ws.recv(timeout=25)))
-            if first is None and (frames[-1].get('text') or frames[-1].get('transcript')):
-                first = (time.monotonic() - started) * 1000
-    evidence(request, paid, frames, {'first_caption_ms': first})
+            frame = json.loads(ws.recv(timeout=25))
+            frame['received_ms'] = (time.monotonic() - started) * 1000
+            frames.append(frame)
+    metrics, caption_before_eos = live_caption_metrics(frames, eos_ms)
+    evidence(request, paid, frames, metrics)
+    assert caption_before_eos, f'no caption before EOS: first_caption_ms={metrics["first_caption_ms"]}, eos_ms={eos_ms}'
     assert frames[-1]['type'] == 'final', scrub(frames[-1])
-    wer(frames[-1]['transcript'])
+    wer(frames[-1]['transcript'], ' '.join(ASR_TEXTS[clip] for clip in LIVE_CLIPS))
 
 
 @pytest.mark.row('A-EVAOS-1')
