@@ -60,8 +60,9 @@ def _retryable(error):
 
 def _billed_retryable(error):
     """Billed POSTs retry only where Fish cannot have done the work: 502/504 come from a proxy that may have
-    let the request through, so retrying them could bill twice."""
-    return error.status in (429, 500, 503)
+    let the request through, so retrying them could bill twice.
+    The error kind must also be transient."""
+    return error.status in (429, 500, 503) and error.kind in ("rate_limit", "availability")
 
 
 def _has_bytes(value):

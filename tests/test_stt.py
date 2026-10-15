@@ -160,6 +160,34 @@ def test_asr_gateway_errors_are_not_retried(tmp_path, status):
         assert route.call_count == 1
 
 
+@pytest.mark.parametrize("code,kind", [("quota", "quota"), ("invalid_api_key", "credential")])
+def test_transcribe_audio_permanent_500(tmp_path, monkeypatch, code, kind):
+    delays = []
+    monkeypatch.setattr(client.time, "sleep", delays.append)
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock() as mock:
+        route = mock.post(URL).respond(500, json={"code": code} if code == "quota" else {},
+                                      headers={"x-fish-error-code": code} if kind == "credential" else {})
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+        assert not result["success"] and result["error_kind"] == kind and route.call_count == 1
+    assert delays == []
+
+
+@pytest.mark.parametrize("code", ["rate_limit", "custom_code"])
+def test_transcribe_audio_transient_500(tmp_path, monkeypatch, code):
+    delays = []
+    monkeypatch.setattr(client.time, "sleep", delays.append)
+    path = tmp_path / "sample.ogg"
+    path.write_bytes(b"OggSsynthetic")
+    with respx.mock() as mock:
+        route = mock.post(URL).mock(side_effect=[httpx.Response(500, json={"code": code}),
+                                               httpx.Response(200, json={"text": "ok"})])
+        result = stt.FishAudioTranscriptionProvider().transcribe(path)
+        assert result["success"] and result["transcript"] == "ok" and route.call_count == 2
+    assert delays == [0.5]
+
+
 def test_asr_success_body_is_capped(tmp_path):
     class Huge(httpx.SyncByteStream):
         def __iter__(self):

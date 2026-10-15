@@ -8,7 +8,10 @@ from pathlib import Path
 import re
 import sqlite3
 import time
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import httpx
 import pytest
 import yaml
 from conftest import FAKE, Host, ROOT, call, scrub, write_json
@@ -359,15 +362,60 @@ def test_routes(paid, voice, n, request):
     evidence(request, paid, result)
 
 
-async def stream(h, mode):
+def fault_proxy(upstream='https://api.fish.audio'):
+    """Refuse one TTS POST; retain only method/path/status, never credentials or payloads."""
+    lock = threading.Lock()
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def __getattr__(self, name):
+            if name.startswith('do_'):
+                return self.forward
+            raise AttributeError(name)
+
+        def forward(self):
+            body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+            with lock:
+                refuse = self.command == 'POST' and self.path == '/v1/tts' and not server.refused
+                server.refused |= refuse
+            self.close_connection = True
+            if refuse:
+                server.requests.append((self.command, self.path, 503))
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"message":"acceptance injected 503"}')
+                return
+            headers = {k: v for k, v in self.headers.items()
+                       if k.lower() not in {'host', 'connection', 'content-length', 'accept-encoding'}}
+            with httpx.Client(trust_env=False) as http:
+                with http.stream(self.command, upstream + self.path, headers=headers, content=body) as response:
+                    server.requests.append((self.command, self.path, response.status_code))
+                    self.send_response(response.status_code)
+                    for name in ('Content-Type', 'x-request-id'):
+                        if name in response.headers:
+                            self.send_header(name, response.headers[name])
+                    self.end_headers()
+                    for chunk in response.iter_bytes():
+                        self.wfile.write(chunk)
+                        self.wfile.flush()
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    server.requests, server.refused = [], False
+    server.base_url = f'http://127.0.0.1:{server.server_port}'
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+async def stream(h, mode, text=SENTENCES):
     import websockets
     from websockets.exceptions import ConnectionClosed
     frames, pcm, stamp = [], [], time.monotonic()
     async with websockets.connect(h.meta['gateway_url'].replace('http:', 'ws:') + '/api/audio/speak-stream?token=' + h.token,
                                   additional_headers={'Authorization': 'Bearer ' + h.token}, max_size=8 * 1024 * 1024) as ws:
         async def send():
-            for i in range(0, len(SENTENCES), 30):
-                await ws.send(json.dumps({'text': SENTENCES[i:i + 30]}))
+            for i in range(0, len(text), 30):
+                await ws.send(json.dumps({'text': text[i:i + 30]}))
                 await asyncio.sleep(3 if mode == 2 and i == 0 else .1)
             await ws.send(json.dumps({'done': True}))
         task = asyncio.create_task(send())
@@ -421,6 +469,32 @@ def test_stream(paid, n, request):
     finally:
         if n == 4:
             set_config(paid, saved)
+
+
+@pytest.mark.row('A-STREAM-5')
+def test_stream_retry(paid, request):
+    if paid.meta['host'] == 'evaos':
+        na(request, 'matrix O: evaOS runtime lacks plugin PCM seam; use whole-text fallback')
+    saved = config(paid)
+    proxy = fault_proxy()
+    try:
+        altered = copy.deepcopy(saved)
+        altered.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['base_url'] = proxy.base_url
+        set_config(paid, altered)
+        data, metrics = asyncio.run(stream(paid, 5, text=TEXT))
+        evidence(request, paid, {**data, 'requests': proxy.requests}, metrics)
+        assert proxy.requests.count(('POST', '/v1/tts', 503)) == 1
+        assert ('POST', '/v1/tts', 200) in proxy.requests
+        kinds = [f.get('type') for f in data['frames']]
+        assert metrics['pcm_bytes'] > 0 and 'end' in kinds
+        assert any(f.get('type') == 'start' and f.get('sample_rate') == 24000 for f in data['frames'])
+        assert 'error' not in kinds and 'fallback' not in kinds
+    finally:
+        try:
+            set_config(paid, saved)
+        finally:
+            proxy.shutdown()
+            proxy.server_close()
 
 
 @pytest.mark.row('A-STT-2')

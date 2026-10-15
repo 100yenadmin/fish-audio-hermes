@@ -128,6 +128,27 @@ def test_http_retries_before_audio(status, sleeps):
     assert state.last_failure() is None
 
 
+@pytest.mark.parametrize("code,kind", [("quota", "quota"), ("invalid_api_key", "credential")])
+def test_tts_pcm_permanent_500(code, kind, sleeps):
+    with respx.mock() as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").respond(
+            500, json={"code": code} if code == "quota" else {},
+            headers={"x-fish-error-code": code} if kind == "credential" else {})
+        with pytest.raises(FishAudioError) as exc:
+            speak()
+        assert exc.value.kind == kind and route.call_count == 1
+    assert state.last_failure()[1] == kind and sleeps == []
+
+
+@pytest.mark.parametrize("code", ["rate_limit", "custom_code"])
+def test_tts_pcm_transient_500(code, sleeps):
+    with respx.mock() as mock:
+        route = mock.post("https://api.fish.audio/v1/tts").mock(side_effect=[
+            httpx.Response(500, json={"code": code}), httpx.Response(200, content=b"\x01\x02")])
+        assert speak() == [b"\x01\x02"] and route.call_count == 2
+    assert len(sleeps) == 1 and 0.5 <= sleeps[0] <= 0.6 and state.last_failure() is None
+
+
 def test_http_retry_exhaustion_records_only_the_final_failure(monkeypatch, sleeps):
     failures = []
     record = streaming.record_failure

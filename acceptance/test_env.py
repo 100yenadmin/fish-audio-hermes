@@ -218,6 +218,52 @@ def test_desktop_offline_predicates():
     assert p.returncode == 0, p.stdout + p.stderr
 
 
+def test_fault_proxy_retries_and_streams_only_metadata():
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    import httpx
+    from test_layer_a import fault_proxy
+    seen, release, finished = [], threading.Event(), threading.Event()
+    class Upstream(BaseHTTPRequestHandler):
+        def log_message(self, *args): pass
+        def do_POST(self):
+            seen.append((self.command, self.path, self.headers.get('Authorization'),
+                         self.rfile.read(int(self.headers.get('Content-Length', 0)))))
+            self.send_response(200)
+            self.send_header('Content-Type', 'audio/pcm')
+            self.send_header('x-request-id', 'synthetic-request')
+            self.end_headers()
+            self.wfile.write(b'first'); self.wfile.flush()
+            release.wait(3)
+            for chunk in (b'second', b'third'):
+                time.sleep(.02)
+                self.wfile.write(chunk); self.wfile.flush()
+            finished.set()
+        do_GET = do_POST
+    upstream = ThreadingHTTPServer(('127.0.0.1', 0), Upstream)
+    threading.Thread(target=upstream.serve_forever, daemon=True).start()
+    proxy = fault_proxy(f'http://127.0.0.1:{upstream.server_port}')
+    try:
+        with httpx.Client(base_url=proxy.base_url, trust_env=False) as http:
+            refused = http.post('/v1/tts', content=b'synthetic')
+            assert refused.status_code == 503 and refused.json() == {'message': 'acceptance injected 503'}
+            assert refused.headers['Content-Type'] == 'application/json' and seen == []
+            with http.stream('POST', '/v1/tts', content=b'synthetic', headers={'Authorization': 'Bearer synthetic'}) as response:
+                chunks = response.iter_bytes()
+                first = next(chunks)
+                assert first == b'first' and not finished.is_set()  # relay before upstream finishes
+                release.set()
+                assert first + b''.join(chunks) == b'firstsecondthird' and response.status_code == 200
+                assert response.headers['x-request-id'] == 'synthetic-request' and response.headers['Content-Type'] == 'audio/pcm'
+            assert http.get('/wallet?test=1').content == b'firstsecondthird'
+        assert seen == [('POST', '/v1/tts', 'Bearer synthetic', b'synthetic'), ('GET', '/wallet?test=1', None, b'')]
+        assert proxy.requests == [('POST', '/v1/tts', 503), ('POST', '/v1/tts', 200), ('GET', '/wallet?test=1', 200)]
+    finally:
+        release.set()
+        proxy.shutdown(); proxy.server_close()
+        upstream.shutdown(); upstream.server_close()
+
+
 def test_agent_tool_receipt_must_be_newer_than_chat(monkeypatch, tmp_path):
     import ast
     import re
