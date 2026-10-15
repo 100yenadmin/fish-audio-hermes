@@ -1,12 +1,12 @@
 [
-  {"name":"pass","rows":[{"id":"A-ONE","status":"pass","reason":"checked"}],"usd":0.01,"exit":0},
-  {"name":"failed-row","rows":[{"id":"A-ONE","status":"fail","reason":"broken"}],"usd":0.01,"exit":1},
-  {"name":"missing-row","rows":[],"usd":0.01,"exit":1},
-  {"name":"bad-skip","rows":[{"id":"A-ONE","status":"skip","reason":"not implemented"}],"usd":0.01,"exit":1},
-  {"name":"no-llm","rows":[{"id":"A-ONE","status":"skip","reason":"no LLM key"}],"usd":0.01,"exit":0},
-  {"name":"over-budget","rows":[{"id":"A-ONE","status":"pass","reason":"checked"}],"usd":0.31,"exit":1},
-  {"name":"unknown-cost","rows":[{"id":"A-ONE","status":"pass","reason":"checked"}],"usd":null,"exit":1},
-  {"name":"na-reason","rows":[{"id":"A-ONE","status":"na","reason":"host lacks seam"}],"usd":0.01,"exit":0},
-  {"name":"na-empty","rows":[{"id":"A-ONE","status":"na","reason":""}],"usd":0.01,"exit":1},
-  {"name":"duplicate","rows":[{"id":"A-ONE","status":"pass"},{"id":"A-ONE","status":"pass"}],"usd":0.01,"exit":1}
+  {"name": "pass", "rows": [{"id": "A-ONE", "status": "pass", "reason": "checked"}], "usd": 0.01, "exit": 0},
+  {"name": "failed-row", "rows": [{"id": "A-ONE", "status": "fail", "reason": "broken"}], "usd": 0.01, "exit": 1},
+  {"name": "missing-row", "rows": [], "usd": 0.01, "exit": 1},
+  {"name": "bad-skip", "rows": [{"id": "A-ONE", "status": "skip", "reason": "not implemented"}], "usd": 0.01, "exit": 1},
+  {"name": "no-llm", "rows": [{"id": "A-ONE", "status": "skip", "reason": "no LLM key"}], "usd": 0.01, "exit": 0},
+  {"name": "over-budget", "rows": [{"id": "A-ONE", "status": "pass", "reason": "checked"}], "usd": 0.31, "exit": 1},
+  {"name": "unknown-cost", "rows": [{"id": "A-ONE", "status": "pass", "reason": "checked"}], "usd": null, "exit": 1},
+  {"name": "na-reason", "rows": [{"id": "A-ONE", "status": "na", "reason": "host lacks seam"}], "usd": 0.01, "exit": 0},
+  {"name": "na-empty", "rows": [{"id": "A-ONE", "status": "na", "reason": ""}], "usd": 0.01, "exit": 1},
+  {"name": "duplicate", "rows": [{"id": "A-ONE", "status": "pass"}, {"id": "A-ONE", "status": "pass"}], "usd": 0.01, "exit": 1}
 ]

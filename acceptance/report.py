@@ -12,6 +12,15 @@ def version(value):
     return tuple(int(n) for n in re.findall(r'\d+', value)[:3])
 
 
+def known_bug(spec, host):
+    """A failure tied to a filed host bug, pinned to the exact host builds it was seen on. Any other build re-arms
+    the row, so a host release is always re-checked."""
+    for bug in spec.get('known_host_bugs', []):
+        if bug['host'] == host['host'] and host.get(bug.get('field', 'hermes_ref')) in bug['refs']:
+            return bug
+    return None
+
+
 def merge(out, layers=('a', 'b'), budget=.30, catalog=CATALOG):
     host = json.loads((out / 'host.json').read_text())
     inventory = json.loads(Path(catalog).read_text())
@@ -48,6 +57,13 @@ def merge(out, layers=('a', 'b'), budget=.30, catalog=CATALOG):
                 row.update(status='fail', reason='required row skipped without allowed reason')
             if row['status'] in {'na', 'skip'} and not row['reason']:
                 row.update(status='fail', reason='missing applicability reason')
+            bug = known_bug(spec, host)
+            if bug and row['status'] == 'fail':
+                row.update(status='xfail', reason=f"known host bug {bug['issue']}: {row['reason']}")
+            elif bug and row['status'] == 'pass':
+                row['reason'] += f" (known host bug {bug['issue']} no longer reproduces on this version: drop the entry)"
+            if row['status'] == 'fail' and not spec['required']:
+                row.update(status='advisory-fail')
             rows.append(row)
     cost_path = out / 'cost.json'
     cost = json.loads(cost_path.read_text()) if cost_path.exists() else {'usd': None}
@@ -63,6 +79,9 @@ def merge(out, layers=('a', 'b'), budget=.30, catalog=CATALOG):
              f"Plugin: {host['plugin_ref']}; Hermes: {host['hermes_ref']}",
              f"Cost USD: {usd}; budget: {budget}", '', '| ID | Theme | Status | Reason |', '|---|---|---|---|']
     lines += [f"| {r['id']} | {r.get('theme', '')} | {r['status']} | {r['reason'].replace('|', '/').replace(chr(10), ' ')} |" for r in rows]
+    known = sorted({r['reason'].split(':', 1)[0].removeprefix('known host bug ') for r in rows if r['status'] == 'xfail'})
+    if known:
+        lines += ['', 'Known host bugs (expected failures on these exact host builds): ' + ', '.join(known)]
     lines += ['', report['proof_boundary'], '']
     (out / 'REPORT.md').write_text('\n'.join(lines))
     return 0 if passed else 1
