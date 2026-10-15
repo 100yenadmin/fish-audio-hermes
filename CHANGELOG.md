@@ -9,6 +9,8 @@
   when several agents shared one key.
 - A sentence is still never spoken or billed twice: there is no retry once audio has started, or when Fish may
   already have done the work (a 502/504 from a proxy, or a connection lost after the request was sent).
+- **A shorter settings page:** Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings used to open with a 14-line
+  description above the API key field. It is now two sentences, and the full disclosure is in the README (#47).
 - **Reporting a problem on older Hermes:** the README now says how to reach the report-a-problem skill on Hermes
   older than 0.21.6, where plugin skills are not in the agent's system prompt.
 - **Release acceptance suite:** every release now runs each feature through the real Hermes surfaces (CLI, chat
