@@ -120,18 +120,45 @@ test('only-done signature requires actual sent done frame; silent-count intersec
   assert.equal(vm.runInContext(`${predicate}; noText`, context), 0)
 })
 
-test('B-LIB-4 fails missing/nonfinite credit and requires the two-decimal display', async () => {
+test('B-LIB-4 requires the Account card credit; a matching status chip cannot count', async () => {
   const start = run.indexOf("  if (want('B-LIB-4'))"), end = run.indexOf('\n}\n\n// --- main', start)
-  for (const [credit, text, expected] of [[undefined,'NaN','fail'], [null,'0.00','fail'], ['NaN','NaN','fail'],
-    ['Infinity','Infinity','fail'], ['1.2','1.2','fail'], ['1.2','1.20','pass']]) {
-    const rows = [], c = {clickText:async()=>{}, sleep:async()=>{}, text:async()=>text, shot:async()=>''}
+  for (const [credit, text, expected, pageText = text] of [[undefined,'NaN','fail'], [null,'0.00','fail'], ['NaN','NaN','fail'],
+    ['Infinity','Infinity','fail'], ['1.2','1.2','fail'], ['1.2','1.20','pass'], ['1.2','unavailable','fail','Voices Fish $1.20']]) {
+    const rows = [], c = {clickText:async()=>{}, sleep:async()=>{}, text:async()=>pageText, shot:async()=>''}
     await vm.runInNewContext(`(async()=>{${run.slice(start, end)}})()`, {
-      want:()=>true, s:{}, theme:'dark', account:{credit}, c, shotPath(){},
+      want:()=>true, s:{page:{evaluate:async fn=>fn()}}, theme:'dark', account:{credit}, c, shotPath(){},
+      document:{querySelectorAll:()=>[{textContent:'API credit', parentElement:{innerText:text}},
+        {textContent:'Fish $1.20', parentElement:{innerText:pageText}}]},
       row:(id,status,reason)=>{ const r={metrics:{}}; rows.push({status,reason}); return r }
     })
     assert.equal(rows[0].status, expected)
     if (credit == null || !Number.isFinite(Number(credit))) assert.match(rows[0].reason, /missing or non-finite/)
   }
+})
+
+test('B-CONV-5 requires an injected failure and preserves both host-bug waiver reasons', async t => {
+  const start = conv.indexOf('    const toasts =', conv.indexOf("  if (want('B-CONV-5'))"))
+  const end = conv.indexOf('\n  }', start)
+  const onlyDone = conv.split('\n').find(l => l.startsWith('const onlyDone ='))
+  const waiver = new RegExp(JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url)))
+    .find(r => r.id === 'B-CONV-5').known_host_bugs[0].match)
+  for (const [frames, spoken, pcm, toast, status, waived] of [
+    [['start','end'], 'reply', 3, [], 'fail', false],
+    [['fallback'], 'reply', 3, [], 'pass', false],
+    [['error'], 'reply', 3, [], 'pass', false],
+    [[], 'reply', 0, ['Speech failed'], 'pass', false],
+    [['start','end'], 'reply', 3, ['Saved'], 'fail', false],
+    [['error'], '', 0, [], 'fail', true],
+    [['fallback'], 'reply', 0, [], 'fail', true]]) await t.test(JSON.stringify({frames, spoken, pcm, toast}), async () => {
+    const rows = [], m = {submits:1, spoken_text:spoken, speak_frames:frames, speak_sent:['done'],
+      speak_streams:1, pcm_frames:pcm, media_plays:0, audio_buffers:0}
+    await vm.runInNewContext(`(async()=>{${onlyDone}\n${conv.slice(start,end)}})()`, {
+      m, t0:0, theme:'dark', s:{page:{evaluate:async()=>toast.map(text=>({t:1,text}))}},
+      c:{shot:async()=>''}, shotPath(){}, row:(id,status,reason)=>{rows.push({status,reason}); return {}} })
+    assert.equal(rows[0].status, status)
+    assert.equal(waiver.test(rows[0].reason), waived, rows[0].reason)
+    if (status === 'fail' && !waived) assert.match(rows[0].reason, /forced failure did not take effect/)
+  })
 })
 
 test('B-CONV-5 edits only plugin transport settings and restores exact original bytes on error', async t => {

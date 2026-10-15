@@ -3,15 +3,17 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
+import time
 from types import SimpleNamespace
 
 import pytest
 import conftest as harness
 
 HERE = Path(__file__).parent
-NODE = '/opt/homebrew/bin/node'
+NODE = os.environ.get('ACCEPTANCE_NODE') or shutil.which('node') or '/opt/homebrew/bin/node'
 SECRET_NAMES = ('FISH_API_KEY', 'GLM_API_KEY', 'GH_TOKEN', 'GITHUB_TOKEN',
                 'HERMES_DASHBOARD_SESSION_TOKEN', 'OTHER_API_KEY', 'OTHER_TOKEN')
 
@@ -71,16 +73,26 @@ def test_build_failure_keeps_scrubbed_cause(monkeypatch, tmp_path):
     assert 'synthetic-placeholder' not in str(exc.value)
 
 
-@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn'])
+@pytest.mark.parametrize('mode', ['term', 'kill', 'changed', 'gone', 'stubborn', 'port-closed', 'port-closed-stubborn', 'leader-exits',
+                                  'zombie-elsewhere', 'members-unknown'])
 def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mode):
     host = object.__new__(harness.Host)
     host.out = tmp_path; host.meta = {'gateway_url':'http://127.0.0.1:9361'}
     receipt = tmp_path / 'gateway-pid.json'
     receipt.write_text('{"pid":12345}')
-    state = {'open':True, 'signals':[], 'sleep':0, 'identity':0}
+    state = {'open':True, 'alive':True, 'signals':[], 'sleep':0, 'identity':0}
     identity = f'fixed start gateway-worker --run-dir {tmp_path}'
-    def ps(*a, **kw):
+    def ps(args, **kw):
+        if '-A' in args:  # group membership
+            if mode == 'members-unknown':
+                return SimpleNamespace(stdout='', returncode=1)
+            # Linux lists a dead worker its parent has not reaped (the outer runner, while pytest restarts) as a zombie.
+            zombie = mode == 'zombie-elsewhere' and signal.SIGTERM in state['signals']
+            return SimpleNamespace(stdout=f'    1 Ss\n12345 {"Z" if zombie else "S"}\n', returncode=0)
+        assert '-ww' in args  # GNU ps would truncate the command line to the terminal width
         state['identity'] += 1
+        if mode == 'leader-exits' and signal.SIGTERM in state['signals']:
+            return SimpleNamespace(stdout='')  # the worker exited on TERM; a descendant still holds the group
         return SimpleNamespace(stdout='changed' if mode == 'changed' and state['identity'] > 2 else identity)
     class Socket:
         def __enter__(self): return self
@@ -88,24 +100,90 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
         def connect_ex(self, address): return 0 if state['open'] else 1
     def killpg(pid, sig):
         assert pid == 12345
+        if mode == 'gone' or not state['alive']: raise ProcessLookupError
         if sig == 0:
-            if mode == 'gone': raise ProcessLookupError
             return
         state['signals'].append(sig)
-        if mode == 'term' or mode == 'kill' and sig == signal.SIGKILL: state['open'] = False
+        if mode.startswith('port-closed'): state['open'] = False
+        if mode == 'term' or mode in ('kill', 'port-closed', 'leader-exits') and sig == signal.SIGKILL:
+            state.update(open=False, alive=False)
     monkeypatch.setattr(harness.subprocess, 'run', ps)
     monkeypatch.setattr(harness.socket, 'socket', Socket)
     monkeypatch.setattr(harness.os, 'killpg', killpg)
     monkeypatch.setattr(harness.os, 'getpgid', lambda pid: pid)
     monkeypatch.setattr(harness.time, 'sleep', lambda sec: state.update(sleep=state['sleep']+sec))
-    if mode in ('changed','stubborn'):
+    if mode in ('changed','stubborn','port-closed-stubborn','members-unknown'):
         with pytest.raises(RuntimeError, match='retained'): host.down()
         assert receipt.exists()
     else:
         host.down()
         assert not receipt.exists()
-    assert state['signals'] == ([signal.SIGTERM] if mode in ('term','changed') else [signal.SIGTERM, signal.SIGKILL])
-    if mode != 'term': assert state['sleep'] >= 9.99
+    assert state['signals'] == ([] if mode == 'gone' else [signal.SIGTERM] if mode in ('term','changed','zombie-elsewhere')
+                                else [signal.SIGTERM, signal.SIGKILL])
+    if mode not in ('term', 'gone', 'zombie-elsewhere'): assert state['sleep'] >= 9.99
+    if mode in ('stubborn', 'port-closed-stubborn', 'members-unknown'): assert state['sleep'] >= 14.99
+
+
+def test_gateway_shutdown_reaps_a_worker_this_process_started(tmp_path):
+    # up() keeps no Popen, so after TERM the worker is a zombie of this process until reaped; macOS answers
+    # killpg(pid, 0) for a group of zombies with EPERM. A real child, not a fake.
+    host = object.__new__(harness.Host)
+    host.out = tmp_path; host.meta = {'gateway_url': 'http://127.0.0.1:9'}
+    pid = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)', 'gateway-worker', '--run-dir', str(tmp_path)],
+                           start_new_session=True).pid
+    (tmp_path / 'gateway-pid.json').write_text(json.dumps({'pid': pid}))
+    try:
+        time.sleep(.5)  # until ps shows the worker's own command line
+        started = time.monotonic()
+        host.down()
+        assert not (tmp_path / 'gateway-pid.json').exists()
+        assert time.monotonic() - started < 5
+        with pytest.raises((ProcessLookupError, PermissionError)):  # EPERM: only a zombie, if it exited after the last reap
+            os.killpg(pid, 0)
+    finally:
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+
+def test_gateway_shutdown_kills_a_descendant_that_outlives_the_worker(monkeypatch, tmp_path):
+    # The worker exits on TERM while a descendant in its process group ignores TERM: down() must SIGKILL the group.
+    host = object.__new__(harness.Host)
+    host.out = tmp_path; host.meta = {'gateway_url': 'http://127.0.0.1:9'}
+    child = 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)'
+    code = f'import subprocess, sys, time; subprocess.Popen([sys.executable, "-c", {child!r}]); time.sleep(60)'
+    pid = subprocess.Popen([sys.executable, '-c', code, 'gateway-worker', '--run-dir', str(tmp_path)], start_new_session=True).pid
+    (tmp_path / 'gateway-pid.json').write_text(json.dumps({'pid': pid}))
+    real_sleep = time.sleep
+    try:
+        real_sleep(1)  # until the descendant has started and ps shows the worker's command line
+        monkeypatch.setattr(harness.time, 'sleep', lambda sec: real_sleep(sec / 10))
+        host.down()
+        assert not (tmp_path / 'gateway-pid.json').exists()
+        with pytest.raises((ProcessLookupError, PermissionError)):  # EPERM: only a zombie awaiting its new parent's reap
+            os.killpg(pid, 0)
+    finally:
+        monkeypatch.undo()
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+
+@pytest.mark.parametrize('caption_ms,expected', [(1200, False), (500, True), (1000, False), (None, False)])
+def test_live_stt_caption_must_precede_eos(caption_ms, expected):
+    import ast
+    module = ast.parse((HERE / 'test_layer_a.py').read_text())
+    helper = next(n for n in module.body if isinstance(n, ast.FunctionDef) and n.name == 'live_caption_metrics')
+    namespace = {}
+    exec(compile(ast.Module(body=[helper], type_ignores=[]), '<live_caption_metrics>', 'exec'), namespace)
+    frames = [{'type':'final', 'transcript':'synthetic', 'received_ms':1500}]
+    if caption_ms is not None:
+        frames.insert(0, {'type':'partial', 'text':'synthetic', 'received_ms':caption_ms})
+    metrics, passed = namespace['live_caption_metrics'](frames, 1000)
+    assert passed is expected
+    assert metrics == {'first_caption_ms':caption_ms, 'eos_ms':1000}
 
 
 @pytest.mark.parametrize('case', ['no-key','files','missing-fish','missing-glm','keyless-fish','keyless-glm','twice-glm'])
