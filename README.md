@@ -358,5 +358,7 @@ Use `/fish status` for key presence, providers, voice, model, credit and the las
 Under plugin-host isolation the terminal command is unavailable, so use `/fish status`.
 Plain `hermes fish doctor` makes a billed synthesis; only run it with the user's OK.
 Ask your Hermes agent to "report a problem with Fish Audio": it drafts a report and files nothing until you approve the draft.
+On Hermes older than 0.21.6, plugin skills are not in the agent's system prompt; ask the agent to load the skill
+`fish-audio:fish-audio-report-problem` by that name (it appears in `skills_list`).
 Use the [bug report form](https://github.com/100yenadmin/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
 Report security problems through the [private advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
