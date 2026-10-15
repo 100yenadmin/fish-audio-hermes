@@ -138,7 +138,7 @@ def test_gateway_shutdown_reaps_a_worker_this_process_started(tmp_path):
         host.down()
         assert not (tmp_path / 'gateway-pid.json').exists()
         assert time.monotonic() - started < 5
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises((ProcessLookupError, PermissionError)):  # EPERM: only a zombie, if it exited after the last reap
             os.killpg(pid, 0)
     finally:
         try:
