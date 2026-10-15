@@ -240,7 +240,9 @@ export async function convRows({ s, host, OUT, row, want, theme, shotPath, gw })
       timeout: 120000,
       onSpeaking: async () => {
         const t0 = Date.now()
-        while (Date.now() - t0 < 15000 && !(await s.page.evaluate(n => (window.__audioLog || []).length > n, nLong))) await c.sleep(50)
+        // Wait until the long reply is audible (a source past its scheduled start), not merely queued: Desktop
+        // schedules PCM ahead of playback, so a barge timed from the first queued buffer can land before any sound.
+        while (Date.now() - t0 < 15000 && !(await s.page.evaluate(n => (window.__audioLog || []).slice(n).some(e => window.__audioPlaying(e)), nLong))) await c.sleep(50)
         await c.sleep(1500)
         const n0 = (await s.page.evaluate(() => window.__audioLog.length)), c0 = rec.closed.length
         usersAtBarge = (await pageState(s)).users
