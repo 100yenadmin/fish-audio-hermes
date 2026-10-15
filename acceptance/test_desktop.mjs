@@ -134,7 +134,9 @@ test('B-LIB-4 fails missing/nonfinite credit and requires the two-decimal displa
   }
 })
 
-test('B-CONV-5 edits only plugin transport settings and restores exact original bytes on error', async () => {
+test('B-CONV-5 edits only plugin transport settings and restores exact original bytes on error', async t => {
+  const py = process.env.TEST_PYTHON || 'python3'
+  try { execFileSync(py, ['-c', 'import yaml'], { stdio: 'ignore' }) } catch { t.skip('needs a Python with PyYAML: set TEST_PYTHON'); return }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fish-config-test-')), cfg = path.join(dir,'config.yaml')
   const original = Buffer.from('# comment\r\nplugins:\r\n  enabled: [fish-audio]\r\ntts:\r\n  fish-audio:\r\n    base_url: https://unrelated.invalid\r\n')
   const start = conv.indexOf("    const cfg =", conv.indexOf("  if (want('B-CONV-5'))"))
@@ -144,10 +146,10 @@ test('B-CONV-5 edits only plugin transport settings and restores exact original 
     await assert.rejects(vm.runInNewContext(`(async()=>{${conv.slice(start,end)}})()`, {
       fs, path, process, host:{hermes_home:dir, cache_dir:dir}, s:{}, rec:{}, dir, PROMPTS:['','','','fake'],
       startConversation:async()=>true,
-      execFileSync:(bin,args,opts)=>execFileSync(process.env.TEST_PYTHON,args,opts),
+      execFileSync:(bin,args,opts)=>execFileSync(py,args,opts),
       turn:async (s,rec,dir,text,{onThinking})=>{
         onThinking()
-        const check = execFileSync(process.env.TEST_PYTHON, ['-c', 'import sys,yaml; c=yaml.safe_load(open(sys.argv[1])); assert c["plugins"]["entries"]["fish-audio"]["settings"]["base_url"].endswith("/acceptance-forced-failure"); assert c["tts"]["fish-audio"]["base_url"]=="https://unrelated.invalid"', cfg])
+        const check = execFileSync(py, ['-c', 'import sys,yaml; c=yaml.safe_load(open(sys.argv[1])); assert c["plugins"]["entries"]["fish-audio"]["settings"]["base_url"].endswith("/acceptance-forced-failure"); assert c["tts"]["fish-audio"]["base_url"]=="https://unrelated.invalid"', cfg])
         throw Error('synthetic turn failure')
       }
     }), /synthetic turn failure/)
