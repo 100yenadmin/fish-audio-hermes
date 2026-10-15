@@ -6,6 +6,7 @@ import signal
 import shutil
 import subprocess
 import sys
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -110,6 +111,29 @@ def test_gateway_shutdown_group_escalation_and_receipt(monkeypatch, tmp_path, mo
     assert state['signals'] == ([] if mode == 'gone' else [signal.SIGTERM] if mode in ('term','changed') else [signal.SIGTERM, signal.SIGKILL])
     if mode not in ('term', 'gone'): assert state['sleep'] >= 9.99
     if mode in ('stubborn', 'port-closed-stubborn'): assert state['sleep'] >= 14.99
+
+
+def test_gateway_shutdown_reaps_a_worker_this_process_started(tmp_path):
+    # up() keeps no Popen, so after TERM the worker is a zombie of this process until reaped; macOS answers
+    # killpg(pid, 0) for a group of zombies with EPERM. A real child, not a fake.
+    host = object.__new__(harness.Host)
+    host.out = tmp_path; host.meta = {'gateway_url': 'http://127.0.0.1:9'}
+    pid = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)', 'gateway-worker', '--run-dir', str(tmp_path)],
+                           start_new_session=True).pid
+    (tmp_path / 'gateway-pid.json').write_text(json.dumps({'pid': pid}))
+    try:
+        time.sleep(.5)  # until ps shows the worker's own command line
+        started = time.monotonic()
+        host.down()
+        assert not (tmp_path / 'gateway-pid.json').exists()
+        assert time.monotonic() - started < 5
+        with pytest.raises(ProcessLookupError):
+            os.killpg(pid, 0)
+    finally:
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
 
 
 @pytest.mark.parametrize('caption_ms,expected', [(1200, False), (500, True), (1000, False), (None, False)])

@@ -219,10 +219,16 @@ class Host:
         def identity():
             return subprocess.run(['ps', '-p', str(pid), '-o', 'lstart=,command='], capture_output=True, text=True).stdout
         def group_gone():
+            # Reap the worker when this process started it: up() keeps no Popen, and until a reap the dead worker is a
+            # zombie that still holds its process group.
+            try:
+                os.waitpid(pid, os.WNOHANG)
+            except ChildProcessError:
+                pass
             try:
                 os.killpg(pid, 0)
                 return False
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):  # macOS answers EPERM for a group of zombies only
                 return True
         recorded = identity()
         if 'gateway-worker' in recorded and str(self.out) in recorded:
@@ -244,7 +250,7 @@ class Host:
         if group_gone():
             path.unlink()
         else:
-            raise RuntimeError('gateway still listening; retained gateway-pid.json')
+            raise RuntimeError('gateway process group still alive; retained gateway-pid.json')
 
     def restart(self):
         self.down()
