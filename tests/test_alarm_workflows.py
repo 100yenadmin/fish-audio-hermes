@@ -109,11 +109,26 @@ def test_latest_reports_once_with_resolved_shas_and_unchanged_check(tmp_path):
       esac
     }
 """
-    for main, commented in (("a" * 40, False), ("c" * 40, True)):
-        body = f"Hermes latest compatibility failed.\n- default-branch SHA: {main}\n- latest-release SHA: {'b' * 40}\n- run: https://example.test/runs/1\n"
-        work = tmp_path / main[0]
+    def report_for(main):
+        return f"Hermes latest compatibility failed.\n- default-branch SHA: {main}\n- latest-release SHA: {'b' * 40}\n- run: https://example.test/runs/1\n"
+
+    def bot(main):
+        return {"author": {"login": "github-actions"}, "body": report_for(main)}
+
+    # Only the job's own reports count: a later maintainer or deleted-account comment is not the latest report.
+    people = [{"author": {"login": "maintainer"}, "body": "Looking into it."}, {"author": None, "body": "+1"}]
+    cases = (
+        (report_for("a" * 40), [], False),
+        (report_for("c" * 40), [], True),
+        (report_for("c" * 40), [bot("a" * 40), *people], False),
+        (report_for("a" * 40), [bot("c" * 40), *people], True),
+        (report_for("a" * 40), people, False),
+        (report_for("c" * 40), people, True),
+    )
+    for i, (body, comments, commented) in enumerate(cases):
+        work = tmp_path / str(i)
         work.mkdir()
-        run_env = env | {"ISSUE_JSON": json.dumps({"body": body, "comments": []})}
+        run_env = env | {"ISSUE_JSON": json.dumps({"body": body, "comments": comments})}
         subprocess.run(["bash", "-e", "-c", stub + script], cwd=work, env=run_env, check=True, capture_output=True)
-        assert ((work / "calls").read_text().split() if (work / "calls").exists() else []) == (["commented"] if commented else [])
+        assert ((work / "calls").read_text().split() if (work / "calls").exists() else []) == (["commented"] if commented else []), i
     subprocess.run(["bash", "-n"], input=script.encode(), check=True)
