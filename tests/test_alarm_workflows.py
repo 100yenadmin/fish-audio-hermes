@@ -123,6 +123,7 @@ def test_latest_reports_once_with_resolved_shas_and_unchanged_check(tmp_path):
         (report_for("c" * 40), [bot("a" * 40), *people], False),
         (report_for("a" * 40), [bot("c" * 40), *people], True),
         (report_for("a" * 40), people, False),
+        (report_for("c" * 40), people, True),
     )
     for i, (body, comments, commented) in enumerate(cases):
         work = tmp_path / str(i)
