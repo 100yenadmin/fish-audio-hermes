@@ -17,7 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = Path.home() / '.cache/fish-audio-acceptance'
 FAKE = 'sk-fish-acceptance-fake-000000'
-PIN = 'evaos-runtime-es.12-v0.21.5-r34.13'
+PIN = 'evaos-runtime-es.12-v0.21.5-r34.14'
 REPOS = {'upstream': 'NousResearch/hermes-agent', 'evaos': 'electricsheephq/evaOS-hermes-desktop-app-adapter'}
 
 

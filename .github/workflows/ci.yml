@@ -16,7 +16,7 @@ env:
   HERMES_RELEASE_SHA: 71d34bad1045610252eda02ee79549436896e784    # v0.21.7 = latest release
   HERMES_MAIN_SHA: 53bc70c5ee8544040cd9f0708d25c0f55276a44b       # main, 2026-10-12
   HERMES_FORK_REPO: electricsheephq/evaOS-hermes-desktop-app-adapter
-  HERMES_FORK_SHA: 7f76aff1a7f33ec3aa2cd438f50a86941c07731b        # evaos-runtime-es.12-v0.21.5-r34.13 = the managed fleet (PCS runtime manifest)
+  HERMES_FORK_SHA: 312f5bafd03282a0352702c8f255d03e48065f3c        # evaos-runtime-es.12-v0.21.5-r34.14 = the managed fleet (PCS runtime manifest)
 
 jobs:
   acceptance-offline:
