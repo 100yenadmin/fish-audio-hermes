@@ -249,6 +249,23 @@ def test_provider_format(paid, n, fmt, codec, request):
     evidence(request, paid, {'file': str(path)}, metrics)
 
 
+@pytest.mark.row('A-TTS-LANG')
+def test_provider_language(paid, request):
+    before = config(paid)
+    cfg = copy.deepcopy(before)
+    cfg.setdefault('tts', {}).setdefault('fish-audio', {})['language'] = 'es-MX'
+    path = paid.out / 'provider-language.mp3'
+    try:
+        set_config(paid, cfg)
+        result = core(paid, 'import json; from agent.tts_registry import get_provider; '
+                      f'r = get_provider("fish-audio").synthesize("El 20 de octubre de 2026 son 42 pesos.", {str(path)!r}); '
+                      'print("ACCEPTANCE_RESULT=" + json.dumps({"result": str(r)}))')
+        assert path.stat().st_size > 0, 'provider wrote no audio'
+        evidence(request, paid, result)
+    finally:
+        set_config(paid, before)
+
+
 @pytest.mark.row('A-STT-1')
 def test_core_stt(paid, request):
     result = core(paid, f'import json; from tools.transcription_tools import transcribe_audio; print("ACCEPTANCE_RESULT=" + json.dumps(transcribe_audio({str(CORPUS)!r})))')

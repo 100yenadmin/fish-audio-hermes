@@ -74,7 +74,7 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `/fish status` | Key, providers, voice, model and why it was chosen, credit, last error |
 | `/fish voices [query]` | Search the voice library |
 | `/fish use <voice-id or name>` | Use a voice for this profile |
-| `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3`, `drama-3-preview`) |
+| `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3`) |
 | `/fish preview <voice-id or name> [text]` | Hear a voice (a billed synthesis) |
 | `/fish alias` | List your saved voice names |
 | `/fish alias add <name> <voice-id>` | Save a name for a voice: 2–32 letters, digits, `-` or `_`, starting with a letter |
@@ -155,7 +155,7 @@ settings pages; use the Voices page and `/fish` there.
 
 ## Configuration
 
-All settings are per profile.
+All settings are per profile. Set `tts.fish-audio.language: es-MX` (or pass `language` to `fish_speak`) for number, date and unit spelling and word timestamps; it never changes the voice, accent or audio quality.
 
 ```yaml
 tts:

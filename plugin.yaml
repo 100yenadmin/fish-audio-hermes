@@ -1,5 +1,5 @@
 name: fish-audio
-version: 1.7.7
+version: 1.8.0
 description: "Fish Audio voices for Hermes: expressive text-to-speech, speech-to-text, a searchable voice library, voice cloning and voice design, in the CLI, every messaging gateway and the Desktop app. Most calls are paid Fish Audio API requests billed to your Fish account; the Disclosure section of the README lists what is billed, sent and stored."
 author: Electric Sheep
 kind: standalone

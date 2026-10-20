@@ -58,4 +58,4 @@ def test_cli_snapshot_and_report(tmp_path, capsys):
     target.write_text(yaml.safe_dump(mapping))
     assert parity.main(["--mapping", str(target), "--no-collect"]) == 1
     assert parity.main(["--mapping", str(target), "--snapshot", "--no-collect", "--report"]) == 0
-    assert "Fields=316" in capsys.readouterr().out
+    assert "Fields=321" in capsys.readouterr().out

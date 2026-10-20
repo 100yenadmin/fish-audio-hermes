@@ -50,6 +50,10 @@ def _speak(args, key, base, session, *, record_media=True):
     if voice is not None:
         params["reference_id"] = voice
     settings.apply_knobs(params, nested)
+    if "language" in args:
+        require(settings._valid("language", args["language"]),
+                "language must be a BCP-47 tag such as en, es-MX or zh-CN: letters, digits, - and _, at most 35 characters.")
+        params["language"] = args["language"]
     if "pronunciations" in args:
         entries = args["pronunciations"]
         require(isinstance(entries, dict) and len(entries) <= 200, "pronunciations allows at most 200 entries.")
@@ -115,6 +119,7 @@ VOICE_REF = _field("string", pattern="^[A-Za-z0-9_-]{2,128}$", description="voic
 SCHEMAS = {
     "fish_speak": {"text": S, "voice": VOICE_REF, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
+        "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
         "pronunciations": _field("object", additionalProperties=S, maxProperties=200)},

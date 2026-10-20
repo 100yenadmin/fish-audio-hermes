@@ -22,7 +22,7 @@ PACKAGE_PRIVATE = {
     "stripe_price_id": "synthetic-price", "current_period_end": "2026-02-01T00:00:00Z",
     "cancel_at": "2026-02-01T00:00:00Z", "scheduled_change": {"type": "synthetic"},
     "last_synced_at": "2026-01-02T00:00:00Z", "subscription_currency": "usd",
-    "has_used_trial": True,
+    "has_used_trial": True, "anchor_day": 20,
 }
 WALLET_PRIVATE = {
     "_id": "synthetic-wallet", "user_id": "synthetic-user",

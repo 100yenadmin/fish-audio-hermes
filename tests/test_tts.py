@@ -20,7 +20,7 @@ def test_provider_surface_and_no_network(monkeypatch):
     assert provider.name == "fish-audio" and provider.display_name == "Fish Audio"
     assert provider.default_voice() is None and provider.voice_compatible is True
     assert provider.list_models() == MODELS
-    assert [m["id"] for m in MODELS] == ["s2.1-pro", "s2.1-pro-free", "s2-pro", "s1", "drama-3", "drama-3-preview"]
+    assert [m["id"] for m in MODELS] == ["s2.1-pro", "s2.1-pro-free", "s2-pro", "s1", "drama-3"]
     assert provider.get_setup_schema() == {"name": "Fish Audio", "badge": "free model",
         "tag": "Expressive voices, voice cloning, 80+ languages", "env_vars": [{"key": "FISH_API_KEY",
         "prompt": "Fish Audio API key", "url": "https://fish.audio/app/api-keys"}]}
@@ -120,3 +120,23 @@ def test_operator_provider_setup_and_notice_are_private(monkeypatch, tmp_path):
     metadata = {}
     provider.synthesize("hello", str(tmp_path / "out.mp3"), result_metadata=metadata)
     assert "fish_audio_notice" not in metadata
+
+
+@pytest.mark.parametrize("path", ["provider", "streaming", "speak", "client"])
+def test_model_alias_synthesis(monkeypatch, tmp_path, path):
+    from fish_audio import client, models, streaming, tools
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"model": "drama-3-preview"}}})
+    monkeypatch.setattr(tts, "fish_api_key", lambda: "synthetic")
+    monkeypatch.setattr(streaming, "fish_api_key", lambda: "synthetic")
+    monkeypatch.setattr(media, "audio_output_dir", lambda: tmp_path)
+    with respx.mock() as mock:
+        route = mock.post(settings.DEFAULT_BASE_URL + "/v1/tts").respond(content=b"ID3synthetic")
+        if path == "provider":
+            tts.FishAudioTTSProvider().synthesize("hi", str(tmp_path / "out.mp3"))
+        elif path == "streaming":
+            assert list(streaming.stream_pcm("hi"))
+        elif path == "speak":
+            tools._speak({"text": "hi", "model": "drama-3-preview"}, "synthetic", settings.DEFAULT_BASE_URL, "")
+        else:
+            client.tts_to_file({"text": "hi", "model": "drama-3-preview"}, "synthetic", settings.DEFAULT_BASE_URL, tmp_path / "raw.mp3")
+        assert route.calls.last.request.headers["model"] == models.effective_model("drama-3-preview") == "drama-3"

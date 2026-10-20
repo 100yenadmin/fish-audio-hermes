@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .models import MODEL_IDS, free_model_phase
+from .models import MODEL_IDS, canonical_model, free_model_phase
 from .account import cached_wallet
 from .errors import BILLING_URL
 
@@ -41,6 +41,7 @@ KNOBS = {
     "top_p": (float, 0, 1, None),
     "latency": (str, None, None, {"normal", "balanced", "low"}),
     "normalize": (bool, None, None, None),
+    "language": (str, None, None, None),
     "chunk_length": (int, 100, 300, None),
     "min_chunk_length": (int, 0, 100, None),
     "sample_rate": (int, None, None, None),
@@ -164,6 +165,8 @@ def _valid(key, value):
         return False
     if choices is not None and value not in choices:
         return False
+    if key == "language":
+        return len(value) <= 35 and re.fullmatch(r"[A-Za-z0-9_-]*", value) is not None
     if key == "features":
         return all(isinstance(v, str) for v in value)
     if key == "pronunciation_dictionary":
@@ -235,7 +238,8 @@ def resolve_model_source(call_model, *, key, base_url, prefer_call: bool = False
     allow_free = transport.get("allow_free_model", True) is not False
     candidates = (call_model, nested.get("model")) if prefer_call else (nested.get("model"), call_model)
     for model in candidates:
-        if isinstance(model, str) and model in MODEL_IDS:
+        model = canonical_model(model) if isinstance(model, str) else None
+        if model in MODEL_IDS:
             if model == "s2.1-pro-free" and not allow_free:
                 if not getattr(_notice_logger, "_fish_policy_logged", False):
                     _notice_logger._fish_policy_logged = True
