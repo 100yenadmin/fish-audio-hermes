@@ -66,6 +66,19 @@
                       "title": "Finished At",
                       "type": "string"
                     },
+                    "anchor_day": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "UTC day of month used for credit refreshes; clamp to the month's last day. Missing/null falls back to updated_at's UTC day.",
+                      "title": "Anchor Day"
+                    },
                     "stripe_subscription_id": {
                       "anyOf": [
                         {
@@ -4607,9 +4620,29 @@
           },
           "normalize": {
             "default": true,
-            "description": "Normalizes text for English and Chinese, improving stability for numbers.",
+            "description": "Rewrites numbers, dates, units and symbols as spoken words before synthesis, improving stability. Uses `language` when it is set and otherwise detects the language of each text chunk.",
             "title": "Normalize",
             "type": "boolean"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 35,
+                "pattern": "^[A-Za-z0-9_-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "BCP-47 language tag of the text, for example `en`, `es-MX` or `zh-CN`. Case-insensitive, and `_` is read as `-`. Used only by text normalization (how numbers, dates, units and symbols are spelled out before synthesis) and by word-timestamp alignment. It is not passed to the speech model and does not change the voice, accent or audio quality; a wrong tag only changes how those tokens are spelled out. Omit it, or send `auto` or an empty string, to detect the language per chunk. A tag without dedicated normalization rules skips normalization instead of failing. Without a region, Spanish follows Spain conventions; send `es-MX` for Mexican readings. When `normalize` is false it only affects word timestamps. For text that mixes languages, leave it unset.",
+            "examples": [
+              "en",
+              "es-MX",
+              "zh-CN"
+            ],
+            "title": "Language"
           },
           "format": {
             "default": "mp3",
@@ -4963,9 +4996,29 @@
           },
           "normalize": {
             "default": true,
-            "description": "Normalizes text for English and Chinese, improving stability for numbers.",
+            "description": "Rewrites numbers, dates, units and symbols as spoken words before synthesis, improving stability. Uses `language` when it is set and otherwise detects the language of each text chunk.",
             "title": "Normalize",
             "type": "boolean"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 35,
+                "pattern": "^[A-Za-z0-9_-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "BCP-47 language tag of the text, for example `en`, `es-MX` or `zh-CN`. Case-insensitive, and `_` is read as `-`. Used only by text normalization (how numbers, dates, units and symbols are spelled out before synthesis) and by word-timestamp alignment. It is not passed to the speech model and does not change the voice, accent or audio quality; a wrong tag only changes how those tokens are spelled out. Omit it, or send `auto` or an empty string, to detect the language per chunk. A tag without dedicated normalization rules skips normalization instead of failing. Without a region, Spanish follows Spain conventions; send `es-MX` for Mexican readings. When `normalize` is false it only affects word timestamps. For text that mixes languages, leave it unset.",
+            "examples": [
+              "en",
+              "es-MX",
+              "zh-CN"
+            ],
+            "title": "Language"
           },
           "format": {
             "default": "mp3",
@@ -6467,7 +6520,7 @@
   },
   "x-source": {
     "url": "https://docs.fish.audio/api-reference/openapi.json",
-    "sha256": "82a0e631da31294927cea986e1a48c9a7593fa0393349791304fda6b01643014",
-    "fetch_date": "2026-10-13"
+    "sha256": "3fca55ac146ebfdd6c9ac5c1905ed1adc3746b390eca1d8178f32bcf0b8c201f",
+    "fetch_date": "2026-10-20"
   }
 }
