@@ -7,8 +7,14 @@ MODELS = [
     {"id": "s2-pro", "display": "S2 Pro", "family": "S2", "tag_style": "bracket", "multi_speaker": True, "free": False, "preview": False},
     {"id": "s1", "display": "S1 (deprecated)", "family": "S1", "tag_style": "paren", "multi_speaker": False, "free": False, "preview": False, "deprecated": True, "retires": "2026-12-31"},
     {"id": "drama-3", "display": "Drama 3", "family": "Drama", "tag_style": "bracket", "multi_speaker": True, "free": False, "preview": False},
-    {"id": "drama-3-preview", "display": "Drama 3 Preview", "family": "Drama", "tag_style": "bracket", "multi_speaker": True, "free": False, "preview": True},
 ]
+MODEL_ALIASES = {"drama-3-preview": "drama-3"}
+
+
+def canonical_model(model_id):
+    return MODEL_ALIASES.get(model_id, model_id)
+
+
 MODEL_IDS = frozenset(row["id"] for row in MODELS)
 
 
@@ -33,6 +39,7 @@ def free_model_warning(today=None):
 
 
 def effective_model(model_id, today=None):
+    model_id = canonical_model(model_id)
     today = today if today is not None else datetime.now(timezone.utc).date()
     return "s2.1-pro" if model_id == "s1" and today.isoformat() >= "2026-12-31" else model_id
 

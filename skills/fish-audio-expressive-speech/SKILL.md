@@ -10,7 +10,8 @@ can leave a stray "MEDIA" message in streaming chats such as Telegram. The outpu
 Use one speech tool per request (`text_to_speech`, `fish_speak`, or a speech tool from Fish's MCP server), never two for the same words.
 
 S1 is deprecated; from 2026-12-31 requests use S2.1 Pro.
-For released `drama-3` (older preview id: `drama-3-preview`), put plain-language directions in square brackets
+Fish retired the preview id `drama-3-preview`; it now resolves to `drama-3`.
+For `drama-3`, put plain-language directions in square brackets
 before the words they apply to, in any language. Put sounds and pauses such as `[sigh]` and `[pause]` where they happen.
 Wrap only the words to change in paired tags: `<whisper>…</whisper>`, `<emphasis>`, `<soft>`, `<fast>`, `<slow>`,
 `<stress>`, `<forceful>`; close each tag. Experimental language tags and `<|phoneme_start|>…<|phoneme_end|>` are

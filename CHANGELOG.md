@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.8.0 — 2026-10-20
+
+- **A language setting for speech:** Fish added an optional language tag to text-to-speech on 16 October. Set
+  `tts.fish-audio.language` (for example `es-MX`) or pass `language` to `fish_speak`. It changes how numbers, dates and
+  units are spelled out, and word timestamps; it never changes the voice, accent or audio quality. An invalid tag is
+  dropped with a warning instead of being sent.
+- **`drama-3-preview` is retired:** Fish no longer lists the preview id and serves unknown model ids as S2.1 Pro. The
+  plugin no longer offers it, and a profile still set to `drama-3-preview` now speaks with `drama-3`.
+- **Parity follows Fish's API as of 20 October 2026**, including the package's new `anchor_day` field, which the plugin
+  does not show.
+- **Tested on the current evaOS runtime:** CI's evaOS target and the acceptance suite's default move to runtime r34.15,
+  which the managed fleet now runs.
+
 ## 1.7.7 — 2026-10-16
 
 - **Errors that will not go away are shown at once:** when Fish answers a request with a permanent error inside a

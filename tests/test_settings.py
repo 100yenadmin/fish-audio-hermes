@@ -43,11 +43,13 @@ def test_foreign_legacy_voice_rejected(config, voice):
 
 
 @pytest.mark.parametrize("model", ["drama-3", "drama-3-preview"])
-def test_configured_drama_model_keeps_exact_id(config, model):
+def test_configured_drama_model_canonicalized(config, model):
     config[1]["model"] = model
     with respx.mock(assert_all_called=True) as mock:
-        assert resolve()[0]["model"] == model
-        assert settings.resolve_model(None, key="", base_url=settings.DEFAULT_BASE_URL) == (model, False)
+        assert resolve()[0]["model"] == "drama-3"
+        assert settings.resolve_model(None, key="", base_url=settings.DEFAULT_BASE_URL) == ("drama-3", False)
+        assert settings.resolve_model_source(model, key="", base_url=settings.DEFAULT_BASE_URL, prefer_call=True) == ("drama-3", "configured")
+        assert config[1]["model"] == model
         assert not mock.calls
 
 
@@ -104,6 +106,7 @@ def test_every_valid_knob(config, tmp_path):
 
 
 @pytest.mark.parametrize("name,value", [
+    ("language", "en!"), ("language", "a" * 36), ("language", None), ("language", 1),
     ("temperature", 1.1), ("top_p", float("inf")), ("latency", "fast"),
     ("normalize", 1), ("chunk_length", 99), ("min_chunk_length", 101),
     ("sample_rate", 24.0), ("mp3_bitrate", True), ("opus_bitrate", 128),
@@ -165,3 +168,57 @@ def test_operator_account_strict_boolean(monkeypatch, value, expected):
     assert settings.operator_account() is expected
     monkeypatch.setattr(settings, "_config", lambda: {})
     assert settings.operator_account() is False
+
+
+@pytest.mark.parametrize("timestamps", [False, True])
+@pytest.mark.parametrize("msgpack_body", [False, True])
+def test_language_transport(config, tmp_path, timestamps, msgpack_body):
+    import msgpack
+    config[1]["language"] = "es-MX"
+    params, _ = resolve()
+    params.update(text="El 20 de octubre son 42.")
+    if msgpack_body:
+        params["references"] = [{"audio": b"synthetic", "text": "hi"}]
+    with respx.mock() as mock:
+        route = mock.post(settings.DEFAULT_BASE_URL + ("/v1/tts/stream/with-timestamp" if timestamps else "/v1/tts")).respond(
+            content=b'data: {"audio_base64":"SUQz"}\n\n' if timestamps else b"ID3")
+        client.tts_to_file(params, "synthetic", settings.DEFAULT_BASE_URL, tmp_path / "out.mp3", events=[] if timestamps else None)
+        request = route.calls.last.request
+        body = msgpack.unpackb(request.content, raw=False) if msgpack_body else json.loads(request.content)
+        assert body["language"] == "es-MX"
+
+
+def test_language_websocket_start(config, monkeypatch):
+    import msgpack
+    from types import SimpleNamespace
+    config[1]["language"] = "es-MX"
+    sent = []
+    socket = SimpleNamespace(send=lambda raw: sent.append(msgpack.unpackb(raw, raw=False)), close=lambda: None,
+                             recv=lambda **kw: msgpack.packb({"event": "finish"}))
+    monkeypatch.setattr("websockets.sync.client.connect", lambda *a, **kw: socket)
+    assert list(client.tts_live({**resolve()[0], "text": "hola"}, "synthetic", settings.DEFAULT_BASE_URL)) == []
+    assert sent[0]["event"] == "start" and sent[0]["request"]["language"] == "es-MX"
+
+
+@pytest.mark.parametrize("language", ["es-MX", "", "auto", "ZH_cn", "a" * 35, "en!", "a" * 36, None, 1])
+def test_speak_language_override(config, tmp_path, monkeypatch, language):
+    from fish_audio import media, tools, tool_support
+    config[1]["language"] = "ja"
+    monkeypatch.setattr(tool_support, "fish_api_key", lambda: "synthetic")
+    monkeypatch.setattr(media, "audio_output_dir", lambda: tmp_path)
+    with respx.mock(assert_all_called=False) as mock:
+        route = mock.post(settings.DEFAULT_BASE_URL + "/v1/tts").respond(content=b"ID3")
+        result = json.loads(tools.fish_speak({"text": "hola", "language": language}))
+        if type(language) is str and language not in {"en!", "a" * 36}:
+            assert result["success"] and json.loads(route.calls.last.request.content)["language"] == language
+        else:
+            assert result["error"] == "language must be a BCP-47 tag such as en, es-MX or zh-CN: letters, digits, - and _, at most 35 characters."
+            assert not mock.calls
+
+
+def test_model_alias_command(config, monkeypatch):
+    from fish_audio import commands
+    monkeypatch.setattr(commands, "fish_api_key", lambda: "synthetic")
+    monkeypatch.setattr(commands, "write_config", lambda change: change(config[0]))
+    assert commands.handle("model drama-3-preview") == "drama-3-preview was Fish's preview id; using drama-3."
+    assert config[1]["model"] == "drama-3"

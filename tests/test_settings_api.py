@@ -13,8 +13,7 @@ def expected(env, **overrides):
         {"id": "s2.1-pro-free", "display": "S2.1 Pro Free", "deprecated": False},
         {"id": "s2-pro", "display": "S2 Pro", "deprecated": False},
         {"id": "s1", "display": "S1 (deprecated)", "deprecated": True},
-        {"id": "drama-3", "display": "Drama 3", "deprecated": False},
-        {"id": "drama-3-preview", "display": "Drama 3 Preview", "deprecated": False}],
+        {"id": "drama-3", "display": "Drama 3", "deprecated": False}],
         "aliases": [], "managed": [], **overrides}
 
 
@@ -32,6 +31,7 @@ def test_settings_exact_offline_operator_and_profile(env):
 
 
 @pytest.mark.parametrize("voice,model,allow_free,shown", [
+    (VOICE, "drama-3-preview", True, (VOICE, "drama-3")),
     (123, ["s1"], True, (None, None)),
     ("named_voice_123", "speech-9", True, ("named_voice_123", None)),
     ("abc", "s2.1-pro-free", True, (None, "s2.1-pro-free")),
@@ -41,13 +41,15 @@ def test_settings_report_what_synthesis_uses(env, voice, model, allow_free, show
     env.active().config["tts"]["fish-audio"].update(voice=voice, model=model)
     env.active().config["plugins"]["entries"]["fish-audio"]["settings"]["allow_free_model"] = allow_free
     state = env.get("/settings")
+    assert env.active().config["tts"]["fish-audio"]["model"] == model
     assert (state["voice"], state["model"]) == shown
     assert state["model"] is None or state["model"] in {row["id"] for row in state["models"]}
 
 
-def test_settings_drama_3_listed_and_saved(env):
+@pytest.mark.parametrize("model", ["drama-3", "drama-3-preview"])
+def test_settings_drama_3_listed_and_saved(env, model):
     assert {"id": "drama-3", "display": "Drama 3", "deprecated": False} in env.get("/settings")["models"]
-    assert env.post("/settings", model="drama-3") == expected(env, model="drama-3")
+    assert env.post("/settings", model=model) == expected(env, model="drama-3")
     assert env.active().config["tts"]["fish-audio"]["model"] == "drama-3"
 
 

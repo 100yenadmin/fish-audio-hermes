@@ -13,7 +13,7 @@ from scripts import parity_check as parity
 BASE = "https://api.fish.audio"
 VOICE = "a" * 32
 PNG = b"\x89PNG\r\n\x1a\nsynthetic"
-KNOBS = dict(temperature=0.4, top_p=0.8, latency="low", normalize=False, chunk_length=200,
+KNOBS = dict(language="es-MX", temperature=0.4, top_p=0.8, latency="low", normalize=False, chunk_length=200,
              min_chunk_length=50, sample_rate=24000, mp3_bitrate=192, opus_bitrate=32000,
              max_new_tokens=100, repetition_penalty=1.2, condition_on_previous_chunks=False,
              early_stop_threshold=0.3, volume=0.7, normalize_loudness=False, features=["synthetic"],

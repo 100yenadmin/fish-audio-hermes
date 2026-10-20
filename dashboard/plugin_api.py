@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.7.7"
+VERSION = "1.8.0"
 
 _HOST_SCOPES = False
 
@@ -289,7 +289,8 @@ def get_settings():
     # Report what synthesis uses: the resolvers ignore a malformed voice and an unknown model (Fish default applies),
     # and allow_free_model: false sends s2.1-pro in place of s2.1-pro-free.
     voice, model = nested.get("voice"), nested.get("model")
-    model = model if isinstance(model, str) and model in _fa("models").MODEL_IDS else None
+    model = _fa("models").canonical_model(model) if isinstance(model, str) else None
+    model = model if model in _fa("models").MODEL_IDS else None
     if model == "s2.1-pro-free" and not allow_free:
         model = "s2.1-pro"
     return {"ok": True, "voice": voice if _fa("tool_support").voice_id(voice) else None, "model": model,
@@ -302,6 +303,8 @@ def get_settings():
 @router.post("/settings")
 @_protocol
 def save_settings(body: dict):
+    if isinstance(body.get("model"), str):
+        body = {**body, "model": _fa("models").canonical_model(body["model"])}
     if body.keys() - {"voice", "model"} or body.get("voice") is not None or (
             body.get("model") is not None and (not isinstance(body["model"], str) or body["model"] not in _fa("models").MODEL_IDS)):
         raise Refusal("invalid", "Set a known model or reset voice/model to null; voices are set through /use.")

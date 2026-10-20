@@ -104,6 +104,27 @@ entries:
 - path: /wallet/{user_id}/package
   method: get
   location: response
+  field: anchor_day
+  surface: 'Account privacy projection: this raw field is dropped'
+  status: verified
+  tests:
+  - tests/test_w2.py::test_package_private_fields_dropped[anchor_day]
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+    responses:
+      '200':
+        type:
+        - integer
+        - 'null'
+        enum: null
+        required: false
+- path: /wallet/{user_id}/package
+  method: get
+  location: response
   field: finished_at
   surface: account /fish balance finished_at; Desktop Voices Account
   status: verified
@@ -1076,6 +1097,20 @@ entries:
 - path: /v1/tts
   method: post
   location: json
+  field: language
+  surface: TTS transport json language
+  status: verified
+  tests:
+  - tests/test_settings.py::test_language_transport[False-False]
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: json
   field: format
   surface: TTS transport json format
   status: verified
@@ -1338,6 +1373,20 @@ entries:
   - tests/test_w2.py::test_tts_msgpack_fields_sent[normalize]
   spec:
     type: boolean
+    enum: null
+    required: false
+- path: /v1/tts
+  method: post
+  location: msgpack
+  field: language
+  surface: TTS transport msgpack language
+  status: verified
+  tests:
+  - tests/test_settings.py::test_language_transport[True-False]
+  spec:
+    type:
+    - 'null'
+    - string
     enum: null
     required: false
 - path: /v1/tts
@@ -1713,6 +1762,20 @@ entries:
 - path: /v1/tts/stream/with-timestamp
   method: post
   location: json
+  field: language
+  surface: TTS transport json language
+  status: verified
+  tests:
+  - tests/test_settings.py::test_language_transport[False-True]
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: json
   field: format
   surface: 'fish_speak timestamps: true request'
   status: verified
@@ -1986,6 +2049,20 @@ entries:
     enum: null
     required: false
   equivalent_to: json
+- path: /v1/tts/stream/with-timestamp
+  method: post
+  location: msgpack
+  field: language
+  surface: TTS transport msgpack language
+  status: verified
+  tests:
+  - tests/test_settings.py::test_language_transport[True-True]
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
 - path: /v1/tts/stream/with-timestamp
   method: post
   location: msgpack
@@ -5399,6 +5476,12 @@ doc_only:
   - tests/test_live_stt.py::test_happy_path
   - tests/integration/test_hermes_live_stt_path.py::test_core_live_stt
   url: https://docs.fish.audio/developer-guide/compat/migrate-from-elevenlabs#realtime-stt
+- field: language
+  surface: WebSocket TTS start request text normalization and word timestamps
+  status: verified
+  tests:
+  - tests/test_settings.py::test_language_websocket_start
+  url: https://docs.fish.audio/changelog#2026-10-16
 - field: start
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: verified
