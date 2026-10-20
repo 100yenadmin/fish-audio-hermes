@@ -10,6 +10,8 @@
   plugin no longer offers it, and a profile still set to `drama-3-preview` now speaks with `drama-3`.
 - **Parity follows Fish's API as of 20 October 2026**, including the package's new `anchor_day` field, which the plugin
   does not show.
+- **Tested on the current evaOS runtime:** CI's evaOS target and the acceptance suite's default move to runtime r34.15,
+  which the managed fleet now runs.
 
 ## 1.7.7 — 2026-10-16
 
