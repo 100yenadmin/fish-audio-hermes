@@ -257,10 +257,16 @@ def test_provider_language(paid, request):
     path = paid.out / 'provider-language.mp3'
     try:
         set_config(paid, cfg)
-        result = core(paid, 'import json; from agent.tts_registry import get_provider; '
-                      f'r = get_provider("fish-audio").synthesize("El 20 de octubre de 2026 son 42 pesos.", {str(path)!r}); '
-                      'print("ACCEPTANCE_RESULT=" + json.dumps({"result": str(r)}))')
+        # Record the request bodies the loaded plugin builds, so the row proves the configured tag is sent to Fish.
+        result = core(paid, 'import json, sys; from agent.tts_registry import get_provider; p = get_provider("fish-audio"); sent = []; '
+                      'clients = [m for n, m in list(sys.modules.items()) if n.endswith(".client") and hasattr(m, "_tts_body") and hasattr(m, "tts_live")]; '
+                      '[setattr(m, "_tts_body", (lambda o: lambda params: sent.append(o(params)) or sent[-1])(m._tts_body)) for m in clients]; '
+                      f'r = p.synthesize("El 20 de octubre de 2026 son 42 pesos.", {str(path)!r}); '
+                      'print("ACCEPTANCE_RESULT=" + json.dumps({"result": str(r), "clients": len(clients), '
+                      '"languages": [b.get("language") for b in sent]}))')
         assert path.stat().st_size > 0, 'provider wrote no audio'
+        assert result['clients'] >= 1, 'the fish-audio client module was not found in the host process'
+        assert result['languages'] and set(result['languages']) == {'es-MX'}, f"requests carried {result['languages']!r}, not es-MX"
         evidence(request, paid, result)
     finally:
         set_config(paid, before)
