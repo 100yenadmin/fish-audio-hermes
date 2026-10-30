@@ -1,6 +1,7 @@
-"""The gateway REST half mounted by Hermes's own dashboard plugin loader, A -> B -> A, with Fish HTTP mocked.
+"""The gateway REST half mounted by Hermes's own dashboard plugin loader, A -> B -> A, against loopback Fish stubs.
 
-Every pin receives real ?profile= requests through the mount and middleware.
+Every pin receives real ?profile= requests through the mount and middleware. From Hermes 0.22.5 a secondary
+profile's requests run in that profile's own plugin host process, so Fish is a real loopback server, not respx.
 """
 import importlib.util
 from datetime import datetime
@@ -9,14 +10,13 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-import respx
 
 pytestmark = pytest.mark.skipif(importlib.util.find_spec("hermes_cli") is None, reason="requires the real Hermes venv")
 PREFIX = "/api/plugins/fish-audio"
 VOICES = {"a": "a" * 32, "b": "c" * 32}
 
 
-def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_home, monkeypatch):
+def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_home, fish_stub, monkeypatch):
     home = installed_fish_home[0]
     from agent.secret_scope import is_multiplex_active, set_multiplex_active
     from fastapi.testclient import TestClient
@@ -48,8 +48,14 @@ def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_
     assert module._PACKAGE in sys.modules and not module._PACKAGE.startswith("hermes_plugins")
     assert Path(sys.modules[module._PACKAGE].__file__).is_relative_to(home / "plugins" / "fish-audio")
 
+    start, calls = fish_stub
+    import socket
+    with pytest.raises(AssertionError, match="offline"):  # the guard still refuses everything but the stubs
+        socket.create_connection(("127.0.0.1", 9))
     profiles = {}
-    for name, key, base in (("a", "key-a", "http://127.0.0.1:8501"), ("b", "key-b", "http://localhost:8502")):
+    for name, key, host in (("a", "key-a", "127.0.0.1"), ("b", "key-b", "localhost")):
+        voice = VOICES[name]
+        base = start({"/model": {"items": [{"_id": voice, "title": name}]}, f"/model/{voice}": {"_id": voice}}, host)
         profile_home = home / "profiles" / name
         profile_home.mkdir(parents=True)
         (profile_home / ".env").write_text(f"FISH_API_KEY={key}\n")
@@ -63,29 +69,27 @@ def test_dashboard_loader_mounts_routes_and_keeps_profiles_apart(installed_fish_
     previous = is_multiplex_active()
     set_multiplex_active(True)
     try:
-        with respx.mock(assert_all_called=True) as mock:
-            for name in ("a", "b", "a"):
-                profile_home, key, base = profiles[name]
-                voice = VOICES[name]
-                mock.get(base + "/model").respond(json={"items": [{"_id": voice, "title": name}]})
-                mock.get(base + f"/model/{voice}").respond(json={"_id": voice})
-                params = {"profile": name}
-                assert client.get(PREFIX + "/available", params=params).json()["key"] is True
-                body = client.get(PREFIX + "/voices", params=params).json()
-                assert body["ok"] and body["items"][0]["id"] == voice, body
-                body = client.post(PREFIX + "/use", params=params, json={"voice": voice}).json()
-                assert body["ok"] and body["voice"] == voice, body
-                written = (profile_home / "config.yaml").read_text()
-                assert voice in written
-                configs[name] = written
-                other = "b" if name == "a" else "a"
-                assert (profiles[other][0] / "config.yaml").read_text() == configs[other]
-                assert (home / "config.yaml").read_text() == launch_config
-                for call in mock.calls[-2:]:
-                    assert call.request.headers["authorization"] == f"Bearer {key}"
-                    assert str(call.request.url).startswith(base)
-                assert key not in body["message"]
-            assert len(mock.calls) == 6
+        for name in ("a", "b", "a"):
+            profile_home, key, base = profiles[name]
+            voice = VOICES[name]
+            params = {"profile": name}
+            before = len(calls)
+            assert client.get(PREFIX + "/available", params=params).json()["key"] is True
+            body = client.get(PREFIX + "/voices", params=params).json()
+            assert body["ok"] and body["items"][0]["id"] == voice, body
+            body = client.post(PREFIX + "/use", params=params, json={"voice": voice}).json()
+            assert body["ok"] and body["voice"] == voice, body
+            written = (profile_home / "config.yaml").read_text()
+            assert voice in written
+            configs[name] = written
+            other = "b" if name == "a" else "a"
+            assert (profiles[other][0] / "config.yaml").read_text() == configs[other]
+            assert (home / "config.yaml").read_text() == launch_config
+            assert [(c[0], c[1], c[2]) for c in calls[before:]] == [(base, "GET", "/model"), (base, "GET", f"/model/{voice}")]
+            for call in calls[before:]:
+                assert call[3]["authorization"] == f"Bearer {key}"
+            assert key not in body["message"]
+        assert len(calls) == 6
     finally:
         set_multiplex_active(previous)
     for name, (profile_home, _, _) in profiles.items():
