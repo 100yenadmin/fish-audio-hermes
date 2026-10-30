@@ -45,7 +45,7 @@ CI also checks the plugin inside pinned Hermes builds (`hermes plugins validate`
 ## Rules
 
 - Keep each change small and focused: one change per PR.
-- Don't bump versions, create tags, or add CHANGELOG release headings. Maintainers cut releases.
+- In a contributor PR, don't bump versions, create tags, or add CHANGELOG release headings; notes under `## Unreleased` are welcome. Maintainers cut releases in their own release PRs.
 - Never call the live Fish API in `tests/`: use `respx.mock`, monkeypatched transports and synthetic audio fixtures, as in `tests/test_cli.py`. Only `acceptance/` calls the live API.
 - Do not run the billed benchmark, the acceptance suite or network drift jobs as routine local checks. The acceptance suite is a maintainer release step.
 - A new user-visible feature adds its row to `acceptance/rows.yaml`, plus the check that proves it.
