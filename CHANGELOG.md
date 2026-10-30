@@ -6,8 +6,10 @@
   with MessagePack audio, manual turns and draft captions. Sound and speaker tags are removed. Missing completion,
   degraded turns or errors fall back to file transcription, so a partial transcript is never kept (#61).
 - **Choose the old endpoint:** `live_transcription: compat` keeps phrase captions. Native sessions open with the
-  first audio and close when you stop (30 seconds after the last audio of a recording Hermes cancels), billed $0.36
-  per open hour, per second. The weekly ledger charges the audio duration plus finalization; release acceptance covers both settings. Language and prompt hints remain ignored.
+  first audio and close once Fish confirms the last words, usually about a second after you stop (30 seconds after the
+  last audio of a recording Hermes cancels), billed $0.36 per open hour, per second. The weekly ledger charges the
+  audio duration plus a 2-second finalization allowance before the session opens; release acceptance covers both
+  settings. Language and prompt hints remain ignored.
 - **Transcribe 1 is deprecated:** status warns about retirement on 2026-12-31; from that day provider and tool
   requests use `transcribe-1-pro` at the same price without rewriting config. Plain pro transcripts disable diarization.
 - **Filter your voices:** `fish_voices` action `mine` accepts public, unlist or private visibility; clone/save/update

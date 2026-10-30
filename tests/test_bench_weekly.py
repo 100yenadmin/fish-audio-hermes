@@ -321,8 +321,15 @@ def test_paced_live_frames_and_caption_clock(monkeypatch, setting):
     assert [t for t, _ in frames] == pytest.approx([.02 * i for i in range(1, 80)])
     assert polls == pytest.approx([.26, .5, .76, 1, 1.26, 1.5])
 
-    assert api.ledger.seconds == (3 if setting == "realtime" else 2)
+    assert api.ledger.seconds == (4 if setting == "realtime" else 2)
     assert api.ledger.models == {"transcribe-stream-1" if setting == "realtime" else "transcribe-1-pro"}
+
+    frames.clear()
+    api.ledger = w.Ledger()
+    api.ledger.seconds = 600
+    with pytest.raises(ValueError, match="ASR cap"):  # the cap refuses before a session opens or any audio is sent
+        api.live([Path("one"), Path("two")], "final")
+    assert frames == []
 
 
 @pytest.mark.parametrize("arrives,lag", [(2.0, 2040), (None, None)])

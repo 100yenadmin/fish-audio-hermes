@@ -161,8 +161,9 @@ class Plugin:
         clips = [subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-ar", "16000", "-ac", "1",
                                  "-f", "s16le", "pipe:1"], capture_output=True, check=True).stdout for path in paths]
         pcm = pause.join(clips)
-        if not realtime:
-            self.ledger.asr(math.ceil(len(pcm) / 640) * .02)
+        # Charged before the session opens, so a cap refuses the call before Fish bills it. Realtime bills open-session
+        # time: the paced audio plus about a second of finalization, rounded up with a 2 s allowance.
+        self.ledger.asr(len(pcm) / 32000 + 2 if realtime else math.ceil(len(pcm) / 640) * .02)
         self.ledger.models.add("transcribe-stream-1" if realtime else "transcribe-1-pro")
         session = FishAudioTranscriptionProvider().open_stream_session()
         start, poll, lag = time.perf_counter(), .25, None
@@ -181,11 +182,7 @@ class Plugin:
             time.sleep(.25)
             if session.partial_transcript():
                 lag = max(0, (time.perf_counter() - start - len(clips[0]) / 32000) * 1000)
-        finalizing = time.perf_counter()
-        result = session.finalize()
-        if realtime:
-            self.ledger.asr(len(pcm) / 32000 + time.perf_counter() - finalizing)
-        return result, lag
+        return session.finalize(), lag
 
 
 class Fake(Plugin):
