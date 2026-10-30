@@ -569,7 +569,7 @@ def test_mine_visibility(paid, request):
             and result['all']['total'] == len(everything)
             and result['all'].get('total_is_exact') is not False), 'the test account needs 1-20 voices of its own and an exact total'
     for v in ('public', 'unlist', 'private'):
-        assert result[v].get('total') == len(result[v]['items'])
+        assert result[v].get('total') == len(result[v]['items']), f'{v} filter total {result[v].get("total")} != {len(result[v]["items"])} voices'
         assert result[v]['read_back'] == [v] * len(result[v]['items']), f'{v} filter returned {result[v]["read_back"]}'
     assert sorted(i['id'] for v in ('public', 'unlist', 'private') for i in result[v]['items']) == everything
     evidence(request, paid, result, {v: len(result[v]['items']) for v in ('public', 'unlist', 'private')})

@@ -217,9 +217,10 @@ all committed turns. Any doubt about completeness makes Hermes transcribe the re
 including a degraded turn, an early close or no final answer within 15 seconds of stopping.
 
 The session opens with the first audio and closes once Fish confirms the last words, usually about a second after
-you stop and at most 15 seconds (a recording Hermes cancels or discards closes 30 seconds after its last audio,
-because Hermes gives the plugin no cancel signal). Fish bills $0.36 per hour of open session, per second, including
-silence and that final wait (about $0.001 for a 10-second dictation plus its final second). Microphone PCM streams to
+you stop; if Fish never confirms, the plugin stops waiting after 15 seconds (a recording Hermes cancels or discards
+closes 30 seconds after its last audio, because Hermes gives the plugin no cancel signal). Fish bills $0.36 per hour
+of open session, per second, including silence and that final wait (about $0.001 for a 10-second dictation plus its
+final second). Microphone PCM streams to
 `wss://api.fish.audio/v1/asr/realtime`. Set `plugins.entries.fish-audio.settings.live_transcription: compat` to use
 the old ElevenLabs-compatible endpoint with phrase captions and billing per committed phrase.
 Remote self-hosted endpoints and plugin-host isolation keep file transcription; a loopback `base_url` receives
@@ -265,7 +266,7 @@ the wallet that users can't see.
 - With live dictation on (`stt.streaming: true`), microphone audio streams to `api.fish.audio` while you speak,
   through native realtime (Preview), billed $0.36 per hour of open session, per second; `live_transcription: compat`
   uses the old endpoint billed per committed phrase. Sessions open with the first audio and close once Fish confirms the last words (usually about a second after
-  you stop, at most 15 seconds), or 30 seconds after the last audio of a cancelled recording.
+  you stop; the plugin stops waiting after 15 seconds), or 30 seconds after the last audio of a cancelled recording.
 - The plugin sends your key and the text, audio, file names and voice details you ask it to process to
   `api.fish.audio` (or the `base_url` you configure), reads your wallet for balance and model choice, stores your key
   in Hermes's `.env`, and collects no telemetry. [SECURITY.md](SECURITY.md) lists what each request carries.
