@@ -4,6 +4,8 @@
 Live CI runs weekly on Wednesday at 06:41 UTC, or by manual dispatch. The owner sets
 `FISH_API_KEY`; only the benchmark step receives it. Caps: 5,000 TTS characters and
 600 billed ASR seconds, including retries, and $0.10 per run; calls crossing a cap are refused.
+Realtime live dictation bills open-session time, so the live call reserves its longest possible session (audio, the
+4 s caption wait, the 15 s finalize limit and 2 s to close) before it opens, then records the measured time.
 TTS prices per million UTF-8 bytes: s2.1-pro $15, Drama 3 **estimated** $15 (no listed
 price), s2.1-pro-free $0; both transcribe-1 models cost $0.36/ASR hour.
 New gates: Drama first audio (3-call median; warn >1200 ms, fail >2500 ms), spoken tag
