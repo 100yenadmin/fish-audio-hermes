@@ -78,13 +78,21 @@ and never rebinds Hermes module attributes. Hermes builds without the hook, and 
 
 ## Live dictation
 
-With `stt.provider: fish-audio` and `stt.streaming: true` on Hermes 0.21.6+, microphone PCM audio streams while you
-speak to `wss://api.fish.audio/compat/elevenlabs/v1/speech-to-text/realtime`, authenticated with your profile's key in
-the `xi-api-key` header. The key and safe error text are captured in the opener's profile scope. Only committed
-phrases are transcribed and billed, each rounded up to a second at Fish's ASR price. A phrase is committed only when
-it holds at least 300 ms of sound above Hermes's `voice.silence_threshold` (100 ms for a last word after an earlier
-phrase), so a pause is never committed on its own. After a phrase is committed, nothing is streamed until sound
-returns, except the half second just before it. Failed live sessions fall back to file transcription. A self-hosted
+With `stt.provider: fish-audio` and `stt.streaming: true` on Hermes 0.21.6+, a session opens with the first
+microphone audio. From then until you stop, all microphone PCM, pauses included, streams to Fish's realtime endpoint
+`wss://api.fish.audio/v1/asr/realtime` (model `transcribe-stream-1`, Preview), authenticated with your profile's key
+in an `Authorization: Bearer` header. Fish bills $0.36 per hour of open session, per second, and an open session holds
+one of the account's concurrent connections. The key and safe error text are captured in the opener's profile scope.
+
+With `plugins.entries.fish-audio.settings.live_transcription: compat`, audio instead streams to
+`wss://api.fish.audio/compat/elevenlabs/v1/speech-to-text/realtime` with the key in the `xi-api-key` header. Only
+committed phrases are transcribed and billed there, each rounded up to a second at Fish's ASR price. A phrase is
+committed only when it holds at least 300 ms of sound above Hermes's `voice.silence_threshold` (100 ms for a last word
+after an earlier phrase), so a pause is never committed on its own. After a phrase is committed, nothing is streamed
+until sound returns, except the half second just before it.
+
+Failed live sessions fall back to file transcription. A self-hosted
 `base_url` on a remote host, and plugin-host isolation, keep the file path. A loopback `base_url` (localhost, 127.0.0.1,
 ::1) is treated as a local Fish proxy and receives the live microphone audio over ws:// (wss:// for https). Abandoned
-sockets close 30 seconds after the last audio, or 3500 seconds after connecting.
+sockets, including a recording Hermes cancels or discards (Hermes gives the plugin no cancel signal), close 30 seconds
+after the last audio, or 3500 seconds after connecting.

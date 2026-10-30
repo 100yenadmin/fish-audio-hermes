@@ -198,3 +198,9 @@ def test_selection(monkeypatch, base, url, setting):
     session = stt.FishAudioTranscriptionProvider().open_stream_session()
     assert isinstance(session, live_stt.FishLiveSession if setting == "compat" else live_realtime.FishRealtimeSession)
     assert session._url == url + ("/compat/elevenlabs/v1/speech-to-text/realtime?audio_format=pcm_16000&commit_strategy=manual" if setting == "compat" else "/v1/asr/realtime")
+
+
+def test_clean_removes_tags_like_fish():
+    assert live_realtime._clean("你好[笑声]世界") == "你好世界"
+    assert live_realtime._clean("that is funny[laughter].") == "that is funny."
+    assert live_realtime._clean("<|speaker:0|>Hello<|speaker:1|>World") == "Hello World"

@@ -9,7 +9,7 @@ from .live_stt import FINALIZE_TIMEOUT, _LiveSession, join_text
 
 
 def _clean(text):
-    return " ".join(re.sub(r"<\|speaker:\d+\|>|\[[^\[\]]*\]", " ", text).split())
+    return " ".join(re.sub(r"\[[^\[\]]*\]", "", re.sub(r"<\|speaker:\d+\|>", " ", text)).split())
 
 
 class FishRealtimeSession(_LiveSession):

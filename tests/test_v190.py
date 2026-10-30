@@ -33,6 +33,9 @@ def test_stt_retirement(monkeypatch, today, expected, tmp_path, capsys):
     assert warning in commands.status()
     cli._handle(SimpleNamespace(fish_command="status"))
     assert warning in capsys.readouterr().out
+    monkeypatch.setattr(cli, "fish_api_key", lambda: "")
+    cli._doctor(SimpleNamespace(no_synth=True))
+    assert warning in capsys.readouterr().out
     assert cfg["stt"]["fish-audio"]["model"] == "transcribe-1"
 
 

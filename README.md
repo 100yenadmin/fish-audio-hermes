@@ -216,7 +216,8 @@ is the default, with word-by-word draft captions. Sound tags and speaker tags ar
 all committed turns. Any doubt about completeness makes Hermes transcribe the recording as a file instead,
 including a degraded turn, an early close or no final answer within 15 seconds of stopping.
 
-The session opens with the first audio and closes when you stop. Fish bills $0.36 per hour of open session,
+The session opens with the first audio and closes when you stop (a recording Hermes cancels or discards closes 30
+seconds after its last audio, because Hermes gives the plugin no cancel signal). Fish bills $0.36 per hour of open session,
 per second (about $0.001 for a 10-second dictation), including silence while open. Microphone PCM streams to
 `wss://api.fish.audio/v1/asr/realtime`. Set `plugins.entries.fish-audio.settings.live_transcription: compat` to use
 the old ElevenLabs-compatible endpoint with phrase captions and billing per committed phrase.
@@ -262,7 +263,8 @@ the wallet that users can't see.
 - Fish Audio may use free-model requests to improve its models.
 - With live dictation on (`stt.streaming: true`), microphone audio streams to `api.fish.audio` while you speak,
   through native realtime (Preview), billed $0.36 per hour of open session, per second; `live_transcription: compat`
-  uses the old endpoint billed per committed phrase. Sessions open with the first audio and close when you stop.
+  uses the old endpoint billed per committed phrase. Sessions open with the first audio and close when you stop, or 30 seconds after the last audio of a cancelled
+  recording.
 - The plugin sends your key and the text, audio, file names and voice details you ask it to process to
   `api.fish.audio` (or the `base_url` you configure), reads your wallet for balance and model choice, stores your key
   in Hermes's `.env`, and collects no telemetry. [SECURITY.md](SECURITY.md) lists what each request carries.
