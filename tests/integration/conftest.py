@@ -1,11 +1,16 @@
 """Install the plugin in an isolated real Hermes home, without network access."""
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
 from pathlib import Path
 import shutil
+import threading
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 VOICE = "b" * 32
+# Ports of this test's own loopback Fish stubs (fish_stub): the only connections the offline guard lets through.
+STUB_PORTS = set()
 
 
 @pytest.fixture
@@ -29,10 +34,22 @@ def installed_fish_home(tmp_path, monkeypatch):
     monkeypatch.delenv("HERMES_PLUGIN_HOST_PROCESS", raising=False)
     monkeypatch.delenv("HERMES_SESSION_PLATFORM", raising=False)
     import socket
-    def no_network(*args, **kwargs):
-        raise AssertionError("integration must remain offline")
-    monkeypatch.setattr(socket.socket, "connect", no_network)
-    monkeypatch.setattr(socket, "create_connection", no_network)
+    real_connect, real_create_connection = socket.socket.connect, socket.create_connection
+
+    def stub(address):
+        return isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1", "localhost") and address[1] in STUB_PORTS
+
+    def guarded_connect(sock, address):
+        if not stub(address):
+            raise AssertionError("integration must remain offline")
+        return real_connect(sock, address)
+
+    def guarded_create_connection(address, *args, **kwargs):
+        if not stub(address):
+            raise AssertionError("integration must remain offline")
+        return real_create_connection(address, *args, **kwargs)
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+    monkeypatch.setattr(socket, "create_connection", guarded_create_connection)
 
     # Deferred until a non-skipped integration test uses the fixture.
     from hermes_constants import set_hermes_home_override, reset_hermes_home_override
@@ -59,3 +76,41 @@ def installed_fish_home(tmp_path, monkeypatch):
         get_plugin_manager().unload()
         reset_secret_scope(secret_token)
         reset_hermes_home_override(token)
+
+
+@pytest.fixture
+def fish_stub():
+    """Start loopback Fish stubs: ``start(routes)`` -> base URL. Every request lands in ``calls`` as
+    ``(base, method, path, headers)``. They serve this process and Hermes's plugin hosts alike (Hermes
+    >= 0.22.5 runs a secondary profile's dashboard routes in that profile's own plugin host process)."""
+    calls, servers = [], []
+
+    def start(routes, host="127.0.0.1"):
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                path = self.path.split("?", 1)[0]
+                calls.append((base, "GET", path, {k.lower(): v for k, v in self.headers.items()}))
+                status, payload = (200, routes[path]) if path in routes else (404, {"message": "not found"})
+                body = json.dumps(payload).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        port = server.server_address[1]
+        base = f"http://{host}:{port}"
+        STUB_PORTS.add(port)
+        servers.append(server)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        return base
+
+    yield start, calls
+    for server in servers:
+        server.shutdown()
+        server.server_close()
+        STUB_PORTS.discard(server.server_address[1])
