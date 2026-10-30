@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from pathlib import Path
 import pytest
@@ -292,9 +293,11 @@ def test_history_minimum_and_existing_failure(tmp_path):
     assert next(r for r in result_at(out)["gates"] if r["gate"] == "stream")["level"] == "fail"
 
 
-@pytest.mark.parametrize("setting", ["realtime", "compat"])
-def test_paced_live_frames_and_caption_clock(monkeypatch, setting):
+@pytest.mark.parametrize("setting,case", [("realtime", "caption"), ("compat", "caption"),
+    ("realtime", "asr-cap"), ("realtime", "usd-cap"), ("realtime", "delayed"), ("realtime", "stall")])
+def test_paced_live_frames_and_caption_clock(monkeypatch, setting, case):
     from fish_audio import settings
+    from fish_audio.live_stt import FINALIZE_TIMEOUT
     monkeypatch.setattr(settings, "transport_settings", lambda: {"live_transcription": setting})
     from fish_audio.stt import FishAudioTranscriptionProvider
     clock, frames, polls = [0.0], [], []
@@ -302,34 +305,52 @@ def test_paced_live_frames_and_caption_clock(monkeypatch, setting):
     monkeypatch.setattr(w.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
     class Audio:
         stdout = bytes(1280)  # first clip ends at 40 ms
+    bound = (2 * len(Audio.stdout) + 48000) / 32000 + w.GATES["live-lag"][1] / 1000 + FINALIZE_TIMEOUT + 2
     monkeypatch.setattr(w.subprocess, "run", lambda *a, **k: Audio())
     class Session:
         def push_audio(self, frame):
             frames.append((clock[0], frame))
         def partial_transcript(self):
             polls.append(clock[0])
-            return "caption" if clock[0] >= .75 else ""
+            return "caption" if case == "caption" and clock[0] >= .75 else ""
         def finalize(self):
-            clock[0] += .6
+            clock[0] += 40 if case == "stall" else FINALIZE_TIMEOUT if case == "delayed" else .6
             return {"success": True, "transcript": "final"}
-    monkeypatch.setattr(FishAudioTranscriptionProvider, "open_stream_session", lambda _: Session())
     api = object.__new__(w.Plugin)
     api.ledger = w.Ledger()
+    if case in ("asr-cap", "delayed", "stall"):
+        api.ledger.seconds = 600 - math.ceil(bound) + (case == "asr-cap")
+    if case == "usd-cap":
+        api.ledger.model_bytes["s2.1-pro"] = int((w.USD_CAP - math.ceil(bound) * .36 / 3600 / 2) * 1e6 / 15)
+    initial = api.ledger.seconds
+    before = (initial, api.ledger.models.copy(), api.ledger.usd)
+    opened = []
+    def open_session(_):
+        opened.append(clock[0])
+        assert api.ledger.seconds == initial + (math.ceil(bound) if setting == "realtime" else 2)
+        return Session()
+    monkeypatch.setattr(FishAudioTranscriptionProvider, "open_stream_session", open_session)
+    if case in ("asr-cap", "usd-cap"):
+        with pytest.raises(ValueError, match="ASR cap" if case == "asr-cap" else "USD cap"):
+            api.live([Path("one"), Path("two")], "final")
+        assert not opened and not frames
+        assert (api.ledger.seconds, api.ledger.models, api.ledger.usd) == before
+        return
     result, lag = api.live([Path("one"), Path("two")], "final")
-    assert result["transcript"] == "final" and lag == pytest.approx(720)
+    assert result["transcript"] == "final"
+    measured = clock[0] - opened[0]
+    assert api.ledger.seconds == initial + (math.ceil(measured) if setting == "realtime" else 2)
+    if case in ("delayed", "stall"):
+        assert lag is None and polls[-1] >= 1.58 + w.GATES["live-lag"][1] / 1000
+        assert (api.ledger.seconds <= 600) if case == "delayed" else (measured > bound and api.ledger.seconds > 600)
+        assert api.ledger.usd == pytest.approx(api.ledger.seconds * .36 / 3600)
+        return
+    assert lag == pytest.approx(720)
     assert len(frames) == 79 and all(len(frame) == 640 for _, frame in frames)
     assert [t for t, _ in frames] == pytest.approx([.02 * i for i in range(1, 80)])
     assert polls == pytest.approx([.26, .5, .76, 1, 1.26, 1.5])
 
-    assert api.ledger.seconds == (4 if setting == "realtime" else 2)
     assert api.ledger.models == {"transcribe-stream-1" if setting == "realtime" else "transcribe-1-pro"}
-
-    frames.clear()
-    api.ledger = w.Ledger()
-    api.ledger.seconds = 600
-    with pytest.raises(ValueError, match="ASR cap"):  # the cap refuses before a session opens or any audio is sent
-        api.live([Path("one"), Path("two")], "final")
-    assert frames == []
 
 
 @pytest.mark.parametrize("arrives,lag", [(2.0, 2040), (None, None)])

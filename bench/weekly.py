@@ -72,6 +72,9 @@ class Ledger:
         self.budget(math.ceil(seconds) * .36 / 3600)
         self.seconds += math.ceil(seconds)
 
+    def settle_asr(self, reserved, used):
+        self.seconds += math.ceil(used) - math.ceil(reserved)
+
 
 def normalise(lang, text):
     text = unicodedata.normalize("NFKC", text).lower()
@@ -154,6 +157,7 @@ class Plugin:
         return FishAudioTranscriptionProvider().transcribe(str(path), model=model, language=language)
 
     def live(self, paths, reference):
+        from fish_audio.live_stt import FINALIZE_TIMEOUT
         from fish_audio.stt import FishAudioTranscriptionProvider
         from fish_audio.settings import transport_settings
         realtime = transport_settings().get("live_transcription") != "compat"
@@ -161,10 +165,11 @@ class Plugin:
         clips = [subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-ar", "16000", "-ac", "1",
                                  "-f", "s16le", "pipe:1"], capture_output=True, check=True).stdout for path in paths]
         pcm = pause.join(clips)
-        # Charged before the session opens, so a cap refuses the call before Fish bills it. Realtime bills open-session
-        # time: the paced audio plus about a second of finalization, rounded up with a 2 s allowance.
-        self.ledger.asr(len(pcm) / 32000 + 2 if realtime else math.ceil(len(pcm) / 640) * .02)
+        bound = len(pcm) / 32000 + GATES["live-lag"][1] / 1000 + FINALIZE_TIMEOUT + 2
+        # Reserve the longest session before opening; a refusal must send nothing.
+        self.ledger.asr(bound if realtime else math.ceil(len(pcm) / 640) * .02)
         self.ledger.models.add("transcribe-stream-1" if realtime else "transcribe-1-pro")
+        opened = time.perf_counter()
         session = FishAudioTranscriptionProvider().open_stream_session()
         start, poll, lag = time.perf_counter(), .25, None
         for offset in range(0, len(pcm), 640):
@@ -182,7 +187,11 @@ class Plugin:
             time.sleep(.25)
             if session.partial_transcript():
                 lag = max(0, (time.perf_counter() - start - len(clips[0]) / 32000) * 1000)
-        return session.finalize(), lag
+        result = session.finalize()
+        if realtime:
+            # Once finalize returns, the measured time replaces the reservation, even past a cap: the call happened.
+            self.ledger.settle_asr(bound, time.perf_counter() - opened)
+        return result, lag
 
 
 class Fake(Plugin):
