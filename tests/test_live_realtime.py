@@ -205,4 +205,5 @@ def test_clean_removes_tags_like_fish():
     assert live_realtime._clean("that is funny[laughter].") == "that is funny."
     assert live_realtime._clean("<|speaker:0|>Hello<|speaker:1|>World") == "Hello World"
     assert live_realtime._clean("hello[laughter]world") == "hello world"
+    assert live_realtime._clean("hello[a][b]world") == "hello world"
     assert live_realtime._clean("I [laughs] think") == "I think"

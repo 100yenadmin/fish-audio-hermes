@@ -16,7 +16,7 @@ def _untag(match):
 
 
 def _clean(text):
-    return " ".join(re.sub(r"\[[^\[\]]*\]", _untag, re.sub(r"<\|speaker:\d+\|>", " ", text)).split())
+    return " ".join(re.sub(r"(?:\[[^\[\]]*\])+", _untag, re.sub(r"<\|speaker:\d+\|>", " ", text)).split())
 
 
 class FishRealtimeSession(_LiveSession):
