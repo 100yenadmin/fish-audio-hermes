@@ -5,11 +5,18 @@ import time
 import msgpack
 from websockets.exceptions import ConnectionClosed
 
-from .live_stt import FINALIZE_TIMEOUT, _LiveSession, join_text
+from .live_stt import _CJK, FINALIZE_TIMEOUT, _LiveSession, join_text
+
+
+def _untag(match):
+    # A removed sound tag keeps a word boundary only between two non-CJK word characters ("hello[laughter]world").
+    before, after = match.string[match.start() - 1:match.start()], match.string[match.end():match.end() + 1]
+    words = re.fullmatch(r"\w", before) and re.fullmatch(r"\w", after) and not (_CJK.match(before) or _CJK.match(after))
+    return " " if words else ""
 
 
 def _clean(text):
-    return " ".join(re.sub(r"\[[^\[\]]*\]", "", re.sub(r"<\|speaker:\d+\|>", " ", text)).split())
+    return " ".join(re.sub(r"\[[^\[\]]*\]", _untag, re.sub(r"<\|speaker:\d+\|>", " ", text)).split())
 
 
 class FishRealtimeSession(_LiveSession):
