@@ -2975,6 +2975,25 @@ entries:
 - path: /model
   method: get
   location: query
+  field: visibility
+  surface: fish_voices mine visibility filter (self=true)
+  status: verified
+  tests:
+  - tests/test_v190.py::test_mine_visibility[public]
+  - tests/test_v190.py::test_mine_visibility[unlist]
+  - tests/test_v190.py::test_mine_visibility[private]
+  spec:
+    type:
+    - 'null'
+    - string
+    enum:
+    - private
+    - public
+    - unlist
+    required: false
+- path: /model
+  method: get
+  location: query
   field: self
   surface: fish_voices search/mine self; Desktop Voices Library and My voices
   status: verified
@@ -5462,15 +5481,26 @@ entries:
         enum: null
         required: false
 doc_only:
+- field: asr_realtime
+  surface: 'Live dictation: native realtime STT (transcribe-stream-1), MessagePack, manual turns, drafts'
+  status: verified
+  tests:
+  - 'tests/test_live_realtime.py::test_happy_path[Hello-world-Hello world]'
+  - tests/test_live_realtime.py::test_incomplete[timeout-timeout]
+  - tests/test_live_realtime.py::test_incomplete[close-timeout]
+  - tests/test_live_realtime.py::test_incomplete[degraded-unavailable]
+  - tests/test_live_realtime.py::test_incomplete[error-unavailable]
+  - tests/integration/test_hermes_live_stt_path.py::test_core_realtime_stt
+  url: https://docs.fish.audio/api-reference/endpoint/websocket/asr-realtime
 - field: input_audio_chunk
-  surface: 'Live dictation: compat realtime STT, 16 kHz PCM with non-empty manual commits'
+  surface: 'Live dictation: live_transcription: compat, 16 kHz PCM with non-empty manual commits'
   status: verified
   tests:
   - tests/test_live_stt.py::test_happy_path
   - tests/test_live_stt.py::test_silence_only
   url: https://docs.fish.audio/developer-guide/compat/migrate-from-elevenlabs#realtime-stt
 - field: committed_transcript
-  surface: 'Live dictation: committed phrase captions and final joined text'
+  surface: 'Live dictation: live_transcription: compat, committed phrase captions and final joined text'
   status: verified
   tests:
   - tests/test_live_stt.py::test_happy_path
@@ -5481,7 +5511,7 @@ doc_only:
   status: verified
   tests:
   - tests/test_settings.py::test_language_websocket_start
-  url: https://docs.fish.audio/changelog#2026-10-16
+  url: https://docs.fish.audio/developer-guide/getting-started/changelog#tts-language-field
 - field: start
   surface: 'Streaming voice, transport ws: one session per sentence (start, text, flush, stop; audio, finish, error)'
   status: verified

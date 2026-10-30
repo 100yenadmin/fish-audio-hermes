@@ -1,5 +1,5 @@
 name: fish-audio
-version: 1.8.0
+version: 1.9.0
 description: "Fish Audio voices for Hermes: expressive text-to-speech, speech-to-text, a searchable voice library, voice cloning and voice design, in the CLI, every messaging gateway and the Desktop app. Most calls are paid Fish Audio API requests billed to your Fish account; the Disclosure section of the README lists what is billed, sent and stored."
 author: Electric Sheep
 kind: standalone
@@ -31,6 +31,12 @@ config_schema:
     default: auto
     label: "Streaming voice"
     description: "auto streams speech sentence by sentence in Desktop and CLI voice mode on Hermes 0.21.6 or later; off uses whole-file synthesis."
+  live_transcription:
+    type: str
+    choices: [realtime, compat]
+    default: realtime
+    label: "Live dictation endpoint"
+    description: "realtime: Fish's transcribe-stream-1 (Preview), word-by-word captions, billed $0.36 per hour of open session, per second. compat: Fish's ElevenLabs-compatible endpoint, phrase captions, billed per committed phrase."
   transport:
     type: str
     choices: [http, ws]

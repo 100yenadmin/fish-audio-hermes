@@ -21,8 +21,8 @@ SENTENCES = 'The sun is shining over the garden. A little bird is singing nearby
 CORPUS = ROOT / 'bench/corpus/en01.webm'
 ASR_TEXTS = {x['id']: x['text'] for x in json.loads((ROOT / 'bench/texts.json').read_text())['asr_corpus']}
 REFERENCE = ASR_TEXTS['en01']
-# A-STT-3 speaks two phrases. The plugin commits a phrase of at least 1 s at a 700 ms pause (fish_audio/live_stt.py), so
-# the gap commits the first phrase while the second still streams, and its caption must arrive before EOS.
+# Realtime captions come from drafts; compat captions come from committed phrases.
+# Both paced rows require the first caption before EOS.
 LIVE_CLIPS = ('en02', 'en05')
 
 
@@ -534,6 +534,24 @@ def live_caption_metrics(frames, eos_ms):
 
 @pytest.mark.row('A-STT-3')
 def test_live_stt(paid, request):
+    paced_live_stt(paid, request)
+
+
+@pytest.mark.row('A-STT-4')
+def test_live_stt_compat(paid, request):
+    if paid.meta['host'] == 'evaos':
+        na(request, 'matrix O: fork has no live STT seam or transcribe-stream route')
+    saved = config(paid)
+    try:
+        altered = copy.deepcopy(saved)
+        altered.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['live_transcription'] = 'compat'
+        set_config(paid, altered)
+        paced_live_stt(paid, request)
+    finally:
+        set_config(paid, saved)
+
+
+def paced_live_stt(paid, request):
     if paid.meta['host'] == 'evaos':
         na(request, 'matrix O: fork has no live STT seam or transcribe-stream route')
     pcm = paid.out / 'dictation.pcm'

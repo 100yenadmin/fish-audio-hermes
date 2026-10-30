@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.9.0 — 2026-10-30
+
+- **Word-by-word live dictation:** native Fish realtime STT (`transcribe-stream-1`, Preview) is now the default,
+  with MessagePack audio, manual turns and draft captions. Sound and speaker tags are removed. Missing completion,
+  degraded turns or errors fall back to file transcription, so a partial transcript is never kept (#61).
+- **Choose the old endpoint:** `live_transcription: compat` keeps phrase captions. Native sessions open with the
+  first audio and close when you stop, billed $0.36 per open hour, per second. The weekly ledger uses session
+  duration plus finalization; release acceptance covers both settings. Language and prompt hints remain ignored.
+- **Transcribe 1 is deprecated:** status warns about retirement on 2026-12-31; from that day provider and tool
+  requests use `transcribe-1-pro` at the same price without rewriting config. Plain pro transcripts disable diarization.
+- **Filter your voices:** `fish_voices` action `mine` accepts public, unlist or private visibility; clone/save/update
+  still refuse public writes (#62).
+- **Updated API parity and drift checks:** native realtime has protocol coverage, compat rows name their setting,
+  the TTS language link follows Fish's current docs, and changelog canaries read both heading and Update labels.
+
 ## 1.8.0 — 2026-10-20
 
 - **A language setting for speech:** Fish added an optional language tag to text-to-speech on 16 October. Set

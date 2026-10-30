@@ -2497,6 +2497,30 @@
           },
           {
             "in": "query",
+            "name": "visibility",
+            "description": "Visibility to filter workspace models; ignored unless self is True",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "public",
+                    "unlist",
+                    "private"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Visibility"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
             "name": "licensed",
             "description": "If True, only voices licensed by Fish Audio (rights secured from the voice owner) are returned; ignored if self is True",
             "required": false,
@@ -6520,7 +6544,7 @@
   },
   "x-source": {
     "url": "https://docs.fish.audio/api-reference/openapi.json",
-    "sha256": "3fca55ac146ebfdd6c9ac5c1905ed1adc3746b390eca1d8178f32bcf0b8c201f",
-    "fetch_date": "2026-10-20"
+    "sha256": "740b3d81ebc0bb1ac760d9ab1124ec218b22025345e6c1e270a7d3241141ff82",
+    "fetch_date": "2026-10-30"
   }
 }

@@ -93,7 +93,7 @@ def live(monkeypatch):
     def start(**kwargs):
         server = LiveServer(**kwargs)
         monkeypatch.setattr(settings, "_config", lambda: {
-            "plugins": {"entries": {"fish-audio": {"settings": {"base_url": server.base}}}}})
+            "plugins": {"entries": {"fish-audio": {"settings": {"base_url": server.base, "live_transcription": "compat"}}}}})
         session = stt.FishAudioTranscriptionProvider().open_stream_session(language="ja-JP", prompt="ignored")
         servers.append((server, session))
         return server, session
@@ -211,7 +211,7 @@ def test_pauses_are_not_streamed(live):
         ("http://127.0.0.1:9", "ws://127.0.0.1:9/"), ("https://localhost:8443", "wss://localhost:8443/"),
         ("http://localhost:8000/fish/", "ws://localhost:8000/fish/")])
 def test_live_url_scheme(monkeypatch, base, url):
-    monkeypatch.setattr(stt, "transport_settings", lambda: {"base_url": base})
+    monkeypatch.setattr(stt, "transport_settings", lambda: {"base_url": base, "live_transcription": "compat"})
     monkeypatch.setattr(stt, "fish_api_key", lambda: KEY)
     assert stt.FishAudioTranscriptionProvider().open_stream_session()._url.startswith(url + "compat/")
 
@@ -276,7 +276,7 @@ def test_quiet_microphone_threshold(live, monkeypatch):
     server, session = live()
     session.push_audio(quiet * 20)
     assert session.finalize()["error_kind"] == "no_speech"
-    config = {"voice": {"silence_threshold": 80}, "plugins": {"entries": {"fish-audio": {"settings": {"base_url": server.base}}}}}
+    config = {"voice": {"silence_threshold": 80}, "plugins": {"entries": {"fish-audio": {"settings": {"base_url": server.base, "live_transcription": "compat"}}}}}
     monkeypatch.setattr(settings, "_config", lambda: config)
     monkeypatch.setattr(stt, "_config", lambda: config)
     session = stt.FishAudioTranscriptionProvider().open_stream_session()

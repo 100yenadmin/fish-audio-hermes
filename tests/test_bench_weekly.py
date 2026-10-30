@@ -292,7 +292,10 @@ def test_history_minimum_and_existing_failure(tmp_path):
     assert next(r for r in result_at(out)["gates"] if r["gate"] == "stream")["level"] == "fail"
 
 
-def test_paced_live_frames_and_caption_clock(monkeypatch):
+@pytest.mark.parametrize("setting", ["realtime", "compat"])
+def test_paced_live_frames_and_caption_clock(monkeypatch, setting):
+    from fish_audio import settings
+    monkeypatch.setattr(settings, "transport_settings", lambda: {"live_transcription": setting})
     from fish_audio.stt import FishAudioTranscriptionProvider
     clock, frames, polls = [0.0], [], []
     monkeypatch.setattr(w.time, "perf_counter", lambda: clock[0])
@@ -307,6 +310,7 @@ def test_paced_live_frames_and_caption_clock(monkeypatch):
             polls.append(clock[0])
             return "caption" if clock[0] >= .75 else ""
         def finalize(self):
+            clock[0] += .6
             return {"success": True, "transcript": "final"}
     monkeypatch.setattr(FishAudioTranscriptionProvider, "open_stream_session", lambda _: Session())
     api = object.__new__(w.Plugin)
@@ -316,6 +320,9 @@ def test_paced_live_frames_and_caption_clock(monkeypatch):
     assert len(frames) == 79 and all(len(frame) == 640 for _, frame in frames)
     assert [t for t, _ in frames] == pytest.approx([.02 * i for i in range(1, 80)])
     assert polls == pytest.approx([.26, .5, .76, 1, 1.26, 1.5])
+
+    assert api.ledger.seconds == (3 if setting == "realtime" else 2)
+    assert api.ledger.models == {"transcribe-stream-1" if setting == "realtime" else "transcribe-1-pro"}
 
 
 @pytest.mark.parametrize("arrives,lag", [(2.0, 2040), (None, None)])

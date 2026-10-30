@@ -155,12 +155,15 @@ class Plugin:
 
     def live(self, paths, reference):
         from fish_audio.stt import FishAudioTranscriptionProvider
+        from fish_audio.settings import transport_settings
+        realtime = transport_settings().get("live_transcription") != "compat"
         pause = bytes(48000)  # 1.5 s between the clips, so the first one is captioned mid-stream
         clips = [subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-ar", "16000", "-ac", "1",
                                  "-f", "s16le", "pipe:1"], capture_output=True, check=True).stdout for path in paths]
         pcm = pause.join(clips)
-        self.ledger.asr(math.ceil(len(pcm) / 640) * .02)
-        self.ledger.models.add("transcribe-1-pro")
+        if not realtime:
+            self.ledger.asr(math.ceil(len(pcm) / 640) * .02)
+        self.ledger.models.add("transcribe-stream-1" if realtime else "transcribe-1-pro")
         session = FishAudioTranscriptionProvider().open_stream_session()
         start, poll, lag = time.perf_counter(), .25, None
         for offset in range(0, len(pcm), 640):
@@ -178,7 +181,11 @@ class Plugin:
             time.sleep(.25)
             if session.partial_transcript():
                 lag = max(0, (time.perf_counter() - start - len(clips[0]) / 32000) * 1000)
-        return session.finalize(), lag
+        finalizing = time.perf_counter()
+        result = session.finalize()
+        if realtime:
+            self.ledger.asr(len(pcm) / 32000 + time.perf_counter() - finalizing)
+        return result, lag
 
 
 class Fake(Plugin):

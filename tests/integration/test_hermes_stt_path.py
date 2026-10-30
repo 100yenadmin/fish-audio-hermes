@@ -35,4 +35,4 @@ def test_core_stt_clean_transcript_and_exact_pro_header(installed_fish_home, fil
         assert parts["audio"].get_content_type() == mime
         assert parts["audio"].get_filename() == filename
         assert parts["audio"].get_payload(decode=True) == path.read_bytes()
-        assert "diarize" not in parts
+        assert parts["diarize"].get_payload(decode=True) == b"false"

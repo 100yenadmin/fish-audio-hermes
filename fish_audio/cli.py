@@ -99,6 +99,8 @@ def _doctor(args):
     key, base, cfg = fish_api_key(), commands.base_url(), settings._config()
     if settings._mapping(settings._mapping(cfg.get("tts")).get("fish-audio")).get("model") == "s1":
         line("warn", models.s1_warning())
+    if settings._mapping(settings._mapping(cfg.get("stt")).get("fish-audio")).get("model") == "transcribe-1":
+        line("warn", models.transcribe_1_warning())
     if (settings._mapping(settings._mapping(cfg.get("tts")).get("fish-audio")).get("model") == "s2.1-pro-free"
             and settings.transport_settings().get("allow_free_model", True) is not False):
         warning = models.free_model_warning()

@@ -62,6 +62,7 @@ def status(key=None):
         f"STT: {stt.get('provider') or 'unset'} (Fish: {stt.get('provider') == 'fish-audio'})",
         f"Voice: {nested.get('voice') or tts.get('voice') or 'Fish default'}", f"Model: {model} ({reason})",
         *(("warn: " + models.s1_warning(),) if nested.get("model") == "s1" else ()),
+        *(("warn: " + models.transcribe_1_warning(),) if settings._mapping(stt.get("fish-audio")).get("model") == "transcribe-1" else ()),
         *(("warn: " + free_warning,) if free_warning else ()),
         *(("Account: managed by the operator",) if operator else
           (f"API credit: {wallet.credit if wallet else 'unknown'}", f"Plan: {package.get('type', 'unknown') if package else 'unknown'}")),
