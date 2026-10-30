@@ -16,7 +16,7 @@ def test_core_live_stt(installed_fish_home, monkeypatch):
         return REAL_CONNECT(sock, address)
     monkeypatch.setattr(socket.socket, "connect", loopback)
     monkeypatch.setattr(socket, "create_connection", REAL_CREATE)
-    monkeypatch.setattr(module, "transport_settings", lambda: {"base_url": server.base})
+    monkeypatch.setattr(module, "transport_settings", lambda: {"base_url": server.base, "live_transcription": "compat"})
     partials, caption = [], threading.Event()
     session = None
     try:
@@ -27,6 +27,35 @@ def test_core_live_stt(installed_fish_home, monkeypatch):
         assert caption.wait(2) and partials == ["Hello"]
         session.push_audio(SPEECH * 20)
         assert session.finalize()["transcript"] == "Hello world."
+    finally:
+        if session is not None:
+            session._inner._close()
+        server.server.shutdown()
+
+
+@pytest.mark.skipif(not HAS_STT_STREAM_SEAM, reason="requires Hermes 0.21.6 STT seam")
+def test_core_realtime_stt(installed_fish_home, monkeypatch):
+    from test_live_realtime import RealtimeServer
+    _, _, provider = installed_fish_home
+    from tools.transcription_streaming import open_streaming_session
+    module = __import__(type(provider).__module__, fromlist=["transport_settings"])
+    server = RealtimeServer(audio_events=[[{"type": "draft", "turn_index": 0, "text": "Hello"}]])
+    def loopback(sock, address):
+        assert address == ("127.0.0.1", server.port)
+        return REAL_CONNECT(sock, address)
+    monkeypatch.setattr(socket.socket, "connect", loopback)
+    monkeypatch.setattr(socket, "create_connection", REAL_CREATE)
+    monkeypatch.setattr(module, "transport_settings", lambda: {"base_url": server.base})
+    partials, caption = [], threading.Event()
+    session = None
+    try:
+        session = open_streaming_session(lambda text: (partials.append(text), caption.set()),
+            stt_config={"streaming": True, "provider": "fish-audio"})
+        assert session is not None
+        session.push_audio(bytes(3200))
+        assert caption.wait(2) and partials == ["Hello"]
+        assert session.finalize() == {"success": True, "transcript": "Hello", "provider": "fish-audio"}
+        assert server.closed.wait(1)
     finally:
         if session is not None:
             session._inner._close()

@@ -192,3 +192,12 @@ def test_lock_contains_price_plugin_and_mcp_canaries():
     assert lock["doc_prices"]["s2.1-pro-free"] == r"\$0.00 / M UTF-8 bytes"
     assert lock["fish_agent_plugin_version"]
     assert len(lock["fish_mcp_config_sha256"]) == 64
+
+
+@pytest.mark.parametrize("prose,labels", [
+    ('<Update label="old">', ["old"]),
+    ('## outside\n# Changelog\n## new\n### sub\n# Next\n## outside', ["new"]),
+    ('<Update label="old">\n# Changelog\n## new\n## old\n', ["new", "old"]),
+])
+def test_changelog_formats(prose, labels):
+    assert drift.canaries(b"", prose)["changelog_labels_seen"] == labels

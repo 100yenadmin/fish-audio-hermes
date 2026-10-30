@@ -47,3 +47,13 @@ def effective_model(model_id, today=None):
 def s1_warning():
     return ("S1 has retired; requests use S2.1 Pro." if effective_model("s1") != "s1" else
             "S1 is deprecated: Fish retires it on 2026-12-31 and then serves it as S2.1 Pro. Choose s2.1-pro.")
+
+
+def effective_stt_model(model_id, today=None):
+    today = today if today is not None else datetime.now(timezone.utc).date()
+    return "transcribe-1-pro" if model_id == "transcribe-1" and today.isoformat() >= "2026-12-31" else model_id
+
+
+def transcribe_1_warning():
+    return ("transcribe-1 has retired; requests use transcribe-1-pro." if effective_stt_model("transcribe-1") != "transcribe-1" else
+            "transcribe-1 is deprecated: Fish retires it on 2026-12-31 and then serves it as transcribe-1-pro at the same price. Choose transcribe-1-pro.")

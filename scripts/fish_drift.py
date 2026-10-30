@@ -32,9 +32,11 @@ def extra_canaries():
 
 
 def canaries(skill, prose):
+    changelog = re.search(r"^# Changelog\s*\n(.*?)(?=^# |\Z)", prose, re.M | re.S)
+    labels = re.findall(r'^## (.+)$', changelog[1], re.M) if changelog else []
     return {"fish_audio_api_skill_sha256": hashlib.sha256(skill).hexdigest(),
             "known_model_ids": sorted(set(re.findall(MODEL_IDS, prose))),
-            "changelog_labels_seen": sorted(set(re.findall(r'<Update label="([^"]+)"', prose)))}
+            "changelog_labels_seen": sorted(set(labels + re.findall(r'<Update label="([^"]+)"', prose)))}
 
 
 def compare(pinned, fresh, lock, skill, prose, mapping, head, inconclusive=None, extra=None):

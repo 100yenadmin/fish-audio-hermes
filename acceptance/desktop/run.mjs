@@ -100,12 +100,18 @@ async function setup(s) {
 async function enableDesktopHalf(s) {
   // Install from Git delivers the desktop half switched off; a user turns it on once (setup, not a row).
   // On a cold launch the plugin list takes ~15-20 s to arrive.
-  await c.nav(s, '#/capabilities?tab=plugins')
+  // Hermes 0.22.5+ opens this tab on the catalog and keeps an installed plugin's switches in a detail pane that the
+  // plugin= deep link opens; older hosts show the switch in the row, and the deep link only highlights it.
+  await c.nav(s, '#/')
+  await c.sleep(500)
+  await c.nav(s, '#/capabilities?tab=plugins&plugin=fish-audio')
   const sw = s.page.locator('[role=switch][aria-label="Desktop: Fish Audio"]')
   for (let i = 0; i < 90 && !(await sw.count()); i++) await c.sleep(500)
   if (!(await sw.count())) return 'no Desktop switch for Fish Audio (bundled half or not installed)'
-  if ((await sw.first().getAttribute('aria-checked')) === 'false') { await sw.first().click(); await c.sleep(1500); return 'Desktop half switched on by the harness' }
-  return 'Desktop half already on'
+  let result = 'Desktop half already on'
+  if ((await sw.first().getAttribute('aria-checked')) === 'false') { await sw.first().click(); await c.sleep(1500); result = 'Desktop half switched on by the harness' }
+  await c.page_escape(s)
+  return result
 }
 // The key lands by file + gateway restart, which the Desktop half only notices on its next 60 s probe; a forced
 // probe (plugin init) fetches /account and the credit chip at once. Reload the renderer, as a user restarting would.

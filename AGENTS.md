@@ -25,7 +25,7 @@ CI is `.github/workflows/ci.yml`. Run the same suites locally.
 Python unit suite (CI runs Python 3.11, 3.13 and 3.14):
 
 ```bash
-python -m pip install "httpx>=0.27,<1" "websockets>=13,<16" "msgpack>=1.0,<2" "pyyaml>=6,<7" "pytest==8.4.2" "respx==0.22.0" "fastapi==0.133.1" "starlette==1.3.1"
+python -m pip install "httpx>=0.27,<1" "websockets>=15,<16" "msgpack>=1.0,<2" "pyyaml>=6,<7" "pytest==8.4.2" "respx==0.22.0" "fastapi==0.133.1" "starlette==1.3.1"
 python -m pytest -q
 python scripts/parity_check.py
 ```

@@ -6,7 +6,7 @@ import unicodedata
 from pathlib import Path
 from uuid import uuid4
 
-from . import client, media
+from . import client, media, models
 from .stt import MODEL_PRO, MODEL_T1
 from .tool_support import require, integer
 from .voices import MIMES, KINDS
@@ -130,6 +130,7 @@ def execute(args, key, base, session):
     path, kind, audio = media.validate_input_file(args.get("file_path"), max_bytes=50 * 1024 * 1024, kinds=KINDS | {"aac"})
     model = args.get("model", MODEL_PRO)
     require(model in {MODEL_PRO, MODEL_T1}, "Use transcribe-1-pro or transcribe-1 (exact lowercase).")
+    model = models.effective_stt_model(model)
     if model == MODEL_T1 and kind == "webm":
         model = MODEL_PRO
     diarize = args.get("diarize", "auto")

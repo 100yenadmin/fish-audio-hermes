@@ -58,14 +58,11 @@ class PauseDetector:
         return commit
 
 
-class FishLiveSession(TranscriptionStreamSession):
-    def __init__(self, url, key, user_agent, errors, threshold=SILENCE_RMS_THRESHOLD):
+class _LiveSession(TranscriptionStreamSession):
+    def __init__(self, url, key, user_agent, errors):
         self._url, self._key, self._agent, self._errors = url, key, user_agent, errors
         self._socket = self._timer = None
         self._failed = None
-        self._detector = PauseDetector(threshold)
-        self._pending, self._held, self._due, self._texts = bytearray(), bytearray(), bytearray(), []
-        self._commits = self._received = 0
         self._activity, self._connected = time.monotonic(), None
 
     def _watch(self):
@@ -92,6 +89,21 @@ class FishLiveSession(TranscriptionStreamSession):
     def _fail(self, kind="unavailable"):
         self._failed = kind
         self._close()
+
+    def _failure(self, kind):
+        return {"success": False, "transcript": "", "provider": "fish-audio",
+                "error": self._errors[kind], "error_kind": kind}
+
+    def __del__(self):
+        self._close()
+
+
+class FishLiveSession(_LiveSession):
+    def __init__(self, url, key, user_agent, errors, threshold=SILENCE_RMS_THRESHOLD):
+        super().__init__(url, key, user_agent, errors)
+        self._detector = PauseDetector(threshold)
+        self._pending, self._held, self._due, self._texts = bytearray(), bytearray(), bytearray(), []
+        self._commits = self._received = 0
 
     def _connect(self):
         from websockets.sync.client import connect
@@ -171,10 +183,6 @@ class FishLiveSession(TranscriptionStreamSession):
             self._fail()
         return join_text(self._texts)
 
-    def _failure(self, kind):
-        return {"success": False, "transcript": "", "provider": "fish-audio",
-                "error": self._errors[kind], "error_kind": kind}
-
     def finalize(self):
         self._activity = time.monotonic()
         deadline = time.monotonic() + FINALIZE_TIMEOUT
@@ -203,6 +211,3 @@ class FishLiveSession(TranscriptionStreamSession):
             return self._failure("unavailable")
         finally:
             self._close()
-
-    def __del__(self):
-        self._close()

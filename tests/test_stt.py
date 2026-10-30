@@ -48,11 +48,12 @@ def test_model_header_fields_and_clean_transcript(tmp_path, model, suffix, expec
         assert parts["audio"].get_filename() == path.name
         assert parts["ignore_timestamps"].get_payload(decode=True) == b"true"
         assert parts["language"].get_payload(decode=True) == b"en"
-        assert "diarize" not in parts and "prompt" not in parts and "extra" not in parts
+        assert "prompt" not in parts and "extra" not in parts
         if expected == stt.MODEL_PRO:
+            assert parts["diarize"].get_payload(decode=True) == b"false"
             assert parts["tag_audio_events"].get_payload(decode=True) == b"false"
         else:
-            assert "tag_audio_events" not in parts
+            assert "tag_audio_events" not in parts and "diarize" not in parts
 
 
 @pytest.mark.parametrize("suffix,mime", [("mp3", "audio/mpeg"), ("mpga", "audio/mpeg"), ("mpeg", "audio/mpeg"),
@@ -130,7 +131,7 @@ def test_no_key_and_surface(monkeypatch):
     assert provider.name == "fish-audio" and provider.display_name == "Fish Audio"
     assert provider.default_model() == stt.MODEL_PRO
     assert provider.list_models() == [{"id": stt.MODEL_PRO, "display": "Transcribe 1 Pro (recommended)"},
-                                      {"id": stt.MODEL_T1, "display": "Transcribe 1"}]
+                                      {"id": stt.MODEL_T1, "display": "Transcribe 1 (deprecated)"}]
     assert provider.is_available()
     monkeypatch.setattr(stt, "fish_api_key", lambda: "")
     with respx.mock(assert_all_called=True) as mock:

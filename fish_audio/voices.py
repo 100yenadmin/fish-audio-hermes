@@ -116,6 +116,9 @@ def execute(args, key, base, session):
         params.update(filters)
         if action == "mine":
             params["self"] = "true"
+            if "visibility" in args:
+                require(args["visibility"] in ("public", "unlist", "private"), "visibility filter must be public, unlist or private.")
+                params["visibility"] = args["visibility"]
         data = client.get_json("/model", params, key, base)
         exact = data.get("total_is_exact", not data.get("window_limited", False))
         limited = data.get("window_limited", False) or exact is False

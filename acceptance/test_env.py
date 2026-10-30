@@ -288,3 +288,18 @@ def test_agent_tool_receipt_must_be_newer_than_chat(monkeypatch, tmp_path):
         return 'synthetic reply'
     paid.cli = fresh_chat
     namespace['test_agent'](paid, 2, 'fish_voices', None)
+
+
+def test_gateway_control_socket_fits_a_private_runtime_dir(monkeypatch, tmp_path):
+    socket_leaf = '/hermes-gw-0123456789abcdef/control.sock'  # Hermes: hermes-gw-<16 hex>/control.sock
+    assert len((str(harness.CACHE / 'run') + socket_leaf).encode()) <= 100  # Hermes's _MAX_UNIX_PATH
+    monkeypatch.setattr(harness, 'CACHE', tmp_path / 'cache')
+    host = object.__new__(harness.Host)
+    host.out, host.home, host.src, host.token = tmp_path / 'out', tmp_path / 'home', tmp_path / 'src', 'token'
+    host.meta = {'host': 'evaos'}
+    monkeypatch.setattr(harness.sys, 'platform', 'linux')
+    assert 'XDG_RUNTIME_DIR' not in host.env() or host.env()['XDG_RUNTIME_DIR'] == os.environ.get('XDG_RUNTIME_DIR')
+    monkeypatch.setattr(harness.sys, 'platform', 'darwin')
+    runtime = Path(host.env()['XDG_RUNTIME_DIR'])
+    assert runtime == tmp_path / 'cache' / 'run' and runtime.stat().st_mode & 0o777 == 0o700
+

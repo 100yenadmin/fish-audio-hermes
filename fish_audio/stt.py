@@ -8,7 +8,7 @@ import re
 from urllib.parse import urlsplit
 
 from ._compat import HAS_STT_STREAM_SEAM, TranscriptionProvider
-from . import client
+from . import client, models
 from .errors import FishAudioError
 from .secrets import fish_api_key, redact
 from .settings import DEFAULT_BASE_URL, _base_url, _config, _mapping, transport_settings
@@ -51,7 +51,7 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
 
     def list_models(self):
         return [{"id": MODEL_PRO, "display": "Transcribe 1 Pro (recommended)"},
-                {"id": MODEL_T1, "display": "Transcribe 1"}]
+                {"id": MODEL_T1, "display": "Transcribe 1 (deprecated)"}]
 
     def default_model(self):
         return MODEL_PRO
@@ -67,6 +67,7 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
 
     def open_stream_session(self, *, language=None, prompt=None):
         from .live_stt import FishLiveSession
+        from .live_realtime import FishRealtimeSession
         key = fish_api_key()
         if not key:
             raise ValueError("Fish Audio live transcription requires a key.")
@@ -74,11 +75,14 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
         if not loopback and base.hostname != "api.fish.audio":
             raise ValueError("Fish Audio live transcription requires api.fish.audio.")
         url = ("wss" if base.scheme == "https" else "ws") + "://" + base.netloc + base.path.rstrip("/")
-        url += "/compat/elevenlabs/v1/speech-to-text/realtime?audio_format=pcm_16000&commit_strategy=manual"
+        compat = transport_settings().get("live_transcription") == "compat"
+        url += "/compat/elevenlabs/v1/speech-to-text/realtime?audio_format=pcm_16000&commit_strategy=manual" if compat else "/v1/asr/realtime"
         # Capture safe text now; the worker and watchdog never resolve secrets or settings.
         errors = {kind: redact(text) for kind, text in {
             "auth": "Fish Audio live authentication failed.", "unavailable": "Fish Audio live transcription failed.",
             "timeout": "Fish Audio live transcription timed out.", "no_speech": "no speech detected"}.items()}
+        if not compat:
+            return FishRealtimeSession(url, key, client._user_agent(), errors)
         # Hermes's own microphone threshold (voice.silence_threshold, default 200), so quiet mics get captions too.
         threshold = _mapping(_config().get("voice")).get("silence_threshold")
         if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 1 <= threshold < 32768:
@@ -100,12 +104,13 @@ class FishAudioTranscriptionProvider(TranscriptionProvider):
                     _warned_models.add(fingerprint)
                     logger.warning("Unknown Fish Audio transcription model; using %s.", MODEL_PRO)
                 chosen = MODEL_PRO
+            chosen = models.effective_stt_model(chosen)
             if chosen == MODEL_T1 and path.suffix.lower() == ".webm":
                 logger.debug("Upgrading WebM transcription to transcribe-1-pro.")
                 chosen = MODEL_PRO
             fields = {"ignore_timestamps": "true"}
             if chosen == MODEL_PRO:
-                fields["tag_audio_events"] = "false"
+                fields.update(tag_audio_events="false", diarize="false")
             if isinstance(language, str):
                 primary = language.split("-", 1)[0].lower()
                 if re.fullmatch(r"[a-z]{2,3}", primary):
