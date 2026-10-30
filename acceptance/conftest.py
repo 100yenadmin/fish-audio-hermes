@@ -32,7 +32,7 @@ def retry_rows(rows):
 
 def runtime_dir():
     # Hermes 0.22.5+ refuses to start a gateway without its control socket. Under the long run dir the socket path
-    # passes the 104-byte AF_UNIX limit, and the /tmp fallback is outside the sandbox; Hermes takes a private
+    # passes Hermes's 100-byte limit, and the /tmp fallback is outside the macOS sandbox; Hermes takes a private
     # (0700) XDG_RUNTIME_DIR first, so give it a short one inside the cache, which the sandbox allows.
     path = CACHE / 'run'
     path.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -133,7 +133,9 @@ class Host:
                    XDG_STATE_HOME=str(self.out / 'state'),
                    GLM_BASE_URL='https://api.z.ai/api/coding/paas/v4',
                    # Inside the run dir: the sandbox allows writes there, and /var/folders is a symlink it rejects.
-                   TMPDIR=str((self.out / 'tmp').resolve()), XDG_RUNTIME_DIR=str(runtime_dir()))
+                   TMPDIR=str((self.out / 'tmp').resolve()))
+        if sys.platform == 'darwin':  # only the sandbox needs it; Linux keeps its real runtime dir and session bus
+            env['XDG_RUNTIME_DIR'] = str(runtime_dir())
         if os.environ.get('GLM_API_KEY'):
             env['GLM_API_KEY'] = os.environ['GLM_API_KEY']
         if self.meta['host'] == 'upstream':
