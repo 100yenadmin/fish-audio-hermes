@@ -551,6 +551,27 @@ def test_live_stt_compat(paid, request):
         set_config(paid, saved)
 
 
+@pytest.mark.row('A-VOICE-1')
+def test_mine_visibility(paid, request):
+    # Each visibility filter returns only voices with that visibility, and the three filters together return them all.
+    code = '\n    '.join([
+        'import json; from tools.registry import registry',
+        'call = lambda args: (lambda r: json.loads(r) if isinstance(r, str) else r)(registry.dispatch("fish_voices", args))',
+        'out = {"all": call({"action": "mine", "page_size": 20})}',
+        'for v in ("public", "unlist", "private"):',
+        '    out[v] = call({"action": "mine", "page_size": 20, "visibility": v})',
+        '    out[v]["read_back"] = [call({"action": "get", "voice_id": i["id"]}).get("visibility") for i in out[v].get("items", [])]',
+        'print("ACCEPTANCE_RESULT=" + json.dumps(out))'])
+    result = core(paid, code)
+    assert all(part.get('success') is True for part in result.values()), scrub(result)
+    everything = sorted(i['id'] for i in result['all']['items'])
+    assert everything and result['all'].get('has_more') is not True, 'the test account needs 1-20 voices of its own'
+    for v in ('public', 'unlist', 'private'):
+        assert result[v]['read_back'] == [v] * len(result[v]['items']), f'{v} filter returned {result[v]["read_back"]}'
+    assert sorted(i['id'] for v in ('public', 'unlist', 'private') for i in result[v]['items']) == everything
+    evidence(request, paid, result, {v: len(result[v]['items']) for v in ('public', 'unlist', 'private')})
+
+
 def paced_live_stt(paid, request):
     if paid.meta['host'] == 'evaos':
         na(request, 'matrix O: fork has no live STT seam or transcribe-stream route')

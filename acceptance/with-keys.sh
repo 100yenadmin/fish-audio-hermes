@@ -8,7 +8,7 @@ set -euo pipefail
 KEY_FILE=${FISH_ACCEPTANCE_KEY_FILE:-}
 GLM_ENV=${FISH_ACCEPTANCE_GLM_ENV:-}
 read_key() {
-  python3 - "$1" "$2" <<'PYKEY'
+  "${FISH_ACCEPTANCE_PYTHON:-python3}" - "$1" "$2" <<'PYKEY'
 import pathlib, sys
 rows = [s.split('=', 1)[1].strip() for s in pathlib.Path(sys.argv[1]).read_text().splitlines()
         if s.startswith(sys.argv[2] + '=')]

@@ -9,4 +9,4 @@ if [[ -z $PYTHON && $(uname) == Darwin ]]; then
   done
 fi
 PYTHON=${PYTHON:-python3}
-exec "$ROOT/acceptance/with-keys.sh" "$PYTHON" "$ROOT/acceptance/conftest.py" run "$@"
+FISH_ACCEPTANCE_PYTHON=$PYTHON exec "$ROOT/acceptance/with-keys.sh" "$PYTHON" "$ROOT/acceptance/conftest.py" run "$@"
