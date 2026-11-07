@@ -15,7 +15,8 @@ while [ $# -gt 0 ]; do case "$1" in
   *) echo "unknown arg $1" >&2; exit 2;; esac; done
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd); PIDS="$OUT/desktop-pids.txt"
 collect() { local p=$1; for c in $(pgrep -P "$p"); do collect "$c"; done; echo "$p"; }
-started() { ps -o lstart= -p "$1" 2>/dev/null | sed 's/^ *//;s/ *$//'; }
+# Empty (never a failure) for a pid that has exited: under set -e a failure would end `down` before later recorded trees.
+started() { { ps -o lstart= -p "$1" 2>/dev/null || true; } | sed 's/^ *//;s/ *$//'; }
 # Signal a pid only while it still has the start time recorded for it (a reused pid has a different one).
 signal() { local sig=$1 p=$2 s=$3; [ -n "$s" ] && [ "$(started "$p")" = "$s" ] && kill "$sig" "$p" 2>/dev/null || true; }
 if [ "$CMD" = down ]; then
