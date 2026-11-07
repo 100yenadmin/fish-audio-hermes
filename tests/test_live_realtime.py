@@ -207,3 +207,14 @@ def test_clean_removes_tags_like_fish():
     assert live_realtime._clean("hello[laughter]world") == "hello world"
     assert live_realtime._clean("hello[a][b]world") == "hello world"
     assert live_realtime._clean("I [laughs] think") == "I think"
+
+
+def test_clean_keeps_the_word_boundary_next_to_combining_marks():
+    # #66: a word that ends or starts with a combining mark (Unicode category M) is still a word.
+    assert live_realtime._clean("मैं[हँसी]जानता") == "मैं जानता"
+    assert live_realtime._clean("नमस्ते[laughter]दोस्त") == "नमस्ते दोस्त"
+    assert live_realtime._clean("สวัสดี[laughter]ครับ") == "สวัสดี ครับ"
+    assert live_realtime._clean("café[laughs]bar") == "café bar"
+    assert live_realtime._clean("[laughter]मैं") == "मैं"
+    assert live_realtime._clean("मैं[laughter]") == "मैं"
+    assert live_realtime._clean("你好[笑声]世界") == "你好世界"
