@@ -141,8 +141,12 @@ class Host:
         if self.meta['host'] == 'upstream':
             env['HERMES_WEB_DIST'] = str(self.src / 'hermes_cli/web_dist')
         # Hermes 0.23.0+ refuses a WebSocket from a loopback Origin on another port unless the backend names the
-        # Desktop dev renderer it serves; Layer B's Desktop runs from Vite on this port (desktop/run.mjs).
-        env['HERMES_DESKTOP_DEV_SERVER'] = f"http://127.0.0.1:{os.environ.get('ACCEPTANCE_VITE_PORT', '5194')}"
+        # Desktop dev renderer it serves, and a page on that port can then read the session token. Only Layer B's
+        # runner (desktop/run.mjs) sets ACCEPTANCE_VITE_PORT, to its Vite port, and it restarts the gateway before
+        # Desktop launches, so Layer A's gateway trusts no other local port.
+        env.pop('HERMES_DESKTOP_DEV_SERVER', None)
+        if os.environ.get('ACCEPTANCE_VITE_PORT'):
+            env['HERMES_DESKTOP_DEV_SERVER'] = f"http://127.0.0.1:{os.environ['ACCEPTANCE_VITE_PORT']}"
         return env
 
     def sandbox(self, args):
