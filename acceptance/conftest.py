@@ -140,6 +140,9 @@ class Host:
             env['GLM_API_KEY'] = os.environ['GLM_API_KEY']
         if self.meta['host'] == 'upstream':
             env['HERMES_WEB_DIST'] = str(self.src / 'hermes_cli/web_dist')
+        # Hermes 0.23.0+ refuses a WebSocket from a loopback Origin on another port unless the backend names the
+        # Desktop dev renderer it serves; Layer B's Desktop runs from Vite on this port (desktop/run.mjs).
+        env['HERMES_DESKTOP_DEV_SERVER'] = f"http://127.0.0.1:{os.environ.get('ACCEPTANCE_VITE_PORT', '5194')}"
         return env
 
     def sandbox(self, args):
