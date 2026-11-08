@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.10.0 — 2026-11-08
 
+- **Use your own voices by title:** `/fish use Eva`, `/fish preview Eva` and `hermes fish use Eva` find one of your
+  own Fish voices by its title, ignoring case. Voice ids and saved names still resolve first, with no network call.
+  When several of your voices have that title, or Fish's title search returns more than 100 of your voices, the
+  command lists the choices or asks for the id instead of guessing (#71).
 - **Plain-text pronunciation fixes:** `fish_speak` takes a new `spoken_as` map, such as `{"Codex": "code ex"}`. Fish
   reads each replacement as ordinary text (its alias rules), billed on the replaced text. `pronunciations` still means
   phonetic forms and sends exactly what it sent before. The config's `pronunciation_dictionary` accepts `type: alias`
@@ -9,10 +13,19 @@
 - **Pronunciation guidance:** the expressive-speech skill now tells agents that Fish speaks each `pronunciations`
   value as phonemes (CMU Arpabet in English; `drama-3` also takes IPA) and that keys match anywhere in the text. Its
   example used a respelling, which Fish reads unpredictably (#73).
+- **Live dictation keeps a combining mark on its letter:** when Fish put a sound tag between a letter and its own
+  combining mark, removing the tag left the mark detached (`क[x]ि` became `क ि`). It now stays on its letter (`कि`)
+  (#70).
 - **README Disclosure** now says what the report-a-problem and voice-studio skills run, read and send, which commands
   write the profile's voice settings, that cover images are sent, and that a failed live dictation session falls back
   to file transcription, a separate billed request (#70).
 - **`/fish` argument hint** now lists `alias` (#70).
+- **Arabic locale:** its direction marks are written as escapes in the source, so `hermes plugins validate` no longer
+  flags invisible Unicode. What ships is unchanged (#69).
+- **Release acceptance:** the NousResearch/hermes-agent#129305 waivers match only that host bug. B-CONV-5 counts the
+  whole-text speech requests Desktop sends after a failed stream, and its waiver needs none. B-CONV-4's waiver needs
+  the spoken text to be empty or a strict prefix of the reply. The Desktop renderer port goes only to Layer B, and a
+  failed key-clearing restart stops the run (#65, #70).
 
 ## 1.9.1 — 2026-11-08
 
