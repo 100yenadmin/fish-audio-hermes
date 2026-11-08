@@ -136,13 +136,13 @@ test('B-LIB-4 requires the Account card credit; a matching status chip cannot co
   }
 })
 
-test('B-CONV-5 requires an injected failure and preserves both host-bug waiver reasons', async t => {
+test('B-CONV-5 requires an injected failure and waives only zero-request host failures', async t => {
   const start = conv.indexOf('    const toasts =', conv.indexOf("  if (want('B-CONV-5'))"))
   const end = conv.indexOf('\n  }', start)
   const onlyDone = conv.split('\n').find(l => l.startsWith('const onlyDone ='))
   const waiver = new RegExp(JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url)))
     .find(r => r.id === 'B-CONV-5').known_host_bugs[0].match)
-  for (const [frames, spoken, pcm, toast, status, waived] of [
+  for (const [frames, spoken, pcm, toast, status, waived, requests = 0, successes = 0, played = false] of [
     [['start','end'], 'reply', 3, [], 'fail', false],
     [['fallback'], 'reply', 3, [], 'pass', false],
     [['error'], 'reply', 3, [], 'pass', false],
@@ -151,17 +151,66 @@ test('B-CONV-5 requires an injected failure and preserves both host-bug waiver r
     [['error'], '', 0, [], 'fail', true],
     [['fallback'], 'reply', 0, [], 'fail', true],
     [['start','end'], '', 0, [], 'fail', true],
+    [['fallback'], 'reply', 0, [], 'fail', false, 1, 1],
+    [['fallback'], 'reply', 0, ['Speech failed'], 'fail', false, 1, 1],
+    [['fallback'], 'reply', 0, ['Speech failed'], 'pass', false, 1, 0],
+    [['fallback'], 'reply', 0, [], 'pass', false, 1, 1, true],
     [[], '', 0, [], 'fail', false]]) await t.test(JSON.stringify({frames, spoken, pcm, toast}), async () => {
     const rows = [], m = {submits:1, spoken_text:spoken, speak_frames:frames, speak_sent:['done'],
-      speak_streams:1, pcm_frames:pcm, media_plays:0, audio_buffers:0}
+      speak_streams:1, pcm_frames:pcm, media_plays:played ? 1 : 0, audio_buffers:0, played,
+      speak_requests_after_fallback:requests, speak_2xx_after_fallback:successes}
     await vm.runInNewContext(`(async()=>{${onlyDone}\n${conv.slice(start,end)}})()`, {
       m, t0:0, theme:'dark', s:{page:{evaluate:async()=>toast.map(text=>({t:1,text}))}},
       c:{shot:async()=>''}, shotPath(){}, row:(id,status,reason)=>{rows.push({status,reason}); return {}} })
     assert.equal(rows[0].status, status)
     assert.equal(waiver.test(rows[0].reason), waived, rows[0].reason)
-    if (status === 'fail' && !waived && spoken) assert.match(rows[0].reason, /forced failure did not take effect/)
+    assert.match(rows[0].reason, new RegExp(`POST /api/audio/speak after fallback ${requests}$`))
+    if (successes && !played) assert.match(rows[0].reason, /whole-text 2xx without reply playback/)
+    else if (status === 'fail' && !waived && spoken) assert.match(rows[0].reason, /forced failure did not take effect/)
     if (!spoken) assert.match(rows[0].reason, /Desktop sent no reply text to speak-stream/)
   })
+})
+
+test('CDP counts only this turn POST speak requests after fallback and records 2xx', async () => {
+  const recorder = conv.slice(conv.indexOf('async function recorder'), conv.indexOf('\nconst pageState'))
+  const turn = conv.slice(conv.indexOf('async function turn'), conv.indexOf('\nconst seq'))
+  const handlers = new Map(), send = (event, data) => handlers.get(`Network.${event}`)(data)
+  let now = 0, inject = () => {}
+  const s = { cdp:{send:async()=>{}, on:(event, fn)=>handlers.set(event, fn)},
+    page:{evaluate:async()=>{ inject(); return 0 }} }
+  const context = vm.createContext({s, URL, Date:{now:()=>++now},
+    pageState:async()=>({st:[], audio:[], media:[], users:['prompt'], replies:['reply']}),
+    waitStatus:async()=>{}, utter:()=>({b64:'synthetic', speechMs:0})})
+  const rec = await vm.runInContext(`${recorder}\nrecorder(s)`, context)
+  const request = (id, method = 'POST', url = 'http://127.0.0.1:9361/api/audio/speak') =>
+    send('requestWillBeSent', {requestId:id, request:{method,url}})
+  request('old-turn')
+  inject = () => {
+    request('before-fallback')
+    send('webSocketCreated', {requestId:'ws', url:'ws://127.0.0.1:9361/api/audio/speak-stream'})
+    send('webSocketFrameReceived', {requestId:'ws', response:{opcode:1, payloadData:'{"type":"fallback"}'}})
+    request('get', 'GET'); request('other', 'POST', 'http://127.0.0.1:9361/api/audio/speak-stream')
+    request('success'); request('failure')
+    send('responseReceived', {requestId:'success', response:{status:200}})
+    send('responseReceived', {requestId:'failure', response:{status:500}})
+  }
+  context.rec = rec
+  const metrics = await vm.runInContext(`${turn}\nturn(s, rec, '', '', {timeout:0})`, context)
+  assert.equal(metrics.speak_requests_after_fallback, 2)
+  assert.equal(metrics.speak_2xx_after_fallback, 1)
+  assert.equal(rec.speakRequests.length, 4)
+})
+
+test('clear-key restart failure aborts before gateway wait or Desktop launch', async () => {
+  const start = run.indexOf('async function main()'), end = run.indexOf('\nasync function guard', start)
+  let waited = false, launched = false
+  const context = {fs:{mkdirSync(){}, existsSync:()=>false}, path, SHOTS:'synthetic', H:'upstream',
+    host:{}, args:{}, buildTree:()=>'/synthetic/tree',
+    hostctl:()=>{ throw Error('hostctl restart-gateway failed') },
+    waitGateway:async()=>{ waited = true }, launch:()=>{ launched = true }}
+  await assert.rejects(vm.runInNewContext(`${run.slice(start,end)}\nmain()`, context),
+    /clear-key gateway restart failed; aborting before Desktop launch: hostctl restart-gateway failed/)
+  assert.equal(waited, false); assert.equal(launched, false)
 })
 
 test('B-CONV-5 edits only plugin transport settings and restores exact original bytes on error', async t => {

@@ -60,6 +60,7 @@ def test_transient_status_requires_http_prefix(reason, expected):
 
 def test_all_host_build_hooks_receive_sanitized_environment(monkeypatch, tmp_path):
     monkeypatch.setattr(harness, 'CACHE', tmp_path)
+    monkeypatch.setattr(harness, 'node_bin', lambda: Path('/synthetic/node26/bin'))
     monkeypatch.setenv('FISH_API_KEY', 'synthetic-placeholder')
     monkeypatch.setenv('OTHER_TOKEN', 'synthetic-placeholder')
     repo = tmp_path / 'repos/upstream'
@@ -79,6 +80,54 @@ def test_all_host_build_hooks_receive_sanitized_environment(monkeypatch, tmp_pat
         assert not set(SECRET_NAMES) & kw['env'].keys()
         assert 'PATH' in kw['env'] and 'HOME' in kw['env']
     assert not any(a == ['pwd'] for a, _ in calls)
+    web = [(a, k) for a, k in hooks if 'scripts/build/web.mjs' in a]
+    assert len(web) == 1 and web[0][0][0] == '/synthetic/node26/bin/node'
+    for _, kw in hooks[-2:]:
+        assert kw['env']['PATH'].split(os.pathsep)[0] == '/synthetic/node26/bin'
+
+
+@pytest.mark.parametrize('port', [None, '5196'])
+def test_run_keeps_renderer_port_out_of_layer_a_and_uses_selected_node(monkeypatch, tmp_path, port):
+    import report
+    # No real home, builds, subprocesses, keys or network: run() only sees these fixtures.
+    monkeypatch.setattr(harness.os, 'environ', {'PATH': '/synthetic/bin', **({'ACCEPTANCE_VITE_PORT': port} if port else {})})
+    monkeypatch.setattr(harness, 'CACHE', tmp_path / 'cache')
+    monkeypatch.setattr(harness, 'node_bin', lambda: Path('/synthetic/node26/bin'))
+    src = tmp_path / 'src'
+    (src / 'hermes_cli').mkdir(parents=True)
+    (src / 'hermes_cli/__init__.py').write_text('__version__ = "0.23.0"')
+    monkeypatch.setattr(harness, 'call', lambda *a, **kw: 'synthetic-sha')
+    monkeypatch.setattr(harness, 'build', lambda *a: (src, src, 'synthetic-sha'))
+    def archive(repo, sha, dest):
+        dest.mkdir(parents=True)
+        (dest / 'plugin.yaml').write_text('version: 1.9.1')
+    monkeypatch.setattr(harness, 'archive', archive)
+    events = []
+    class Host:
+        token = 'synthetic-session-token'
+        def __init__(self, out): pass
+        def cli(self, *a): return 'Hermes 0.23.0'
+        def up(self):
+            assert 'ACCEPTANCE_VITE_PORT' not in harness.os.environ
+            events.append('up')
+        def down(self): events.append('down')
+    monkeypatch.setattr(harness, 'Host', Host)
+    calls = []
+    def launch(args, **kw):
+        assert 'ACCEPTANCE_VITE_PORT' not in kw['env']
+        calls.append(args)
+        return SimpleNamespace(stdout='', stderr='', returncode=0)
+    monkeypatch.setattr(harness.subprocess, 'run', launch)
+    monkeypatch.setattr(report, 'merge', lambda *a: 0)
+    out = tmp_path / 'out'
+    args = SimpleNamespace(out=out, host='upstream', hermes_ref='v0.23.0', plugin='fixture',
+                           port=None, budget_usd=.3, billed_heavy=False, evaos_overlay=None, layers='a,b')
+    assert harness.run(args) == 0
+    assert events == ['up', 'down'] and not (out / 'setup-error.txt').exists()
+    assert len(calls) == 2 and 'pytest' in calls[0]
+    assert calls[1][0] == '/synthetic/node26/bin/node'
+    assert calls[1][1] == str(harness.ROOT / 'acceptance/desktop/run.mjs')
+    assert (calls[1][-2:] == ['--vite-port', port]) if port else '--vite-port' not in calls[1]
 
 
 def test_build_failure_keeps_scrubbed_cause(monkeypatch, tmp_path):

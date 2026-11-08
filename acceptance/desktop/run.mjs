@@ -325,7 +325,7 @@ async function main() {
   meta.tree = tree
   meta.patches = fs.existsSync(path.join(tree, '.acceptance-patches')) ? fs.readFileSync(path.join(tree, '.acceptance-patches'), 'utf8').trim().split('\n') : []
   meta.desktop_half = H === 'upstream' ? `plugin ${host.plugin_ref} desktop/plugin.js (Install-from-Git layout)` : `bundled in ${host.desktop_ref} (src/plugins/fish-audio)`
-  try { hostctl('clear-key') } catch (e) { console.error(e.message) }
+  try { hostctl('clear-key') } catch (e) { throw new Error(`clear-key gateway restart failed; aborting before Desktop launch: ${e.message}`) }
   await waitGateway()
   if (!args['no-launch']) { launched = true; launch(tree) }
   const s = await c.connect({ tree, cdpPort: CDP, vitePort: VITE })

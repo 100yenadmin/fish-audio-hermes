@@ -39,8 +39,16 @@ function utter(dir, text) {
 
 // One recorder per conversation session: WS frames (CDP Network), statuses, streaming marker, toasts.
 async function recorder(s) {
-  const frames = [], sockets = new Map(), closed = []
+  const frames = [], sockets = new Map(), closed = [], speakRequests = []
   await s.cdp.send('Network.enable')
+  s.cdp.on('Network.requestWillBeSent', e => {
+    if (e.request.method === 'POST' && new URL(e.request.url).pathname === '/api/audio/speak')
+      speakRequests.push({ id: e.requestId, status: null })
+  })
+  s.cdp.on('Network.responseReceived', e => {
+    const req = speakRequests.find(r => r.id === e.requestId)
+    if (req) req.status = e.response.status
+  })
   s.cdp.on('Network.webSocketCreated', e => sockets.set(e.requestId, { url: e.url, t: Date.now() }))
   s.cdp.on('Network.webSocketClosed', e => closed.push({ id: e.requestId, url: sockets.get(e.requestId)?.url, t: Date.now() }))
   const onFrame = dir => e => {
@@ -48,6 +56,8 @@ async function recorder(s) {
     if (!/speak-stream|transcribe-stream/.test(url)) return
     const f = { t: Date.now(), dir, id: e.requestId, kind: url.includes('speak-stream') ? 'speak' : 'transcribe', op: e.response.opcode }
     if (e.response.opcode === 1) { try { f.json = JSON.parse(e.response.payloadData) } catch { f.text = e.response.payloadData.slice(0, 200) } } else f.len = Math.round(e.response.payloadData.length * 3 / 4)
+    // Use event order, so a request just before fallback in the same millisecond cannot count.
+    if (f.kind === 'speak' && f.json?.type === 'fallback') f.speakRequestIndex = speakRequests.length
     frames.push(f)
   }
   s.cdp.on('Network.webSocketFrameSent', onFrame('sent'))
@@ -69,7 +79,7 @@ async function recorder(s) {
     }, 100))
   })
   const timeOrigin = await s.page.evaluate(() => performance.timeOrigin)
-  return { frames, sockets, closed, timeOrigin }
+  return { frames, sockets, closed, speakRequests, timeOrigin }
 }
 
 const pageState = s => s.page.evaluate(() => ({
@@ -87,7 +97,7 @@ async function waitStatus(s, re, ms) {
 
 // Speak one utterance and wait for the turn to finish (Speaking → Listening, or a quiet return to Listening).
 async function turn(s, rec, dir, text, { timeout = 90000, onSpeaking, onThinking } = {}) {
-  const before = await pageState(s), f0 = rec.frames.length, sock0 = rec.sockets.size
+  const before = await pageState(s), f0 = rec.frames.length, sock0 = rec.sockets.size, req0 = rec.speakRequests.length
   await waitStatus(s, /^Listening$/, 20000)
   const u = utter(dir, text)
   const tSay = Date.now()
@@ -121,7 +131,11 @@ async function turn(s, rec, dir, text, { timeout = 90000, onSpeaking, onThinking
   const firstAudio = Math.min(...[...audio, ...media].map(a => a.t), Infinity)
   const replyDone = st.filter(x => x.v === '(reply done)' && x.t <= firstAudio).at(-1)?.t
   const startFrame = speakRecv.find(f => f.json?.type === 'start')
+  const fallback = speakRecv.find(f => f.json?.type === 'fallback')
+  const wholeText = fallback ? rec.speakRequests.slice(Math.max(req0, fallback.speakRequestIndex)) : []
   const m = {
+    speak_requests_after_fallback: wholeText.length,
+    speak_2xx_after_fallback: wholeText.filter(r => r.status >= 200 && r.status < 300).length,
     statuses: st.filter(x => !x.v.startsWith('(')).map(x => x.v), timeline: st.map(x => `${x.t - speechEnd}ms ${x.v}`),
     submits: after.users.length - before.users.length, user_text: after.users.at(-1) || null, reply: after.replies.at(-1) || null,
     speak_streams: [...rec.sockets.values()].slice(sock0).filter(x => x.url.includes('speak-stream')).length,
@@ -352,11 +366,13 @@ p.write_text(yaml.safe_dump(c))`, cfg], { env: Object.fromEntries(Object.entries
     // or see a toast. A fallback frame followed by nothing is still silent to the user (F1).
     const silent = m && !m.pcm_frames && !m.media_plays && !m.audio_buffers && !toasts.length
     const failed = fb || err || toasts.some(t => /error|fail|unavailable|could not/i.test(t))
-    const pass = !!m && m.submits === 1 && !!m.spoken_text && failed && !silent
-    const r = row('B-CONV-5', pass ? 'pass' : 'fail', !m ? 'could not start the forced-failure conversation'
+    const unplayedSuccess = m && m.speak_2xx_after_fallback > 0 && !m.played
+    const pass = !!m && m.submits === 1 && !!m.spoken_text && failed && !silent && !unplayedSuccess
+    const reason = !m ? 'could not start the forced-failure conversation'
       // With no reply text sent, no synthesis ran, so the injected failure could not show; report the host's cause.
       : !failed && !noText ? `forced failure did not take effect (frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames})`
-      : `${m.submits === 1 ? 'submitted turn; ' : ''}${noText ? 'Desktop sent no reply text to speak-stream (only done); ' : ''}speak-stream frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames}; whole-text plays ${m.media_plays}; toasts ${JSON.stringify(toasts.slice(0, 2))}${silent ? `; SILENT to the user (F1)${fb ? ': fallback frame sent, but no whole-text playback and no toast followed' : ''}` : ''}`, { theme, evidence: [shot] })
+      : `${m.submits === 1 ? 'submitted turn; ' : ''}${noText ? 'Desktop sent no reply text to speak-stream (only done); ' : ''}speak-stream frames ${m.speak_frames.join(',') || 'none'}, PCM ${m.pcm_frames}; whole-text plays ${m.media_plays}; toasts ${JSON.stringify(toasts.slice(0, 2))}${silent ? `; SILENT to the user (F1)${fb ? ': fallback frame sent, but no whole-text playback and no toast followed' : ''}` : ''}`
+    const r = row('B-CONV-5', pass ? 'pass' : 'fail', `${reason}${unplayedSuccess ? '; whole-text 2xx without reply playback' : ''}; POST /api/audio/speak after fallback ${m?.speak_requests_after_fallback ?? 0}`, { theme, evidence: [shot] })
     r.metrics = { ...(m || {}), toasts }
   }
   }
