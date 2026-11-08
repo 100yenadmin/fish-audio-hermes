@@ -11,6 +11,7 @@
   {"id": "A-CMD-1", "title": "/fish status", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "C1"},
   {"id": "A-CMD-2", "title": "/fish voices", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "C2"},
   {"id": "A-CMD-3", "title": "/fish use", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "C3"},
+  {"id": "A-CMD-TITLE", "title": "/fish use own voice title", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.10.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "C3"},
   {"id": "A-CMD-4", "title": "/fish model", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "C4"},
   {"id": "A-CMD-5", "title": "/fish preview", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "C5"},
   {"id": "A-CMD-6", "title": "/fish balance", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "C6"},

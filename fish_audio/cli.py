@@ -159,9 +159,9 @@ def _handle(args):
         elif command == "use":
             key = fish_api_key()
             require(bool(key), commands.NO_KEY)
-            ident = settings.resolve_voice(args.voice_id)
-            require(ident is not None, settings.UNKNOWN_VOICE)
-            print(commands.use(ident, key, commands.base_url()))
+            base = commands.base_url()
+            ident = commands.resolve_title(args.voice_id.strip(), key, base, terminal=True)
+            print(commands.use(ident, key, base))
         else:
             args.fish_parser.print_help()
         return 0

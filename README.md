@@ -73,15 +73,15 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 |---|---|
 | `/fish status` | Key, providers, voice, model and why it was chosen, credit, last error |
 | `/fish voices [query]` | Search the voice library |
-| `/fish use <voice-id or name>` | Use a voice for this profile |
+| `/fish use <voice-id, name or own title>` | Use a voice for this profile; a unique title of your own voice works too |
 | `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3`) |
-| `/fish preview <voice-id or name> [text]` | Hear a voice (a billed synthesis) |
+| `/fish preview <voice-id, name or own title> [text]` | Hear a voice (a billed synthesis); use a single-word title for previews |
 | `/fish alias` | List your saved voice names |
 | `/fish alias add <name> <voice-id>` | Save a name for a voice: 2–32 letters, digits, `-` or `_`, starting with a letter |
 | `/fish alias remove <name>` | Delete a saved name |
 | `/fish balance` | API credit and plan |
 | `hermes fish login [--key-stdin] [--yes]` | Save and check a key, offer to switch providers |
-| `hermes fish status` · `hermes fish use <voice-id>` | Status and voice choice from your terminal |
+| `hermes fish status` · `hermes fish use <voice-id, name or own title>` | Status and voice choice from your terminal |
 | `hermes fish doctor [--no-synth]` | Check the setup with one billed synthesis, or without it |
 
 **Model tools** (toolset `fish_audio`; calls are billed to your Fish Audio account)

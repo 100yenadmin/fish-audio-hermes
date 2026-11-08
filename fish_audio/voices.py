@@ -88,6 +88,13 @@ def _features(value, signature):
 ACCOUNT_VOICES = "Voices on this agent's account are managed by its operator."
 
 
+def find_own_by_title(title, key, base):
+    result = execute({"action": "mine", "query": title, "page_size": 20}, key, base, "")
+    return [(item["id"], item["title"]) for item in result["items"]
+            if isinstance(item["title"], str) and item["title"].strip().casefold() == title.strip().casefold()
+            and voice_id(item["id"])]
+
+
 def execute(args, key, base, session):
     action = args.get("action")
     # An operator's key can serve many agents: its own voices, edits and deletes span all of them.

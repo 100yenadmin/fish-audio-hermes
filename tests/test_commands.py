@@ -1,4 +1,5 @@
 import copy
+import json
 from decimal import Decimal
 from pathlib import Path
 import sys
@@ -43,7 +44,7 @@ def wallet_routes(mock):
     mock.get(BASE + "/wallet/self/package").respond(json={"type": "plus", "balance": 20, "total": 30, "finished_at": "date"})
 
 
-@pytest.mark.parametrize("raw", ["", "status", "voices", "use " + VOICE, "model s1", "preview " + VOICE, "balance"])
+@pytest.mark.parametrize("raw", ["", "status", "voices", "use " + VOICE, "use Eva", "model s1", "preview " + VOICE, "preview Eva", "balance"])
 def test_no_key_any_non_help_command(config, monkeypatch, raw):
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")
     with respx.mock(assert_all_called=True) as mock:
@@ -108,6 +109,82 @@ def test_use_not_found_or_managed_does_not_write(config, status):
         mock.get(BASE + "/model/" + VOICE).respond(status)
         assert "Browse voices" in commands.handle("use " + VOICE)
     assert not saves
+
+
+def test_use_own_title_casefold_exact_match(config):
+    with respx.mock(assert_all_called=True) as mock:
+        listing = mock.get(BASE + "/model").respond(json={"items": [
+            {"_id": VOICE, "title": " eVA "}, {"_id": "b" * 32, "title": "Eva narrator"}]})
+        mock.get(BASE + "/model/" + VOICE).respond(json={})
+        assert commands.handle("use  Eva ") == "Saved."
+        assert dict(listing.calls.last.request.url.params) == {
+            "page_number": "1", "page_size": "20", "sort_by": "score", "title": "Eva", "self": "true"}
+    assert config[0]["tts"]["fish-audio"]["voice"] == VOICE and len(config[1]) == 1
+
+
+@pytest.mark.parametrize("raw", ["use Eva", "preview Eva hello"])
+def test_title_ambiguous_lists_five_without_writes(config, raw):
+    ids = [str(i) * 32 for i in range(1, 7)]
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model").respond(json={"items": [{"id": ident, "title": "Eva"} for ident in ids]})
+        reply = commands.handle(raw)
+        assert all(f"Eva ({ident})" in reply for ident in ids[:5]) and ids[5] not in reply
+        assert "/fish use <id>" in reply and "/fish alias add <name> <id>" in reply
+    assert not config[1]
+
+
+@pytest.mark.parametrize("raw", ["use Eva", "preview Eva"])
+def test_title_no_match_keeps_refusal(config, raw):
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model").respond(json={"items": [{"id": VOICE, "title": "Other"}]})
+        assert commands.handle(raw) == settings.UNKNOWN_VOICE
+    assert not config[1]
+
+
+@pytest.mark.parametrize("value", [VOICE, "narrator", "legacy-id"])
+def test_id_and_saved_name_skip_title_http(config, monkeypatch, value):
+    config[0]["tts"]["fish-audio"] = {"aliases": {"narrator": VOICE}}
+    ident = "legacy-id" if value == "legacy-id" else VOICE
+    monkeypatch.setattr(commands, "use", lambda found, *a: "Saved." if found == ident else "wrong")
+    monkeypatch.setattr(commands.tools, "_speak", lambda args, *a, **kw: {"media_tag": args["voice"]})
+    with respx.mock(assert_all_called=True) as mock:
+        assert commands.handle("use " + value) == "Saved."
+        assert commands.handle("preview " + value) == ident
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("raw", ["use", "use " + "x" * 129])
+def test_ineligible_title_no_lookup(config, raw):
+    with respx.mock(assert_all_called=True) as mock:
+        assert commands.handle(raw) == settings.UNKNOWN_VOICE and not mock.calls
+    assert not config[1]
+
+
+def test_title_lookup_error_is_safe(config):
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model").respond(503, json={"message": "private response body"})
+        reply = commands.handle("use Eva")
+        assert "unavailable" in reply and "private response body" not in reply
+    assert not config[1]
+
+
+def test_title_lookup_respects_operator_account(config):
+    from fish_audio.voices import ACCOUNT_VOICES
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    with respx.mock(assert_all_called=True) as mock:
+        assert commands.handle("use Eva") == ACCOUNT_VOICES and not mock.calls
+    assert not config[1]
+
+
+def test_preview_own_title(config):
+    config[0]["tts"]["fish-audio"] = {"model": "s1"}
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model").respond(json={"items": [{"id": VOICE, "title": "Eva"}]})
+        synth = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
+        assert commands.handle("preview eva Hello there").startswith("[[audio_as_voice]]\nMEDIA:")
+        body = json.loads(synth.calls.last.request.content)
+        assert body["reference_id"] == VOICE and body["text"] == "Hello there"
+    assert not config[1]
 
 
 def test_managed_write_refused(config):
