@@ -114,7 +114,25 @@ def test_advisory_row_failure_does_not_fail_the_gate(tmp_path):
 def test_real_producer_reason(case):
     spec = next(s for s in json.loads((HERE / 'rows.yaml').read_text()) if s['id'] == case['id'])
     bug = next(b for b in spec['known_host_bugs'] if b['host'] == case['host'])
-    assert bool(re.search(bug['match'], case['reason'])) == case['matches']
+    # Historic B-CONV-5 receipts lack the new request count and can no longer be waived.
+    expected = case['matches'] and case['id'] != 'B-CONV-5'
+    assert bool(re.search(bug['match'], case['reason'])) == expected
+
+
+@pytest.mark.parametrize('spoken,reply,matches', [('', 'The capital is Paris.', True),
+    ('The', 'The capital is Paris.', True), ('Paris', 'The capital is Paris.', False), ('The', 'The', False)])
+def test_spoken_text_waiver_requires_empty_or_strict_prefix(spoken, reply, matches):
+    spec = next(s for s in json.loads((HERE / 'rows.yaml').read_text()) if s['id'] == 'B-CONV-4')
+    reason = f'valid turn; spoken {json.dumps(spoken)} vs reply {json.dumps(reply)}'
+    assert bool(re.search(spec['known_host_bugs'][0]['match'], reason)) == matches
+
+
+@pytest.mark.parametrize('count,matches', [(0, True), (1, False)])
+@pytest.mark.parametrize('case', [c for c in CASES['producer_reasons'] if c['id'] == 'B-CONV-5' and c['matches']])
+def test_forced_failure_waiver_requires_zero_whole_text_requests(case, count, matches):
+    spec = next(s for s in json.loads((HERE / 'rows.yaml').read_text()) if s['id'] == 'B-CONV-5')
+    reason = case['reason'] + f'; POST /api/audio/speak after fallback {count}'
+    assert bool(re.search(spec['known_host_bugs'][0]['match'], reason)) == matches
 
 
 @pytest.mark.parametrize('silent,host_race,matches', [(2,2,True), (5,5,True), (2,1,False), (0,0,False)])

@@ -334,6 +334,8 @@ def worker(out):
 
 def run(args):
     from report import merge
+    # The operator's port selects Layer B only; Layer A must not trust that origin.
+    vite_port = os.environ.pop('ACCEPTANCE_VITE_PORT', None)
     out = args.out.resolve()
     if out.exists() and any(out.iterdir()):
         raise RuntimeError('output directory must be empty; preserve previous evidence')
@@ -397,9 +399,11 @@ def run(args):
                                    capture_output=True, text=True)
                 save_output(out / 'pytest-retry.txt', p.stdout + p.stderr, h.token)
         if 'b' in args.layers.split(',') and (ROOT / 'acceptance/desktop/run.mjs').exists():
-            p = subprocess.run([str(node_bin() / 'node'),
-                                str(ROOT / 'acceptance/desktop/run.mjs'), '--host-json', str(out / 'host.json'),
-                                '--out', str(out)], cwd=ROOT, env=env, capture_output=True, text=True)
+            desktop_args = [str(node_bin() / 'node'), str(ROOT / 'acceptance/desktop/run.mjs'),
+                            '--host-json', str(out / 'host.json'), '--out', str(out)]
+            if vite_port:
+                desktop_args += ['--vite-port', vite_port]
+            p = subprocess.run(desktop_args, cwd=ROOT, env=env, capture_output=True, text=True)
             save_output(out / 'desktop.txt', p.stdout + p.stderr, h.token)
     except Exception as exc:
         (out / 'setup-error.txt').write_text(scrub(exc) + '\n')
