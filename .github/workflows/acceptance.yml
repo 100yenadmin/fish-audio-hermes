@@ -20,6 +20,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6
+      # The upstream host builds the Hermes web UI; Hermes 0.23.0 and later install only on Node 26 or newer.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 26
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Real entry-point acceptance
         env:
@@ -31,11 +35,11 @@ jobs:
         run: |
           f="$RUNNER_TEMP/acceptance/setup-error.txt"
           [ -f "$f" ] || exit 0
-          echo '::error title=Acceptance setup failed::the host did not build; the reason follows in this step and in setup-error.txt'
+          echo '::error title=Acceptance setup failed::the reason is printed in this step and uploaded as setup-error.txt'
           # The text comes from git, uv and npm output, so stop workflow-command parsing while printing it.
           token=$(openssl rand -hex 16)
           echo "::stop-commands::$token"
-          cat "$f"
+          cat "$f" || true
           echo "::$token::"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
