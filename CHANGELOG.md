@@ -5,6 +5,10 @@
 - **Pronunciation guidance:** the expressive-speech skill now tells agents that Fish speaks each `pronunciations`
   value as phonemes (CMU Arpabet in English; `drama-3` also takes IPA) and that keys match anywhere in the text. Its
   example used a respelling, which Fish reads unpredictably (#73).
+- **README Disclosure** now says what the report-a-problem and voice-studio skills run, read and send, which commands
+  write the profile's voice settings, that cover images are sent, and that a failed live dictation session falls back
+  to file transcription, a separate billed request (#70).
+- **`/fish` argument hint** now lists `alias` (#70).
 
 ## 1.9.1 — 2026-11-08
 
