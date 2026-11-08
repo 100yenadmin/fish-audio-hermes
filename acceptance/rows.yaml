@@ -28,6 +28,7 @@
   {"id": "A-TOOL-1", "title": "GLM fish_speak", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "D1"},
   {"id": "A-TOOL-2", "title": "GLM fish_voices", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "D2"},
   {"id": "A-TOOL-3", "title": "GLM fish_transcribe", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "D3"},
+  {"id": "A-TOOL-4", "title": "fish_speak spoken_as alias (transcript informational)", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.10.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "D1"},
   {"id": "A-ROUTE-1", "title": "available", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "G1"},
   {"id": "A-ROUTE-2", "title": "voices search", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "G2"},
   {"id": "A-ROUTE-3", "title": "voices mine", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "G3"},

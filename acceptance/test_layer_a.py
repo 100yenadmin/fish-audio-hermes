@@ -340,6 +340,25 @@ def test_agent(paid, n, tool, request):
     evidence(request, paid, {'tool': tool, 'success': True, 'reply': reply})
 
 
+@pytest.mark.row('A-TOOL-4')
+def test_spoken_as(paid, request):
+    code = '\n    '.join([
+        'import json; from tools.registry import registry',
+        'result = registry.dispatch("fish_speak", {"text": "Codex is ready.", "spoken_as": {"Codex": "code ex"}})',
+        'print("ACCEPTANCE_RESULT=" + (result if isinstance(result, str) else json.dumps(result)))'])
+    result = core(paid, code)
+    assert result.get('success') is True, scrub(result)
+    path = Path(result['file_path'])
+    assert path.is_file() and path.stat().st_size > 0, 'spoken_as produced no audio'
+    # Transcription is evidence only; its wording or failure cannot fail the alias row.
+    try:
+        result['transcription_info'] = core(paid, 'import json; from tools.transcription_tools import transcribe_audio; '
+                                           f'print("ACCEPTANCE_RESULT=" + json.dumps(transcribe_audio({str(path)!r})))')
+    except Exception as exc:
+        result['transcription_info'] = {'error': type(exc).__name__}
+    evidence(request, paid, result)
+
+
 @pytest.mark.parametrize('n', [pytest.param(i, marks=pytest.mark.row(f'A-ROUTE-{i}')) for i in range(1, 14)])
 def test_routes(paid, voice, n, request):
     base = '/api/plugins/fish-audio'

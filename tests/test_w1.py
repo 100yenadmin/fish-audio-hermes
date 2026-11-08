@@ -56,6 +56,81 @@ def test_pronunciations_merge_or_replace(configured, monkeypatch):
         assert settings._dictionary(dictionary)
 
 
+@pytest.mark.parametrize("phonemes", [False, True])
+def test_spoken_as_wire_format(phonemes):
+    args = {"text": "Codex and Fish", "spoken_as": {"Codex": "code ex"}}
+    items = [{"key": "Codex", "value": "code ex", "type": "alias"}]
+    if phonemes:
+        args["pronunciations"] = {"Fish": "F IH1 SH"}
+        items.insert(0, {"key": "Fish", "value": "F IH1 SH"})
+    with respx.mock() as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"ID3")
+        result = tools._speak(args, "synthetic", BASE, "")
+        assert Path(result["file_path"]).read_bytes() == b"ID3"
+        assert json.loads(route.calls.last.request.content)["pronunciation_dictionary"] == [{"items": items}]
+
+
+def test_spoken_as_conflict():
+    with respx.mock() as mock:
+        with pytest.raises(ToolInputError, match="either pronunciations or spoken_as, not both"):
+            tools._speak({"text": "Fish", "pronunciations": {"Fish": "F IH1 SH"},
+                          "spoken_as": {"Fish": "fish"}}, "synthetic", BASE, "")
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("field", ["pronunciations", "spoken_as"])
+@pytest.mark.parametrize("entries", [None, [], "word", {"Fish": 1}, {1: "fish"}])
+def test_pronunciation_maps_require_strings(field, entries):
+    with respx.mock() as mock:
+        with pytest.raises(ToolInputError, match="must be an object of strings"):
+            tools._speak({"text": "Fish", field: entries}, "synthetic", BASE, "")
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("count", [100, 101])
+def test_pronunciation_maps_combined_limit(count):
+    args = {"text": "Fish", "pronunciations": {f"p{i}": "F IH1 SH" for i in range(100)},
+            "spoken_as": {f"a{i}": "fish" for i in range(count)}}
+    with respx.mock() as mock:
+        if count == 101:
+            with pytest.raises(ToolInputError, match="at most 200 entries together"):
+                tools._speak(args, "synthetic", BASE, "")
+            assert not mock.calls
+        else:
+            route = mock.post(BASE + "/v1/tts").respond(content=b"ID3")
+            tools._speak(args, "synthetic", BASE, "")
+            assert len(json.loads(route.calls.last.request.content)["pronunciation_dictionary"][0]["items"]) == 200
+
+
+@pytest.mark.parametrize("key,value", [
+    (" Fish", "fish"), ("Fish ", "fish"), ("Fi\nsh", "fish"), ("Fi\u200bsh", "fish"),
+    *[(f"Fi{c}sh", "fish") for c in "<>()[]"], ("Fish", "<|fish"), ("Fish", "fish|>"),
+])
+def test_spoken_as_alias_rules(key, value):
+    with respx.mock() as mock:
+        with pytest.raises(ToolInputError, match="Invalid pronunciation entry"):
+            tools._speak({"text": "Fish", "spoken_as": {key: value}}, "synthetic", BASE, "")
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("field,configured_type", [("spoken_as", "phoneme"), ("pronunciations", "alias")])
+@pytest.mark.parametrize("reference", [False, True])
+def test_call_pronunciation_replaces_other_type(monkeypatch, field, configured_type, reference):
+    keep = {"key": "Keep", "value": "keep", "type": "alias", "case_sensitive": True}
+    configured = ([{"id": "synthetic", "version": "v1"}] if reference else
+                  [{"items": [{"key": "Fish", "value": "old", "type": configured_type}, keep]}])
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {
+        "model": "s2.1-pro", "pronunciation_dictionary": configured}}})
+    item = {"key": "Fish", "value": "new"}
+    if field == "spoken_as":
+        item["type"] = "alias"
+    with respx.mock() as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"ID3")
+        tools._speak({"text": "Fish", field: {"Fish": "new"}}, "synthetic", BASE, "")
+        assert json.loads(route.calls.last.request.content)["pronunciation_dictionary"] == [
+            {"items": [item] + ([] if reference else [keep])}]
+
+
 def test_invalid_configured_knob_warns_and_drops(monkeypatch, caplog):
     monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"model": "s2.1-pro", "temperature": True}}})
     monkeypatch.setattr(settings, "_warned", set())
