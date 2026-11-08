@@ -56,9 +56,26 @@ def scrub(value):
 
 
 def save_output(path, text, token):
-    # Captured pytest and Desktop output can carry the run's dashboard token: the tests put it in WebSocket URLs.
+    """Write captured pytest or Desktop output, scrubbed and without the run's dashboard token.
+
+    The tests put that token in WebSocket URLs, and CI uploads these files as public artifacts.
+    """
     text = scrub(text)
     path.write_text(text.replace(token, '[redacted]') if token else text)
+
+
+def node_bin():
+    """Return the bin directory of the Node that builds Hermes's web UI and runs the Desktop driver.
+
+    On macOS that is ACCEPTANCE_NODE_BIN, or else Homebrew's /opt/homebrew/bin, the choice desktop/build.sh and
+    desktop/launch.sh make; elsewhere it is the directory of the node on PATH.
+    """
+    if sys.platform == 'darwin':
+        return Path(os.environ.get('ACCEPTANCE_NODE_BIN') or '/opt/homebrew/bin')
+    found = shutil.which('node')
+    if not found:
+        raise RuntimeError('node not found on PATH; the upstream host needs it to build the Hermes web UI')
+    return Path(found).parent
 
 
 def write_json(path, value):
@@ -114,7 +131,7 @@ def build(host, ref):
                 if attempt == 1:
                     raise RuntimeError(f'{host} venv build failed twice: {scrub(exc)}') from exc
     if host == 'upstream' and not (dest / 'hermes_cli/web_dist/index.html').exists():
-        node_dir = '/opt/homebrew/bin' if sys.platform == 'darwin' else str(Path(shutil.which('node')).parent)
+        node_dir = str(node_bin())
         jsenv = {**env, 'PATH': node_dir + os.pathsep + env['PATH'], 'npm_config_userconfig': os.devnull,
                  'npm_config_cache': str(CACHE / 'npm'), 'RAYON_NUM_THREADS': '4', 'CI': '1'}
         call(['npm', 'ci', '--workspace', 'web', '--include-workspace-root', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=dest, env=jsenv, timeout=600)
@@ -380,7 +397,7 @@ def run(args):
                                    capture_output=True, text=True)
                 save_output(out / 'pytest-retry.txt', p.stdout + p.stderr, h.token)
         if 'b' in args.layers.split(',') and (ROOT / 'acceptance/desktop/run.mjs').exists():
-            p = subprocess.run(['/opt/homebrew/bin/node' if sys.platform == 'darwin' else 'node',
+            p = subprocess.run([str(node_bin() / 'node'),
                                 str(ROOT / 'acceptance/desktop/run.mjs'), '--host-json', str(out / 'host.json'),
                                 '--out', str(out)], cwd=ROOT, env=env, capture_output=True, text=True)
             save_output(out / 'desktop.txt', p.stdout + p.stderr, h.token)
