@@ -55,6 +55,12 @@ def scrub(value):
     return re.sub(r'(?i)Bearer\s+\S+|sk-[A-Za-z0-9_-]{16,}', '[redacted]', text)
 
 
+def save_output(path, text, token):
+    # Captured pytest and Desktop output can carry the run's dashboard token: the tests put it in WebSocket URLs.
+    text = scrub(text)
+    path.write_text(text.replace(token, '[redacted]') if token else text)
+
+
 def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + '\n')
 
@@ -362,7 +368,7 @@ def run(args):
             p = subprocess.run([str(src / '.venv/bin/python'), '-m', 'pytest', '-q',
                                 str(ROOT / 'acceptance/test_layer_a.py'), '-p', 'no:cacheprovider',
                                 '--tb=no'], cwd=ROOT, env=env, capture_output=True, text=True)
-            (out / 'pytest.txt').write_text(scrub(p.stdout + p.stderr))
+            save_output(out / 'pytest.txt', p.stdout + p.stderr, h.token)
             # One retry for rows that failed on a Fish outage or rate limit; the report marks them.
             rows = json.loads((out / 'rows-a.json').read_text()) if (out / 'rows-a.json').exists() else []
             transient = retry_rows(rows)
@@ -372,12 +378,12 @@ def run(args):
                                     str(ROOT / 'acceptance/test_layer_a.py'), '-p', 'no:cacheprovider', '--tb=no'],
                                    cwd=ROOT, env={**env, 'ACCEPTANCE_RERUN': ','.join(transient)},
                                    capture_output=True, text=True)
-                (out / 'pytest-retry.txt').write_text(scrub(p.stdout + p.stderr))
+                save_output(out / 'pytest-retry.txt', p.stdout + p.stderr, h.token)
         if 'b' in args.layers.split(',') and (ROOT / 'acceptance/desktop/run.mjs').exists():
             p = subprocess.run(['/opt/homebrew/bin/node' if sys.platform == 'darwin' else 'node',
                                 str(ROOT / 'acceptance/desktop/run.mjs'), '--host-json', str(out / 'host.json'),
                                 '--out', str(out)], cwd=ROOT, env=env, capture_output=True, text=True)
-            (out / 'desktop.txt').write_text(scrub(p.stdout + p.stderr))
+            save_output(out / 'desktop.txt', p.stdout + p.stderr, h.token)
     except Exception as exc:
         (out / 'setup-error.txt').write_text(scrub(exc) + '\n')
     finally:

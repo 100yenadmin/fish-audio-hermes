@@ -1,7 +1,8 @@
 # Release acceptance
 
 Run from the repository root, with Python 3.11+, uv, git, gh, ffmpeg, ffprobe and Node. The upstream host builds
-the Hermes web UI, and Hermes 0.23.0 and later install only on Node 26 or newer.
+the Hermes web UI, and Hermes 0.23.0 and later install only on Node 26.4 or newer, the first 26.x whose
+bundled npm their `engines` range allows.
 macOS uses Homebrew Python and sandbox-exec. Linux CI uses the host venv without
 the macOS sandbox. The ordinary pytest invocation collects only `tests/`.
 
@@ -73,7 +74,7 @@ recorded process group after verifying its run-dir command identity.
 `--layers a,b` also runs Layer B, `acceptance/desktop/run.mjs`; absent B rows fail.
 Layer B is macOS only. It builds a Hermes Desktop dev tree for the host's release (or
 the newest evaOS app tag) into the cache, with Node from `/opt/homebrew/bin` or
-`ACCEPTANCE_NODE_BIN` (26 or newer for Hermes 0.23.0 and later). It drives the app over CDP in both themes. The patches it applies
+`ACCEPTANCE_NODE_BIN` (26.4 or newer for Hermes 0.23.0 and later). It drives the app over CDP in both themes. The patches it applies
 to the cached tree are listed in `<tree>/.acceptance-patches`: evaOS's managed-build
 switch off, and the microphone permission prompt answered "granted" only when
 `HERMES_ACCEPTANCE_FAKE_MIC=1`. Speech goes in through a microphone shim that plays

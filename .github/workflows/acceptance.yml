@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6
-      # The upstream host builds the Hermes web UI; Hermes 0.23.0 and later install only on Node 26 or newer.
+      # The upstream host builds the Hermes web UI; Hermes 0.23.0 and later install only on Node 26.4 or newer (`26` installs the newest 26.x).
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 26
