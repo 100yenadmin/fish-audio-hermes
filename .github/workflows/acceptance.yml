@@ -26,6 +26,17 @@ jobs:
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: acceptance/run.sh --host '${{ matrix.host }}' --plugin "$GITHUB_SHA" --out "$RUNNER_TEMP/acceptance" --layers a
+      - name: Show the setup error
+        if: failure()
+        run: |
+          f="$RUNNER_TEMP/acceptance/setup-error.txt"
+          [ -f "$f" ] || exit 0
+          echo '::error title=Acceptance setup failed::the host did not build; the reason follows in this step and in setup-error.txt'
+          # The text comes from git, uv and npm output, so stop workflow-command parsing while printing it.
+          token=$(openssl rand -hex 16)
+          echo "::stop-commands::$token"
+          cat "$f"
+          echo "::$token::"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -33,3 +44,6 @@ jobs:
           path: |
             ${{ runner.temp }}/acceptance/report.json
             ${{ runner.temp }}/acceptance/REPORT.md
+            ${{ runner.temp }}/acceptance/setup-error.txt
+            ${{ runner.temp }}/acceptance/pytest.txt
+            ${{ runner.temp }}/acceptance/pytest-retry.txt
