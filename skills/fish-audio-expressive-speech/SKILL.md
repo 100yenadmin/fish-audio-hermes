@@ -41,7 +41,7 @@ For multiple speakers, pass `speakers` as 2–4 Fish voice ids and label the tex
 by calling `fish_speak` directly. `pronunciations` maps words to phonetic forms, at most 200 entries. Fish speaks
 each value as phonemes: CMU Arpabet in English, such as `{"Codex":"K OW1 D EH0 K S"}` (`drama-3` also takes IPA).
 A plain respelling such as `code ex` is not a phonetic form and comes out unpredictably. Keys match anywhere in the
-text, ignoring case, so choose keys that never occur inside other words.
+text, ignoring case for ASCII letters only, so choose keys that never occur inside other words.
 `fish_speak` applies the configured synthesis knobs. Call speed wins over configured speed; call
 pronunciations merge with configured inline entries (call entries win), or replace configured references.
 Native `.ogg` is the default voice reply; use `format: wav` for a file. Pass `timestamps: true` for word
