@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Release acceptance:** a run now removes the Fish key from its disposable home when it ends, including when the
+  gateway fails to shut down. Before, the key stayed in the run directory's `.env` until it was cleared by hand.
+
 ## 1.10.0 — 2026-11-08
 
 - **Use your own voices by title:** `/fish use Eva`, `/fish preview Eva` and `hermes fish use Eva` find one of your
