@@ -16,8 +16,9 @@ def _wordish(ch):
 
 def _untag(match):
     # A removed sound tag keeps a word boundary only between two non-CJK word characters ("hello[laughter]world").
+    # A word can end with a combining mark, but a mark right after the tag belongs to the letter before it.
     before, after = match.string[match.start() - 1:match.start()], match.string[match.end():match.end() + 1]
-    words = _wordish(before) and _wordish(after) and not (_CJK.match(before) or _CJK.match(after))
+    words = _wordish(before) and re.fullmatch(r"\w", after) is not None and not (_CJK.match(before) or _CJK.match(after))
     return " " if words else ""
 
 
