@@ -142,6 +142,62 @@ def test_title_ambiguous_lists_five_without_writes(config, raw):
     assert not config[1]
 
 
+def _pages(mock, pages):
+    """Serve the own-voices listing's page N from pages[N - 1]."""
+    import httpx
+    return mock.get(BASE + "/model").mock(
+        side_effect=lambda request: httpx.Response(200, json=pages[int(request.url.params["page_number"]) - 1]))
+
+
+def _titled(n, title="Eva narrator"):
+    return [{"id": f"{i:032x}", "title": f"{title} {i}"} for i in range(1, n + 1)]
+
+
+def test_title_match_on_a_later_page(config):
+    with respx.mock(assert_all_called=True) as mock:
+        listing = _pages(mock, [{"items": _titled(20), "has_more": True},
+                                {"items": [{"id": VOICE, "title": "Eva"}], "has_more": False}])
+        mock.get(BASE + "/model/" + VOICE).respond(json={})
+        assert commands.handle("use Eva") == "Saved."
+        assert [call.request.url.params["page_number"] for call in listing.calls] == ["1", "2"]
+    assert config[0]["tts"]["fish-audio"]["voice"] == VOICE
+
+
+def test_title_paging_follows_total_without_has_more(config):
+    with respx.mock(assert_all_called=True) as mock:
+        listing = _pages(mock, [{"items": _titled(20), "total": 21}, {"items": [{"id": VOICE, "title": "Eva"}], "total": 21}])
+        mock.get(BASE + "/model/" + VOICE).respond(json={})
+        assert commands.handle("use Eva") == "Saved." and listing.call_count == 2
+
+
+@pytest.mark.parametrize("raw", ["use Eva", "preview Eva hello"])
+def test_title_ambiguous_across_pages_without_writes(config, raw):
+    other = "b" * 32
+    with respx.mock(assert_all_called=True) as mock:
+        _pages(mock, [{"items": [{"id": VOICE, "title": "Eva"}, *_titled(19)], "has_more": True},
+                      {"items": [{"id": VOICE, "title": "Eva"}, {"id": other, "title": "eva"}], "has_more": False}])
+        reply = commands.handle(raw)
+        assert f"Eva ({VOICE})" in reply and f"eva ({other})" in reply and reply.count(VOICE) == 1
+    assert not config[1]
+
+
+@pytest.mark.parametrize("first", [[{"id": VOICE, "title": "Eva"}], []])
+def test_title_search_too_large_refuses_without_writes(config, first):
+    with respx.mock(assert_all_called=True) as mock:
+        listing = _pages(mock, [{"items": first + _titled(20 - len(first)), "has_more": True}] * 5)
+        reply = commands.handle("use Eva")
+        assert "More than 100 of your voices match that title" in reply and "/fish alias add <name> <id>" in reply
+        assert listing.call_count == 5
+    assert not config[1]
+
+
+def test_title_search_too_large_keeps_legacy_id(config, monkeypatch):
+    monkeypatch.setattr(commands, "use", lambda found, *a: "Saved." if found == "legacy-id" else "wrong")
+    with respx.mock(assert_all_called=True) as mock:
+        listing = _pages(mock, [{"items": _titled(20, "legacy-id"), "has_more": True}] * 5)
+        assert commands.handle("use legacy-id") == "Saved." and listing.call_count == 5
+
+
 @pytest.mark.parametrize("raw", ["use Eva", "preview Eva"])
 def test_title_no_match_keeps_refusal(config, raw):
     with respx.mock(assert_all_called=True) as mock:

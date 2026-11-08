@@ -299,6 +299,18 @@ def test_cli_title_ambiguous_no_write(config, capsys):
     assert "hermes fish use <id>" in capsys.readouterr().out and config[0] == before
 
 
+def test_cli_title_search_too_large_no_write(config, capsys):
+    before = copy.deepcopy(config[0])
+    page = {"items": [{"id": "a" * 32, "title": "Eva"}] + [{"id": f"{i:032x}", "title": f"Eva {i}"} for i in range(19)],
+            "has_more": True}
+    with respx.mock(assert_all_called=True) as mock:
+        listing = mock.get(BASE + "/model").respond(json=page)
+        assert run("use", "Eva") == 1 and listing.call_count == 5
+    out = capsys.readouterr().out
+    assert "More than 100 of your voices match that title" in out and "hermes fish use <id>" in out
+    assert config[0] == before
+
+
 @pytest.mark.parametrize("failure", ["missing", "no match", "error"])
 def test_cli_title_failures_no_write(config, monkeypatch, capsys, failure):
     before = copy.deepcopy(config[0])

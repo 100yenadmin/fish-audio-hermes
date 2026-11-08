@@ -85,13 +85,17 @@ def resolve_title(value, key, base, *, terminal=False):
     # Saved names and 32-hex ids skip lookup; legacy id-like titles keep their id fallback.
     id_like = ident is not None and ident == value and not re.fullmatch(r"[0-9a-f]{32}", value)
     if (ident is None or id_like) and 0 < len(title) <= 128 and not settings.operator_account():
-        from .voices import find_own_by_title
-        matches = find_own_by_title(title, key, base)
+        from .voices import TITLE_PAGES, find_own_by_title
+        matches, complete = find_own_by_title(title, key, base)
+        hint = ("Run `hermes fish use <id>` or save a name with `/fish alias add <name> <id>`." if terminal else
+                "Run `/fish use <id>` or `/fish alias add <name> <id>`.")
         if len(matches) > 1:
             choices = "; ".join(f"{title} ({ident})" for ident, title in matches[:5])
-            hint = ("Run `hermes fish use <id>` or save a name with `/fish alias add <name> <id>`." if terminal else
-                    "Run `/fish use <id>` or `/fish alias add <name> <id>`.")
             raise ToolInputError(f"Several voices of yours have that title: {choices}. {hint}")
+        # Unread results could hold another voice with that title. A legacy id-like value with no match keeps its id.
+        if not complete and (matches or ident is None):
+            raise ToolInputError(f"More than {TITLE_PAGES * 20} of your voices match that title, too many to be sure "
+                                 f"which one you mean. {hint}")
         if matches:
             ident = matches[0][0]
     require(ident is not None, settings.UNKNOWN_VOICE)
