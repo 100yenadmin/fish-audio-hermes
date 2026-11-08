@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- **Release acceptance:** a run now removes the Fish key from its disposable home when it ends, including when the
-  gateway fails to shut down. Before, the key stayed in the run directory's `.env` until it was cleared by hand.
+- **Release acceptance:** a run now removes the Fish key from its disposable home when it finishes, fails, is stopped
+  with Ctrl-C, or the gateway fails to shut down. Before, the key stayed in the run directory's `.env` until it was
+  cleared by hand. A run killed by a signal such as SIGTERM still skips this cleanup.
 
 ## 1.10.0 — 2026-11-08
 
