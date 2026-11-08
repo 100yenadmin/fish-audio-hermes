@@ -134,6 +134,8 @@ async function turn(s, rec, dir, text, { timeout = 90000, onSpeaking, onThinking
   const fallback = speakRecv.find(f => f.json?.type === 'fallback')
   const wholeText = fallback ? rec.speakRequests.slice(Math.max(req0, fallback.speakRequestIndex)) : []
   const m = {
+    fallback_request_index: fallback ? Math.max(req0, fallback.speakRequestIndex) : null,
+    speaking_at: tSpeak, media_start_index: before.media.length,
     speak_requests_after_fallback: wholeText.length,
     speak_2xx_after_fallback: wholeText.filter(r => r.status >= 200 && r.status < 300).length,
     statuses: st.filter(x => !x.v.startsWith('(')).map(x => x.v), timeline: st.map(x => `${x.t - speechEnd}ms ${x.v}`),
@@ -357,9 +359,22 @@ p.write_text(yaml.safe_dump(c))`, cfg], { env: Object.fromEntries(Object.entries
     try {
       if (await startConversation(s)) m = await turn(s, rec, dir, PROMPTS[3], { timeout: 60000, onThinking: failConfig })
     } finally { fs.writeFileSync(cfg, original) }
+    // The media log does not distinguish earcons; stop widening before the end action can play one.
+    const playbackEnd = await s.page.evaluate(() => performance.timeOrigin + performance.now())
     await endConversation(s)
     const toasts = (await s.page.evaluate(() => window.__toasts)).filter(x => x.t > t0).map(x => x.text.replace(/\s+/g, ' ').slice(0, 140))
     const shot = await c.shot(s, shotPath('B-CONV-5', theme))
+    if (m) {
+      m.speak_requests_at_turn_end = m.speak_requests_after_fallback
+      m.speak_2xx_at_turn_end = m.speak_2xx_after_fallback
+      const wholeText = () => m.fallback_request_index == null ? [] : rec.speakRequests.slice(m.fallback_request_index)
+      for (const deadline = Date.now() + 3000; wholeText().some(r => r.status == null) && Date.now() < deadline;) await c.sleep(100)
+      const media = (await pageState(s)).media.slice(m.media_start_index)
+      m.media_plays = media.filter(a => a.playedAt != null && rec.timeOrigin + a.playedAt >= m.speaking_at - 100 && rec.timeOrigin + a.playedAt < playbackEnd).length
+      m.played = m.audio_buffers > 0 || m.media_plays > 0
+      m.speak_requests_after_fallback = wholeText().length
+      m.speak_2xx_after_fallback = wholeText().filter(r => r.status >= 200 && r.status < 300).length
+    }
     const fb = m && m.speak_frames.includes('fallback'), err = m && m.speak_frames.includes('error')
     const noText = m && onlyDone(m)
     // Judged as the user meets it: after the protocol fallback/error the user must hear the reply (whole-text path)

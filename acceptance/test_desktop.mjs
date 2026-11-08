@@ -136,10 +136,21 @@ test('B-LIB-4 requires the Account card credit; a matching status chip cannot co
   }
 })
 
-test('B-CONV-5 requires an injected failure and waives only zero-request host failures', async t => {
-  const start = conv.indexOf('    const toasts =', conv.indexOf("  if (want('B-CONV-5'))"))
-  const end = conv.indexOf('\n  }', start)
+async function forcedFailureRow(m, { requests = [], media = [], toast = [], end = () => {}, sleep = () => {} } = {}) {
+  const start = conv.indexOf('    const playbackEnd =', conv.indexOf("  if (want('B-CONV-5'))"))
+  const stop = conv.indexOf('\n  }', start)
   const onlyDone = conv.split('\n').find(l => l.startsWith('const onlyDone ='))
+  const rows = []
+  await vm.runInNewContext(`(async()=>{${onlyDone}\n${conv.slice(start,stop)}})()`, {
+    m, rec:{speakRequests:requests, timeOrigin:0}, t0:0, theme:'dark', s:{page:{evaluate:async fn=>fn()}},
+    window:{__toasts:toast.map(text=>({t:1,text}))}, performance:{timeOrigin:0, now:()=>1000},
+    endConversation:async()=>end(), pageState:async()=>({media}),
+    c:{shot:async()=>'', sleep:async()=>sleep()}, shotPath(){},
+    row:(id,status,reason)=>{const r = {status,reason}; rows.push(r); return r} })
+  return rows[0]
+}
+
+test('B-CONV-5 requires an injected failure and waives only zero-request host failures', async t => {
   const waiver = new RegExp(JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url)))
     .find(r => r.id === 'B-CONV-5').known_host_bugs[0].match)
   for (const [frames, spoken, pcm, toast, status, waived, requests = 0, successes = 0, played = false] of [
@@ -156,18 +167,42 @@ test('B-CONV-5 requires an injected failure and waives only zero-request host fa
     [['fallback'], 'reply', 0, ['Speech failed'], 'pass', false, 1, 0],
     [['fallback'], 'reply', 0, [], 'pass', false, 1, 1, true],
     [[], '', 0, [], 'fail', false]]) await t.test(JSON.stringify({frames, spoken, pcm, toast}), async () => {
-    const rows = [], m = {submits:1, spoken_text:spoken, speak_frames:frames, speak_sent:['done'],
+    const m = {submits:1, spoken_text:spoken, speak_frames:frames, speak_sent:['done'],
       speak_streams:1, pcm_frames:pcm, media_plays:played ? 1 : 0, audio_buffers:0, played,
+      fallback_request_index:frames.includes('fallback') ? 0 : null, speaking_at:100, media_start_index:0,
       speak_requests_after_fallback:requests, speak_2xx_after_fallback:successes}
-    await vm.runInNewContext(`(async()=>{${onlyDone}\n${conv.slice(start,end)}})()`, {
-      m, t0:0, theme:'dark', s:{page:{evaluate:async()=>toast.map(text=>({t:1,text}))}},
-      c:{shot:async()=>''}, shotPath(){}, row:(id,status,reason)=>{rows.push({status,reason}); return {}} })
-    assert.equal(rows[0].status, status)
-    assert.equal(waiver.test(rows[0].reason), waived, rows[0].reason)
-    assert.match(rows[0].reason, new RegExp(`POST /api/audio/speak after fallback ${requests}$`))
-    if (successes && !played) assert.match(rows[0].reason, /whole-text 2xx without reply playback/)
-    else if (status === 'fail' && !waived && spoken) assert.match(rows[0].reason, /forced failure did not take effect/)
-    if (!spoken) assert.match(rows[0].reason, /Desktop sent no reply text to speak-stream/)
+    const r = await forcedFailureRow(m, {toast, requests:Array.from({length:requests}, (_,i)=>({status:i < successes ? 200 : 500})), media:played ? [{playedAt:200}] : []})
+    assert.equal(r.status, status)
+    assert.equal(waiver.test(r.reason), waived, r.reason)
+    assert.match(r.reason, new RegExp(`POST /api/audio/speak after fallback ${requests}$`))
+    if (successes && !played) assert.match(r.reason, /whole-text 2xx without reply playback/)
+    else if (status === 'fail' && !waived && spoken) assert.match(r.reason, /forced failure did not take effect/)
+    if (!spoken) assert.match(r.reason, /Desktop sent no reply text to speak-stream/)
+  })
+})
+
+test('B-CONV-5 recounts late requests/responses and only pre-end whole-text playback', async t => {
+  const waiver = new RegExp(JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url)))
+    .find(r => r.id === 'B-CONV-5').known_host_bugs[0].match)
+  for (const kind of ['late request', 'late response', 'late playback', 'end earcon']) await t.test(kind, async () => {
+    const pending = kind === 'late response', requests = [{status:500}, ...(pending ? [{status:null}] : [])]
+    const m = {submits:1, spoken_text:'reply', speak_frames:['fallback'], speak_sent:['text','done'],
+      speak_streams:1, pcm_frames:0, media_plays:0, audio_buffers:0, played:false,
+      fallback_request_index:1, speaking_at:100, media_start_index:1,
+      speak_requests_after_fallback:pending ? 1 : 0, speak_2xx_after_fallback:0}
+    const media = [{playedAt:50}, ...(kind === 'late playback' ? [{playedAt:900}] : [])]
+    let polls = 0
+    const r = await forcedFailureRow(m, {requests, media,
+      end:()=>{if (!pending) requests.push({status:200}); if (kind === 'end earcon') media.push({playedAt:1000})},
+      sleep:()=>{polls++; requests.at(-1).status = 200}})
+    assert.equal(m.speak_requests_at_turn_end, pending ? 1 : 0)
+    assert.equal(m.speak_2xx_at_turn_end, 0)
+    assert.equal(m.speak_requests_after_fallback, 1); assert.equal(m.speak_2xx_after_fallback, 1)
+    assert.equal(polls, pending ? 1 : 0)
+    assert.equal(r.status, kind === 'late playback' ? 'pass' : 'fail')
+    assert.equal(r.reason.includes('whole-text 2xx without reply playback'), kind !== 'late playback')
+    assert.match(r.reason, /POST \/api\/audio\/speak after fallback 1$/)
+    assert.equal(waiver.test(r.reason), false)
   })
 })
 
@@ -198,6 +233,7 @@ test('CDP counts only this turn POST speak requests after fallback and records 2
   const metrics = await vm.runInContext(`${turn}\nturn(s, rec, '', '', {timeout:0})`, context)
   assert.equal(metrics.speak_requests_after_fallback, 2)
   assert.equal(metrics.speak_2xx_after_fallback, 1)
+  assert.equal(metrics.fallback_request_index, 2)
   assert.equal(rec.speakRequests.length, 4)
 })
 
