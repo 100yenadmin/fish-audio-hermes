@@ -1,9 +1,9 @@
 import type { PluginMessages } from '@hermes/plugin-sdk'
 import { compact, number, plural, usd } from '../format'
 
-const isolate = (value: string | number) => `⁨${value}⁩`
+const isolate = (value: string | number) => `\u2068${value}\u2069`
 const tag = 'ar'
-// Intl gives "‏12.35 US$"; in a right-to-left line the "$" drifts to the far side of "US" ("$US 12.35"), so keep the symbol whole.
+// Intl gives "\u200f12.35 US$"; in a right-to-left line the "$" drifts to the far side of "US" ("$US 12.35"), so keep the symbol whole.
 const money = (value: string) => usd(tag, value).replace('US$', isolate('US$'))
 
 const agentName = (profile: string): string => (profile && profile !== 'default' ? profile : ar.thisAgent)

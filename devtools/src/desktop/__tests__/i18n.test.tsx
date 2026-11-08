@@ -350,3 +350,7 @@ it('keeps excluded and unknown kinds and non-ApiErrors, and localizes empty mess
   vi.mocked(test.ctx.rest).mockResolvedValue({ ok: true, chunk_bytes: 0, upload_id: 'test' })
   await expect(cloneVoice([new Blob(['audio'])], { title: 'Test', consent: true }, pin, deps).catch(error => errorText(error))).resolves.toBe(ja.errors.badChunkSize)
 })
+
+it('keeps the Arabic isolates around inserted values (#69)', () => {
+  expect(ar.forAgent('work')).toBe('للوكيل \u2068work\u2069')
+})
