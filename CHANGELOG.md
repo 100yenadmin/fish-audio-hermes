@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Pronunciation guidance:** the expressive-speech skill now tells agents that Fish speaks each `pronunciations`
+  value as phonemes (CMU Arpabet in English; `drama-3` also takes IPA) and that keys match anywhere in the text. Its
+  example used a respelling, which Fish reads unpredictably (#73).
+
 ## 1.9.1 — 2026-11-08
 
 - **Live dictation keeps word breaks in Hindi, Thai and other scripts with combining marks:** when Fish's realtime
