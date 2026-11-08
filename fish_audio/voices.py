@@ -88,6 +88,25 @@ def _features(value, signature):
 ACCOUNT_VOICES = "Voices on this agent's account are managed by its operator."
 
 
+TITLE_PAGES = 5  # a title lookup reads at most 100 of the voices Fish's search returns
+
+
+def find_own_by_title(title, key, base):
+    """Your own voices titled exactly `title` (ignoring case), as (id, title) pairs, plus whether every search result
+    was read. Fish's title search also returns longer titles, so another exact match can sit on a later page."""
+    want, found = title.strip().casefold(), {}
+    for page in range(1, TITLE_PAGES + 1):
+        result = execute({"action": "mine", "query": title, "page": page, "page_size": 20}, key, base, "")
+        for item in result["items"]:
+            if isinstance(item["title"], str) and item["title"].strip().casefold() == want and voice_id(item["id"]):
+                found.setdefault(item["id"], item["title"])
+        total = result["total"]
+        more = result.get("has_more", total == "1000+" or (type(total) is int and page * 20 < total))
+        if not more or not result["items"]:
+            return list(found.items()), True
+    return list(found.items()), False
+
+
 def execute(args, key, base, session):
     action = args.get("action")
     # An operator's key can serve many agents: its own voices, edits and deletes span all of them.

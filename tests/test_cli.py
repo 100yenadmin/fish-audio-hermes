@@ -269,6 +269,64 @@ def test_cli_status_without_key_matches_chat_setup(config, monkeypatch, capsys):
         assert not mock.calls
 
 
+def test_cli_use_own_title(config, capsys):
+    ident = "a" * 32
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model").respond(json={"items": [{"id": ident, "title": "Eva"}]})
+        mock.get(BASE + "/model/" + ident).respond(json={})
+        assert run("use", " eVA ") == 0
+    assert config[0]["tts"]["fish-audio"]["voice"] == ident
+    assert capsys.readouterr().out.strip() == "Saved."
+
+
+def test_cli_use_single_word_own_title(config, capsys):
+    ident = "a" * 32
+    with respx.mock(assert_all_called=True) as mock:
+        listing = mock.get(BASE + "/model").respond(json={"items": [{"id": ident, "title": "Storyteller"}]})
+        mock.get(BASE + "/model/" + ident).respond(json={})
+        assert run("use", "Storyteller") == 0
+        assert listing.call_count == 1 and listing.calls.last.request.url.params["self"] == "true"
+    assert config[0]["tts"]["fish-audio"]["voice"] == ident
+    assert capsys.readouterr().out.strip() == "Saved."
+
+
+def test_cli_title_ambiguous_no_write(config, capsys):
+    before = copy.deepcopy(config[0])
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(BASE + "/model").respond(json={"items": [
+            {"id": "a" * 32, "title": "Eva"}, {"id": "b" * 32, "title": "Eva"}]})
+        assert run("use", "Eva") == 1
+    assert "hermes fish use <id>" in capsys.readouterr().out and config[0] == before
+
+
+def test_cli_title_search_too_large_no_write(config, capsys):
+    before = copy.deepcopy(config[0])
+    page = {"items": [{"id": "a" * 32, "title": "Eva"}] + [{"id": f"{i:032x}", "title": f"Eva {i}"} for i in range(19)],
+            "has_more": True}
+    with respx.mock(assert_all_called=True) as mock:
+        listing = mock.get(BASE + "/model").respond(json=page)
+        assert run("use", "Eva") == 1 and listing.call_count == 5
+    out = capsys.readouterr().out
+    assert "More than 100 of your voices match that title" in out and "hermes fish use <id>" in out
+    assert config[0] == before
+
+
+@pytest.mark.parametrize("failure", ["missing", "no match", "error"])
+def test_cli_title_failures_no_write(config, monkeypatch, capsys, failure):
+    before = copy.deepcopy(config[0])
+    with respx.mock(assert_all_called=True) as mock:
+        if failure == "missing":
+            monkeypatch.setattr(cli, "fish_api_key", lambda: "")
+        else:
+            mock.get(BASE + "/model").respond(503 if failure == "error" else 200,
+                                              json={"items": [], "message": "private response body"})
+        assert run("use", "Eva") == 1
+    reply = capsys.readouterr().out.strip()
+    expected = {"missing": commands.NO_KEY, "no match": settings.UNKNOWN_VOICE}
+    assert reply == expected[failure] if failure in expected else "unavailable" in reply
+    assert "private response body" not in reply and config[0] == before
+
+
 def test_cli_status_is_the_operator_view_in_operator_mode(config, monkeypatch, capsys):
     config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")

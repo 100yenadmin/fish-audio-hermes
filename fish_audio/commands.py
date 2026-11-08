@@ -9,7 +9,7 @@ from .secrets import fish_api_key, redact
 from .tool_support import require, voice_id, ToolInputError
 
 _LOCK = threading.RLock()
-HELP = "/fish status · voices [query] · use <id or name> · model <id> · preview <id or name> [text] (billed) · alias [list] · alias add <name> <voice id or name> · alias remove <name> · balance · help"
+HELP = "/fish status · voices [query] · use <id, name or own title> · model <id> · preview <id, name or own title> [text] (billed) · alias [list] · alias add <name> <voice id or name> · alias remove <name> · balance · help"
 NO_KEY = ("Fish Audio isn't set up for this profile yet. Get a key at https://fish.audio/app/api-keys, then finish "
           "setup in the Desktop app (Voices ▸ Enter API key, or Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings; on older Desktop, "
           "the gear on the fish-audio row in Capabilities ▸ Plugins) or run `hermes fish login` on the machine running Hermes. "
@@ -77,6 +77,29 @@ def _managed_provider():
     except Exception:
         return None
     return provider if isinstance(provider, str) and provider else None
+
+
+def resolve_title(value, key, base, *, terminal=False):
+    ident = settings.resolve_voice(value)
+    title = value.strip()
+    # Saved names and 32-hex ids skip lookup; legacy id-like titles keep their id fallback.
+    id_like = ident is not None and ident == value and not re.fullmatch(r"[0-9a-f]{32}", value)
+    if (ident is None or id_like) and 0 < len(title) <= 128 and not settings.operator_account():
+        from .voices import TITLE_PAGES, find_own_by_title
+        matches, complete = find_own_by_title(title, key, base)
+        hint = ("Run `hermes fish use <id>` or save a name with `/fish alias add <name> <id>`." if terminal else
+                "Run `/fish use <id>` or `/fish alias add <name> <id>`.")
+        if len(matches) > 1:
+            choices = "; ".join(f"{title} ({ident})" for ident, title in matches[:5])
+            raise ToolInputError(f"Several voices of yours have that title: {choices}. {hint}")
+        # Unread results could hold another voice with that title. A legacy id-like value with no match keeps its id.
+        if not complete and (matches or ident is None):
+            raise ToolInputError(f"More than {TITLE_PAGES * 20} of your voices match that title, too many to be sure "
+                                 f"which one you mean. {hint}")
+        if matches:
+            ident = matches[0][0]
+    require(ident is not None, settings.UNKNOWN_VOICE)
+    return ident
 
 
 def use(ident, key, base):
@@ -198,8 +221,7 @@ def handle(raw_args=""):
             return "\n".join(f"{v['id']} · {v['title']} · {', '.join(v['languages'])}" for v in result["items"]) + \
                 "\nUse one: /fish use <id>. Browse more: https://fish.audio/discovery"
         if command == "use":
-            ident = settings.resolve_voice(rest.strip())
-            require(ident is not None, settings.UNKNOWN_VOICE)
+            ident = resolve_title(rest.strip(), key, base)
             return use(ident, key, base)
         if command == "alias":
             action, _, args = rest.strip().partition(" ")
@@ -230,8 +252,7 @@ def handle(raw_args=""):
                     + ("\n" + settings.free_model_notice() if model == "s2.1-pro-free" and not warning and not settings.operator_account() else ""))
         if command == "preview":
             ident, _, text = rest.partition(" ")
-            ident = settings.resolve_voice(ident)
-            require(ident is not None, settings.UNKNOWN_VOICE)
+            ident = resolve_title(ident, key, base)
             text = text or "Hi! This is how I sound."
             require(len(text) <= 200, "Preview text must be 200 characters or fewer.")
             result = tools._speak({"text": text, "voice": ident}, key, base, "", record_media=False)

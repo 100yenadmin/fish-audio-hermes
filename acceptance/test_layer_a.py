@@ -218,6 +218,36 @@ def test_commands(paid, voice, n, request):
         assert path and Path(path[1]).is_file(), 'preview did not return existing audio'
 
 
+@pytest.mark.row('A-CMD-TITLE')
+def test_use_own_title(paid, request):
+    before, items = config(paid), []
+    for page in range(1, 51):
+        result = paid.request(f'/api/plugins/fish-audio/voices?self=true&page={page}')
+        items.extend(result['items'])
+        if result.get('has_more') is False or (result.get('total_is_exact') is not False
+                and type(result.get('total')) is int and len(items) >= result['total']):
+            break
+    else:
+        na(request, 'own voice listing exceeds the searchable window; title uniqueness cannot be established')
+    titles = [item['title'].strip().casefold() for item in items if isinstance(item.get('title'), str)]
+    aliases = before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
+    aliases = {name.strip().casefold() for name in aliases}
+    chosen = next((item for item in items if isinstance(item.get('title'), str)
+                   and 0 < len(item['title'].strip()) <= 128
+                   and titles.count(item['title'].strip().casefold()) == 1
+                   and item['title'].strip().casefold() not in aliases
+                   and not re.fullmatch(r'[A-Za-z0-9_-]{8,128}', item['title'].strip())), None)
+    if chosen is None:
+        na(request, 'no own voice has a unique title eligible for title lookup')
+    try:
+        text = command(paid, 'use ' + chosen['title'].strip())
+        selected = config(paid)['tts']['fish-audio']['voice']
+        evidence(request, paid, {'reply': text, 'expected_id': chosen['id'], 'selected_id': selected})
+        assert selected == chosen['id']
+    finally:
+        set_config(paid, before)
+
+
 @pytest.mark.parametrize('n,fmt', [pytest.param(i, fmt, marks=pytest.mark.row(f'A-TTS-{i}'))
                                  for i, fmt in enumerate(('mp3', 'ogg', 'wav'), 1)])
 def test_core_tts(paid, n, fmt, request):
