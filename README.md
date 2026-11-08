@@ -267,9 +267,25 @@ the wallet that users can't see.
   through native realtime (Preview), billed $0.36 per hour of open session, per second; `live_transcription: compat`
   uses the old endpoint billed per committed phrase. Sessions open with the first audio and close once Fish confirms the last words (usually about a second after
   you stop; the plugin stops waiting after 15 seconds), or 30 seconds after the last audio of a cancelled recording.
-- The plugin sends your key and the text, audio, file names and voice details you ask it to process to
+  If a live session fails or returns no text, Hermes transcribes the recording as a file instead, a separate billed
+  request.
+- The plugin sends your key and the text, audio, file names, voice details and cover images you ask it to process to
   `api.fish.audio` (or the `base_url` you configure), reads your wallet for balance and model choice, stores your key
   in Hermes's `.env`, and collects no telemetry. [SECURITY.md](SECURITY.md) lists what each request carries.
+- It writes the profile's Fish voice, model and saved voice names (up to 50) to `config.yaml` when you use
+  `/fish use`, `hermes fish use`, `/fish model`, `/fish alias`, the settings page or the Voices page; choosing a voice
+  also makes Fish the speech provider when none is set. `hermes fish login` checks a key against your Fish wallet
+  before saving it, and sets the speech and transcription providers only when they are unset or you confirm.
+- **Report-a-problem skill:** when you say Fish Audio is broken or ask to report a problem, the agent runs
+  `hermes fish doctor --no-synth`, `/fish status`, `hermes --version` and `hermes plugins list --json`, and reads
+  recent Hermes log lines that mention Fish (`hermes logs --since 1h -n 2000 | grep -i fish`). It searches this
+  plugin's GitHub issues for two or three key words (with your `gh` login, or a web tool without one), keeps the
+  search words and the draft in small local files, and files a public issue or comment only after you approve the
+  exact text. A billed reproduction runs only with your OK. Reports leave out keys, credit amounts and voice ids not
+  confirmed as public library voices; security problems go to the repository's private advisory form instead.
+- **Voice-studio skill:** when you ask for a voice that fits the agent, the agent reads its SOUL.md or persona and
+  sends Fish a one- or two-sentence voice description (never the whole persona) and a short sample text, as a billed
+  design of three candidates.
 - The Desktop Voices page adds gateway routes under /api/plugins/fish-audio/, behind the Hermes dashboard's
   existing authentication. On that page, previews, clones and voice designs are billed; cloning a voice or saving a
   designed one creates a voice in your Fish account; cloning and deleting are confirmed on the page (a

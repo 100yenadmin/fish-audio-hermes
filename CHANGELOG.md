@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **README Disclosure** now says what the report-a-problem and voice-studio skills run, read and send, which commands
+  write the profile's voice settings, that cover images are sent, and that a failed live dictation session falls back
+  to file transcription, a separate billed request (#70).
+- **`/fish` argument hint** now lists `alias` (#70).
+
 ## 1.9.1 — 2026-11-08
 
 - **Live dictation keeps word breaks in Hindi, Thai and other scripts with combining marks:** when Fish's realtime
