@@ -86,7 +86,7 @@ it('pins the English names and Japanese and Arabic word order independently', ()
   expect([ja.previewVoice('A'), ja.deleteVoice('A'), ja.saveAsN(1), ja.settings.removeAlias('A')])
     .toEqual(['「A」を試聴', '「A」を削除', '候補 1 の名前', 'A を削除'])
   expect([ar.previewVoice('A'), ar.favouriteVoice('A'), ar.saveAsN(1), ar.settings.removeAlias('A')])
-    .toEqual(['معاينة ⁨A⁩', 'إضافة ⁨A⁩ إلى المفضلة', 'اسم المرشح ⁨1⁩', 'إزالة ⁨A⁩'])
+    .toEqual(['معاينة \u2068A\u2069', 'إضافة \u2068A\u2069 إلى المفضلة', 'اسم المرشح \u20681\u2069', 'إزالة \u2068A\u2069'])
 })
 
 it.each(['en', 'ja', 'de'] as const)('%s renders the top-up line without a page-owned colon', async locale => {
