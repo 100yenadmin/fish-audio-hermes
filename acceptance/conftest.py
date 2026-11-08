@@ -55,6 +55,29 @@ def scrub(value):
     return re.sub(r'(?i)Bearer\s+\S+|sk-[A-Za-z0-9_-]{16,}', '[redacted]', text)
 
 
+def save_output(path, text, token):
+    """Write captured pytest or Desktop output, scrubbed and without the run's dashboard token.
+
+    The tests put that token in WebSocket URLs, and CI uploads these files as public artifacts.
+    """
+    text = scrub(text)
+    path.write_text(text.replace(token, '[redacted]') if token else text)
+
+
+def node_bin():
+    """Return the bin directory of the Node that builds Hermes's web UI and runs the Desktop driver.
+
+    On macOS that is ACCEPTANCE_NODE_BIN, or else Homebrew's /opt/homebrew/bin, the choice desktop/build.sh and
+    desktop/launch.sh make; elsewhere it is the directory of the node on PATH.
+    """
+    if sys.platform == 'darwin':
+        return Path(os.environ.get('ACCEPTANCE_NODE_BIN') or '/opt/homebrew/bin')
+    found = shutil.which('node')
+    if not found:
+        raise RuntimeError('node not found on PATH; the upstream host needs it to build the Hermes web UI')
+    return Path(found).parent
+
+
 def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + '\n')
 
@@ -108,7 +131,7 @@ def build(host, ref):
                 if attempt == 1:
                     raise RuntimeError(f'{host} venv build failed twice: {scrub(exc)}') from exc
     if host == 'upstream' and not (dest / 'hermes_cli/web_dist/index.html').exists():
-        node_dir = '/opt/homebrew/bin' if sys.platform == 'darwin' else str(Path(shutil.which('node')).parent)
+        node_dir = str(node_bin())
         jsenv = {**env, 'PATH': node_dir + os.pathsep + env['PATH'], 'npm_config_userconfig': os.devnull,
                  'npm_config_cache': str(CACHE / 'npm'), 'RAYON_NUM_THREADS': '4', 'CI': '1'}
         call(['npm', 'ci', '--workspace', 'web', '--include-workspace-root', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=dest, env=jsenv, timeout=600)
@@ -362,7 +385,7 @@ def run(args):
             p = subprocess.run([str(src / '.venv/bin/python'), '-m', 'pytest', '-q',
                                 str(ROOT / 'acceptance/test_layer_a.py'), '-p', 'no:cacheprovider',
                                 '--tb=no'], cwd=ROOT, env=env, capture_output=True, text=True)
-            (out / 'pytest.txt').write_text(scrub(p.stdout + p.stderr))
+            save_output(out / 'pytest.txt', p.stdout + p.stderr, h.token)
             # One retry for rows that failed on a Fish outage or rate limit; the report marks them.
             rows = json.loads((out / 'rows-a.json').read_text()) if (out / 'rows-a.json').exists() else []
             transient = retry_rows(rows)
@@ -372,12 +395,12 @@ def run(args):
                                     str(ROOT / 'acceptance/test_layer_a.py'), '-p', 'no:cacheprovider', '--tb=no'],
                                    cwd=ROOT, env={**env, 'ACCEPTANCE_RERUN': ','.join(transient)},
                                    capture_output=True, text=True)
-                (out / 'pytest-retry.txt').write_text(scrub(p.stdout + p.stderr))
+                save_output(out / 'pytest-retry.txt', p.stdout + p.stderr, h.token)
         if 'b' in args.layers.split(',') and (ROOT / 'acceptance/desktop/run.mjs').exists():
-            p = subprocess.run(['/opt/homebrew/bin/node' if sys.platform == 'darwin' else 'node',
+            p = subprocess.run([str(node_bin() / 'node'),
                                 str(ROOT / 'acceptance/desktop/run.mjs'), '--host-json', str(out / 'host.json'),
                                 '--out', str(out)], cwd=ROOT, env=env, capture_output=True, text=True)
-            (out / 'desktop.txt').write_text(scrub(p.stdout + p.stderr))
+            save_output(out / 'desktop.txt', p.stdout + p.stderr, h.token)
     except Exception as exc:
         (out / 'setup-error.txt').write_text(scrub(exc) + '\n')
     finally:

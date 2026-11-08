@@ -18,6 +18,30 @@ SECRET_NAMES = ('FISH_API_KEY', 'GLM_API_KEY', 'GH_TOKEN', 'GITHUB_TOKEN',
                 'HERMES_DASHBOARD_SESSION_TOKEN', 'OTHER_API_KEY', 'OTHER_TOKEN')
 
 
+def test_saved_output_hides_the_session_token(tmp_path):
+    token = 'synthetic-session-token-0123456789'
+    path = tmp_path / 'pytest.txt'
+    harness.save_output(path, f'FAILED test_ws - InvalidURI ws://127.0.0.1:9361/api/ws?token={token}\n', token)
+    assert token not in path.read_text() and '?token=[redacted]' in path.read_text()
+
+
+def test_node_bin_prefers_acceptance_node_bin_on_macos(monkeypatch):
+    monkeypatch.setattr(harness.sys, 'platform', 'darwin')
+    monkeypatch.setenv('ACCEPTANCE_NODE_BIN', '/synthetic/node26/bin')
+    assert harness.node_bin() == Path('/synthetic/node26/bin')
+    monkeypatch.delenv('ACCEPTANCE_NODE_BIN')
+    assert harness.node_bin() == Path('/opt/homebrew/bin')
+
+
+def test_node_bin_uses_the_path_node_elsewhere(monkeypatch):
+    monkeypatch.setattr(harness.sys, 'platform', 'linux')
+    monkeypatch.setattr(harness.shutil, 'which', lambda name: '/synthetic/bin/node' if name == 'node' else None)
+    assert harness.node_bin() == Path('/synthetic/bin')
+    monkeypatch.setattr(harness.shutil, 'which', lambda name: None)
+    with pytest.raises(RuntimeError, match='node not found on PATH'):
+        harness.node_bin()
+
+
 def test_build_environment_drops_secrets_keeps_paths(monkeypatch):
     for name in SECRET_NAMES:
         monkeypatch.setenv(name, 'synthetic-placeholder')
