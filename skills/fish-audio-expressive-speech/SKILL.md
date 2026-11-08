@@ -38,7 +38,10 @@ Use **at most 3 cues per sentence**. Cues direct performance and should not be s
 
 For multiple speakers, pass `speakers` as 2–4 Fish voice ids and label the text with zero-based
 `<|speaker:N|>` markers. Use a multi-speaker model; S1 refuses this mode. Avoid core text normalization
-by calling `fish_speak` directly. `pronunciations` is a map of words to spoken forms, at most 200 entries.
+by calling `fish_speak` directly. `pronunciations` maps words to phonetic forms, at most 200 entries. Fish speaks
+each value as phonemes: CMU Arpabet in English, such as `{"Codex":"K OW1 D EH0 K S"}` (`drama-3` also takes IPA).
+A plain respelling such as `code ex` is not a phonetic form and comes out unpredictably. Keys match anywhere in the
+text, ignoring case for ASCII letters only, so choose keys that never occur inside other words.
 `fish_speak` applies the configured synthesis knobs. Call speed wins over configured speed; call
 pronunciations merge with configured inline entries (call entries win), or replace configured references.
 Native `.ogg` is the default voice reply; use `format: wav` for a file. Pass `timestamps: true` for word
@@ -53,7 +56,7 @@ Worked examples (replace the voice ids with voices the user selected):
    `fish_speak({"text":"<|speaker:0|>[curious] Ready? <|speaker:1|>[confident] Let's begin.","model":"s2.1-pro","speakers":["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]})`.
    Each marker refers to that index in the voice list.
 3. A pronunciation-aware narration:
-   `fish_speak({"text":"[calm] Codex is ready.","model":"s2.1-pro","pronunciations":{"Codex":"code ex"},"format":"wav"})`.
+   `fish_speak({"text":"[calm] Codex is ready.","model":"s2.1-pro","pronunciations":{"Codex":"K OW1 D EH0 K S"},"format":"wav"})`.
    The plugin keeps `[calm]` in bracket syntax and returns a plain audio-file media tag.
 4. A Drama 3 aside:
    `fish_speak({"text":"[sound relieved] We made it. [sigh] <whisper>Keep this between us.</whisper>","model":"drama-3","format":"ogg"})`.
