@@ -221,14 +221,7 @@ class Host:
         value = {'real': os.environ.get('FISH_API_KEY', ''), 'fake': FAKE, 'clear': ''}[kind]
         if kind == 'real' and not value:
             raise RuntimeError('FISH_API_KEY missing')
-        path = self.home / '.env'
-        lines = [s for s in path.read_text().splitlines() if not s.startswith('FISH_API_KEY=')] if path.exists() else []
-        if value:
-            lines.append('FISH_API_KEY=' + value)
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, 'w') as f:
-            f.write('\n'.join(lines) + '\n')
-        path.chmod(0o600)
+        write_key(self.home, value)
 
     def up(self):
         port = int(self.meta['gateway_url'].rsplit(':', 1)[1])
@@ -312,6 +305,18 @@ class Host:
 
     def wallet(self):
         return float(self.request('/api/plugins/fish-audio/account')['credit'])
+
+
+def write_key(home, value):
+    """Set the run home's FISH_API_KEY line, or remove it when value is empty."""
+    path = home / '.env'
+    lines = [s for s in path.read_text().splitlines() if not s.startswith('FISH_API_KEY=')] if path.exists() else []
+    if value:
+        lines.append('FISH_API_KEY=' + value)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+    path.chmod(0o600)
 
 
 def worker(out):
@@ -408,8 +413,13 @@ def run(args):
     except Exception as exc:
         (out / 'setup-error.txt').write_text(scrub(exc) + '\n')
     finally:
-        if h:
-            h.down()
+        try:
+            if h:
+                h.down()
+        finally:
+            # Rows place the real key in the run home; none is left there after the run, even if shutdown fails.
+            if (out / 'home/.env').exists():
+                write_key(out / 'home', '')
     return merge(out, args.layers.split(','), args.budget_usd)
 
 

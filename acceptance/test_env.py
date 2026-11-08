@@ -130,6 +130,50 @@ def test_run_keeps_renderer_port_out_of_layer_a_and_uses_selected_node(monkeypat
     assert (calls[1][-2:] == ['--vite-port', port]) if port else '--vite-port' not in calls[1]
 
 
+@pytest.mark.parametrize('down_fails', [False, True])
+def test_run_leaves_no_fish_key_in_the_run_home(monkeypatch, tmp_path, down_fails):
+    import report
+    monkeypatch.setattr(harness.os, 'environ', {'PATH': '/synthetic/bin', 'FISH_API_KEY': 'synthetic-real-key'})
+    monkeypatch.setattr(harness, 'CACHE', tmp_path / 'cache')
+    monkeypatch.setattr(harness, 'node_bin', lambda: Path('/synthetic/node26/bin'))
+    src = tmp_path / 'src'
+    (src / 'hermes_cli').mkdir(parents=True)
+    (src / 'hermes_cli/__init__.py').write_text('__version__ = "0.23.0"')
+    monkeypatch.setattr(harness, 'call', lambda *a, **kw: 'synthetic-sha')
+    monkeypatch.setattr(harness, 'build', lambda *a: (src, src, 'synthetic-sha'))
+    def archive(repo, sha, dest):
+        dest.mkdir(parents=True)
+        (dest / 'plugin.yaml').write_text('version: 1.10.0')
+    monkeypatch.setattr(harness, 'archive', archive)
+    out = tmp_path / 'out'
+    class Host:
+        token = 'synthetic-session-token'
+        def __init__(self, run_dir): pass
+        def cli(self, *a): return 'Hermes 0.23.0'
+        def up(self): pass
+        def down(self):
+            if down_fails:
+                raise RuntimeError('gateway process group still alive; retained gateway-pid.json')
+    monkeypatch.setattr(harness, 'Host', Host)
+    def layer_a(args, **kw):
+        # A Layer A row places the real key in the run home, as Host.key('real') does.
+        (out / 'home/.env').write_text('GLM_API_KEY=synthetic-glm\n')
+        harness.write_key(out / 'home', harness.os.environ['FISH_API_KEY'])
+        return SimpleNamespace(stdout='', stderr='', returncode=0)
+    monkeypatch.setattr(harness.subprocess, 'run', layer_a)
+    monkeypatch.setattr(report, 'merge', lambda *a: 0)
+    args = SimpleNamespace(out=out, host='upstream', hermes_ref='v0.23.0', plugin='fixture',
+                           port=None, budget_usd=.3, billed_heavy=False, evaos_overlay=None, layers='a')
+    if down_fails:
+        with pytest.raises(RuntimeError, match='still alive'):
+            harness.run(args)
+    else:
+        assert harness.run(args) == 0
+    env = out / 'home/.env'
+    assert env.read_text().splitlines() == ['GLM_API_KEY=synthetic-glm']
+    assert env.stat().st_mode & 0o777 == 0o600
+
+
 def test_build_failure_keeps_scrubbed_cause(monkeypatch, tmp_path):
     monkeypatch.setattr(harness, 'CACHE', tmp_path)
     monkeypatch.setenv('FISH_API_KEY', 'synthetic-placeholder')
