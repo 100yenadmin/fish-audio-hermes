@@ -210,7 +210,7 @@ def test_clean_removes_tags_like_fish():
 
 
 def test_clean_keeps_the_word_boundary_next_to_combining_marks():
-    # #66: a word that ends or starts with a combining mark (Unicode category M) is still a word.
+    # #66: a word that ends with a combining mark (Unicode category M) is still a word.
     assert live_realtime._clean("मैं[हँसी]जानता") == "मैं जानता"
     assert live_realtime._clean("नमस्ते[laughter]दोस्त") == "नमस्ते दोस्त"
     assert live_realtime._clean("สวัสดี[laughter]ครับ") == "สวัสดี ครับ"
@@ -218,3 +218,11 @@ def test_clean_keeps_the_word_boundary_next_to_combining_marks():
     assert live_realtime._clean("[laughter]मैं") == "मैं"
     assert live_realtime._clean("मैं[laughter]") == "मैं"
     assert live_realtime._clean("你好[笑声]世界") == "你好世界"
+
+
+def test_clean_keeps_a_mark_after_a_tag_on_its_letter():
+    # #70: a combining mark never starts a word, so a tag between a letter and its own mark joins them.
+    assert live_realtime._clean("क[x]ि") == "कि"
+    assert live_realtime._clean("e[x]\u0301") == "e\u0301"
+    assert live_realtime._clean("ก[laughter]ิน") == "กิน"
+    assert live_realtime._clean("नमस्ते[laughter]दोस्त") == "नमस्ते दोस्त"
