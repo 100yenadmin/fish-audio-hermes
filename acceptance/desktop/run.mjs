@@ -20,6 +20,9 @@ const host = JSON.parse(fs.readFileSync(args['host-json'], 'utf8'))
 const OUT = path.resolve(args.out || path.dirname(args['host-json']))
 const SHOTS = path.join(OUT, 'shots')
 const VITE = Number(args['vite-port'] || process.env.ACCEPTANCE_VITE_PORT || 5194)
+// Every gateway (re)start through hostctl now trusts this renderer port (conftest Host.env); the clear-key restart
+// below runs before Desktop launches.
+process.env.ACCEPTANCE_VITE_PORT = String(VITE)
 const CDP = Number(args['cdp-port'] || process.env.ACCEPTANCE_CDP_PORT || 9281)
 const THEMES = (args.themes || 'light,dark').split(',')
 const ONLY = args.rows ? new Set(args.rows.split(',')) : null

@@ -140,6 +140,13 @@ class Host:
             env['GLM_API_KEY'] = os.environ['GLM_API_KEY']
         if self.meta['host'] == 'upstream':
             env['HERMES_WEB_DIST'] = str(self.src / 'hermes_cli/web_dist')
+        # Hermes 0.23.0+ refuses a WebSocket from a loopback Origin on another port unless the backend names the
+        # Desktop dev renderer it serves, and a page on that port can then read the session token. Only Layer B's
+        # runner (desktop/run.mjs) sets ACCEPTANCE_VITE_PORT, to its Vite port, and it restarts the gateway before
+        # Desktop launches, so Layer A's gateway trusts no other local port.
+        env.pop('HERMES_DESKTOP_DEV_SERVER', None)
+        if os.environ.get('ACCEPTANCE_VITE_PORT'):
+            env['HERMES_DESKTOP_DEV_SERVER'] = f"http://127.0.0.1:{os.environ['ACCEPTANCE_VITE_PORT']}"
         return env
 
     def sandbox(self, args):

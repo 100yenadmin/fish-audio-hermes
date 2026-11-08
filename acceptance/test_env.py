@@ -290,6 +290,20 @@ def test_agent_tool_receipt_must_be_newer_than_chat(monkeypatch, tmp_path):
     namespace['test_agent'](paid, 2, 'fish_voices', None)
 
 
+def test_gateway_trusts_the_desktop_renderer_only_when_layer_b_names_its_port(monkeypatch, tmp_path):
+    # A trusted dev-renderer origin can read the session token over CORS, so Layer A's gateway trusts no other port,
+    # even one inherited from the operator's shell; desktop/run.mjs exports the Vite port it uses before its restart.
+    monkeypatch.setattr(harness, 'CACHE', tmp_path / 'cache')
+    host = object.__new__(harness.Host)
+    host.out, host.home, host.src, host.token = tmp_path / 'out', tmp_path / 'home', tmp_path / 'src', 'token'
+    host.meta = {'host': 'upstream'}
+    monkeypatch.delenv('ACCEPTANCE_VITE_PORT', raising=False)
+    monkeypatch.setenv('HERMES_DESKTOP_DEV_SERVER', 'http://127.0.0.1:5194')
+    assert 'HERMES_DESKTOP_DEV_SERVER' not in host.env()
+    monkeypatch.setenv('ACCEPTANCE_VITE_PORT', '5196')
+    assert host.env()['HERMES_DESKTOP_DEV_SERVER'] == 'http://127.0.0.1:5196'
+
+
 def test_gateway_control_socket_fits_a_private_runtime_dir(monkeypatch, tmp_path):
     socket_leaf = '/hermes-gw-0123456789abcdef/control.sock'  # Hermes: hermes-gw-<16 hex>/control.sock
     assert len((str(harness.CACHE / 'run') + socket_leaf).encode()) <= 100  # Hermes's _MAX_UNIX_PATH

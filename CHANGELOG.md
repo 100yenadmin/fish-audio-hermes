@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.1 — 2026-11-08
+
+- **Live dictation keeps word breaks in Hindi, Thai and other scripts with combining marks:** when Fish's realtime
+  speech-to-text put a sound tag between two words, removing the tag joined them if one ended or began with a combining
+  vowel sign. `मैं[हँसी]जानता` now becomes `मैं जानता` instead of `मैंजानता` (#66).
+- **Checked on Hermes 0.23.0:** release acceptance now runs against Hermes 0.23.0, including Desktop. Hermes 0.23.0's
+  gateway accepts a Desktop development build's WebSocket only when told which dev renderer it serves, so the
+  acceptance suite now names it. Installed Desktop apps are not affected.
+
 ## 1.9.0 — 2026-10-30
 
 - **Word-by-word live dictation:** native Fish realtime STT (`transcribe-stream-1`, Preview) is now the default,

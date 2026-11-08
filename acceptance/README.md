@@ -11,6 +11,9 @@ acceptance/run.sh --host evaos --plugin <ref> --out <another-empty-dir> --layers
 ```
 
 `--hermes-ref` overrides the runtime pin; `--port` overrides 9361/9362.
+Layer A's gateway trusts no other local port. Before Desktop launches, Layer B's runner restarts the gateway with
+`HERMES_DESKTOP_DEV_SERVER` naming its Vite port (5194, or `--vite-port` / `ACCEPTANCE_VITE_PORT`), because Hermes
+0.23.0 accepts the dev build's WebSocket only from the renderer it names.
 The upstream release resolves at run time. Runtime and candidate commit identities
 are in `host.json`; evaOS Desktop resolves the newest app tag independently.
 Host archives and venvs are cached under `~/.cache/fish-audio-acceptance/`.

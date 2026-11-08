@@ -1,6 +1,7 @@
 """Fish native realtime STT; a final result requires every turn and session_done."""
 import re
 import time
+import unicodedata
 
 import msgpack
 from websockets.exceptions import ConnectionClosed
@@ -8,10 +9,15 @@ from websockets.exceptions import ConnectionClosed
 from .live_stt import _CJK, FINALIZE_TIMEOUT, _LiveSession, join_text
 
 
+def _wordish(ch):
+    # \w misses combining marks (Devanagari and Thai vowel signs), which still belong to their word.
+    return bool(ch) and (re.fullmatch(r"\w", ch) is not None or unicodedata.category(ch).startswith("M"))
+
+
 def _untag(match):
     # A removed sound tag keeps a word boundary only between two non-CJK word characters ("hello[laughter]world").
     before, after = match.string[match.start() - 1:match.start()], match.string[match.end():match.end() + 1]
-    words = re.fullmatch(r"\w", before) and re.fullmatch(r"\w", after) and not (_CJK.match(before) or _CJK.match(after))
+    words = _wordish(before) and _wordish(after) and not (_CJK.match(before) or _CJK.match(after))
     return " " if words else ""
 
 
