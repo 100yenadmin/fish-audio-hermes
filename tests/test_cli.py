@@ -279,6 +279,17 @@ def test_cli_use_own_title(config, capsys):
     assert capsys.readouterr().out.strip() == "Saved."
 
 
+def test_cli_use_single_word_own_title(config, capsys):
+    ident = "a" * 32
+    with respx.mock(assert_all_called=True) as mock:
+        listing = mock.get(BASE + "/model").respond(json={"items": [{"id": ident, "title": "Storyteller"}]})
+        mock.get(BASE + "/model/" + ident).respond(json={})
+        assert run("use", "Storyteller") == 0
+        assert listing.call_count == 1 and listing.calls.last.request.url.params["self"] == "true"
+    assert config[0]["tts"]["fish-audio"]["voice"] == ident
+    assert capsys.readouterr().out.strip() == "Saved."
+
+
 def test_cli_title_ambiguous_no_write(config, capsys):
     before = copy.deepcopy(config[0])
     with respx.mock(assert_all_called=True) as mock:

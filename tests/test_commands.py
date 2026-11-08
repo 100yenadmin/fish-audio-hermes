@@ -122,6 +122,15 @@ def test_use_own_title_casefold_exact_match(config):
     assert config[0]["tts"]["fish-audio"]["voice"] == VOICE and len(config[1]) == 1
 
 
+def test_use_single_word_own_title(config):
+    with respx.mock(assert_all_called=True) as mock:
+        listing = mock.get(BASE + "/model").respond(json={"items": [{"id": VOICE, "title": "Storyteller"}]})
+        mock.get(BASE + "/model/" + VOICE).respond(json={})
+        assert commands.handle("use Storyteller") == "Saved."
+        assert listing.call_count == 1 and listing.calls.last.request.url.params["self"] == "true"
+    assert config[0]["tts"]["fish-audio"]["voice"] == VOICE and len(config[1]) == 1
+
+
 @pytest.mark.parametrize("raw", ["use Eva", "preview Eva hello"])
 def test_title_ambiguous_lists_five_without_writes(config, raw):
     ids = [str(i) * 32 for i in range(1, 7)]
@@ -142,15 +151,17 @@ def test_title_no_match_keeps_refusal(config, raw):
 
 
 @pytest.mark.parametrize("value", [VOICE, "narrator", "legacy-id"])
-def test_id_and_saved_name_skip_title_http(config, monkeypatch, value):
+@pytest.mark.parametrize("command", ["use", "preview"])
+def test_id_and_saved_name_skip_title_http(config, monkeypatch, value, command):
     config[0]["tts"]["fish-audio"] = {"aliases": {"narrator": VOICE}}
     ident = "legacy-id" if value == "legacy-id" else VOICE
     monkeypatch.setattr(commands, "use", lambda found, *a: "Saved." if found == ident else "wrong")
     monkeypatch.setattr(commands.tools, "_speak", lambda args, *a, **kw: {"media_tag": args["voice"]})
     with respx.mock(assert_all_called=True) as mock:
-        assert commands.handle("use " + value) == "Saved."
-        assert commands.handle("preview " + value) == ident
-        assert not mock.calls
+        if value == "legacy-id":
+            mock.get(BASE + "/model").respond(json={"items": []})
+        assert commands.handle(command + " " + value) == ("Saved." if command == "use" else ident)
+        assert len(mock.calls) == int(value == "legacy-id")
 
 
 @pytest.mark.parametrize("raw", ["use", "use " + "x" * 129])
@@ -169,10 +180,9 @@ def test_title_lookup_error_is_safe(config):
 
 
 def test_title_lookup_respects_operator_account(config):
-    from fish_audio.voices import ACCOUNT_VOICES
     config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
     with respx.mock(assert_all_called=True) as mock:
-        assert commands.handle("use Eva") == ACCOUNT_VOICES and not mock.calls
+        assert commands.handle("use Eva") == settings.UNKNOWN_VOICE and not mock.calls
     assert not config[1]
 
 

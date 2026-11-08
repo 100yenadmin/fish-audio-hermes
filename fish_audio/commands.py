@@ -81,9 +81,12 @@ def _managed_provider():
 
 def resolve_title(value, key, base, *, terminal=False):
     ident = settings.resolve_voice(value)
-    if ident is None and 0 < len(value.strip()) <= 128:
+    title = value.strip()
+    # Saved names and 32-hex ids skip lookup; legacy id-like titles keep their id fallback.
+    id_like = ident is not None and ident == value and not re.fullmatch(r"[0-9a-f]{32}", value)
+    if (ident is None or id_like) and 0 < len(title) <= 128 and not settings.operator_account():
         from .voices import find_own_by_title
-        matches = find_own_by_title(value.strip(), key, base)
+        matches = find_own_by_title(title, key, base)
         if len(matches) > 1:
             choices = "; ".join(f"{title} ({ident})" for ident, title in matches[:5])
             hint = ("Run `hermes fish use <id>` or save a name with `/fish alias add <name> <id>`." if terminal else
