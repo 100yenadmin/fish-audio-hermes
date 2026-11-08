@@ -130,6 +130,20 @@ def test_dictionary_forms(config):
     assert "pronunciation_dictionary" not in resolve()[0]
 
 
+@pytest.mark.parametrize("kind", ["alias", "phoneme"])
+def test_dictionary_type_preserved(config, kind):
+    dictionary = [{"items": [{"key": "Codex", "value": "code ex", "type": kind, "case_sensitive": True}]}]
+    config[1]["pronunciation_dictionary"] = dictionary
+    assert resolve()[0]["pronunciation_dictionary"] == dictionary
+
+
+@pytest.mark.parametrize("extra", [{"type": "other"}, {"type": 1}, {"type": None},
+    {"type": "alias", "unknown": True}, {"type": "alias", "case_sensitive": 1}])
+def test_dictionary_invalid_type_or_fields_dropped(config, extra):
+    config[1]["pronunciation_dictionary"] = [{"items": [{"key": "Codex", "value": "code ex", **extra}]}]
+    assert "pronunciation_dictionary" not in resolve()[0]
+
+
 def test_large_numeric_config_does_not_raise(config):
     config[1].update(temperature=10 ** 1000, speed=10 ** 1000)
     params, _ = resolve()

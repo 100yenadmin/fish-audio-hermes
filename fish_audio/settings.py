@@ -5,6 +5,7 @@ import ipaddress
 import logging
 import math
 import re
+import unicodedata
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -140,7 +141,7 @@ def _dictionary(value):
             if len(entry["items"]) > 5000:
                 return False
             for item in entry["items"]:
-                if not isinstance(item, dict) or not {"key", "value"} <= item.keys() or item.keys() - {"key", "value", "case_sensitive"}:
+                if not isinstance(item, dict) or not {"key", "value"} <= item.keys() or item.keys() - {"key", "value", "type", "case_sensitive"}:
                     return False
                 for name, limit in (("key", 256), ("value", 1024)):
                     v = item[name]
@@ -148,6 +149,14 @@ def _dictionary(value):
                         return False
                 if "case_sensitive" in item and type(item["case_sensitive"]) is not bool:
                     return False
+                if "type" in item and (not isinstance(item["type"], str) or item["type"] not in ("phoneme", "alias")):
+                    return False
+                if item.get("type") == "alias":
+                    key = item["key"]
+                    if key != key.strip() or any(unicodedata.category(c).startswith("C") or c in "<>()[]" for c in key):
+                        return False
+                    if any(tag in item["value"] for tag in ("<|", "|>")):
+                        return False
         else:
             return False
     return len(forms) <= 1

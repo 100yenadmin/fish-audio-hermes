@@ -54,10 +54,17 @@ def _speak(args, key, base, session, *, record_media=True):
         require(settings._valid("language", args["language"]),
                 "language must be a BCP-47 tag such as en, es-MX or zh-CN: letters, digits, - and _, at most 35 characters.")
         params["language"] = args["language"]
-    if "pronunciations" in args:
-        entries = args["pronunciations"]
-        require(isinstance(entries, dict) and len(entries) <= 200, "pronunciations allows at most 200 entries.")
-        dictionary = [{"items": [{"key": k, "value": v} for k, v in entries.items()]}]
+    if "pronunciations" in args or "spoken_as" in args:
+        pronunciations, spoken_as = args.get("pronunciations", {}), args.get("spoken_as", {})
+        for name, entries in (("pronunciations", pronunciations), ("spoken_as", spoken_as)):
+            require(isinstance(entries, dict) and all(isinstance(k, str) and isinstance(v, str)
+                    for k, v in entries.items()), f"{name} must be an object of strings.")
+        require(len(pronunciations) + len(spoken_as) <= 200,
+                "pronunciations and spoken_as allow at most 200 entries together.")
+        require(not pronunciations.keys() & spoken_as.keys(),
+                "Put each word in either pronunciations or spoken_as, not both.")
+        dictionary = [{"items": [{"key": k, "value": v} for k, v in pronunciations.items()] +
+                       [{"key": k, "value": v, "type": "alias"} for k, v in spoken_as.items()]}]
         require(settings._dictionary(dictionary), "Invalid pronunciation entry.")
         configured = params.get("pronunciation_dictionary", [])
         merged = {item["key"]: item for group in configured for item in group.get("items", [])}
@@ -122,7 +129,10 @@ SCHEMAS = {
         "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
-        "pronunciations": _field("object", additionalProperties=S, maxProperties=200)},
+        "pronunciations": _field("object", additionalProperties=S, maxProperties=200,
+                                 description="Phonetic forms: CMU Arpabet for English; drama-3 also accepts IPA."),
+        "spoken_as": _field("object", additionalProperties=S, maxProperties=200,
+                            description="Plain-text replacements (Fish alias rules), billed on the replaced text.")},
     "fish_voices": {"action": _field("string", enum=["search", "mine", "get", "clone", "design", "save", "update", "delete"]),
         "query": S, "language": S, "tags": STRINGS, "sort": _field("string", enum=["score", "task_count", "created_at"]),
         "author_id": _field("string", pattern="^[A-Za-z0-9_-]{1,64}$"),
