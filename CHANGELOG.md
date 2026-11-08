@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Plain-text pronunciation fixes:** `fish_speak` takes a new `spoken_as` map, such as `{"Codex": "code ex"}`. Fish
+  reads each replacement as ordinary text (its alias rules), billed on the replaced text. `pronunciations` still means
+  phonetic forms and sends exactly what it sent before. The config's `pronunciation_dictionary` accepts `type: alias`
+  per item (#73).
 - **Pronunciation guidance:** the expressive-speech skill now tells agents that Fish speaks each `pronunciations`
   value as phonemes (CMU Arpabet in English; `drama-3` also takes IPA) and that keys match anywhere in the text. Its
   example used a respelling, which Fish reads unpredictably (#73).
