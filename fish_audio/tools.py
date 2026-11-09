@@ -126,7 +126,7 @@ def fish_transcribe(args, session_id="", task_id="", tool_call_id=""):
 
 def fish_settings(args, session_id="", task_id="", tool_call_id=""):
     from .settings_tool import execute
-    return run(execute, args, session_id)
+    return run(execute, args, session_id, allow_no_key=isinstance(args, dict) and args.get("action") == "get")
 
 
 def fish_account(args, session_id="", task_id="", tool_call_id=""):
@@ -191,7 +191,7 @@ SCHEMAS = {
         "rules": _field("array", maxItems=5000, items=_field("object", required=["key", "value"], additionalProperties=False,
             properties={"key": _field("string", minLength=1, maxLength=256), "value": _field("string", minLength=1, maxLength=1024),
                         "type": _field("string", enum=["phoneme", "alias"]), "case_sensitive": B}))},
-        "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "set_speed", "add_name", "remove_name"]),
+    "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "set_speed", "add_name", "remove_name"], description="Results include setup: what is missing and the next step, plus setup_ready."),
         "voice": _field("string", description="Voice id, saved name or unique own-voice title (use); id or saved name (add_name)."),
         "speed": _field(["number", "null"], minimum=0.5, maximum=2.0, description="Reading speed (set_speed); null resets to 1.0."),
         "model": _field("string", enum=[r["id"] for r in MODELS]), "name": S},
@@ -203,7 +203,7 @@ SCHEMAS = {
 }
 DESCRIPTIONS = {
     "fish_pronunciations": "Manage reusable pronunciations: list/get dictionaries, versions/get_version rules, create, publish, delete/delete_version, or use refs as this profile's defaults ([] clears). Each published version holds the COMPLETE rule list, replacing previous rules. Delete actions require Hermes approval; the latest version cannot be deleted. Free: dictionary management has no Fish charge.",
-        "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Free: no Fish charge.",
+    "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Results include setup: what is missing and the next step. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
     "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,

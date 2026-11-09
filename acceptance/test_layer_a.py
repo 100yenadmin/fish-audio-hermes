@@ -193,6 +193,36 @@ def test_status(host, request):
     assert 'key' in text.lower() and any(s in text.lower() for s in ('missing', 'not set', "isn't set up"))
 
 
+@pytest.mark.row('A-CMD-SETUP-1')
+def test_setup_no_key(host, request):
+    host.key('clear')
+    host.restart()
+    text = command(host, 'setup')
+    evidence(request, host, text)
+    assert '✗' in text and 'never paste API keys into chat' in text
+    assert text.splitlines()[-1].startswith('Next: Fish Audio isn\'t set up')
+
+
+@pytest.mark.parametrize('provider', [pytest.param('edge', marks=pytest.mark.row('A-CMD-SETUP-2')),
+                                    pytest.param('fish-audio', marks=pytest.mark.row('A-CMD-SETUP-3'))])
+def test_setup_provider(real, provider, request):
+    before = config(real)
+    try:
+        changed = copy.deepcopy(before)
+        changed.setdefault('tts', {})['provider'] = provider
+        set_config(real, changed)  # Only the throwaway acceptance home.
+        real.restart()
+        text = command(real, 'setup')
+        evidence(request, real, text)
+        if provider == 'edge':
+            assert 'currently speaks with edge' in text and 'hermes config set tts.provider fish-audio' in text
+        else:
+            assert text.splitlines()[-1] == 'Ready. Hear your voice: `/fish preview`'
+    finally:
+        set_config(real, before)
+        real.restart()
+
+
 @pytest.mark.parametrize('synth', [pytest.param(False, marks=pytest.mark.row('A-CLI-2')),
                                         pytest.param(True, marks=pytest.mark.row('A-CLI-3'))])
 def test_doctor(paid, synth, request):

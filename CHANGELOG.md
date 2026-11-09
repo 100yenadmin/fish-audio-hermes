@@ -8,6 +8,7 @@
   Hermes approval. Existing inline pronunciation merging is preserved (#90; pronunciation API drift #84).
 - Set per-profile reading speed (0.5–2.0×) in Desktop Fish Audio settings or with `fish_settings set_speed`;
   reset to 1.0× by removing the setting. Voice replies, read-aloud and streaming use the saved speed.
+- **Setup from chat:** `/fish setup` (works before a key is saved) and `fish_settings` list what this profile still needs and the next step, including a key saved after the gateway started and a different speaking provider; `/fish preview` now samples the current voice without an argument (#91).
 
 ## 1.11.0 — 2026-11-09
 
