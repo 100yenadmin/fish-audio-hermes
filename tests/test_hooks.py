@@ -124,3 +124,37 @@ def test_operator_approval_names_no_user_account_and_skips_refused_delete(monkey
     # Blocked outright, never None: if operator mode were off again at execution, None would delete unapproved.
     assert hooks.on_pre_tool_call("fish_voices", {"action": "delete", "voice_id": "a" * 32}) == {
         "action": "block", "message": "Voices on this agent's account are managed by its operator."}
+
+
+@pytest.mark.parametrize("platform", ["desktop", "cli", "tui"])
+def test_local_surfaces_get_media_without_voice_marker(tmp_path, platform):
+    # Desktop and the classic CLI print the gateway's voice-bubble directive as literal text; only MEDIA: is useful there.
+    path = audio(tmp_path)
+    hooks.record("a", path, True)
+    assert hooks.on_transform_llm_output("Here you go.", "a", platform=platform) == f"Here you go.\nMEDIA:{path}"
+
+
+def test_local_surface_drops_an_echoed_voice_marker(tmp_path):
+    path = audio(tmp_path)
+    hooks.record("a", path, True)
+    text = f"Option 1 — Butler\n[[audio_as_voice]]\nMEDIA:{path}\nPick one."
+    assert hooks.on_transform_llm_output(text, "a", platform="desktop") == f"Option 1 — Butler\nMEDIA:{path}\nPick one."
+    hooks.record("a", path, True)
+    inline = f"[[audio_as_voice]] MEDIA:{path}"
+    assert hooks.on_transform_llm_output(inline, "a", platform="desktop") == f"MEDIA:{path}"
+
+
+def test_local_surface_unchanged_text_returns_none(tmp_path):
+    path = audio(tmp_path)
+    hooks.record("a", path, True)
+    assert hooks.on_transform_llm_output(f"MEDIA:{path}", "a", platform="desktop") is None
+
+
+def test_messaging_platforms_keep_the_voice_marker(tmp_path):
+    path = audio(tmp_path)
+    for platform in ("telegram", "discord", "cron", ""):
+        hooks.record("a", path, True)
+        assert hooks.on_transform_llm_output("Hi", "a", platform=platform) == f"Hi\n[[audio_as_voice]]\nMEDIA:{path}"
+    hooks.record("a", path, True)
+    text = f"[[audio_as_voice]]\nMEDIA:{path}"
+    assert hooks.on_transform_llm_output(text, "a", platform="telegram") is None

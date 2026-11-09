@@ -36,10 +36,31 @@ def take(session_id):
         return _PENDING.pop(session_id, [])
 
 
-def on_transform_llm_output(response_text="", session_id="", turn_id="", **kwargs):
+VOICE_MARKER = "[[audio_as_voice]]"
+# Surfaces that play MEDIA: files inline and have no voice-bubble delivery. Messaging gateways strip the marker before
+# sending; Desktop (0.23) and the classic CLI print it as literal text, so it never belongs in a reply there.
+LOCAL_SURFACES = frozenset({"desktop", "cli", "tui"})
+
+
+def _without_marker(text):
+    lines = []
+    for line in text.split("\n"):
+        if VOICE_MARKER in line:
+            line = line.replace(VOICE_MARKER, "").strip()
+            if not line:
+                continue
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def on_transform_llm_output(response_text="", session_id="", turn_id="", platform="", **kwargs):
     items = take(session_id)
     if not items:
         return None
+    local = str(platform or "").lower() in LOCAL_SURFACES
+    original = response_text
+    if local:
+        response_text = _without_marker(response_text)
     root = audio_output_dir().resolve()
     additions, voice = [], False
     for name, is_voice, _ in items:
@@ -50,12 +71,12 @@ def on_transform_llm_output(response_text="", session_id="", turn_id="", **kwarg
         voice = voice or is_voice
         if tag not in response_text and tag not in additions:
             additions.append(tag)
-    needs_marker = voice and "[[audio_as_voice]]" not in response_text
+    needs_marker = voice and not local and VOICE_MARKER not in response_text
     if not additions and not needs_marker:
-        return None
+        return response_text if response_text != original else None
     tail = "\n".join(additions)
     if needs_marker:
-        tail = "\n".join(part for part in ("[[audio_as_voice]]", tail) if part)
+        tail = "\n".join(part for part in (VOICE_MARKER, tail) if part)
     return "\n".join(part for part in (response_text.rstrip(), tail) if part)
 
 

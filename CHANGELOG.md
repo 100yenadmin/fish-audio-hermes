@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **No stray `[[audio_as_voice]]` line in Desktop or the CLI:** after `fish_speak`, Hermes Desktop and the classic CLI
+  showed the gateway's voice-message marker as a literal text line under the audio player. On those local surfaces
+  (`desktop`, `cli`, `tui`) the reply hook now adds only the `MEDIA:` line and drops a marker the model copied from the
+  tool result. Telegram, Discord and the other messaging gateways still get the marker, so replies there stay voice
+  messages.
 - **Release acceptance:** a run now removes the Fish key from its disposable home when it finishes, fails, is stopped
   with Ctrl-C, or the gateway fails to shut down. Before, the key stayed in the run directory's `.env` until it was
   cleared by hand. A run killed by a signal such as SIGTERM still skips this cleanup.
