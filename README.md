@@ -14,7 +14,11 @@ hermes plugins install fish-audio --enable --yes-deps
 hermes fish login        # paste your key from https://fish.audio/app/api-keys
 ```
 
-This installs the reviewed release pinned in the Hermes plugin catalog. To follow the repository's latest `main` instead:
+This installs the reviewed release pinned in the Hermes plugin catalog. On Hermes 0.23.0 the catalog name can install
+an older release for now, because Hermes falls back to the catalog copy it shipped with
+([NousResearch/hermes-agent#151856](https://github.com/NousResearch/hermes-agent/issues/151856)); check with
+`hermes plugins list`. To install the latest release from this repository instead (`main` only ever holds a tagged,
+tested release):
 
 ```bash
 hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable --yes-deps
