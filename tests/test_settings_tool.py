@@ -17,6 +17,31 @@ def call(action, **kwargs):
     return json.loads(tools.fish_settings({"action": action, **kwargs}))
 
 
+def test_speed_roundtrip_reset_and_schema(config, managed_layer):
+    with respx.mock:
+        assert call("get")["speed"] == 1.0
+        for speed in (0.5, 1.35, 2.0):
+            assert call("set_speed", speed=speed)["speed"] == speed
+            assert config[0]["tts"]["fish-audio"]["speed"] == speed
+        assert call("set_speed", speed=None)["speed"] == 1.0
+        assert "speed" not in config[0]["tts"]["fish-audio"]
+        saves = len(config[1])
+        managed_layer({"tts": {"fish-audio": {"speed": 1.2}}})
+        for speed in (1.5, None):
+            assert call("set_speed", speed=speed)["error"] == "This setting is set by the operator of this agent."
+        assert len(config[1]) == saves
+    schema = tools.SCHEMAS["fish_settings"]
+    assert "set_speed" in schema["action"]["enum"]
+    assert schema["speed"]["type"] == ["number", "null"]
+
+
+@pytest.mark.parametrize("kwargs", [{}, *({"speed": v} for v in (0.49, 2.01, True, "1.2", [], {}, float("nan"), float("inf")))])
+def test_invalid_speed_does_not_write(config, kwargs):
+    with respx.mock:
+        assert call("set_speed", **kwargs)["success"] is False
+    assert not config[1]
+
+
 @pytest.mark.parametrize("provider,fish", [("fish-audio", True), ("evaos-fishaudio", True), ("edge", False)])
 def test_get_provider_and_names(config, provider, fish):
     data, saves, _ = config

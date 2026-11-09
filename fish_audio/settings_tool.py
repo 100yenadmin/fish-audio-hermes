@@ -7,11 +7,13 @@ def current(key, base):
     cfg = settings._config()
     tts, stt = settings._mapping(cfg.get("tts")), settings._mapping(cfg.get("stt"))
     nested = settings._mapping(tts.get("fish-audio"))
+    speed = nested.get("speed", 1.0)
     operator = settings.operator_account()
     model, source = settings.resolve_model_source(None, key="" if operator else key, base_url=base)
     provider = commands._managed_provider() or tts.get("provider") or "unset"
     fish = "fishaudio" in provider.casefold() or "fish-audio" in provider.casefold()
     result = {"voice": nested.get("voice") or tts.get("voice") or None,
+              "speed": max(0.5, min(2.0, speed)) if settings._number(speed) else 1.0,
               "model": models.effective_model(model), "model_source": source,
               "names": settings.aliases(), "speech_provider": provider, "fish_is_speech_provider": fish,
               "transcription_provider": stt.get("provider") or "unset"}
@@ -30,7 +32,7 @@ def current(key, base):
 def execute(args, key, base, session):
     action = args.get("action")
     message = None
-    require(action in {"get", "use", "set_model", "add_name", "remove_name"}, "Unknown fish_settings action.")
+    require(action in {"get", "use", "set_model", "set_speed", "add_name", "remove_name"}, "Unknown fish_settings action.")
     if action == "use":
         voice = args.get("voice")
         require(isinstance(voice, str), "voice is required.")
@@ -38,6 +40,18 @@ def execute(args, key, base, session):
     elif action == "set_model":
         require(args.get("model") in models.MODEL_IDS, "Choose a supported Fish model.")
         message = commands.set_model(args["model"], key, base)["message"]
+    elif action == "set_speed":
+        speed = args.get("speed")
+        require("speed" in args and (speed is None or settings._number(speed) and 0.5 <= speed <= 2.0),
+                "speed must be between 0.5 and 2.0, or null to reset.")
+        commands.require_unmanaged("speed")
+        def change(cfg):
+            nested = cfg.setdefault("tts", {}).setdefault("fish-audio", {})
+            if speed is None:
+                nested.pop("speed", None)
+            else:
+                nested["speed"] = speed
+        commands.write_config(change)
     elif action == "add_name":
         commands.alias_add(args.get("name"), args.get("voice"), key, base)
     elif action == "remove_name":

@@ -330,6 +330,29 @@ def test_settings_tool(real, voice, request):
         set_config(real, before)
 
 
+@pytest.mark.row('A-READING-SPEED')
+def test_reading_speed(real, request):
+    before = config(real)
+    route = '/api/plugins/fish-audio/settings'
+    def tool(args):
+        return core(real, 'import json; from tools.registry import registry; '
+                    f'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_settings", {args!r}))')
+    try:
+        saved = real.request(route, {'speed': 1.35})
+        assert saved['ok'] and saved['speed'] == 1.35
+        assert config(real)['tts']['fish-audio']['speed'] == 1.35
+        assert tool({'action': 'get'})['speed'] == 1.35
+        changed = tool({'action': 'set_speed', 'speed': 0.75})
+        assert changed['success'] and real.request(route)['speed'] == 0.75
+        reset = tool({'action': 'set_speed', 'speed': None})
+        assert reset['success'] and reset['speed'] == 1.0
+        assert 'speed' not in config(real)['tts']['fish-audio']
+        assert real.request(route, {'speed': None})['speed'] == 1.0
+        evidence(request, real, {'saved': saved, 'changed': changed, 'reset': reset})
+    finally:
+        set_config(real, before)
+
+
 @pytest.mark.row('A-TOOL-ACCOUNT')
 def test_account_tool(real, request):
     # Other free rows already read the wallet. Only this balance call may use the network here.

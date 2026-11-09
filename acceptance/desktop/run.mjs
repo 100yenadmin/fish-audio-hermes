@@ -201,6 +201,58 @@ async function pluginPageRow(s, theme) {
   r.metrics = { button: btn, ...p }; r.evidence.push(await c.shot(s, shotPath('B-NOKEY-3', theme)))
 }
 
+async function settingsPageRow(s, theme) {
+  if (!want('B-SET-1')) return
+  const evidence = [], metrics = {}
+  try {
+    await c.page_escape(s)
+    await c.nav(s, '#/settings?tab=plugins&plugin=fish-audio'); await c.sleep(1500)
+    const t = await c.text(s)
+    // These bundled Desktop builds predate registerSettingsPage. A missing control on a settings-capable host fails.
+    if (H === 'evaos' && ['v2026.10.14-es.20', 'v2026.10.15-es.21'].includes(host.desktop_ref) && !/Current voice|Reading speed/.test(t)) {
+      evidence.push(await c.shot(s, shotPath('B-SET-1', theme)))
+      row('B-SET-1', 'na', `${host.desktop_ref} has no Settings ▸ Plugins page for the plugin (pre-0.21.6 SDK)`, { theme, evidence }); return
+    }
+    const speed = s.page.getByRole('slider', { name: 'Reading speed', exact: true })
+    await speed.waitFor({ state: 'visible', timeout: 15000 })
+    await speed.scrollIntoViewIfNeeded()
+    const output = speed.locator('..').locator('output')
+    const initial = await gw('/api/plugins/fish-audio/settings')
+    metrics.initial_speed = initial.body?.speed
+    if (initial.status !== 200 || initial.body?.ok !== true || typeof metrics.initial_speed !== 'number' ||
+        Number(await speed.inputValue()) !== metrics.initial_speed || await output.innerText() !== `${metrics.initial_speed.toFixed(2)}×`) throw Error('Reading speed control/default does not match gateway settings')
+    await speed.focus()
+    await s.page.keyboard.press('Shift+Tab'); await s.page.keyboard.press('Tab')
+    metrics.keyboard_focus = await speed.evaluate(e => document.activeElement === e && !e.disabled && e.tabIndex >= 0)
+    evidence.push(await c.shot(s, shotPath('B-SET-1', theme)))
+    if (!metrics.keyboard_focus) throw Error('Reading speed is not keyboard-focusable')
+    const saved = s.page.getByText('Reading speed saved', { exact: true })
+    await saved.waitFor({ state: 'hidden', timeout: 15000 }) // require a fresh success notification
+    await s.page.keyboard.press('Home') // range minimum 0.50, step 0.05
+    for (let i = 0; i < 15; i++) await s.page.keyboard.press('ArrowRight')
+    if (await output.innerText() !== '1.25×') throw Error('keyboard did not change Reading speed to 1.25')
+    await c.clickText(s, 'Save speed', { role: 'button' })
+    await saved.waitFor({ state: 'visible', timeout: 15000 })
+    const set = await gw('/api/plugins/fish-audio/settings')
+    metrics.saved_speed = set.body?.speed
+    evidence.push(await c.shot(s, shotPath('B-SET-1', theme, 'saved')))
+    if (set.status !== 200 || set.body?.ok !== true || set.body.speed !== 1.25 || await output.innerText() !== '1.25×') throw Error('Save speed did not persist 1.25 in gateway settings and UI')
+    await saved.waitFor({ state: 'hidden', timeout: 15000 })
+    await s.page.getByRole('button', { name: 'Reset reading speed', exact: true }).click()
+    await saved.waitFor({ state: 'visible', timeout: 15000 })
+    const reset = await gw('/api/plugins/fish-audio/settings')
+    metrics.reset_speed = reset.body?.speed
+    // GET normalizes a missing speed to 1.0; inspect only key presence to distinguish removal from storing 1.0.
+    metrics.speed_key_removed = JSON.parse(execFileSync(path.join(host.cache_dir, '.venv', 'bin', 'python'), ['-c',
+      'import json,sys,yaml; c=yaml.safe_load(open(sys.argv[1])) or {}; print(json.dumps("speed" not in ((c.get("tts") or {}).get("fish-audio") or {})))',
+      path.join(host.hermes_home, 'config.yaml')], { encoding: 'utf8', env: buildEnv() }).trim()) === true
+    if (reset.status !== 200 || reset.body?.ok !== true || reset.body.speed !== 1.0 || !metrics.speed_key_removed || await output.innerText() !== '1.00×') throw Error('Reset did not remove the speed key and restore 1.00')
+    row('B-SET-1', 'pass', 'labelled Reading speed control keyboard-focused; Save → saved state and GET speed=1.25; Reset → speed key removed, default 1.00', { theme, evidence, metrics })
+  } catch (e) {
+    row('B-SET-1', 'fail', e.message.split('\n')[0], { theme, evidence, metrics })
+  }
+}
+
 async function paletteRow(s, theme) {
   if (!want('B-PAL-1')) return
   await c.page_escape(s)
@@ -338,7 +390,7 @@ async function main() {
     await guard(`palette ${theme}`, () => paletteRow(s, theme))
     await guard(`key entry ${theme}`, () => keyEntryRow(s, theme))
   }
-  const needReal = ['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
+  const needReal = ['B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
   if (needReal) {
     let walletBefore = null
     try { hostctl('set-real-key'); await waitGateway(); await c.sleep(3000); meta.reload_after_key = await reloadRenderer(s) } catch (e) { row('B-LIB-1', 'fail', `could not place the real key: ${e.message}`); return finish(meta, s) }
@@ -346,7 +398,11 @@ async function main() {
     let account = null
     for (let i = 0; i < 4 && account?.credit == null; i++) { if (i) await c.sleep(5000); account = (await gw('/api/plugins/fish-audio/account')).body }
     walletBefore = account?.credit ?? null
-    for (const theme of THEMES) { if (await guard(`theme ${theme}`, () => c.setTheme(s, theme))) await guard(`library ${theme}`, () => libraryRows(s, theme, account)) }
+    for (const theme of THEMES) {
+      if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue
+      await guard(`settings page ${theme}`, () => settingsPageRow(s, theme))
+      if (['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4'].some(want)) await guard(`library ${theme}`, () => libraryRows(s, theme, account))
+    }
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue
       const convWant = id => want(id) && (!!process.env.GLM_API_KEY || id === 'B-DICT-1')

@@ -101,7 +101,7 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `fish_speak` | Expressive or multi-speaker speech; with `timestamps: true`, word timings plus SRT and WebVTT subtitles |
 | `fish_voices` | Search, list and inspect voices; clone, design, save, update and delete them |
 | `fish_transcribe` | Rich transcription with speakers, timestamps and SRT |
-| `fish_settings` | Check or set this profile's Fish voice, model and saved names; free |
+| `fish_settings` | Check or set this profile's Fish voice, model, reading speed and saved names; `set_speed` accepts `speed` 0.5–2.0 or `null` to reset; `get` returns `speed`; free |
 | `fish_account` | Balance/plan, dated model prices and offline cost estimates; free |
 | `fish_pronunciations` | Create, publish, inspect and select reusable pronunciation dictionaries; free; deletes require approval |
 
@@ -172,8 +172,10 @@ and the plugin's settings.
 
 ### Settings page (Hermes Desktop 0.21.6 and newer)
 
-**Settings ▸ Plugins ▸ Fish Audio** shows the selected agent's voice, speech model and saved voice names, and lets you
-change them. **Change** opens the Voices page to pick a voice. The plugin's own options (API key, server address,
+**Settings ▸ Plugins ▸ Fish Audio** shows the selected agent's voice, speech model, reading speed and saved voice names, and lets you
+change them. **Reading speed** ranges from 0.5× to 2.0× in steps of 0.05; choose **Save speed** to apply it to voice replies,
+read-aloud and streaming. **Reset** removes `tts.fish-audio.speed`, returning to 1.0×. Operator-managed settings stay locked.
+**Change** opens the Voices page to pick a voice. The plugin's own options (API key, server address,
 streaming and transport) sit under the same entry as **Agent settings**.
 
 The page acts on the agent selected in Desktop. Its header names that agent, or says "this agent" for the default

@@ -6,6 +6,8 @@
   immutable versions, and use pinned references for ordinary voice replies or individual `fish_speak` calls.
   References are verified, a call cannot pass both `dictionaries` and per-call words, and dictionary/version deletes use
   Hermes approval. Existing inline pronunciation merging is preserved (#90; pronunciation API drift #84).
+- Set per-profile reading speed (0.5–2.0×) in Desktop Fish Audio settings or with `fish_settings set_speed`;
+  reset to 1.0× by removing the setting. Voice replies, read-aloud and streaming use the saved speed.
 
 ## 1.11.0 — 2026-11-09
 

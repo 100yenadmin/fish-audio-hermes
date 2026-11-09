@@ -136,6 +136,107 @@ test('B-LIB-4 requires the Account card credit; a matching status chip cannot co
   }
 })
 
+async function settingsRow({ host = 'upstream', theme = 'light', desktopRef = 'current', ...faults } = {}) {
+  const start = run.indexOf('async function settingsPageRow('), end = run.indexOf('\nasync function paletteRow(', start)
+  let value = 1, stored = 1, toast = false, reset = false
+  const rows = [], shots = [], keys = [], nav = [], document = { activeElement: null }
+  const element = { disabled: false, tabIndex: faults.focusable === false ? -1 : 0 }
+  const output = { innerText: async () => faults.shownDefault && !keys.includes('Home') ? faults.shownDefault : `${value.toFixed(2)}×` }
+  const speed = {
+    waitFor: async () => { if (faults.missingControl) throw Error('no labelled Reading speed slider') },
+    scrollIntoViewIfNeeded: async () => {}, inputValue: async () => String(value),
+    locator: sel => { assert.equal(sel, '..'); return { locator: sel => { assert.equal(sel, 'output'); return output } } },
+    focus: async () => { document.activeElement = element }, evaluate: async fn => fn(element)
+  }
+  const saved = { waitFor: async ({state}) => {
+    if (state === 'hidden') toast = false
+    else assert.equal(toast && faults.toast !== false, true, 'no fresh Reading speed saved notification')
+  } }
+  const page = { getByRole: (role, {name, exact}) => {
+    assert.equal(exact, true)
+    if (role === 'slider') { assert.equal(name, 'Reading speed'); return speed }
+    assert.equal(role, 'button'); assert.equal(name, 'Reset reading speed')
+    return { click: async () => { reset = true; value = 1; stored = faults.resetSpeed ?? 1; toast = true } }
+  }, getByText: (text, {exact}) => { assert.equal(text, 'Reading speed saved'); assert.equal(exact, true); return saved },
+  keyboard: { press: async key => {
+    keys.push(key)
+    if (key === 'Shift+Tab') document.activeElement = null
+    else if (key === 'Tab') document.activeElement = faults.focusable === false ? null : element
+    else {
+      assert.equal(document.activeElement, element)
+      if (key === 'Home') value = .5
+      else { assert.equal(key, 'ArrowRight'); value = Math.round((value + .05) * 100) / 100 }
+    }
+  } } }
+  const shotPath = run.split('\n').find(l => l.startsWith('const shotPath ='))
+  await vm.runInNewContext(`${shotPath}\n${run.slice(start,end)}\nsettingsPageRow(s, theme)`, {
+    s:{page}, theme, H:host, host:{desktop_ref:desktopRef, cache_dir:'/synthetic/cache', hermes_home:'/synthetic/home'},
+    want:()=>!faults.unselected, document, path, SHOTS:'shots', buildEnv:()=>({}),
+    c:{ page_escape:async()=>{}, nav:async(s, hash)=>nav.push(hash), sleep:async()=>{},
+      text:async()=>faults.absentPage ? 'Settings' : 'Current voice Reading speed',
+      clickText:async(s, text, {role})=>{ assert.equal(text, 'Save speed'); assert.equal(role, 'button'); stored = faults.savedSpeed ?? value; toast = true },
+      shot:async(s, file)=>{ shots.push({file,value}); return file } },
+    gw:async route=>{ assert.equal(route, '/api/plugins/fish-audio/settings'); return {status:200, body:{ok:true, speed:stored}} },
+    execFileSync:(bin, args)=>{
+      assert.equal(bin, '/synthetic/cache/.venv/bin/python'); assert.equal(args.at(-1), '/synthetic/home/config.yaml')
+      assert.match(args[1], /"speed" not in/); assert.equal(reset, true)
+      return JSON.stringify(!faults.retainedKey)
+    }, row:(id,status,reason,extra)=>rows.push({id,status,reason,...extra})
+  })
+  return { rows, shots, keys, nav }
+}
+
+for (const host of ['upstream','evaos']) for (const theme of ['light','dark']) test(`B-SET-1: ${host}/${theme} keyboard save and reset`, async () => {
+  const {rows, shots, keys, nav} = await settingsRow({host,theme})
+  assert.equal(rows.length, 1); assert.equal(rows[0].id, 'B-SET-1'); assert.equal(rows[0].status, 'pass'); assert.equal(rows[0].theme, theme)
+  assert.deepEqual({...rows[0].metrics}, {initial_speed:1, keyboard_focus:true, saved_speed:1.25, reset_speed:1, speed_key_removed:true})
+  assert.deepEqual(nav, ['#/settings?tab=plugins&plugin=fish-audio'])
+  assert.deepEqual(shots, [{file:`shots/B-SET-1-${theme}.png`,value:1}, {file:`shots/B-SET-1-saved-${theme}.png`,value:1.25}])
+  assert.deepEqual(Array.from(rows[0].evidence), shots.map(s=>s.file))
+  assert.deepEqual(keys, ['Shift+Tab','Tab','Home',...Array(15).fill('ArrowRight')])
+})
+
+test('B-SET-1 fails missing UI, keyboard, saved state, persistence and reset evidence', async () => {
+  for (const [faults, reason] of [
+    [{missingControl:true}, /no labelled/], [{shownDefault:'2.00×'}, /control\/default/],
+    [{focusable:false}, /keyboard-focusable/], [{toast:false}, /no fresh/],
+    [{savedSpeed:1}, /did not persist/], [{retainedKey:true}, /did not remove/], [{resetSpeed:1.25}, /did not remove/]
+  ]) {
+    const {rows} = await settingsRow(faults)
+    assert.equal(rows.length, 1); assert.equal(rows[0].status, 'fail'); assert.match(rows[0].reason, reason)
+  }
+  const {rows} = await settingsRow({host:'evaos', absentPage:true, missingControl:true, desktopRef:'v2026.10.14-es.20'})
+  assert.equal(rows[0].status, 'na'); assert.match(rows[0].reason, /no Settings ▸ Plugins page/)
+  assert.equal((await settingsRow({host:'evaos', absentPage:true, missingControl:true})).rows[0].status, 'fail')
+  const unselected = await settingsRow({unselected:true})
+  assert.deepEqual(unselected.rows, []); assert.deepEqual(unselected.nav, [])
+})
+
+test('B-SET-1 alone enters the keyed phase and runs in both themes without library rows', async () => {
+  const start = run.indexOf('async function main()'), end = run.indexOf('\nasync function guard', start)
+  const themes = [], commands = [], meta = {}
+  let keyed = false
+  await vm.runInNewContext(`${run.slice(start,end)}\nmain()`, {
+    fs:{mkdirSync(){}, existsSync:()=>false}, path, SHOTS:'shots', OUT:'synthetic', CDP:9281, VITE:5194, H:'upstream', host:{}, args:{'no-launch':true},
+    THEMES:['light','dark'], process:{env:{}}, want:id=>id === 'B-SET-1', buildTree:()=>'/synthetic/tree',
+    hostctl:cmd=>{ commands.push(cmd); if (cmd.endsWith('-key')) keyed = cmd === 'set-real-key' },
+    waitGateway:async()=>{}, reloadRenderer:async()=>{}, setup:async()=>{},
+    c:{connect:async()=>({page:{evaluate:async()=>true}}), setTheme:async()=>{}, sleep:async()=>{}},
+    guard:async(label,fn)=>{ await fn(); return true }, noKeyRows:async()=>{}, pluginPageRow:async()=>{},
+    paletteRow:async()=>{}, keyEntryRow:async()=>{}, convRows:async()=>{},
+    settingsPageRow:async(s,theme)=>{ assert.equal(keyed, true); themes.push(theme) },
+    libraryRows:()=>assert.fail('B-SET-1 does not require the Library'), shotPath(){},
+    gw:async()=>({body:{credit:'1.00'}}), row:()=>assert.fail('unexpected row'),
+    finish:async result=>Object.assign(meta,result)
+  })
+  assert.deepEqual(themes, ['light','dark']); assert.deepEqual(commands, ['clear-key','set-real-key','clear-key'])
+  assert.deepEqual({...meta.wallet}, {before:'1.00',after:'1.00'})
+  const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-SET-1')
+  const version = fs.readFileSync(new URL('../plugin.yaml', import.meta.url), 'utf8').match(/^version:\s*(.+)$/m)[1]
+  assert.equal(spec.min_plugin, version); assert.equal(spec.billed, 'none'); assert.equal(spec.layer, 'b')
+  assert.equal(spec.required, true); assert.deepEqual(spec.hosts, ['upstream','evaos'])
+})
+
 async function forcedFailureRow(m, { requests = [], media = [], toast = [], end = () => {}, sleep = () => {} } = {}) {
   const start = conv.indexOf('    const playbackEnd =', conv.indexOf("  if (want('B-CONV-5'))"))
   const stop = conv.indexOf('\n  }', start)
