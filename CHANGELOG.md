@@ -2,13 +2,23 @@
 
 ## Unreleased
 
-- Remember recurring pronunciations with the free `fish_pronunciations` tool: create dictionaries, publish complete
-  immutable versions, and use pinned references for ordinary voice replies or individual `fish_speak` calls.
-  References are verified, a call cannot pass both `dictionaries` and per-call words, and dictionary/version deletes use
-  Hermes approval. Existing inline pronunciation merging is preserved (#90; pronunciation API drift #84).
-- Set per-profile reading speed (0.5–2.0×) in Desktop Fish Audio settings or with `fish_settings set_speed`;
-  reset to 1.0× by removing the setting. Voice replies, read-aloud and streaming use the saved speed.
-- **Setup from chat:** `/fish setup` (works before a key is saved) and `fish_settings` list what this profile still needs and the next step, including a key saved after the gateway started and a different speaking provider; `/fish preview` now samples the current voice without an argument (#91).
+## 1.12.0 — 2026-11-09
+
+- **Setup you can finish from chat:** `/fish setup` works in any chat before a key is saved. It lists what this
+  profile still needs and the next step: the key (never asked for in chat), a restart when the key was saved after
+  the gateway started, and whether Fish is the voice users actually hear ("Saved for Fish Audio, but this agent
+  currently speaks with edge", with how to switch). It is free and makes no Fish call. When everything is in place it
+  ends with "Ready. Hear your voice: `/fish preview`"; `/fish preview` with no voice now plays a short billed sample
+  in the voice replies use. `/fish status` ends with the same next step, and `fish_settings` results include
+  `setup`, so the agent can walk the user through it (#91).
+- **Says names right, every time:** the free `fish_pronunciations` tool manages Fish pronunciation dictionaries:
+  create one, publish complete immutable versions, and `use` pinned references as this profile's default for
+  ordinary voice replies, or pass `dictionaries` to a single `fish_speak` call. References are verified before
+  speech; a call cannot pass both `dictionaries` and per-call words; deleting a dictionary or version goes through
+  Hermes approval. Existing inline pronunciations keep working (#90; pronunciation API drift alarm #84).
+- **Reading speed in Desktop Settings:** Settings ▸ Plugins ▸ Fish Audio has a reading speed slider (0.5–2.0×, Save
+  and Reset), and the agent can set its own with `fish_settings set_speed`. Voice replies, read-aloud and streaming
+  use it; a per-call speed still wins (#92).
 
 ## 1.11.0 — 2026-11-09
 
