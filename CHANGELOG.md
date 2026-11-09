@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Setup from chat:** `/fish setup` and `fish_settings` list missing profile steps, including a saved key that needs a restart and a different speaking provider; `/fish preview` now samples the current voice without an argument (#91).
+
 ## 1.11.0 — 2026-11-09
 
 - **The agent runs its own voice:** with the new `fish_settings` tool the agent can see and set its own Fish voice,

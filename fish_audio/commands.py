@@ -9,7 +9,7 @@ from .secrets import fish_api_key, redact
 from .tool_support import require, voice_id, ToolInputError
 
 _LOCK = threading.RLock()
-HELP = "/fish status · voices [query] · use <id, name or own title> · model <id> · preview <id, name or own title> [text] (billed) · alias [list] · alias add <name> <voice id or name> · alias remove <name> · balance · help"
+HELP = "/fish setup · status · voices [query] · use <id, name or own title> · model <id> · preview [id, name or own title] [text] (billed) · alias [list] · alias add <name> <voice id or name> · alias remove <name> · balance · help"
 NO_KEY = ("Fish Audio isn't set up for this profile yet. Get a key at https://fish.audio/app/api-keys, then finish "
           "setup in the Desktop app (Voices ▸ Enter API key, or Settings ▸ Plugins ▸ Fish Audio ▸ Agent settings; on older Desktop, "
           "the gear on the fish-audio row in Capabilities ▸ Plugins) or run `hermes fish login` on the machine running Hermes. "
@@ -58,6 +58,8 @@ def status(key=None):
     if operator and failure:
         failure = failure[:2]  # Stored pre-toggle messages can contain account links.
     free_warning = models.free_model_warning() if nested.get("model") == "s2.1-pro-free" and not managed else None
+    from .setup_check import checklist, first_missing
+    missing = first_missing(checklist(key, base))
     return "\n".join((f"Key set: {'yes' if key else 'no'}", f"TTS: {tts.get('provider') or 'unset'} (Fish: {tts.get('provider') == 'fish-audio'})",
         f"STT: {stt.get('provider') or 'unset'} (Fish: {stt.get('provider') == 'fish-audio'})",
         f"Voice: {nested.get('voice') or tts.get('voice') or 'Fish default'}", f"Model: {model} ({reason})",
@@ -67,7 +69,7 @@ def status(key=None):
         *(("Account: managed by the operator",) if operator else
           (f"API credit: {wallet.credit if wallet else 'unknown'}", f"Plan: {package.get('type', 'unknown') if package else 'unknown'}")),
         f"Last failure: {' · '.join(failure) if failure else 'none'}", f"Plugin: {client.PLUGIN_VERSION}",
-        "Docs: https://docs.fish.audio"))
+        "Docs: https://docs.fish.audio", "Next step: " + missing if missing else "Setup: ready"))
 
 
 def _managed_provider():
@@ -233,6 +235,12 @@ def handle(raw_args=""):
         if command == "balance" and operator:
             return "Voice billing for this agent is handled by its operator."
         key = fish_api_key()
+        if command == "setup":
+            from .setup_check import checklist, first_missing
+            steps = checklist(key, base_url())
+            missing = first_missing(steps)
+            return "\n".join(("✓" if step["ok"] else "·" if step.get("optional") else "✗") + " " + step["say"]
+                             for step in steps) + "\n" + ("Next: " + missing if missing else "Ready. Hear your voice: `/fish preview`")
         if not key:
             return "Ask the operator of this agent to finish the Fish Audio setup." if operator else NO_KEY
         base = base_url()
@@ -262,7 +270,12 @@ def handle(raw_args=""):
             return set_model(rest, key, base)["message"]
         if command == "preview":
             ident, _, text = rest.partition(" ")
-            ident = resolve_title(ident, key, base)
+            if rest.strip():
+                ident = resolve_title(ident, key, base)
+            else:
+                from .tts import FishAudioTTSProvider
+                tts = settings._mapping(settings._config().get("tts"))
+                ident = settings.resolve_voice_source(tts.get("voice"), settings._mapping(tts.get("fish-audio")))[0] or FishAudioTTSProvider().default_voice()
             text = text or "Hi! This is how I sound."
             require(len(text) <= 200, "Preview text must be 200 characters or fewer.")
             result = tools._speak({"text": text, "voice": ident}, key, base, "", record_media=False)

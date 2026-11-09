@@ -1,6 +1,7 @@
 """Agent access to the same profile settings operations as /fish."""
 from . import commands, models, settings
 from .tool_support import require
+from .setup_check import checklist, first_missing
 
 
 def current(key, base):
@@ -24,6 +25,8 @@ def current(key, base):
                           "otherwise a person switches it in Settings ▸ Voice or with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio.")
         if commands._managed_provider() and operator:
             result["note"] += " " + commands.use_message(provider, True).removeprefix("Saved. ")
+    result["setup"] = checklist(key, base)
+    result["setup_ready"] = first_missing(result["setup"]) is None
     return result
 
 

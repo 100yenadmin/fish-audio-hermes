@@ -26,10 +26,10 @@ def voice_id(value):
     return isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_-]{8,128}", value) is not None
 
 
-def run(operation, args, session_id=""):
+def run(operation, args, session_id="", *, allow_no_key=False):
     try:
         key = fish_api_key()
-        require(bool(key), setup_message())
+        require(bool(key) or allow_no_key, setup_message())
         require(isinstance(args, dict), "Tool arguments must be an object.")
         base = settings._base_url(settings.transport_settings().get("base_url", settings.DEFAULT_BASE_URL))
         result = operation(args, key, base, session_id)

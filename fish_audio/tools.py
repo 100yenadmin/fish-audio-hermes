@@ -116,7 +116,7 @@ def fish_transcribe(args, session_id="", task_id="", tool_call_id=""):
 
 def fish_settings(args, session_id="", task_id="", tool_call_id=""):
     from .settings_tool import execute
-    return run(execute, args, session_id)
+    return run(execute, args, session_id, allow_no_key=isinstance(args, dict) and args.get("action") == "get")
 
 
 def fish_account(args, session_id="", task_id="", tool_call_id=""):
@@ -164,7 +164,7 @@ SCHEMAS = {
         "num_speakers": _field("integer", minimum=1), "min_speakers": _field("integer", minimum=1),
         "max_speakers": _field("integer", minimum=1), "tag_audio_events": _field("boolean", default=True),
         "srt": _field("boolean", default=False)},
-    "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "add_name", "remove_name"]),
+    "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "add_name", "remove_name"], description="Results include setup: what is missing and the next step, plus setup_ready."),
         "voice": _field("string", description="Voice id, saved name or unique own-voice title (use); id or saved name (add_name)."),
         "model": _field("string", enum=[r["id"] for r in MODELS]), "name": S},
     "fish_account": {"action": _field("string", enum=["balance", "models", "estimate"]),
@@ -174,7 +174,7 @@ SCHEMAS = {
         "asr_model": _field("string", enum=["transcribe-1-pro", "transcribe-1"])},
 }
 DESCRIPTIONS = {
-    "fish_settings": "Read or change this profile's Fish voice, model and saved names, using the /fish rules. Free: no Fish charge.",
+    "fish_settings": "Read or change this profile's Fish voice, model and saved names, using the /fish rules. Results include setup: what is missing and the next step. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
     "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,

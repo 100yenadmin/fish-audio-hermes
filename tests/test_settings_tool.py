@@ -14,7 +14,10 @@ def fake_key(monkeypatch, tmp_path):
 
 
 def call(action, **kwargs):
-    return json.loads(tools.fish_settings({"action": action, **kwargs}))
+    result = json.loads(tools.fish_settings({"action": action, **kwargs}))
+    if result["success"]:
+        assert isinstance(result["setup"], list) and isinstance(result["setup_ready"], bool)
+    return result
 
 
 @pytest.mark.parametrize("provider,fish", [("fish-audio", True), ("evaos-fishaudio", True), ("edge", False)])
@@ -28,6 +31,7 @@ def test_get_provider_and_names(config, provider, fish):
     assert result["model_source"] == "configured" and result["names"] == {"narrator": VOICE}
     assert result["speech_provider"] == provider and result["fish_is_speech_provider"] is fish
     assert result["transcription_provider"] == "whisper"
+    assert result["setup_ready"] is fish
     assert ("note" in result) is not fish and not saves
     if not fish:
         assert "currently speaks with edge" in result["note"]

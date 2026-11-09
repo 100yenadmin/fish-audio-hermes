@@ -53,6 +53,8 @@ read-aloud and voice notes go through it.
 
 ## Setup
 
+Run `/fish setup` from chat, follow its next step until Ready, then hear a short billed sample with `/fish preview`.
+
 1. **Get a key** at <https://fish.audio/app/api-keys>. New accounts can start on Fish's free `s2.1-pro-free` model, free through 30 November 2026;
    after that, add API credit.
 2. **Add it** with `hermes fish login` on the machine running Hermes, or in Desktop: **Voices ▸ Enter API key** opens
@@ -81,11 +83,12 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 
 | Command | What it does |
 |---|---|
+| `/fish setup` | Free profile checklist with the next setup step and a link to the spoken preview |
 | `/fish status` | Key, providers, voice, model and why it was chosen, credit, last error |
 | `/fish voices [query]` | Search the voice library |
 | `/fish use <voice-id, name or own title>` | Use a voice for this profile; a unique title of your own voice works too |
 | `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3`) |
-| `/fish preview <voice-id, name or own title> [text]` | Hear a voice (a billed synthesis); use a single-word title for previews |
+| `/fish preview [voice-id, name or own title] [text]` | Hear the current voice or a chosen voice (a billed synthesis); use a single-word title for previews |
 | `/fish alias` | List your saved voice names |
 | `/fish alias add <name> <voice-id>` | Save a name for a voice: 2–32 letters, digits, `-` or `_`, starting with a letter |
 | `/fish alias remove <name>` | Delete a saved name |
