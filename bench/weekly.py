@@ -18,7 +18,7 @@ from unittest.mock import patch
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 TEXTS = json.loads((HERE / "texts.json").read_text())
-TTS_PRICES = {"s2.1-pro": 15, "drama-3": 15, "s2.1-pro-free": 0}
+TTS_PRICES = {"s2.1-pro": 15, "drama-3": 50, "s2.1-pro-free": 0}  # USD per 1M UTF-8 bytes; drama-3 at list price (its $10 launch price ends 2026-12-01), so the cost cap stays conservative
 USD_CAP = .10
 TAG_TEXT = '<slow>Please</slow> <stress>listen</stress> to me. This is <emphasis>really</emphasis> <fast>quite urgent</fast> and <soft>very</soft> <forceful>important</forceful>, my <whisper>friend</whisper>.'
 TAG_WORDS = re.compile(r"\b(slow|stress|emphasis|fast|soft|forceful|forstful|whisper)\b", re.I)

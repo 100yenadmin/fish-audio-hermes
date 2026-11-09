@@ -4,6 +4,7 @@
 
 - Agents can check and set their Fish voice, model and saved voice names with `fish_settings`, using the same rules as `/fish`.
 - `fish_account` reads balance/plan, lists dated model prices and estimates speech or transcription cost without spending credit; operator billing stays private.
+- **Maintenance:** the parity ledger names the real surface of every implemented row (it still said "Not exposed in M1" on twelve), and the weekly benchmark prices Drama 3 at Fish's $50 list price, so its cost cap stays safe after the launch price ends on 1 December (#89).
 
 ## 1.10.2 — 2026-11-09
 
