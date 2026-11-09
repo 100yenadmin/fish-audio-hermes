@@ -792,6 +792,3068 @@
         ]
       }
     },
+    "/v1/pronunciation-dictionaries": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "description": "Opaque cursor from a previous `next_cursor`.",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "description": "1-based page number; mutually exclusive with cursor.",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Page"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "include_total",
+            "description": "Also count the filtered set on the cursor path.",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Total",
+              "type": "boolean"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "description": "Rows per page (1-100, default 30).",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            },
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "One page of pronunciation dictionaries.",
+                  "properties": {
+                    "dictionaries": {
+                      "description": "Dictionaries in this page, newest updated first.",
+                      "items": {
+                        "$ref": "#/components/schemas/PronunciationDictionaryV1Entity"
+                      },
+                      "title": "Dictionaries",
+                      "type": "array"
+                    },
+                    "has_more": {
+                      "description": "Whether another page exists after this one.",
+                      "title": "Has More",
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Opaque cursor for the next page; pass it as `cursor`. Null when there is no next page.",
+                      "title": "Next Cursor"
+                    },
+                    "total": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Rows matching the filters across all pages. Always set in page mode; set on the cursor path only with `include_total=true`.",
+                      "examples": [
+                        3
+                      ],
+                      "title": "Total"
+                    }
+                  },
+                  "required": [
+                    "dictionaries",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "List pronunciation dictionaries",
+        "description": "List the caller team's dictionaries, newest updated first. Archived dictionaries are excluded. Paginate with `cursor` (follow `next_cursor` while `has_more` is true) or with `page` for offset pagination with a `total` count \u2014 the two are mutually exclusive."
+      },
+      "post": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PronunciationDictionaryCreatePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document created, URL follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "A pronunciation dictionary owned by the caller's team.",
+                  "properties": {
+                    "id": {
+                      "description": "Stable dictionary identifier.",
+                      "examples": [
+                        "9b2f5c0d4e6a4f4c8a1d3e5f7a9b0c2d"
+                      ],
+                      "title": "Id",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Display name for the dictionary.",
+                      "examples": [
+                        "Product names"
+                      ],
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Free-form description shown in the web app.",
+                      "examples": [
+                        "Brand and product pronunciations for support scripts."
+                      ],
+                      "title": "Description",
+                      "type": "string"
+                    },
+                    "latest_version_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Identifier of the latest published version, or null when the dictionary has never been published.",
+                      "examples": [
+                        "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+                      ],
+                      "title": "Latest Version Id"
+                    },
+                    "item_count": {
+                      "default": 0,
+                      "description": "Number of rules in the latest published version.",
+                      "examples": [
+                        12
+                      ],
+                      "title": "Item Count",
+                      "type": "integer"
+                    },
+                    "preview_voice_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Voice model last used by the dictionary's preview player, or null when it was never previewed.",
+                      "examples": [
+                        "b1a2c3d4e5f60718293a4b5c6d7e8f90"
+                      ],
+                      "title": "Preview Voice Id"
+                    },
+                    "preview_model": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "TTS model last used by the dictionary's preview player, or null when it was never previewed.",
+                      "examples": [
+                        "s2-pro"
+                      ],
+                      "title": "Preview Model"
+                    },
+                    "created_at": {
+                      "description": "Creation time (UTC).",
+                      "examples": [
+                        "2026-11-05T03:21:09Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Created At",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "description": "Last content or metadata update time (UTC).",
+                      "examples": [
+                        "2026-11-05T04:02:44Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Updated At",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Create a pronunciation dictionary",
+        "description": "Create an empty dictionary for the team the credential belongs to (the API key's team, or the personal team for a session without x-team-id). Publish rules with POST /versions."
+      }
+    },
+    "/v1/pronunciation-dictionaries/{dictionary_id}": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "A pronunciation dictionary owned by the caller's team.",
+                  "properties": {
+                    "id": {
+                      "description": "Stable dictionary identifier.",
+                      "examples": [
+                        "9b2f5c0d4e6a4f4c8a1d3e5f7a9b0c2d"
+                      ],
+                      "title": "Id",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Display name for the dictionary.",
+                      "examples": [
+                        "Product names"
+                      ],
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Free-form description shown in the web app.",
+                      "examples": [
+                        "Brand and product pronunciations for support scripts."
+                      ],
+                      "title": "Description",
+                      "type": "string"
+                    },
+                    "latest_version_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Identifier of the latest published version, or null when the dictionary has never been published.",
+                      "examples": [
+                        "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+                      ],
+                      "title": "Latest Version Id"
+                    },
+                    "item_count": {
+                      "default": 0,
+                      "description": "Number of rules in the latest published version.",
+                      "examples": [
+                        12
+                      ],
+                      "title": "Item Count",
+                      "type": "integer"
+                    },
+                    "preview_voice_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Voice model last used by the dictionary's preview player, or null when it was never previewed.",
+                      "examples": [
+                        "b1a2c3d4e5f60718293a4b5c6d7e8f90"
+                      ],
+                      "title": "Preview Voice Id"
+                    },
+                    "preview_model": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "TTS model last used by the dictionary's preview player, or null when it was never previewed.",
+                      "examples": [
+                        "s2-pro"
+                      ],
+                      "title": "Preview Model"
+                    },
+                    "created_at": {
+                      "description": "Creation time (UTC).",
+                      "examples": [
+                        "2026-11-05T03:21:09Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Created At",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "description": "Last content or metadata update time (UTC).",
+                      "examples": [
+                        "2026-11-05T04:02:44Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Updated At",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Get a pronunciation dictionary",
+        "description": "Get one dictionary owned by the caller's team."
+      },
+      "patch": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PronunciationDictionaryUpdatePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "A pronunciation dictionary owned by the caller's team.",
+                  "properties": {
+                    "id": {
+                      "description": "Stable dictionary identifier.",
+                      "examples": [
+                        "9b2f5c0d4e6a4f4c8a1d3e5f7a9b0c2d"
+                      ],
+                      "title": "Id",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Display name for the dictionary.",
+                      "examples": [
+                        "Product names"
+                      ],
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Free-form description shown in the web app.",
+                      "examples": [
+                        "Brand and product pronunciations for support scripts."
+                      ],
+                      "title": "Description",
+                      "type": "string"
+                    },
+                    "latest_version_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Identifier of the latest published version, or null when the dictionary has never been published.",
+                      "examples": [
+                        "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+                      ],
+                      "title": "Latest Version Id"
+                    },
+                    "item_count": {
+                      "default": 0,
+                      "description": "Number of rules in the latest published version.",
+                      "examples": [
+                        12
+                      ],
+                      "title": "Item Count",
+                      "type": "integer"
+                    },
+                    "preview_voice_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Voice model last used by the dictionary's preview player, or null when it was never previewed.",
+                      "examples": [
+                        "b1a2c3d4e5f60718293a4b5c6d7e8f90"
+                      ],
+                      "title": "Preview Voice Id"
+                    },
+                    "preview_model": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "TTS model last used by the dictionary's preview player, or null when it was never previewed.",
+                      "examples": [
+                        "s2-pro"
+                      ],
+                      "title": "Preview Model"
+                    },
+                    "created_at": {
+                      "description": "Creation time (UTC).",
+                      "examples": [
+                        "2026-11-05T03:21:09Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Created At",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "description": "Last content or metadata update time (UTC).",
+                      "examples": [
+                        "2026-11-05T04:02:44Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Updated At",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request conflict",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Update a pronunciation dictionary",
+        "description": "Change the dictionary's name or description. Rules live in published versions and are not editable in place."
+      },
+      "delete": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Request fulfilled, nothing follows",
+            "headers": {}
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Delete (archive) a pronunciation dictionary",
+        "description": "Soft-archive the dictionary: it disappears from list/get and can no longer be modified, while its versions remain stored. Idempotent."
+      }
+    },
+    "/v1/pronunciation-dictionaries/{dictionary_id}/versions": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "description": "Opaque cursor from a previous `next_cursor`.",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "description": "1-based page number; mutually exclusive with cursor.",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Page"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "include_total",
+            "description": "Also count the filtered set on the cursor path.",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Total",
+              "type": "boolean"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "description": "Rows per page (1-100, default 30).",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            },
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "One page of pronunciation-dictionary versions.",
+                  "properties": {
+                    "versions": {
+                      "description": "Versions in this page, newest published first.",
+                      "items": {
+                        "$ref": "#/components/schemas/PronunciationDictionaryV1VersionEntity"
+                      },
+                      "title": "Versions",
+                      "type": "array"
+                    },
+                    "has_more": {
+                      "description": "Whether another page exists after this one.",
+                      "title": "Has More",
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Opaque cursor for the next page; pass it as `cursor`. Null when there is no next page.",
+                      "title": "Next Cursor"
+                    },
+                    "total": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Rows matching the filters across all pages. Always set in page mode; set on the cursor path only with `include_total=true`.",
+                      "examples": [
+                        2
+                      ],
+                      "title": "Total"
+                    }
+                  },
+                  "required": [
+                    "versions",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "List versions",
+        "description": "List the dictionary's published versions, newest first. Archived versions are excluded. Paginate with `cursor` (follow `next_cursor` while `has_more` is true) or with `page` for offset pagination with a `total` count \u2014 the two are mutually exclusive."
+      },
+      "post": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PronunciationDictionaryVersionCreatePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document created, URL follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "A version with its full ordered rule list.",
+                  "properties": {
+                    "id": {
+                      "description": "Stable version identifier.",
+                      "examples": [
+                        "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+                      ],
+                      "title": "Id",
+                      "type": "string"
+                    },
+                    "dictionary_id": {
+                      "description": "Dictionary this version belongs to.",
+                      "examples": [
+                        "9b2f5c0d4e6a4f4c8a1d3e5f7a9b0c2d"
+                      ],
+                      "title": "Dictionary Id",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Version note entered when publishing.",
+                      "examples": [
+                        "Add the new product names"
+                      ],
+                      "title": "Description",
+                      "type": "string"
+                    },
+                    "version_number": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Monotonic version number within the dictionary. Null only for versions published before version numbers existed.",
+                      "examples": [
+                        3
+                      ],
+                      "title": "Version Number"
+                    },
+                    "added_count": {
+                      "default": 0,
+                      "description": "Rules added relative to the previous version.",
+                      "examples": [
+                        2
+                      ],
+                      "title": "Added Count",
+                      "type": "integer"
+                    },
+                    "removed_count": {
+                      "default": 0,
+                      "description": "Rules removed relative to the previous version.",
+                      "examples": [
+                        0
+                      ],
+                      "title": "Removed Count",
+                      "type": "integer"
+                    },
+                    "changed_count": {
+                      "default": 0,
+                      "description": "Rules whose key, value, type or case sensitivity changed.",
+                      "examples": [
+                        1
+                      ],
+                      "title": "Changed Count",
+                      "type": "integer"
+                    },
+                    "item_count": {
+                      "default": 0,
+                      "description": "Total number of rules in this version.",
+                      "examples": [
+                        12
+                      ],
+                      "title": "Item Count",
+                      "type": "integer"
+                    },
+                    "created_at": {
+                      "description": "Publish time (UTC).",
+                      "examples": [
+                        "2026-11-05T04:02:44Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Created At",
+                      "type": "string"
+                    },
+                    "items": {
+                      "description": "Rules in application order.",
+                      "items": {
+                        "$ref": "#/components/schemas/PronunciationDictionaryV1Item"
+                      },
+                      "title": "Items",
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "dictionary_id",
+                    "description",
+                    "created_at",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request conflict",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Publish a version",
+        "description": "Publish an immutable snapshot of rules. Send the version you believe is current as `expected_latest_version_id`; a stale value returns 409. Keys are unique within a version (duplicates return 422). Alias rules never shorten billing."
+      }
+    },
+    "/v1/pronunciation-dictionaries/{dictionary_id}/versions/{version_id}": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "A version with its full ordered rule list.",
+                  "properties": {
+                    "id": {
+                      "description": "Stable version identifier.",
+                      "examples": [
+                        "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+                      ],
+                      "title": "Id",
+                      "type": "string"
+                    },
+                    "dictionary_id": {
+                      "description": "Dictionary this version belongs to.",
+                      "examples": [
+                        "9b2f5c0d4e6a4f4c8a1d3e5f7a9b0c2d"
+                      ],
+                      "title": "Dictionary Id",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Version note entered when publishing.",
+                      "examples": [
+                        "Add the new product names"
+                      ],
+                      "title": "Description",
+                      "type": "string"
+                    },
+                    "version_number": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Monotonic version number within the dictionary. Null only for versions published before version numbers existed.",
+                      "examples": [
+                        3
+                      ],
+                      "title": "Version Number"
+                    },
+                    "added_count": {
+                      "default": 0,
+                      "description": "Rules added relative to the previous version.",
+                      "examples": [
+                        2
+                      ],
+                      "title": "Added Count",
+                      "type": "integer"
+                    },
+                    "removed_count": {
+                      "default": 0,
+                      "description": "Rules removed relative to the previous version.",
+                      "examples": [
+                        0
+                      ],
+                      "title": "Removed Count",
+                      "type": "integer"
+                    },
+                    "changed_count": {
+                      "default": 0,
+                      "description": "Rules whose key, value, type or case sensitivity changed.",
+                      "examples": [
+                        1
+                      ],
+                      "title": "Changed Count",
+                      "type": "integer"
+                    },
+                    "item_count": {
+                      "default": 0,
+                      "description": "Total number of rules in this version.",
+                      "examples": [
+                        12
+                      ],
+                      "title": "Item Count",
+                      "type": "integer"
+                    },
+                    "created_at": {
+                      "description": "Publish time (UTC).",
+                      "examples": [
+                        "2026-11-05T04:02:44Z"
+                      ],
+                      "format": "date-time",
+                      "title": "Created At",
+                      "type": "string"
+                    },
+                    "items": {
+                      "description": "Rules in application order.",
+                      "items": {
+                        "$ref": "#/components/schemas/PronunciationDictionaryV1Item"
+                      },
+                      "title": "Items",
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "dictionary_id",
+                    "description",
+                    "created_at",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Get a version",
+        "description": "Get a published version with its ordered rules. Requires auth and is scoped to the caller's team."
+      },
+      "delete": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Request fulfilled, nothing follows",
+            "headers": {}
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request conflict",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Delete (archive) a version",
+        "description": "Soft-archive a historical version. The latest version cannot be deleted (409), and deleting an already archived version also returns 409."
+      }
+    },
+    "/v1/pronunciation-dictionaries/{dictionary_id}/versions/{version_id}/compare": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dictionary_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Dictionary Id",
+              "type": "string"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "description": "",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            },
+            "deprecated": false
+          },
+          {
+            "in": "query",
+            "name": "base_version_id",
+            "description": "Version to compare the target version against.",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e"
+              ],
+              "title": "Base Version Id",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Row-level diff between two versions of one dictionary.",
+                  "properties": {
+                    "version_id": {
+                      "description": "Target (viewed) version.",
+                      "examples": [
+                        "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+                      ],
+                      "title": "Version Id",
+                      "type": "string"
+                    },
+                    "base_version_id": {
+                      "description": "Base version the target is compared against.",
+                      "examples": [
+                        "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+                      ],
+                      "title": "Base Version Id",
+                      "type": "string"
+                    },
+                    "added": {
+                      "description": "Number of added rows.",
+                      "examples": [
+                        1
+                      ],
+                      "title": "Added",
+                      "type": "integer"
+                    },
+                    "removed": {
+                      "description": "Number of removed rows.",
+                      "examples": [
+                        0
+                      ],
+                      "title": "Removed",
+                      "type": "integer"
+                    },
+                    "changed": {
+                      "description": "Number of changed rows.",
+                      "examples": [
+                        2
+                      ],
+                      "title": "Changed",
+                      "type": "integer"
+                    },
+                    "rows": {
+                      "description": "Per-rule diff rows in target order, with removed rows last.",
+                      "items": {
+                        "$ref": "#/components/schemas/PronunciationDictionaryV1CompareRow"
+                      },
+                      "title": "Rows",
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "version_id",
+                    "base_version_id",
+                    "added",
+                    "removed",
+                    "changed",
+                    "rows"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request forbidden -- authorization will not help",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing matches the given URI",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pronunciation Dictionaries"
+        ],
+        "summary": "Compare two versions",
+        "description": "Return a row-level diff between the target version and `base_version_id`: added, removed, changed, moved and unchanged rules."
+      }
+    },
     "/v1/tts": {
       "post": {
         "summary": "Text to Speech",
@@ -4551,6 +7613,594 @@
         "title": "ASRSegment",
         "type": "object"
       },
+      "PronunciationDictionaryV1Entity": {
+        "description": "A pronunciation dictionary owned by the caller's team.",
+        "properties": {
+          "id": {
+            "description": "Stable dictionary identifier.",
+            "examples": [
+              "9b2f5c0d4e6a4f4c8a1d3e5f7a9b0c2d"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name for the dictionary.",
+            "examples": [
+              "Product names"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "description": "Free-form description shown in the web app.",
+            "examples": [
+              "Brand and product pronunciations for support scripts."
+            ],
+            "title": "Description",
+            "type": "string"
+          },
+          "latest_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Identifier of the latest published version, or null when the dictionary has never been published.",
+            "examples": [
+              "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+            ],
+            "title": "Latest Version Id"
+          },
+          "item_count": {
+            "default": 0,
+            "description": "Number of rules in the latest published version.",
+            "examples": [
+              12
+            ],
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "preview_voice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Voice model last used by the dictionary's preview player, or null when it was never previewed.",
+            "examples": [
+              "b1a2c3d4e5f60718293a4b5c6d7e8f90"
+            ],
+            "title": "Preview Voice Id"
+          },
+          "preview_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "TTS model last used by the dictionary's preview player, or null when it was never previewed.",
+            "examples": [
+              "s2-pro"
+            ],
+            "title": "Preview Model"
+          },
+          "created_at": {
+            "description": "Creation time (UTC).",
+            "examples": [
+              "2026-11-05T03:21:09Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "Last content or metadata update time (UTC).",
+            "examples": [
+              "2026-11-05T04:02:44Z"
+            ],
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PronunciationDictionaryV1Entity",
+        "type": "object"
+      },
+      "PronunciationDictionaryCreatePayload": {
+        "properties": {
+          "name": {
+            "description": "Display name for the dictionary (1-128 characters).",
+            "examples": [
+              "Product names"
+            ],
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "description": "Optional free-form description (up to 1024 characters).",
+            "examples": [
+              "Brand and product pronunciations for support scripts."
+            ],
+            "maxLength": 1024,
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PronunciationDictionaryCreatePayload",
+        "type": "object"
+      },
+      "PronunciationDictionaryUpdatePayload": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "New display name; omitted or null leaves it unchanged.",
+            "examples": [
+              "Product names"
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "New description; omitted or null leaves it unchanged.",
+            "examples": [
+              "Brand and product pronunciations for support scripts."
+            ],
+            "title": "Description"
+          }
+        },
+        "title": "PronunciationDictionaryUpdatePayload",
+        "type": "object"
+      },
+      "PronunciationDictionaryV1VersionEntity": {
+        "description": "A published, immutable snapshot of a dictionary.",
+        "properties": {
+          "id": {
+            "description": "Stable version identifier.",
+            "examples": [
+              "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "dictionary_id": {
+            "description": "Dictionary this version belongs to.",
+            "examples": [
+              "9b2f5c0d4e6a4f4c8a1d3e5f7a9b0c2d"
+            ],
+            "title": "Dictionary Id",
+            "type": "string"
+          },
+          "description": {
+            "description": "Version note entered when publishing.",
+            "examples": [
+              "Add the new product names"
+            ],
+            "title": "Description",
+            "type": "string"
+          },
+          "version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Monotonic version number within the dictionary. Null only for versions published before version numbers existed.",
+            "examples": [
+              3
+            ],
+            "title": "Version Number"
+          },
+          "added_count": {
+            "default": 0,
+            "description": "Rules added relative to the previous version.",
+            "examples": [
+              2
+            ],
+            "title": "Added Count",
+            "type": "integer"
+          },
+          "removed_count": {
+            "default": 0,
+            "description": "Rules removed relative to the previous version.",
+            "examples": [
+              0
+            ],
+            "title": "Removed Count",
+            "type": "integer"
+          },
+          "changed_count": {
+            "default": 0,
+            "description": "Rules whose key, value, type or case sensitivity changed.",
+            "examples": [
+              1
+            ],
+            "title": "Changed Count",
+            "type": "integer"
+          },
+          "item_count": {
+            "default": 0,
+            "description": "Total number of rules in this version.",
+            "examples": [
+              12
+            ],
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "description": "Publish time (UTC).",
+            "examples": [
+              "2026-11-05T04:02:44Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "dictionary_id",
+          "description",
+          "created_at"
+        ],
+        "title": "PronunciationDictionaryV1VersionEntity",
+        "type": "object"
+      },
+      "PronunciationDictionaryVersionCreatePayload": {
+        "properties": {
+          "expected_latest_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optimistic-concurrency guard: the latest version ID the caller believes is current, or null for the first publish. A mismatch returns 409.",
+            "examples": [
+              "1c3e5a7b9d0f4a2c8e6b4d1f3a5c7e9b"
+            ],
+            "title": "Expected Latest Version Id"
+          },
+          "description": {
+            "default": "",
+            "description": "Optional version note (up to 1024 characters).",
+            "examples": [
+              "Add the new product names"
+            ],
+            "maxLength": 1024,
+            "title": "Description",
+            "type": "string"
+          },
+          "items": {
+            "description": "Complete ordered rule list for the new version (up to 5000 rules). Keys must be unique within the version; order is the engine's application order.",
+            "items": {
+              "$ref": "#/components/schemas/PronunciationDictionaryItemPayload"
+            },
+            "maxItems": 5000,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "PronunciationDictionaryVersionCreatePayload",
+        "type": "object"
+      },
+      "PronunciationDictionaryItemPayload": {
+        "properties": {
+          "key": {
+            "description": "Substring to match in the request text (1-256 characters). Alias rules may not start or end with whitespace and may not contain control characters, `<`, `>`, `(`, `)`, `[` or `]`.",
+            "examples": [
+              "Fish Audio"
+            ],
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "description": "Replacement text (1-1024 characters). For phoneme rules this is the phonetic form without the `<|phoneme_start|>` / `<|phoneme_end|>` markers; for alias rules it is plain text. Neither may contain `<|` or `|>`.",
+            "examples": [
+              "f\u026a\u0283 \u02c8\u0254\u02d0di.o\u028a"
+            ],
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          },
+          "type": {
+            "default": "phoneme",
+            "description": "Replacement mode: `phoneme` (default, and also the meaning of an omitted or null value) speaks the value as a phonetic form; `alias` substitutes the literal text. Other values return 422.",
+            "enum": [
+              "phoneme",
+              "alias"
+            ],
+            "examples": [
+              "phoneme"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "case_sensitive": {
+            "default": false,
+            "description": "When true, matching is case-sensitive; when false, ASCII case folding is applied.",
+            "examples": [
+              false
+            ],
+            "title": "Case Sensitive",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "PronunciationDictionaryItemPayload",
+        "type": "object"
+      },
+      "PronunciationDictionaryV1Item": {
+        "description": "One key/value rule in a published version.",
+        "properties": {
+          "key": {
+            "description": "Substring to match in the request text. 1-256 characters. Alias rules may not start or end with whitespace and may not contain control characters, `<`, `>`, `(`, `)`, `[` or `]`.",
+            "examples": [
+              "Fish Audio"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "description": "Replacement text. 1-1024 characters. For phoneme rules it is the phonetic form (without the `<|phoneme_start|>` / `<|phoneme_end|>` markers); for alias rules it is plain text. Neither type may contain `<|` or `|>`.",
+            "examples": [
+              "f\u026a\u0283 \u02c8\u0254\u02d0di.o\u028a"
+            ],
+            "title": "Value",
+            "type": "string"
+          },
+          "type": {
+            "default": "phoneme",
+            "description": "How the key is replaced: `phoneme` (default) speaks the value as a phonetic form; `alias` substitutes the literal text, which is then read like the rest of the request.",
+            "enum": [
+              "phoneme",
+              "alias"
+            ],
+            "examples": [
+              "phoneme"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "case_sensitive": {
+            "default": false,
+            "description": "When true, matching is case-sensitive; when false, ASCII case folding is applied.",
+            "examples": [
+              false
+            ],
+            "title": "Case Sensitive",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "PronunciationDictionaryV1Item",
+        "type": "object"
+      },
+      "PronunciationDictionaryV1CompareRow": {
+        "description": "One rule row in a version comparison.",
+        "properties": {
+          "key": {
+            "description": "Key in the target version.",
+            "examples": [
+              "Fish"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "description": "Value in the target version.",
+            "examples": [
+              "f\u026a\u0283"
+            ],
+            "title": "Value",
+            "type": "string"
+          },
+          "type": {
+            "default": "phoneme",
+            "description": "Replacement type in the target version.",
+            "enum": [
+              "phoneme",
+              "alias"
+            ],
+            "examples": [
+              "phoneme"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "case_sensitive": {
+            "description": "Case sensitivity in the target version.",
+            "examples": [
+              false
+            ],
+            "title": "Case Sensitive",
+            "type": "boolean"
+          },
+          "order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Position in the target version; null for a removed row (the rule only exists in the base version).",
+            "examples": [
+              0
+            ],
+            "title": "Order"
+          },
+          "status": {
+            "description": "Change relative to the base version: `added` only in target, `removed` only in base, `changed` with different content, `moved` with identical content but a different position, `unchanged`.",
+            "enum": [
+              "added",
+              "removed",
+              "changed",
+              "moved",
+              "unchanged"
+            ],
+            "examples": [
+              "changed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "base_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Key in the base version; only for changed, moved or removed rows.",
+            "examples": [
+              "Fish"
+            ],
+            "title": "Base Key"
+          },
+          "base_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Value in the base version; only for changed, moved or removed rows.",
+            "examples": [
+              "f\u026a\u0283"
+            ],
+            "title": "Base Value"
+          },
+          "base_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "phoneme",
+                  "alias"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Replacement type in the base version; only for changed, moved or removed rows.",
+            "examples": [
+              "phoneme"
+            ],
+            "title": "Base Type"
+          },
+          "base_case_sensitive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Case sensitivity in the base version; only for changed, moved or removed rows.",
+            "examples": [
+              false
+            ],
+            "title": "Base Case Sensitive"
+          },
+          "base_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Position in the base version; only for changed, moved or removed rows.",
+            "examples": [
+              0
+            ],
+            "title": "Base Order"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "case_sensitive",
+          "status"
+        ],
+        "title": "PronunciationDictionaryV1CompareRow",
+        "type": "object"
+      },
       "TTSRequest": {
         "description": "Request body for text-to-speech synthesis. Supports single-speaker synthesis on all compatible TTS models. Multi-speaker dialogue synthesis is available with the S2 family (`s2-pro`, `s2.1-pro`, `s2.1-pro-free`) and `drama-3`, not `s1`.\n\n## Single Speaker\nProvide either `reference_id` (string) pointing to a voice model, or `references` (array of ReferenceAudio) for zero-shot cloning.\n\n## Multiple Speakers (Dialogue \u2014 S2 family and `drama-3`)\nFor multi-speaker synthesis, provide:\n- `reference_id`: array of voice model IDs, e.g., [\"speaker-0-id\", \"speaker-1-id\"]\n- `text`: use speaker tags `<|speaker:0|>`, `<|speaker:1|>`, etc. to indicate speaker changes, e.g., \"<|speaker:0|>Hello!<|speaker:1|>Hi there!\"\n\nAlternatively, for zero-shot multi-speaker:\n- `references`: 2D array where each inner array contains references for one speaker\n- `reference_id`: array of identifiers (can be arbitrary strings for zero-shot)\n\n## Example (Multi-Speaker with Model IDs)\n```json\n{\n  \"text\": \"<|speaker:0|>Good morning!<|speaker:1|>Good morning! How are you?<|speaker:0|>I'm great, thanks!\",\n  \"reference_id\": [\"model-id-alice\", \"model-id-bob\"]\n}\n```",
         "properties": {
@@ -4782,7 +8432,7 @@
                 "type": "array"
               },
               {
-                "description": "Inline form: list of literal pronunciation dictionaries. Each dictionary carries an `items` array of `{key, value, case_sensitive?}` entries.",
+                "description": "Inline form: list of literal pronunciation dictionaries. Each dictionary carries an `items` array of `{key, value, type?, case_sensitive?}` entries.",
                 "items": {
                   "$ref": "#/components/schemas/PronunciationDictionaryInline"
                 },
@@ -4794,7 +8444,7 @@
               }
             ],
             "default": null,
-            "description": "Optional list of up to 3 pronunciation dictionaries to apply during synthesis. Provide either references to platform-managed dictionaries OR inline literal dictionaries (the two forms are mutually exclusive in a single request). The server resolves and merges the dictionaries, then forwards the full merged dictionary to the inference engine, which performs the substitution. Matching is plain substring matching, leftmost-longest, and case-insensitive unless an entry sets `case_sensitive`. Missing or unresolvable references are silently dropped \u2014 the request still succeeds. Use `application/json` or `application/msgpack` content-type; nested arrays are not representable in `multipart/form-data`.",
+            "description": "Optional list of up to 3 pronunciation dictionaries to apply during synthesis. Provide either references to platform-managed dictionaries OR inline literal dictionaries (the two forms are mutually exclusive in a single request). The server resolves and merges the dictionaries, then forwards the full merged dictionary to the inference engine, which performs the substitution. Each entry sets `type` to `phoneme` (default: the value is spoken as a phonetic form) or `alias` (plain text replacement). Usage is billed on the text actually synthesized, with alias replacements counted: an alias that expands a key is billed for the longer text, one that shortens it is billed for the shorter text; phoneme rules never change billing. Matching is plain substring matching, leftmost-longest, and case-insensitive unless an entry sets `case_sensitive`. Missing or unresolvable references are silently dropped \u2014 the request still succeeds. Use `application/json` or `application/msgpack` content-type; nested arrays are not representable in `multipart/form-data`.",
             "title": "Pronunciation Dictionary"
           }
         },
@@ -4897,20 +8547,30 @@
       },
       "PronunciationItem": {
         "additionalProperties": false,
-        "description": "A single key/value entry in a pronunciation dictionary. The inference engine replaces every occurrence of `key` in the request text with the phoneme form `value` during synthesis.",
+        "description": "A single key/value entry in a pronunciation dictionary. The inference engine replaces every occurrence of `key` in the request text with `value` during synthesis. With the default `type: \"phoneme\"` the value is spoken as a phonetic form; with `type: \"alias\"` it is substituted as plain text.",
         "properties": {
           "key": {
-            "description": "Source substring to match. Pure substring match \u2014 no tokenization, no regex. Overlapping matches resolve leftmost-longest. For CJK text include enough context to disambiguate.",
+            "description": "Source substring to match. Pure substring match \u2014 no tokenization, no regex. Overlapping matches resolve leftmost-longest. For CJK text include enough context to disambiguate. For `type: \"alias\"` the key must not start or end with whitespace and must not contain control characters, `<`, `>`, `(`, `)`, `[` or `]`.",
             "maxLength": 256,
             "minLength": 1,
             "title": "Key",
             "type": "string"
           },
           "value": {
-            "description": "Phonetic representation that replaces the key during synthesis. Dictionary authors should NOT include the `<|phoneme_start|>` / `<|phoneme_end|>` markers themselves; the inference engine wraps the value with those markers internally so the body is treated as phonemes rather than orthographic text. Requests whose key or value contain either marker are rejected.",
+            "description": "Replacement for the key during synthesis. For `type: \"phoneme\"` this is a phonetic representation; dictionary authors should NOT include the `<|phoneme_start|>` / `<|phoneme_end|>` markers themselves, because the inference engine wraps the value with those markers internally so the body is treated as phonemes rather than orthographic text. For `type: \"alias\"` this is plain text substituted verbatim (then normalized with the rest of the request text) and must not contain `<|` or `|>`. Requests whose key or value contain either phoneme marker are rejected.",
             "maxLength": 1024,
             "minLength": 1,
             "title": "Value",
+            "type": "string"
+          },
+          "type": {
+            "default": "phoneme",
+            "description": "How `value` replaces `key`. `phoneme` (default) speaks the value as a phonetic form. `alias` substitutes the literal text, which then goes through the same text normalization as the rest of the request. Omitted or `null` means `phoneme`, so existing dictionaries and clients keep their behaviour. Any other value is rejected. Usage is billed on the text actually synthesized, with alias replacements counted: an alias that expands a key is billed for the longer text, one that shortens it is billed for the shorter text; phoneme rules never change billing.",
+            "enum": [
+              "phoneme",
+              "alias"
+            ],
+            "title": "Type",
             "type": "string"
           },
           "case_sensitive": {
@@ -5158,7 +8818,7 @@
                 "type": "array"
               },
               {
-                "description": "Inline form: list of literal pronunciation dictionaries. Each dictionary carries an `items` array of `{key, value, case_sensitive?}` entries.",
+                "description": "Inline form: list of literal pronunciation dictionaries. Each dictionary carries an `items` array of `{key, value, type?, case_sensitive?}` entries.",
                 "items": {
                   "$ref": "#/components/schemas/PronunciationDictionaryInline"
                 },
@@ -5170,7 +8830,7 @@
               }
             ],
             "default": null,
-            "description": "Optional list of up to 3 pronunciation dictionaries to apply during synthesis. Provide either references to platform-managed dictionaries OR inline literal dictionaries (the two forms are mutually exclusive in a single request). The server resolves and merges the dictionaries, then forwards the full merged dictionary to the inference engine, which performs the substitution. Matching is plain substring matching, leftmost-longest, and case-insensitive unless an entry sets `case_sensitive`. Missing or unresolvable references are silently dropped \u2014 the request still succeeds. Use `application/json` or `application/msgpack` content-type; nested arrays are not representable in `multipart/form-data`.",
+            "description": "Optional list of up to 3 pronunciation dictionaries to apply during synthesis. Provide either references to platform-managed dictionaries OR inline literal dictionaries (the two forms are mutually exclusive in a single request). The server resolves and merges the dictionaries, then forwards the full merged dictionary to the inference engine, which performs the substitution. Each entry sets `type` to `phoneme` (default: the value is spoken as a phonetic form) or `alias` (plain text replacement). Usage is billed on the text actually synthesized, with alias replacements counted: an alias that expands a key is billed for the longer text, one that shortens it is billed for the shorter text; phoneme rules never change billing. Matching is plain substring matching, leftmost-longest, and case-insensitive unless an entry sets `case_sensitive`. Missing or unresolvable references are silently dropped \u2014 the request still succeeds. Use `application/json` or `application/msgpack` content-type; nested arrays are not representable in `multipart/form-data`.",
             "title": "Pronunciation Dictionary"
           }
         },
@@ -6544,7 +10204,7 @@
   },
   "x-source": {
     "url": "https://docs.fish.audio/api-reference/openapi.json",
-    "sha256": "740b3d81ebc0bb1ac760d9ab1124ec218b22025345e6c1e270a7d3241141ff82",
-    "fetch_date": "2026-10-30"
+    "sha256": "698642cc0dd247e854fa9711b7d1d26916770ad466e2ae77dc9d983379dc5647",
+    "fetch_date": "2026-11-09"
   }
 }

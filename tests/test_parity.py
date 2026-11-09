@@ -16,7 +16,7 @@ def inputs():
 def test_committed_parity_map_passes():
     spec, mapping = inputs()
     assert parity.check(spec, mapping) == []
-    assert len(spec["paths"]) == 9 and all(not p.startswith("/v1/agent/") for p in spec["paths"])
+    assert len(spec["paths"]) == 14 and all(not p.startswith("/v1/agent/") for p in spec["paths"])
     if (ROOT / "specs/vendor/fish-openapi.json").exists():
         assert spec["x-source"]["sha256"] == hashlib.sha256((ROOT / "specs/vendor/fish-openapi.json").read_bytes()).hexdigest()
 

@@ -1076,6 +1076,7 @@ function Sections({ pin, operator }) {
   const [busy, setBusy] = useState3(null);
   const [name, setName] = useState3("");
   const [voice, setVoice] = useState3(null);
+  const [speed, setSpeed] = useState3(1);
   const [badName, setBadName] = useState3(false);
   const generation = useRef2(0);
   useValue4($favouritesRevision);
@@ -1084,7 +1085,11 @@ function Sections({ pin, operator }) {
     const mine = ++generation.current;
     setError(null);
     readFor(pin, "/settings").then(
-      (res) => mine === generation.current && setState(res),
+      (res) => {
+        if (mine !== generation.current) return;
+        setState(res);
+        setSpeed(res.speed ?? 1);
+      },
       (failure) => mine === generation.current && setError(failure)
     );
   };
@@ -1130,6 +1135,11 @@ function Sections({ pin, operator }) {
     });
   };
   const aliasVoice = voice ?? current ?? "";
+  const saveSpeed = (value) => void write("speed", () => postSettings({ speed: value }), (res) => {
+    setState(res);
+    setSpeed(res.speed);
+    saved(pluginCtx().i18n.t("settings.speedSaved"));
+  });
   const add = () => {
     if (badAliasName(name)) return setBadName(true);
     const typed = name.trim();
@@ -1185,6 +1195,53 @@ function Sections({ pin, operator }) {
         below: managedNote("model"),
         description: t("settings.modelHint"),
         title: t("settings.model")
+      }
+    ) }),
+    typeof state.speed === "number" && /* @__PURE__ */ jsx4(Section, { title: t("settings.readingSpeed"), children: /* @__PURE__ */ jsx4(
+      ListRow,
+      {
+        action: /* @__PURE__ */ jsxs4("div", { style: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8 }, children: [
+          /* @__PURE__ */ jsx4(
+            "input",
+            {
+              "aria-label": t("settings.readingSpeed"),
+              type: "range",
+              min: 0.5,
+              max: 2,
+              step: 0.05,
+              disabled: managed("speed") || locked,
+              value: speed,
+              onChange: (e) => setSpeed(Number(e.target.value))
+            }
+          ),
+          /* @__PURE__ */ jsxs4("output", { children: [
+            speed.toFixed(2),
+            "\xD7"
+          ] }),
+          /* @__PURE__ */ jsx4(
+            Button4,
+            {
+              disabled: managed("speed") || locked || speed === state.speed,
+              onClick: () => saveSpeed(speed),
+              size: "xs",
+              variant: "secondary",
+              children: t("settings.saveSpeed")
+            }
+          ),
+          /* @__PURE__ */ jsx4(
+            Button4,
+            {
+              "aria-label": t("settings.resetSpeed"),
+              disabled: managed("speed") || locked,
+              onClick: () => saveSpeed(null),
+              size: "xs",
+              variant: "ghost",
+              children: t("settings.reset")
+            }
+          )
+        ] }),
+        below: managedNote("speed"),
+        title: t("settings.readingSpeed")
       }
     ) }),
     /* @__PURE__ */ jsxs4(Section, { title: t("settings.namesSection"), children: [
@@ -1463,6 +1520,10 @@ var en = {
     modelHint: "Used for this agent's voice replies.",
     defaultModel: "Fish default",
     modelSaved: "Speech model saved",
+    readingSpeed: "Reading speed",
+    saveSpeed: "Save speed",
+    resetSpeed: "Reset reading speed",
+    speedSaved: "Reading speed saved",
     namesSection: "Voice names",
     namesHint: "Use a name anywhere you'd type a voice id, for example /fish use narrator.",
     noNames: "No names yet",
@@ -1659,6 +1720,10 @@ var zh = {
     modelHint: "\u7528\u4E8E\u6B64\u667A\u80FD\u4F53\u7684\u8BED\u97F3\u56DE\u590D\u3002",
     defaultModel: "Fish \u9ED8\u8BA4",
     modelSaved: "\u8BED\u97F3\u6A21\u578B\u5DF2\u4FDD\u5B58",
+    readingSpeed: "\u6717\u8BFB\u901F\u5EA6",
+    saveSpeed: "\u4FDD\u5B58\u901F\u5EA6",
+    resetSpeed: "\u91CD\u7F6E\u6717\u8BFB\u901F\u5EA6",
+    speedSaved: "\u6717\u8BFB\u901F\u5EA6\u5DF2\u4FDD\u5B58",
     namesSection: "\u58F0\u97F3\u540D\u79F0",
     namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F93\u5165\u58F0\u97F3 ID \u7684\u5730\u65B9\u90FD\u53EF\u4EE5\u4F7F\u7528\u540D\u79F0\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
     noNames: "\u8FD8\u6CA1\u6709\u540D\u79F0",
@@ -1855,6 +1920,10 @@ var zhHant = {
     modelHint: "\u7528\u65BC\u6B64\u4EE3\u7406\u7684\u8A9E\u97F3\u56DE\u8986\u3002",
     defaultModel: "Fish \u9810\u8A2D",
     modelSaved: "\u8A9E\u97F3\u6A21\u578B\u5DF2\u5132\u5B58",
+    readingSpeed: "\u6717\u8B80\u901F\u5EA6",
+    saveSpeed: "\u5132\u5B58\u901F\u5EA6",
+    resetSpeed: "\u91CD\u8A2D\u6717\u8B80\u901F\u5EA6",
+    speedSaved: "\u6717\u8B80\u901F\u5EA6\u5DF2\u5132\u5B58",
     namesSection: "\u8072\u97F3\u540D\u7A31",
     namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F38\u5165\u8072\u97F3 ID \u7684\u5730\u65B9\u90FD\u80FD\u4F7F\u7528\u540D\u7A31\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
     noNames: "\u5C1A\u7121\u540D\u7A31",
@@ -2051,6 +2120,10 @@ var ja = {
     modelHint: "\u3053\u306E\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306E\u97F3\u58F0\u8FD4\u4FE1\u306B\u4F7F\u308F\u308C\u307E\u3059\u3002",
     defaultModel: "Fish \u306E\u65E2\u5B9A",
     modelSaved: "\u97F3\u58F0\u30E2\u30C7\u30EB\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F",
+    readingSpeed: "\u8AAD\u307F\u4E0A\u3052\u901F\u5EA6",
+    saveSpeed: "\u901F\u5EA6\u3092\u4FDD\u5B58",
+    resetSpeed: "\u8AAD\u307F\u4E0A\u3052\u901F\u5EA6\u3092\u30EA\u30BB\u30C3\u30C8",
+    speedSaved: "\u8AAD\u307F\u4E0A\u3052\u901F\u5EA6\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F",
     namesSection: "\u30DC\u30A4\u30B9\u540D",
     namesHint: "\u30DC\u30A4\u30B9 ID \u3092\u5165\u529B\u3059\u308B\u5834\u6240\u306A\u3089\u3069\u3053\u3067\u3082\u540D\u524D\u3092\u4F7F\u3048\u307E\u3059\u3002\u4F8B\uFF1A/fish use narrator",
     noNames: "\u307E\u3060\u540D\u524D\u306F\u3042\u308A\u307E\u305B\u3093",
@@ -2249,6 +2322,10 @@ var ar = {
     modelHint: "\u064A\u064F\u0633\u062A\u062E\u062F\u0645 \u0644\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0648\u0643\u064A\u0644.",
     defaultModel: "\u0627\u0641\u062A\u0631\u0627\u0636\u064A Fish",
     modelSaved: "\u062A\u0645 \u062D\u0641\u0638 \u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0643\u0644\u0627\u0645",
+    readingSpeed: "\u0633\u0631\u0639\u0629 \u0627\u0644\u0642\u0631\u0627\u0621\u0629",
+    saveSpeed: "\u062D\u0641\u0638 \u0627\u0644\u0633\u0631\u0639\u0629",
+    resetSpeed: "\u0625\u0639\u0627\u062F\u0629 \u0636\u0628\u0637 \u0633\u0631\u0639\u0629 \u0627\u0644\u0642\u0631\u0627\u0621\u0629",
+    speedSaved: "\u062A\u0645 \u062D\u0641\u0638 \u0633\u0631\u0639\u0629 \u0627\u0644\u0642\u0631\u0627\u0621\u0629",
     namesSection: "\u0623\u0633\u0645\u0627\u0621 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
     namesHint: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0627\u0633\u0645 \u0641\u064A \u0623\u064A \u0645\u0643\u0627\u0646 \u062A\u0643\u062A\u0628 \u0641\u064A\u0647 \u0645\u0639\u0631\u0651\u0641 \u0635\u0648\u062A\u060C \u0645\u062B\u0644 /fish use narrator.",
     noNames: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0633\u0645\u0627\u0621 \u0628\u0639\u062F",
@@ -2445,6 +2522,10 @@ var ru = {
     modelHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u0442\u0441\u044F \u0434\u043B\u044F \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u044B\u0445 \u043E\u0442\u0432\u0435\u0442\u043E\u0432 \u044D\u0442\u043E\u0433\u043E \u0430\u0433\u0435\u043D\u0442\u0430.",
     defaultModel: "\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E Fish",
     modelSaved: "\u041C\u043E\u0434\u0435\u043B\u044C \u0440\u0435\u0447\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430",
+    readingSpeed: "\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0447\u0442\u0435\u043D\u0438\u044F",
+    saveSpeed: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C",
+    resetSpeed: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0447\u0442\u0435\u043D\u0438\u044F",
+    speedSaved: "\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0447\u0442\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430",
     namesSection: "\u0418\u043C\u0435\u043D\u0430 \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
     namesHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u043C\u044F \u0432\u0435\u0437\u0434\u0435, \u0433\u0434\u0435 \u0432\u0432\u043E\u0434\u0438\u0442\u0435 ID \u0433\u043E\u043B\u043E\u0441\u0430, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 /fish use narrator.",
     noNames: "\u0418\u043C\u0451\u043D \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
@@ -2641,6 +2722,10 @@ var fr = {
     modelHint: "Utilis\xE9 pour les r\xE9ponses vocales de cet agent.",
     defaultModel: "Par d\xE9faut de Fish",
     modelSaved: "Mod\xE8le vocal enregistr\xE9",
+    readingSpeed: "Vitesse de lecture",
+    saveSpeed: "Enregistrer la vitesse",
+    resetSpeed: "R\xE9initialiser la vitesse de lecture",
+    speedSaved: "Vitesse de lecture enregistr\xE9e",
     namesSection: "Noms de voix",
     namesHint: "Utilisez un nom partout o\xF9 vous saisiriez un identifiant de voix, par exemple /fish use narrator.",
     noNames: "Aucun nom pour le moment",
@@ -2837,6 +2922,10 @@ var de = {
     modelHint: "Wird f\xFCr die Sprachantworten dieses Agenten verwendet.",
     defaultModel: "Fish-Standard",
     modelSaved: "Sprachmodell gespeichert",
+    readingSpeed: "Lesegeschwindigkeit",
+    saveSpeed: "Geschwindigkeit speichern",
+    resetSpeed: "Lesegeschwindigkeit zur\xFCcksetzen",
+    speedSaved: "Lesegeschwindigkeit gespeichert",
     namesSection: "Stimmennamen",
     namesHint: "Verwenden Sie einen Namen \xFCberall dort, wo Sie eine Stimmen-ID eingeben w\xFCrden, zum Beispiel /fish use narrator.",
     noNames: "Noch keine Namen",
@@ -3033,6 +3122,10 @@ var es = {
     modelHint: "Se usa para las respuestas de voz de este agente.",
     defaultModel: "Predeterminado de Fish",
     modelSaved: "Modelo de voz guardado",
+    readingSpeed: "Velocidad de lectura",
+    saveSpeed: "Guardar velocidad",
+    resetSpeed: "Restablecer velocidad de lectura",
+    speedSaved: "Velocidad de lectura guardada",
     namesSection: "Nombres de voces",
     namesHint: "Usa un nombre en cualquier lugar donde escribir\xEDas un ID de voz, por ejemplo /fish use narrator.",
     noNames: "A\xFAn no hay nombres",

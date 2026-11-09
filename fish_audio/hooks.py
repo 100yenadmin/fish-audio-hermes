@@ -88,6 +88,14 @@ def _approval_string(value):
 
 def on_pre_tool_call(tool_name="", args=None, **kwargs):
     try:
+        if tool_name == "fish_pronunciations" and args.get("action") in {"delete", "delete_version"}:
+            dictionary = _approval_string(args.get("dictionary_id", ""))
+            version = _approval_string(args.get("version_id", "")) if args["action"] == "delete_version" else None
+            target = f"dictionary {json.dumps(dictionary)}"
+            if version is not None:
+                target += f" version {json.dumps(version)}"
+            return {"action": "approve", "message": f"Fish Audio: delete pronunciation {target}",
+                    "rule_key": f"fish-audio:pronunciations:delete:{dictionary}" + (f":{version}" if version is not None else "")}
         if tool_name != "fish_voices":
             return None
         if args.get("action") == "clone":

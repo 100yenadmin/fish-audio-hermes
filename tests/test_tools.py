@@ -341,7 +341,7 @@ def test_tool_registration_account_descriptions(monkeypatch, fake_ctx, operator)
     tools.register(fake_ctx)
     for name, tool in fake_ctx.tools.items():
         assert tool["schema"]["description"] == tool["description"]
-        paid = name not in {"fish_settings", "fish_account"}
+        paid = name not in {"fish_settings", "fish_account", "fish_pronunciations"}
         assert (tools.BILLING in tool["description"]) is (not operator and paid)
     monkeypatch.setattr(settings, "operator_account", lambda: not operator)
     assert (tools.BILLING in fake_ctx.tools["fish_speak"]["description"]) is (not operator)

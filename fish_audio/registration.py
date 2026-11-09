@@ -26,7 +26,7 @@ def register_all(ctx) -> None:
     from . import commands, cli
     if hasattr(ctx, "register_command"):
         ctx.register_command("fish", handler=commands.handle, description="Fish Audio voices and account",
-                             args_hint="[status|voices|use|alias|model|preview|balance|help]")
+                             args_hint="[setup|status|voices|use|alias|model|preview|balance|help]")
     if hasattr(ctx, "register_cli_command"):
         ctx.register_cli_command("fish", help="Fish Audio setup and diagnostics", setup_fn=cli.setup, handler_fn=cli.handle)
     if hasattr(ctx, "register_skill"):

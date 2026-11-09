@@ -193,6 +193,36 @@ def test_status(host, request):
     assert 'key' in text.lower() and any(s in text.lower() for s in ('missing', 'not set', "isn't set up"))
 
 
+@pytest.mark.row('A-CMD-SETUP-1')
+def test_setup_no_key(host, request):
+    host.key('clear')
+    host.restart()
+    text = command(host, 'setup')
+    evidence(request, host, text)
+    assert '✗' in text and 'never paste API keys into chat' in text
+    assert text.splitlines()[-1].startswith('Next: Fish Audio isn\'t set up')
+
+
+@pytest.mark.parametrize('provider', [pytest.param('edge', marks=pytest.mark.row('A-CMD-SETUP-2')),
+                                    pytest.param('fish-audio', marks=pytest.mark.row('A-CMD-SETUP-3'))])
+def test_setup_provider(real, provider, request):
+    before = config(real)
+    try:
+        changed = copy.deepcopy(before)
+        changed.setdefault('tts', {})['provider'] = provider
+        set_config(real, changed)  # Only the throwaway acceptance home.
+        real.restart()
+        text = command(real, 'setup')
+        evidence(request, real, text)
+        if provider == 'edge':
+            assert 'currently speaks with edge' in text and 'hermes config set tts.provider fish-audio' in text
+        else:
+            assert text.splitlines()[-1] == 'Ready. Hear your voice: `/fish preview`'
+    finally:
+        set_config(real, before)
+        real.restart()
+
+
 @pytest.mark.parametrize('synth', [pytest.param(False, marks=pytest.mark.row('A-CLI-2')),
                                         pytest.param(True, marks=pytest.mark.row('A-CLI-3'))])
 def test_doctor(paid, synth, request):
@@ -330,6 +360,29 @@ def test_settings_tool(real, voice, request):
         set_config(real, before)
 
 
+@pytest.mark.row('A-READING-SPEED')
+def test_reading_speed(real, request):
+    before = config(real)
+    route = '/api/plugins/fish-audio/settings'
+    def tool(args):
+        return core(real, 'import json; from tools.registry import registry; '
+                    f'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_settings", {args!r}))')
+    try:
+        saved = real.request(route, {'speed': 1.35})
+        assert saved['ok'] and saved['speed'] == 1.35
+        assert config(real)['tts']['fish-audio']['speed'] == 1.35
+        assert tool({'action': 'get'})['speed'] == 1.35
+        changed = tool({'action': 'set_speed', 'speed': 0.75})
+        assert changed['success'] and real.request(route)['speed'] == 0.75
+        reset = tool({'action': 'set_speed', 'speed': None})
+        assert reset['success'] and reset['speed'] == 1.0
+        assert 'speed' not in config(real)['tts']['fish-audio']
+        assert real.request(route, {'speed': None})['speed'] == 1.0
+        evidence(request, real, {'saved': saved, 'changed': changed, 'reset': reset})
+    finally:
+        set_config(real, before)
+
+
 @pytest.mark.row('A-TOOL-ACCOUNT')
 def test_account_tool(real, request):
     # Other free rows already read the wallet. Only this balance call may use the network here.
@@ -346,6 +399,40 @@ def test_account_tool(real, request):
     assert all(r.get('success') is True for r in result.values()), scrub(result)
     assert result['models']['models'] and result['estimate']['billable_bytes'] == 9
     assert result['estimate']['usd_estimate'] == pytest.approx(9 * 15 / 1_000_000)
+
+
+@pytest.mark.row('A-TOOL-PRON')
+def test_pronunciations_tool(real, request):
+    # Live dictionary management is free; capture the provider payload without synthesizing audio.
+    before = config(real)
+    code = '\n    '.join([
+        'import json, sys; from tools.registry import registry; from agent.tts_registry import get_provider',
+        'def pron(**args):',
+        '    result = json.loads(registry.dispatch("fish_pronunciations", args))',
+        '    assert result.get("success"), result',
+        '    return result',
+        'created = pron(action="create", name="Acceptance pronunciation check")',
+        'try:',
+        '    rules = [{"key": "ES", "value": "Electric Sheep", "type": "alias"}]',
+        '    published = pron(action="publish", dictionary_id=created["id"], rules=rules)',
+        '    refs = [{"id": created["id"], "version": published["id"]}]',
+        '    used = pron(action="use", refs=refs)',
+        '    fetched = pron(action="get_version", dictionary_id=created["id"], version_id=published["id"])',
+        '    assert all(fetched["items"][0][k] == v for k, v in rules[0].items())',
+        '    clients = [m for n, m in list(sys.modules.items()) if n.endswith(".client") and hasattr(m, "_tts_body")]',
+        '    assert clients; sent = []',
+        '    for m in clients: m.tts_to_file = lambda params, *a, **kw: sent.append(params.copy())',
+        '    get_provider("fish-audio").synthesize("ES", "acceptance-pronunciation.mp3", model="s2.1-pro")',
+        '    assert sent and all(p["pronunciation_dictionary"] == refs for p in sent)',
+        'finally:',
+        '    deleted = pron(action="delete", dictionary_id=created["id"])',
+        'print("ACCEPTANCE_RESULT=" + json.dumps({"used": used, "fetched": fetched, "payload_refs": sent[0]["pronunciation_dictionary"], "deleted": deleted}))'])
+    try:
+        result = core(real, code)
+        evidence(request, real, result)
+        assert result['used']['refs'] == result['payload_refs'] and result['deleted']['deleted']
+    finally:
+        set_config(real, before)
 
 
 @pytest.mark.parametrize('n,tool', [pytest.param(i, tool, marks=pytest.mark.row(f'A-TOOL-{i}'))

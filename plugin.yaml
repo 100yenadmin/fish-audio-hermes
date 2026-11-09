@@ -1,5 +1,5 @@
 name: fish-audio
-version: 1.11.0
+version: 1.12.0
 description: "Fish Audio voices for Hermes: expressive text-to-speech, speech-to-text, a searchable voice library, voice cloning and voice design, in the CLI, every messaging gateway and the Desktop app. Most calls are paid Fish Audio API requests billed to your Fish account; the Disclosure section of the README lists what is billed, sent and stored."
 author: Electric Sheep
 kind: standalone
@@ -53,5 +53,5 @@ config_schema:
     default: false
     label: "Operator-managed account"
     description: "Turn on when the Fish account belongs to this agent's operator. Hides the balance, plan, billing links and the account's own voices from the agent's users, and sends key or credit problems to the operator. Restart the gateway to update tool descriptions."
-provides_tools: [fish_speak, fish_voices, fish_transcribe, fish_settings, fish_account]
+provides_tools: [fish_speak, fish_voices, fish_transcribe, fish_settings, fish_account, fish_pronunciations]
 provides_hooks: [transform_llm_output, pre_tool_call]

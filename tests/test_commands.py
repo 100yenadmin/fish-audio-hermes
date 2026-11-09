@@ -54,7 +54,7 @@ def test_no_key_any_non_help_command(config, monkeypatch, raw):
 
 def test_help_and_key_shaped_arguments_never_echo(config, monkeypatch):
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")
-    assert "preview" in commands.handle("help")
+    assert "preview" in commands.handle("help") and "setup" in commands.handle("help")
     token = "sk-" + "x" * 48
     for prefix in ("use ", "voices ", "help ", "preview " + VOICE + " "):
         result = commands.handle(prefix + token)
@@ -317,7 +317,7 @@ def test_voices_top_five_and_status_balance(config):
         assert route.calls.last.request.url.params["page_size"] == "5"
         wallet_routes(mock)
         status = commands.handle("status")
-        assert len(status.splitlines()) <= 12 and "Key set: yes" in status and "paid account" in status
+        assert len(status.splitlines()) <= 13 and "Key set: yes" in status and "paid account" in status
         assert "API credit: 2.5" in status and "Plan: plus" in status and "test-key" not in status
         balance = commands.handle("balance")
         assert "20/30" in balance and "date" in balance and "separate from API credits" in balance

@@ -9,6 +9,12 @@ required_environment_variables:
 
 Set up Fish Audio for the active Hermes profile.
 
+## From chat
+
+Run `/fish setup` (or call `fish_settings` with `action: "get"` and read `setup`), do the next step it names,
+and repeat until Ready (`setup_ready: true`). Then play one short billed sample with `/fish preview`, or speak
+one short sentence with `text_to_speech`. Follow the operator rules below throughout.
+
 Operator-managed agents: when `/fish balance`, `/fish status` or a Fish result says the operator manages this
 agent's voice account or setup, the operator owns the key and billing. Then only steps 3 and 4 below apply. Skip
 every other step, link and troubleshooting note in this skill: never send the user to Fish's key, billing or plan

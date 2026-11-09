@@ -151,6 +151,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
   const [busy, setBusy] = useState<null | string>(null)
   const [name, setName] = useState('')
   const [voice, setVoice] = useState<null | string>(null)  // null: follow the current voice
+  const [speed, setSpeed] = useState(1.0)
   const [badName, setBadName] = useState(false)
   const generation = useRef(0)
   useValue($favouritesRevision)
@@ -160,7 +161,11 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
     const mine = ++generation.current
     setError(null)
     readFor<SettingsResponse>(pin, '/settings').then(
-      res => mine === generation.current && setState(res),
+      res => {
+        if (mine !== generation.current) return
+        setState(res)
+        setSpeed(res.speed ?? 1.0)
+      },
       failure => mine === generation.current && setError(failure)
     )
   }
@@ -221,6 +226,11 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
     })
   }
   const aliasVoice = voice ?? current ?? ''
+  const saveSpeed = (value: null | number) => void write('speed', () => postSettings({ speed: value }), res => {
+    setState(res)
+    setSpeed(res.speed)
+    saved(pluginCtx().i18n.t('settings.speedSaved'))
+  })
   const add = () => {
     if (badAliasName(name)) return setBadName(true)
     const typed = name.trim()
@@ -293,6 +303,24 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
           title={t('settings.model')}
         />
       </Section>
+      {typeof state.speed === 'number' && <Section title={t('settings.readingSpeed')}>
+        <ListRow
+          action={
+            <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <input aria-label={t('settings.readingSpeed')} type="range" min={0.5} max={2.0} step={0.05}
+                disabled={managed('speed') || locked} value={speed}
+                onChange={e => setSpeed(Number(e.target.value))} />
+              <output>{speed.toFixed(2)}×</output>
+              <Button disabled={managed('speed') || locked || speed === state.speed}
+                onClick={() => saveSpeed(speed)} size="xs" variant="secondary">{t('settings.saveSpeed')}</Button>
+              <Button aria-label={t('settings.resetSpeed')} disabled={managed('speed') || locked}
+                onClick={() => saveSpeed(null)} size="xs" variant="ghost">{t('settings.reset')}</Button>
+            </div>
+          }
+          below={managedNote('speed')}
+          title={t('settings.readingSpeed')}
+        />
+      </Section>}
       <Section title={t('settings.namesSection')}>
         <p style={{ ...muted, fontSize: 12, lineHeight: 1.5, margin: '4px 0 0' }}>{t('settings.namesHint')}</p>
         {managedNote('aliases')}

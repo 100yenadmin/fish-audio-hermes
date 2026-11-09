@@ -14,7 +14,7 @@ def test_real_registry_tool_and_output_hook(installed_fish_home):
     home, _, _ = installed_fish_home
     from tools.registry import registry
     from hermes_cli.plugins import invoke_hook
-    for name in ("fish_speak", "fish_voices", "fish_transcribe", "fish_settings", "fish_account"):
+    for name in ("fish_speak", "fish_voices", "fish_transcribe", "fish_settings", "fish_account", "fish_pronunciations"):
         entry = registry.get_entry(name)
         assert entry is not None and entry.toolset == "fish_audio"
     with respx.mock(assert_all_called=True) as mock:
@@ -37,3 +37,12 @@ def test_real_clone_delete_gate_fails_closed_without_human(installed_fish_home, 
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     message, modified = _dispatch_pre_tool_call_hooks("fish_voices", {"action": "delete", "voice_id": "x" * 32})
     assert message and "approval" in message.lower() and modified is None
+
+
+def test_real_pronunciation_delete_gates_fail_closed(installed_fish_home, monkeypatch):
+    from hermes_cli.plugins import _dispatch_pre_tool_call_hooks
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    for action in ("delete", "delete_version"):
+        message, modified = _dispatch_pre_tool_call_hooks("fish_pronunciations", {
+            "action": action, "dictionary_id": "dictionary-1", "version_id": "version-0"})
+        assert message and "approval" in message.lower() and modified is None

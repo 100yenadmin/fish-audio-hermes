@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 PLUGIN_NAME = "fish-audio"
-VERSION = "1.11.0"
+VERSION = "1.12.0"
 
 _HOST_SCOPES = False
 
@@ -289,15 +289,17 @@ def get_settings():
     # Report what synthesis uses: the resolvers ignore a malformed voice and an unknown model (Fish default applies),
     # and allow_free_model: false sends s2.1-pro in place of s2.1-pro-free.
     voice, model = nested.get("voice"), nested.get("model")
+    speed = nested.get("speed", 1.0)
     model = _fa("models").canonical_model(model) if isinstance(model, str) else None
     model = model if model in _fa("models").MODEL_IDS else None
     if model == "s2.1-pro-free" and not allow_free:
         model = "s2.1-pro"
     return {"ok": True, "voice": voice if _fa("tool_support").voice_id(voice) else None, "model": model,
+            "speed": max(0.5, min(2.0, speed)) if settings._number(speed) else 1.0,
             "models": [{"id": row["id"], "display": _fa("models").display(row), "deprecated": row.get("deprecated", False)}
                        for row in _fa("models").MODELS if row["id"] != "s2.1-pro-free" or allow_free],
             "aliases": _alias_rows(settings.aliases()),
-            "managed": [leaf for leaf in ("voice", "model", "aliases") if settings.managed_leaf("tts", "fish-audio", leaf)]}
+            "managed": [leaf for leaf in ("voice", "model", "speed", "aliases") if settings.managed_leaf("tts", "fish-audio", leaf)]}
 
 
 @router.post("/settings")
@@ -305,7 +307,10 @@ def get_settings():
 def save_settings(body: dict):
     if isinstance(body.get("model"), str):
         body = {**body, "model": _fa("models").canonical_model(body["model"])}
-    if body.keys() - {"voice", "model"} or body.get("voice") is not None or (
+    speed = body.get("speed")
+    if speed is not None and (not _fa("settings")._number(speed) or not 0.5 <= speed <= 2.0):
+        raise Refusal("invalid", "speed must be between 0.5 and 2.0, or null to reset.")
+    if body.keys() - {"voice", "model", "speed"} or body.get("voice") is not None or (
             body.get("model") is not None and (not isinstance(body["model"], str) or body["model"] not in _fa("models").MODEL_IDS)):
         raise Refusal("invalid", "Set a known model or reset voice/model to null; voices are set through /use.")
     commands = _fa("commands")

@@ -45,7 +45,17 @@ text, ignoring case for ASCII letters only, so choose keys that never occur insi
 For a plain respelling, use `spoken_as`, such as `{"Codex":"code ex"}`. The replacement is read like normal text
 and billed as it; both maps together allow at most 200 entries, with each key in only one map.
 `fish_speak` applies the configured synthesis knobs. Call speed wins over configured speed; call
-pronunciations merge with configured inline entries (call entries win), or replace configured references.
+pronunciations merge with configured inline entries (call entries win).
+For recurring names, brands or acronyms, use `fish_pronunciations`: create a dictionary, publish its COMPLETE
+rule list, then `use` the returned dictionary/version IDs as `refs` (up to three) so ordinary voice replies
+remember them. Management is free; synthesis is still billed. Version IDs are pinned: publishing an update
+does not switch existing references. Use per-call pronunciations/spoken_as for temporary words.
+`fish_speak` accepts `dictionaries: [{"id":"DICTIONARY_ID","version":"VERSION_ID"}]` for one call,
+replacing configured groups; references are verified before speech. Do not pass `dictionaries` together with
+per-call words in one call: publish those words into a version instead. Per-call words alone replace configured
+references for that call (configured inline groups still merge), so the default rules do not apply to that call.
+`fish_pronunciations use` with `refs: []` clears profile defaults. Dictionary/version deletes require Hermes
+approval, and the latest version cannot be deleted. On a publish conflict, fetch the new version, merge and retry.
 Native `.ogg` is the default voice reply; use `format: wav` for a file. Pass `timestamps: true` for word
 timings (`segments`) and subtitle files (`srt_path`, `vtt_path`).
 

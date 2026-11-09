@@ -29,7 +29,7 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
   else and collects no telemetry.
 - **What requests carry.** Your API key; the text you ask it to speak; the audio you ask it to transcribe or clone,
   with the uploaded file names; voice titles, tags, descriptions, cover images and design instructions for
-  voice-library actions;
+  voice-library actions; dictionary names, descriptions, pronunciation rules and dictionary/version IDs;
   and wallet and plan reads for balance and model choice. Headers name the plugin and its version, and pass on an
   OpenTelemetry trace context when one is active.
 - **Billing.** Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish
@@ -39,6 +39,10 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
   in `config.yaml` through the same functions as `/fish`, preserving managed settings and other speech providers.
   `fish_account balance` reads wallet/plan like `/fish balance`; `models` and `estimate` are offline. Both tools
   have no Fish charge. Operator mode hides balance and prices.
+- **Pronunciation tool.** `fish_pronunciations` manages dictionaries on the active key's account at no Fish charge.
+  `use` verifies and writes up to three pinned references to this profile's `tts.fish-audio.pronunciation_dictionary`,
+  through the `/fish` config writer and managed-setting rules. Speech sends those references to Fish. Operator mode
+  permits dictionary management; dictionary/version deletes still require Hermes approval.
 - **Keys.** Hermes stores your key in the active profile's `.env`. The plugin reads it through the profile's secret
   scope, so when one Hermes process serves several profiles each uses its own key; a single-profile install may
   also read `FISH_API_KEY` from the process environment. Keys are never logged or included in error messages, tool
@@ -46,7 +50,8 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
 - **Files.** Files the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be
   regular audio files, and `fish_voices` cover images (`cover_image_path`) regular PNG, JPEG or WebP files. They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
   Audio that Hermes itself hands to the speech-to-text provider (voice notes, dictation) is read as given.
-- **Approvals.** Cloning and deleting voices from chat or the model tools go through Hermes's approval gate and
+- **Approvals.** Cloning and deleting voices, and deleting pronunciation dictionaries or historical versions,
+  from chat or the model tools go through Hermes's approval gate and
   follow your Hermes approval settings. By default Hermes asks you, and refuses when no one is there to answer.
 
 ## Desktop Voices page
