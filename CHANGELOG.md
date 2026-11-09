@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.10.2 — 2026-11-09
+
+- **Install line for agents and scripts:** the README's install commands now include `--yes-deps`. Without it, an
+  install with no terminal (for example an agent installing the plugin for you) left Fish Audio installed but
+  disabled, because Hermes could not ask before installing the plugin's Python dependencies.
+- **README corrections:** streamed sentences are retried when Fish turns them away before any audio (since 1.7.6;
+  the README still said they were never retried), and a key saved in Desktop's Agent settings field works without a
+  restart (since 1.7.5). No behaviour changes in this release.
+
 ## 1.10.1 — 2026-11-09
 
 - **No stray `[[audio_as_voice]]` line in Desktop or the CLI:** after `fish_speak`, Hermes Desktop and the classic CLI

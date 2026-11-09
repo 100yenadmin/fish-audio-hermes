@@ -10,18 +10,19 @@ cloned or designed voices, and accurate speech-to-text. It works in the Hermes C
 supports and the Desktop app.
 
 ```bash
-hermes plugins install fish-audio --enable
+hermes plugins install fish-audio --enable --yes-deps
 hermes fish login        # paste your key from https://fish.audio/app/api-keys
 ```
 
 This installs the reviewed release pinned in the Hermes plugin catalog. To follow the repository's latest `main` instead:
 
 ```bash
-hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable
+hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable --yes-deps
 ```
 
-On Hermes 0.21.6 and newer, Hermes asks before installing the plugin's Python dependencies; in a script, add
-`--yes-deps`. Hermes 0.21.5 installs them without asking and has no `--yes-deps` flag. On either version,
+`--yes-deps` installs the plugin's Python dependencies without asking. Without it, Hermes 0.21.6 and newer asks
+first, and an install with no terminal (a script, or an agent installing the plugin for you) leaves Fish Audio
+installed but disabled. Hermes 0.21.5 installs them without asking and has no `--yes-deps` flag, so leave it out there. On either version,
 `hermes plugins enable fish-audio` afterwards also installs them.
 
 `hermes fish login` checks the key against your Fish account and saves it to the active profile. It makes Fish
@@ -52,8 +53,9 @@ read-aloud and voice notes go through it.
    `hermes tools` ▸ Text-to-Speech ▸ Fish Audio. `login` checks the key against your Fish wallet and saves it to the
    active profile. It makes Fish Audio the speech and transcription provider where none is set; it replaces another
    provider only if you confirm at the prompt or pass `--yes`. `--key-stdin` reads the key from standard input.
-3. **Check it** with `hermes fish doctor`, which makes one short billed synthesis (`--no-synth` skips it). Restart a
-   running gateway or the Desktop app to pick up a new key.
+3. **Check it** with `hermes fish doctor`, which makes one short billed synthesis (`--no-synth` skips it). A key saved in Desktop's
+   Agent settings field works right away; after `hermes fish login` or `hermes tools`, restart a running gateway or the
+   Desktop app to pick up the new key.
 
 Never paste API keys into a chat. `/fish` refuses them and tells you to rotate the key.
 
@@ -199,7 +201,7 @@ the plugin streams 24 kHz PCM from `POST /v1/tts` to CLI and TUI voice playback,
 streaming. Hermes 0.21.5 uses whole-file synthesis instead: sentence by sentence in CLI voice mode, and the whole reply
 in Desktop read-aloud and gateway voice. That includes the Desktop app and Termux builds still on 0.21.5. They stream
 once they update; the plugin needs no change.
-Each streamed sentence is one billed request and is not retried. Measured first audio bytes: Fish HTTP API p50 243 ms (3 samples, 238–356
+Each streamed sentence is one billed request. A sentence Fish turns away before sending any audio (busy, or a temporary 500/503) is retried, up to three attempts in all; once audio has started it is never retried, so nothing is spoken or billed twice. Measured first audio bytes: Fish HTTP API p50 243 ms (3 samples, 238–356
 ms), CLI voice mode 373–381 ms, Desktop speak-stream handler 310 ms (in-process, not through the Electron UI);
 these exclude the model's own reply time. Set `streaming: "off"` for whole-file speech; `transport: ws` switches to Fish's live
 WebSocket for diagnosis.
