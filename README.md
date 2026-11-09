@@ -24,6 +24,10 @@ tested release):
 hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable --yes-deps
 ```
 
+If you already installed it by catalog name and `hermes plugins list` shows an older version, remove it first
+(`hermes plugins remove fish-audio`), then run the line above. Installing over it is refused, and `hermes plugins
+update` stays on the catalog's pin.
+
 `--yes-deps` installs the plugin's Python dependencies without asking. Without it, Hermes 0.21.6 and newer asks
 first, and an install with no terminal (a script, or an agent installing the plugin for you) leaves Fish Audio
 installed but disabled. Hermes 0.21.5 installs them without asking and has no `--yes-deps` flag, so leave it out there. On either version,

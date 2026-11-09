@@ -2,8 +2,18 @@
 
 ## Unreleased
 
-- Agents can check and set their Fish voice, model and saved voice names with `fish_settings`, using the same rules as `/fish`.
-- `fish_account` reads balance/plan, lists dated model prices and estimates speech or transcription cost without spending credit; operator billing stays private.
+## 1.11.0 — 2026-11-09
+
+- **The agent runs its own voice:** with the new `fish_settings` tool the agent can see and set its own Fish voice,
+  model and saved voice names, using the same rules as `/fish` (managed settings, operator mode, and never replacing
+  a speech provider that is already set). It also reports which speech provider users actually hear, so "saved for
+  Fish, but this agent speaks with another provider" is visible (#87).
+- **Balance, prices and cost estimates for the agent:** the new `fish_account` tool reads the balance and plan (as
+  `/fish balance` does), lists Fish's models with dated prices and retirement dates, and estimates the cost of speech
+  (UTF-8 bytes) or transcription (audio hours) without spending credit. Drama 3's launch price ends on 1 December
+  and the estimate follows that date. With an operator-managed account, no amounts or prices are shown (#88).
+- **Replacing a catalog install:** the README says how to move from an older catalog install to the repository line
+  on Hermes 0.23.0: `hermes plugins remove fish-audio` first.
 - **Maintenance:** the parity ledger names the real surface of every implemented row (it still said "Not exposed in M1" on twelve), and the weekly benchmark prices Drama 3 at Fish's $50 list price, so its cost cap stays safe after the launch price ends on 1 December (#89).
 
 ## 1.10.2 — 2026-11-09
