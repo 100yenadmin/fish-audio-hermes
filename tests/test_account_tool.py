@@ -105,3 +105,17 @@ def test_units_and_asr_estimates(config):
     {"audio_seconds": 2, "asr_model": "bad"}, {"bytes": 3, "model": "bad"}])
 def test_invalid_estimates(config, args):
     assert call("estimate", **args)["success"] is False
+
+
+@pytest.mark.parametrize("when, usd", [(datetime(2026, 11, 30, 23, 59, tzinfo=timezone.utc), 0),
+                                       (datetime(2026, 12, 1, 0, 0, tzinfo=timezone.utc), 15)])
+def test_free_model_price_after_announced_end(config, when, usd):
+    row = next(r for r in models.pricing(when) if r["id"] == "s2.1-pro-free")
+    assert row["price"]["usd"] == usd
+    assert ("has passed" in row["notes"]) == (usd == 15)
+
+
+def test_provider_model_list_stays_price_free(config):
+    from fish_audio.tts import FishAudioTTSProvider
+    rows = FishAudioTTSProvider().list_models()
+    assert rows and all(not ({"usd", "unit", "kind", "use"} & set(r)) for r in rows)

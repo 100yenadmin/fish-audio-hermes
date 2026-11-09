@@ -16,6 +16,7 @@ MODEL_CATALOG = [
 MODELS = [row for row in MODEL_CATALOG if row["kind"] == "tts"]
 PRICE_AS_OF = "2026-11-09"
 DRAMA3_LAUNCH_ENDS = datetime(2026, 12, 1, 8, 0, tzinfo=timezone.utc)
+FREE_PERIOD_ENDS = datetime(2026, 12, 1, 0, 0, tzinfo=timezone.utc)
 PRICE_SOURCE = "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits"
 MODEL_ALIASES = {"drama-3-preview": "drama-3"}
 
@@ -85,6 +86,9 @@ def pricing(now=None, *, include_prices=True):
             "Launch period ends 2026-12-01T08:00:00Z." if ident == "drama-3" else notes)
         if include_prices:
             usd = 10 if ident == "drama-3" and now < DRAMA3_LAUNCH_ENDS else row["usd"]
+            if ident == "s2.1-pro-free" and now >= FREE_PERIOD_ENDS:
+                usd = 15  # Fish may serve and bill these requests as S2.1 Pro after the announced free period.
+                result["notes"] = "Free period announced through 2026-11-30 has passed; Fish may refuse these requests or bill them as S2.1 Pro."
             result.update(price={"usd": usd, "unit": row["unit"]}, price_as_of=PRICE_AS_OF, source=PRICE_SOURCE)
         rows.append(result)
     return rows

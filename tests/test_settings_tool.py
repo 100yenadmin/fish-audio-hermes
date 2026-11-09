@@ -78,6 +78,7 @@ def test_model_policy_matches_command(config):
     with respx.mock:
         result = call("set_model", model="s2.1-pro-free")
         assert result["success"] and result["model"] == "s2.1-pro"
+        assert result["model_message"] == "This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
         assert commands.handle("model s2.1-pro-free") == "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
 
 

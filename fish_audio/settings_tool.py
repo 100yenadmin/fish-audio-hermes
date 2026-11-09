@@ -19,8 +19,8 @@ def current(key, base):
         result.update(model_source="fallback", note="Wallet default is not read; showing s2.1-pro.")
     if not fish:
         # use_result/use_message own the provider and operator rules; mirror their facts without switching it.
-        result["note"] = (f"Saved for Fish Audio, but this agent currently speaks with {provider}. "
-                          "If this profile has no speech provider of its own, `use` makes Fish Audio its provider; "
+        result["note"] = ((result.get("note", "") + " ") if result.get("note") else "") + (f"Saved for Fish Audio, but this agent currently speaks with {provider}. "
+                          "If this profile has no speech provider of its own and no operator setting pins one, `use` makes Fish Audio its provider; "
                           "otherwise a person switches it in Settings ▸ Voice or with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio.")
         if commands._managed_provider() and operator:
             result["note"] += " " + commands.use_message(provider, True).removeprefix("Saved. ")
@@ -29,6 +29,7 @@ def current(key, base):
 
 def execute(args, key, base, session):
     action = args.get("action")
+    message = None
     require(action in {"get", "use", "set_model", "add_name", "remove_name"}, "Unknown fish_settings action.")
     if action == "use":
         voice = args.get("voice")
@@ -36,12 +37,14 @@ def execute(args, key, base, session):
         commands.use_result(commands.resolve_title(voice.strip(), key, base), key, base)
     elif action == "set_model":
         require(args.get("model") in models.MODEL_IDS, "Choose a supported Fish model.")
-        commands.set_model(args["model"], key, base)
+        message = commands.set_model(args["model"], key, base)["message"]
     elif action == "add_name":
         commands.alias_add(args.get("name"), args.get("voice"), key, base)
     elif action == "remove_name":
         commands.alias_remove(args.get("name"))
     result = current(key, base)
+    if action == "set_model" and message != "Saved.":
+        result["model_message"] = message.removeprefix("Saved.").strip() or message
     if action != "get":
         result["changed"] = True
     return result
