@@ -35,6 +35,10 @@ Issues in Fish Audio's API or services belong with Fish Audio; issues in Hermes 
 - **Billing.** Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish
   account, except requests on `s2.1-pro-free` while Fish offers it free (announced through 30 November 2026). Fish
   Audio may use free-model requests to improve its models.
+- **Settings and account tools.** `fish_settings` writes the active profile's Fish voice, model and saved names
+  in `config.yaml` through the same functions as `/fish`, preserving managed settings and other speech providers.
+  `fish_account balance` reads wallet/plan like `/fish balance`; `models` and `estimate` are offline. Both tools
+  have no Fish charge. Operator mode hides balance and prices.
 - **Keys.** Hermes stores your key in the active profile's `.env`. The plugin reads it through the profile's secret
   scope, so when one Hermes process serves several profiles each uses its own key; a single-profile install may
   also read `FISH_API_KEY` from the process environment. Keys are never logged or included in error messages, tool

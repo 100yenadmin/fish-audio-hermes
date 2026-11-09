@@ -30,7 +30,7 @@ Otherwise, follow the whole skill.
 4. Use `/fish model s2.1-pro` for paid synthesis. `/fish model s2.1-pro-free` picks Fish's free model, free through
    30 November 2026; after that the plugin warns on it, so choose s2.1-pro.
    Managed profiles with `allow_free_model: false` substitute the paid model even for explicit free selection.
-5. Check `/fish status`, `hermes fish status`, and `hermes fish doctor --no-synth`.
+5. Call `fish_settings` with `action: "get"` to check the voice, model, saved names and effective speech provider. Check `/fish status`, `hermes fish status`, and `hermes fish doctor --no-synth`.
    A doctor synthesis check is billed; the audio is temporary and deleted afterward.
 
 Model defaults use the active account's API wallet: paid credit, a top-up history, or free API credit selects

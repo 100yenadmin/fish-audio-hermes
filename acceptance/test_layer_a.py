@@ -309,6 +309,45 @@ def test_core_stt(paid, request):
     evidence(request, paid, result, {'wer': wer(result['transcript'])})
 
 
+@pytest.mark.row('A-TOOL-SETTINGS')
+def test_settings_tool(real, voice, request):
+    before = config(real)
+    name = 'acceptance_voice'
+    assert name not in before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
+    actions = [{'action': 'get'}, {'action': 'use', 'voice': voice},
+               {'action': 'add_name', 'name': name, 'voice': voice},
+               {'action': 'use', 'voice': name}, {'action': 'remove_name', 'name': name}, {'action': 'get'}]
+    try:
+        result = core(real, 'import json; from tools.registry import registry; '
+                      f'actions = {actions!r}; '
+                      'print("ACCEPTANCE_RESULT=" + json.dumps([json.loads(registry.dispatch("fish_settings", a)) for a in actions]))')
+        evidence(request, real, result)
+        assert all(r.get('success') is True for r in result), scrub(result)
+        assert result[1]['voice'] == result[3]['voice'] == result[-1]['voice'] == voice
+        assert result[2]['names'][name] == voice and name not in result[-1]['names']
+        assert result[1]['speech_provider'] == (result[0]['speech_provider'] if before.get('tts', {}).get('provider') else 'fish-audio')
+    finally:
+        set_config(real, before)
+
+
+@pytest.mark.row('A-TOOL-ACCOUNT')
+def test_account_tool(real, request):
+    # Other free rows already read the wallet. Only this balance call may use the network here.
+    code = '\n    '.join([
+        'import json, httpx; from tools.registry import registry',
+        'balance = json.loads(registry.dispatch("fish_account", {"action": "balance"}))',
+        'def no_network(*args, **kwargs): raise AssertionError("offline account action opened the network")',
+        'httpx.Client.send = no_network',
+        'models = json.loads(registry.dispatch("fish_account", {"action": "models"}))',
+        'estimate = json.loads(registry.dispatch("fish_account", {"action": "estimate", "text": "日本語", "model": "s2.1-pro"}))',
+        'print("ACCEPTANCE_RESULT=" + json.dumps({"balance": balance, "models": models, "estimate": estimate}))'])
+    result = core(real, code)
+    evidence(request, real, result)
+    assert all(r.get('success') is True for r in result.values()), scrub(result)
+    assert result['models']['models'] and result['estimate']['billable_bytes'] == 9
+    assert result['estimate']['usd_estimate'] == pytest.approx(9 * 15 / 1_000_000)
+
+
 @pytest.mark.parametrize('n,tool', [pytest.param(i, tool, marks=pytest.mark.row(f'A-TOOL-{i}'))
                                   for i, tool in enumerate(('fish_speak', 'fish_voices', 'fish_transcribe'), 1)])
 def test_agent(paid, n, tool, request):

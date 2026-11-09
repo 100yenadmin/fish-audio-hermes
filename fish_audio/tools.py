@@ -1,4 +1,4 @@
-"""Three explicit Fish Audio tools; ordinary read-aloud stays with Hermes TTS."""
+"""Explicit Fish Audio tools; ordinary read-aloud stays with Hermes TTS."""
 from uuid import uuid4
 
 from . import client, hooks, media, models, settings, tags
@@ -114,6 +114,16 @@ def fish_transcribe(args, session_id="", task_id="", tool_call_id=""):
     return run(execute, args, session_id)
 
 
+def fish_settings(args, session_id="", task_id="", tool_call_id=""):
+    from .settings_tool import execute
+    return run(execute, args, session_id)
+
+
+def fish_account(args, session_id="", task_id="", tool_call_id=""):
+    from .account_tool import execute
+    return run(execute, args, session_id)
+
+
 def _field(typ, **constraints):
     return {"type": typ, **constraints}
 
@@ -154,11 +164,22 @@ SCHEMAS = {
         "num_speakers": _field("integer", minimum=1), "min_speakers": _field("integer", minimum=1),
         "max_speakers": _field("integer", minimum=1), "tag_audio_events": _field("boolean", default=True),
         "srt": _field("boolean", default=False)},
+    "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "add_name", "remove_name"]),
+        "voice": _field("string", description="Voice id, saved name or unique own-voice title (use); id or saved name (add_name)."),
+        "model": _field("string", enum=[r["id"] for r in MODELS]), "name": S},
+    "fish_account": {"action": _field("string", enum=["balance", "models", "estimate"]),
+        "text": S, "characters": _field("integer", minimum=0), "bytes": _field("integer", minimum=0),
+        "model": _field("string", enum=[r["id"] for r in MODELS]),
+        "audio_seconds": _field("number", minimum=0),
+        "asr_model": _field("string", enum=["transcribe-1-pro", "transcribe-1"])},
 }
-DESCRIPTIONS = {"fish_speak": SPEAK_DESCRIPTION,
+DESCRIPTIONS = {
+    "fish_settings": "Read or change this profile's Fish voice, model and saved names, using the /fish rules. Free: no Fish charge.",
+    "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
+    "fish_speak": SPEAK_DESCRIPTION,
     "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,
     "fish_transcribe": "Transcribe local audio with speaker turns, emotion cues, timestamps and optional SRT." + BILLING}
-REQUIRED = {"fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
+REQUIRED = {"fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
 
 
 def register(ctx):

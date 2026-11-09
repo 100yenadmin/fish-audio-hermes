@@ -198,6 +198,29 @@ def alias_remove(name):
     return saved
 
 
+def set_model(requested, key, base):
+    rest = models.canonical_model(requested)
+    require(rest in MODEL_IDS, "Unknown Fish model. Choose: " + ", ".join(sorted(MODEL_IDS)))
+    require_unmanaged("model")
+    write_config(lambda cfg: cfg.setdefault("tts", {}).setdefault("fish-audio", {}).__setitem__("model", rest))
+    model, _ = settings.resolve_model(rest, key=key, base_url=base)
+    if rest == "s2.1-pro-free" and model != rest:
+        return {"model": model, "message": "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."}
+    if requested != rest:
+        return {"model": model, "message": "drama-3-preview was Fish's preview id; using drama-3."}
+    if rest == "s1":
+        return {"model": model, "message": "Saved.\n" + models.s1_warning()}
+    warning = models.free_model_warning() if model == "s2.1-pro-free" else None
+    return {"model": model, "message": "Saved." + ("\n" + warning if warning else "")
+            + ("\n" + settings.free_model_notice() if model == "s2.1-pro-free" and not warning and not settings.operator_account() else "")}
+
+
+def balance_result(key, base):
+    wallet, package = account.get_wallet(key, base), account.get_package(key, base) or {}
+    return {"credit": str(wallet.credit) if wallet else "unknown",
+            "cumulative_top_up": str(wallet.cumulative_top_up) if wallet else "unknown", "plan": package}
+
+
 def handle(raw_args=""):
     operator = settings.operator_account()
     try:
@@ -236,20 +259,7 @@ def handle(raw_args=""):
                 return "Removed."
             return HELP
         if command == "model":
-            requested, rest = rest, models.canonical_model(rest)
-            require(rest in MODEL_IDS, "Unknown Fish model. Choose: " + ", ".join(sorted(MODEL_IDS)))
-            require_unmanaged("model")
-            write_config(lambda cfg: cfg.setdefault("tts", {}).setdefault("fish-audio", {}).__setitem__("model", rest))
-            model, _ = settings.resolve_model(rest, key=key, base_url=base)
-            if rest == "s2.1-pro-free" and model != rest:
-                return "Saved. This profile's policy uses paid s2.1-pro instead of s2.1-pro-free."
-            if requested != rest:
-                return "drama-3-preview was Fish's preview id; using drama-3."
-            if rest == "s1":
-                return "Saved.\n" + models.s1_warning()
-            warning = models.free_model_warning() if model == "s2.1-pro-free" else None
-            return ("Saved." + ("\n" + warning if warning else "")
-                    + ("\n" + settings.free_model_notice() if model == "s2.1-pro-free" and not warning and not settings.operator_account() else ""))
+            return set_model(rest, key, base)["message"]
         if command == "preview":
             ident, _, text = rest.partition(" ")
             ident = resolve_title(ident, key, base)
@@ -258,8 +268,9 @@ def handle(raw_args=""):
             result = tools._speak({"text": text, "voice": ident}, key, base, "", record_media=False)
             return result["media_tag"]
         if command == "balance":
-            wallet, package = account.get_wallet(key, base), account.get_package(key, base) or {}
-            return (f"API credit: {wallet.credit if wallet else 'unknown'}; cumulative top-up: {wallet.cumulative_top_up if wallet else 'unknown'}\n"
+            result = balance_result(key, base)
+            package = result["plan"]
+            return (f"API credit: {result['credit']}; cumulative top-up: {result['cumulative_top_up']}\n"
                     f"Plan: {package.get('type', 'unknown')}; {package.get('balance', '?')}/{package.get('total', '?')}; renewal: {package.get('finished_at', '?')}\n"
                     "App plan credits are separate from API credits.\nhttps://fish.audio/app/developers/billing\nhttps://fish.audio/plan")
         return HELP

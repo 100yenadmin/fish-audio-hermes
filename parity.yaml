@@ -20,7 +20,7 @@ entries:
   method: get
   location: response
   field: type
-  surface: account /fish balance type; Desktop Voices Account
+  surface: account /fish balance type; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -37,7 +37,7 @@ entries:
   method: get
   location: response
   field: total
-  surface: account /fish balance total; Desktop Voices Account
+  surface: account /fish balance total; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -54,7 +54,7 @@ entries:
   method: get
   location: response
   field: balance
-  surface: account /fish balance balance; Desktop Voices Account
+  surface: account /fish balance balance; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -126,7 +126,7 @@ entries:
   method: get
   location: response
   field: finished_at
-  surface: account /fish balance finished_at; Desktop Voices Account
+  surface: account /fish balance finished_at; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -521,7 +521,7 @@ entries:
   method: get
   location: response
   field: credit
-  surface: account /fish balance credit; Desktop Voices Account
+  surface: account /fish balance credit; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
@@ -540,7 +540,7 @@ entries:
   method: get
   location: response
   field: cumulative_top_up
-  surface: account /fish balance cumulative_top_up; Desktop Voices Account
+  surface: account /fish balance cumulative_top_up; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
@@ -610,7 +610,7 @@ entries:
   method: get
   location: response
   field: has_free_credit
-  surface: account /fish balance has_free_credit; Desktop Voices Account
+  surface: account /fish balance has_free_credit; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
@@ -972,7 +972,7 @@ entries:
   method: post
   location: header
   field: model
-  surface: TTS model header
+  surface: TTS model header; fish_settings model; fish_account models/estimate
   status: verified
   tests:
   - tests/test_client.py::test_json_headers_ua_and_output

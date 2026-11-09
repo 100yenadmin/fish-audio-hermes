@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Agents can check and set their Fish voice, model and saved voice names with `fish_settings`, using the same rules as `/fish`.
+- `fish_account` reads balance/plan, lists dated model prices and estimates speech or transcription cost without spending credit; operator billing stays private.
+
 ## 1.10.2 — 2026-11-09
 
 - **Install line for agents and scripts:** the README's install commands now include `--yes-deps`. Without it, an

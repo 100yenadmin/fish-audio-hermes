@@ -14,7 +14,7 @@ def test_real_registry_tool_and_output_hook(installed_fish_home):
     home, _, _ = installed_fish_home
     from tools.registry import registry
     from hermes_cli.plugins import invoke_hook
-    for name in ("fish_speak", "fish_voices", "fish_transcribe"):
+    for name in ("fish_speak", "fish_voices", "fish_transcribe", "fish_settings", "fish_account"):
         entry = registry.get_entry(name)
         assert entry is not None and entry.toolset == "fish_audio"
     with respx.mock(assert_all_called=True) as mock:

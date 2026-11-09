@@ -53,5 +53,5 @@ config_schema:
     default: false
     label: "Operator-managed account"
     description: "Turn on when the Fish account belongs to this agent's operator. Hides the balance, plan, billing links and the account's own voices from the agent's users, and sends key or credit problems to the operator. Restart the gateway to update tool descriptions."
-provides_tools: [fish_speak, fish_voices, fish_transcribe]
+provides_tools: [fish_speak, fish_voices, fish_transcribe, fish_settings, fish_account]
 provides_hooks: [transform_llm_output, pre_tool_call]
