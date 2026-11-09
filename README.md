@@ -24,6 +24,10 @@ tested release):
 hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable --yes-deps
 ```
 
+If you already installed it by catalog name and `hermes plugins list` shows an older version, remove it first
+(`hermes plugins remove fish-audio`), then run the line above. Installing over it is refused, and `hermes plugins
+update` stays on the catalog's pin.
+
 `--yes-deps` installs the plugin's Python dependencies without asking. Without it, Hermes 0.21.6 and newer asks
 first, and an install with no terminal (a script, or an agent installing the plugin for you) leaves Fish Audio
 installed but disabled. Hermes 0.21.5 installs them without asking and has no `--yes-deps` flag, so leave it out there. On either version,
@@ -90,13 +94,15 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `hermes fish status` · `hermes fish use <voice-id, name or own title>` | Status and voice choice from your terminal |
 | `hermes fish doctor [--no-synth]` | Check the setup with one billed synthesis, or without it |
 
-**Model tools** (toolset `fish_audio`; calls are billed to your Fish Audio account)
+**Model tools** (toolset `fish_audio`; synthesis, transcription, cloning and design are billed)
 
 | Tool | What it does |
 |---|---|
 | `fish_speak` | Expressive or multi-speaker speech; with `timestamps: true`, word timings plus SRT and WebVTT subtitles |
 | `fish_voices` | Search, list and inspect voices; clone, design, save, update and delete them |
 | `fish_transcribe` | Rich transcription with speakers, timestamps and SRT |
+| `fish_settings` | Check or set this profile's Fish voice, model and saved names; free |
+| `fish_account` | Balance/plan, dated model prices and offline cost estimates; free |
 
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
@@ -268,6 +274,8 @@ the wallet that users can't see.
 
 - Synthesis, transcription, cloning and voice design are paid Fish Audio requests billed to your Fish account (except
   `s2.1-pro-free` while Fish offers it free, announced through 30 November 2026).
+- `fish_account balance` reads the wallet and plan like `/fish balance`; `models` and `estimate` work offline.
+  `fish_settings` and `fish_account` have no Fish charge. Before a long or Drama 3 job, ask for `fish_account estimate`.
 - Fish Audio may use free-model requests to improve its models.
 - With live dictation on (`stt.streaming: true`), microphone audio streams to `api.fish.audio` while you speak,
   through native realtime (Preview), billed $0.36 per hour of open session, per second; `live_transcription: compat`
@@ -279,7 +287,7 @@ the wallet that users can't see.
   `api.fish.audio` (or the `base_url` you configure), reads your wallet for balance and model choice, stores your key
   in Hermes's `.env`, and collects no telemetry. [SECURITY.md](SECURITY.md) lists what each request carries.
 - It writes the profile's Fish voice, model and saved voice names (up to 50) to `config.yaml` when you use
-  `/fish use`, `hermes fish use`, `/fish model`, `/fish alias`, the settings page or the Voices page; choosing a voice
+  `fish_settings`, `/fish use`, `hermes fish use`, `/fish model`, `/fish alias`, the settings page or the Voices page; choosing a voice
   also makes Fish the speech provider when none is set. `hermes fish login` checks a key against your Fish wallet
   before saving it, and sets the speech and transcription providers only when they are unset or you confirm.
 - **Report-a-problem skill:** when you say Fish Audio is broken or ask to report a problem, the agent runs
@@ -324,7 +332,7 @@ Fish's remote HTTP MCP server uses browser sign-in (OAuth, no API key) and is bi
 Which to use:
 
 - Speech replies, voice notes, dictation, the Desktop Voices page and the `fish_speak`, `fish_voices` and
-  `fish_transcribe` tools: this plugin. An MCP server cannot be Hermes's speech provider.
+  `fish_transcribe`, `fish_settings` and `fish_account` tools: this plugin. An MCP server cannot be Hermes's speech provider.
 - Story Studio audiobooks and podcasts, images and video: Fish's MCP server.
 
 In Hermes 0.21.7 or newer, add the MCP server with:

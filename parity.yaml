@@ -20,7 +20,7 @@ entries:
   method: get
   location: response
   field: type
-  surface: account /fish balance type; Desktop Voices Account
+  surface: account /fish balance type; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -37,7 +37,7 @@ entries:
   method: get
   location: response
   field: total
-  surface: account /fish balance total; Desktop Voices Account
+  surface: account /fish balance total; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -54,7 +54,7 @@ entries:
   method: get
   location: response
   field: balance
-  surface: account /fish balance balance; Desktop Voices Account
+  surface: account /fish balance balance; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -126,7 +126,7 @@ entries:
   method: get
   location: response
   field: finished_at
-  surface: account /fish balance finished_at; Desktop Voices Account
+  surface: account /fish balance finished_at; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_package_only_allowed_fields
@@ -473,7 +473,7 @@ entries:
   method: get
   location: query
   field: team_id
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: Excluded; the plugin reads the key's own wallet (team selection is tracked in #101)
   status: excluded
   tests: []
   spec:
@@ -521,7 +521,7 @@ entries:
   method: get
   location: response
   field: credit
-  surface: account /fish balance credit; Desktop Voices Account
+  surface: account /fish balance credit; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
@@ -540,7 +540,7 @@ entries:
   method: get
   location: response
   field: cumulative_top_up
-  surface: account /fish balance cumulative_top_up; Desktop Voices Account
+  surface: account /fish balance cumulative_top_up; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
@@ -610,7 +610,7 @@ entries:
   method: get
   location: response
   field: has_free_credit
-  surface: account /fish balance has_free_credit; Desktop Voices Account
+  surface: account /fish balance has_free_credit; Desktop Voices Account; fish_account balance
   status: verified
   tests:
   - tests/test_account.py::test_wallet_decimals_and_scope[2.630370-10-None]
@@ -866,7 +866,7 @@ entries:
   method: post
   location: response
   field: language
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_transcribe result language
   status: verified
   tests:
   - tests/test_w1.py::test_transcribe_language_passes_string_only[1]
@@ -972,7 +972,7 @@ entries:
   method: post
   location: header
   field: model
-  surface: TTS model header
+  surface: TTS model header; fish_settings model; fish_account models/estimate
   status: verified
   tests:
   - tests/test_client.py::test_json_headers_ua_and_output
@@ -2767,7 +2767,7 @@ entries:
   method: post
   location: json
   field: num_step
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices design num_step
   status: verified
   tests:
   - tests/test_w1.py::test_design_knobs_sent_and_schema
@@ -2779,7 +2779,7 @@ entries:
   method: post
   location: json
   field: guidance_scale
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices design guidance_scale
   status: verified
   tests:
   - tests/test_w1.py::test_design_knobs_sent_and_schema
@@ -2791,7 +2791,7 @@ entries:
   method: post
   location: json
   field: instruct_guidance_scale
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices design instruct_guidance_scale
   status: verified
   tests:
   - tests/test_w1.py::test_design_knobs_sent_and_schema
@@ -3008,7 +3008,7 @@ entries:
   method: get
   location: query
   field: author_id
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices search author_id
   status: verified
   tests:
   - tests/test_w1.py::test_search_filters_sent[codes1]
@@ -3039,7 +3039,7 @@ entries:
   method: get
   location: query
   field: title_language
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices search title_language
   status: verified
   tests:
   - tests/test_w1.py::test_search_filters_sent[codes1]
@@ -3055,7 +3055,7 @@ entries:
   method: get
   location: query
   field: licensed
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices search licensed
   status: verified
   tests:
   - tests/test_w1.py::test_search_filters_sent[codes1]
@@ -3447,7 +3447,7 @@ entries:
   method: post
   location: form
   field: cover_image
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices clone cover_image_path
   status: verified
   tests:
   - tests/test_w1.py::test_cover_visibility_and_generate_sample_sent[jpeg-\xff\xd8\xffsynthetic-clone]
@@ -3553,7 +3553,7 @@ entries:
   method: post
   location: form
   field: generate_sample
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices clone generate_sample
   status: verified
   tests:
   - tests/test_w1.py::test_clone_generate_sample_boolean[False]
@@ -5223,7 +5223,7 @@ entries:
   method: patch
   location: form
   field: cover_image
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices update cover_image_path
   status: verified
   tests:
   - tests/test_w1.py::test_cover_visibility_and_generate_sample_sent[jpeg-\xff\xd8\xffsynthetic-clone]
@@ -5242,7 +5242,7 @@ entries:
   method: patch
   location: form
   field: visibility
-  surface: Not exposed in M1; deferred beyond this stage
+  surface: fish_voices update visibility (private or unlist)
   status: verified
   tests:
   - tests/test_w1.py::test_update_visibility_without_cover_is_form_and_gate_unchanged

@@ -36,7 +36,9 @@ Persona-voice recipe:
    Do not send the whole persona or unrelated private context to Fish.
 3. `design` with `n: 3` and a short representative reference text.
 4. Play all candidates by including their `media_tag` values. Let the user choose.
-5. Save the chosen `design_token` with a descriptive title, then `/fish use <saved id>` (the dependable form). A unique title of your own voice also works: `/fish use Eva`.
+5. Save the chosen `design_token` with a descriptive title, then call `fish_settings` with `action: "use"` and `voice: "<saved id>"` to make it this agent's voice. A saved name or unique title of your own voice also works. A person can use `/fish use <saved id>` or `/fish use Eva`.
+
+Before a long or Drama 3 speech job, call `fish_account` with `action: "estimate"`, the text and the intended model.
 
 Skip the next two steps when the operator manages the account. For metadata changes, ask the user to approve
 the update, then call `update` with the id and changed

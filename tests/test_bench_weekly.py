@@ -152,7 +152,7 @@ def test_per_model_cost_and_usd_cap_are_atomic():
     ledger.tts("é", "drama-3")
     ledger.tts("é", "s2.1-pro-free")
     ledger.asr(.1)
-    assert ledger.usd == pytest.approx(4 * 15 / 1e6 + .36 / 3600)
+    assert ledger.usd == pytest.approx((2 * 15 + 2 * 50) / 1e6 + .36 / 3600)  # é is 2 bytes; drama-3 at list price
     # Multi-byte text can cross the USD cap before the character cap.
     before = (ledger.chars, ledger.bytes, ledger.seconds, ledger.usd)
     with pytest.raises(ValueError, match="USD cap"):
@@ -420,7 +420,7 @@ def test_plugin_forwards_and_charges_selected_models(monkeypatch, tmp_path):
     assert seen == [{"voice": "voice", "model": "drama-3"},
                     {"voice": "voice", "model": "s2.1-pro-free", "format": "mp3"},
                     {"model": "transcribe-1", "language": "en"}]
-    assert api.ledger.usd == pytest.approx(2 * 15 / 1e6 + .36 / 3600)
+    assert api.ledger.usd == pytest.approx(2 * 50 / 1e6 + .36 / 3600)
 
 
 def test_free_accepts_any_nonempty_audio_and_rejects_empty(monkeypatch, tmp_path):
@@ -456,7 +456,7 @@ def test_usd_cap_blocks_http_transport_including_retry(monkeypatch, tmp_path):
     with w.ExitStack() as stack:
         api = w.Plugin(ledger, stack)
         with pytest.raises(ValueError, match="USD cap"):
-            api.synth("a" * 400, "voice", tmp_path / "audio.mp3", "drama-3")  # next retry refused
+            api.synth("a" * 400, "voice", tmp_path / "audio.mp3", "s2.1-pro")  # next retry refused
     assert len(requests) == 1
     assert ledger.usd == pytest.approx(.096)
     assert ledger.chars == 1900

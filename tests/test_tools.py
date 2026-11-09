@@ -339,9 +339,10 @@ def test_clone_upload_uses_validated_fd_bytes_after_path_replacement(tmp_path, m
 def test_tool_registration_account_descriptions(monkeypatch, fake_ctx, operator):
     monkeypatch.setattr(settings, "operator_account", lambda: operator)
     tools.register(fake_ctx)
-    for tool in fake_ctx.tools.values():
+    for name, tool in fake_ctx.tools.items():
         assert tool["schema"]["description"] == tool["description"]
-        assert (tools.BILLING in tool["description"]) is (not operator)
+        paid = name not in {"fish_settings", "fish_account"}
+        assert (tools.BILLING in tool["description"]) is (not operator and paid)
     monkeypatch.setattr(settings, "operator_account", lambda: not operator)
     assert (tools.BILLING in fake_ctx.tools["fish_speak"]["description"]) is (not operator)
 

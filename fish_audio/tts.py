@@ -17,6 +17,8 @@ def setup_message():
     return "Ask the operator of this agent to finish the Fish Audio setup." if settings.operator_account() else SETUP_MESSAGE
 
 
+PRICE_KEYS = {"kind", "use", "usd", "unit"}
+
 class FishAudioTTSProvider(TTSProvider):
     name = "fish-audio"
     display_name = "Fish Audio"
@@ -45,8 +47,8 @@ class FishAudioTTSProvider(TTSProvider):
         return {"name": "Fish Audio", "badge": "free model" if models.free_model_phase() != "ended" else "", "tag": "Expressive voices, voice cloning, 80+ languages",
                 "env_vars": [{"key": "FISH_API_KEY", "prompt": "Fish Audio API key", "url": "https://fish.audio/app/api-keys"}]}
 
-    def list_models(self):
-        return [dict(row, display=models.display(row)) for row in MODELS]
+    def list_models(self):  # The provider list stays the model picker view; prices live in fish_account.
+        return [dict({k: v for k, v in row.items() if k not in PRICE_KEYS}, display=models.display(row)) for row in MODELS]
 
     def default_voice(self):
         return None
