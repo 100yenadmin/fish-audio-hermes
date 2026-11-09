@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Remember recurring pronunciations with the free `fish_pronunciations` tool: create dictionaries, publish complete
+  immutable versions, and use pinned references for ordinary voice replies or individual `fish_speak` calls.
+  References are verified, managed refs and per-call words cannot be mixed, and dictionary/version deletes use
+  Hermes approval. Existing inline pronunciation merging is preserved (#90; pronunciation API drift #84).
+
 ## 1.11.0 — 2026-11-09
 
 - **The agent runs its own voice:** with the new `fish_settings` tool the agent can see and set its own Fish voice,

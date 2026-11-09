@@ -2,6 +2,7 @@
 from uuid import uuid4
 
 from . import client, hooks, media, models, settings, tags
+from . import pronunciations as pronunciation_tools
 from .models import MODELS
 from .secrets import fish_api_key
 from .tool_support import require, voice_id, run
@@ -54,7 +55,13 @@ def _speak(args, key, base, session, *, record_media=True):
         require(settings._valid("language", args["language"]),
                 "language must be a BCP-47 tag such as en, es-MX or zh-CN: letters, digits, - and _, at most 35 characters.")
         params["language"] = args["language"]
+    if "dictionaries" in args:
+        pronunciation_tools.validate_refs(args["dictionaries"])
+        params["pronunciation_dictionary"] = args["dictionaries"]
     if "pronunciations" in args or "spoken_as" in args:
+        require(not any("id" in group for group in params.get("pronunciation_dictionary", [])),
+                "Managed dictionary references cannot be combined with pronunciations/spoken_as. "
+                "Publish those words into a dictionary version or pass dictionaries: [] to drop the refs for this call.")
         pronunciations, spoken_as = args.get("pronunciations", {}), args.get("spoken_as", {})
         for name, entries in (("pronunciations", pronunciations), ("spoken_as", spoken_as)):
             require(isinstance(entries, dict) and all(isinstance(k, str) and isinstance(v, str)
@@ -75,6 +82,8 @@ def _speak(args, key, base, session, *, record_media=True):
         dictionary = [{"items": items[i:i + 5000]} for i in range(0, len(items), 5000)]
         require(settings._dictionary(dictionary), "Invalid pronunciation entry.")
         params["pronunciation_dictionary"] = dictionary
+    if "dictionaries" in args:
+        pronunciation_tools.verify_refs(args["dictionaries"], key, base)
     path = media.audio_output_dir() / f"fish-{uuid4().hex[:12]}.{fmt}"
     require("timestamps" not in args or type(args["timestamps"]) is bool, "timestamps must be boolean.")
     events = [] if args.get("timestamps") else None
@@ -124,6 +133,10 @@ def fish_account(args, session_id="", task_id="", tool_call_id=""):
     return run(execute, args, session_id)
 
 
+def fish_pronunciations(args, session_id="", task_id="", tool_call_id=""):
+    return run(pronunciation_tools.execute, args, session_id)
+
+
 def _field(typ, **constraints):
     return {"type": typ, **constraints}
 
@@ -133,12 +146,16 @@ B = _field("boolean")
 STRINGS = _field("array", items=S)
 VOICE = _field("string", pattern="^[A-Za-z0-9_-]{8,128}$")
 VOICE_REF = _field("string", pattern="^[A-Za-z0-9_-]{2,128}$", description="voice id or saved name")
+DICTIONARY_ID = _field("string", minLength=1, maxLength=128, pattern="^[A-Za-z0-9_-]+$")
+DICTIONARY_REFS = _field("array", maxItems=3, items=_field("object",
+    properties={"id": DICTIONARY_ID, "version": DICTIONARY_ID}, required=["id", "version"], additionalProperties=False))
 SCHEMAS = {
     "fish_speak": {"text": S, "voice": VOICE_REF, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
         "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
+        "dictionaries": {**DICTIONARY_REFS, "description": "Published dictionary/version ids, verified before speech; replaces configured dictionaries for this call. [] drops refs, allowing inline words."},
         "pronunciations": _field("object", additionalProperties=S, maxProperties=200,
                                  description="Phonetic forms: CMU Arpabet for English; drama-3 also accepts IPA."),
         "spoken_as": _field("object", additionalProperties=S, maxProperties=200,
@@ -164,6 +181,15 @@ SCHEMAS = {
         "num_speakers": _field("integer", minimum=1), "min_speakers": _field("integer", minimum=1),
         "max_speakers": _field("integer", minimum=1), "tag_audio_events": _field("boolean", default=True),
         "srt": _field("boolean", default=False)},
+    "fish_pronunciations": {"action": _field("string", enum=["list", "get", "versions", "get_version", "create", "publish", "delete", "delete_version", "use"]),
+        "dictionary_id": DICTIONARY_ID, "version_id": DICTIONARY_ID,
+        "name": _field("string", minLength=1, maxLength=128), "description": _field("string", maxLength=1024),
+        "cursor": S, "page": _field("integer", minimum=1), "page_size": _field("integer", minimum=1, maximum=100), "include_total": B,
+        "expected_latest_version_id": {"anyOf": [DICTIONARY_ID, _field("null")], "description": "Omit to fetch the latest id; null for the first publish."},
+        "refs": DICTIONARY_REFS,
+        "rules": _field("array", maxItems=5000, items=_field("object", required=["key", "value"], additionalProperties=False,
+            properties={"key": _field("string", minLength=1, maxLength=256), "value": _field("string", minLength=1, maxLength=1024),
+                        "type": _field("string", enum=["phoneme", "alias"]), "case_sensitive": B}))},
     "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "add_name", "remove_name"]),
         "voice": _field("string", description="Voice id, saved name or unique own-voice title (use); id or saved name (add_name)."),
         "model": _field("string", enum=[r["id"] for r in MODELS]), "name": S},
@@ -174,12 +200,13 @@ SCHEMAS = {
         "asr_model": _field("string", enum=["transcribe-1-pro", "transcribe-1"])},
 }
 DESCRIPTIONS = {
+    "fish_pronunciations": "Manage reusable pronunciations: list/get dictionaries, versions/get_version rules, create, publish, delete/delete_version, or use refs as this profile's defaults ([] clears). Each published version holds the COMPLETE rule list, replacing previous rules. Delete actions require Hermes approval; the latest version cannot be deleted. Free: dictionary management has no Fish charge.",
     "fish_settings": "Read or change this profile's Fish voice, model and saved names, using the /fish rules. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
     "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,
     "fish_transcribe": "Transcribe local audio with speaker turns, emotion cues, timestamps and optional SRT." + BILLING}
-REQUIRED = {"fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
+REQUIRED = {"fish_pronunciations": ["action"], "fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
 
 
 def register(ctx):

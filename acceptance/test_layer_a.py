@@ -348,6 +348,40 @@ def test_account_tool(real, request):
     assert result['estimate']['usd_estimate'] == pytest.approx(9 * 15 / 1_000_000)
 
 
+@pytest.mark.row('A-TOOL-PRON')
+def test_pronunciations_tool(real, request):
+    # Live dictionary management is free; capture the provider payload without synthesizing audio.
+    before = config(real)
+    code = '\n    '.join([
+        'import json, sys; from tools.registry import registry; from agent.tts_registry import get_provider',
+        'def pron(**args):',
+        '    result = json.loads(registry.dispatch("fish_pronunciations", args))',
+        '    assert result.get("success"), result',
+        '    return result',
+        'created = pron(action="create", name="Acceptance pronunciation check")',
+        'try:',
+        '    rules = [{"key": "ES", "value": "Electric Sheep", "type": "alias"}]',
+        '    published = pron(action="publish", dictionary_id=created["id"], rules=rules)',
+        '    refs = [{"id": created["id"], "version": published["id"]}]',
+        '    used = pron(action="use", refs=refs)',
+        '    fetched = pron(action="get_version", dictionary_id=created["id"], version_id=published["id"])',
+        '    assert all(fetched["items"][0][k] == v for k, v in rules[0].items())',
+        '    clients = [m for n, m in list(sys.modules.items()) if n.endswith(".client") and hasattr(m, "_tts_body")]',
+        '    assert clients; sent = []',
+        '    for m in clients: m.tts_to_file = lambda params, *a, **kw: sent.append(params.copy())',
+        '    get_provider("fish-audio").synthesize("ES", "acceptance-pronunciation.mp3", model="s2.1-pro")',
+        '    assert sent and all(p["pronunciation_dictionary"] == refs for p in sent)',
+        'finally:',
+        '    deleted = pron(action="delete", dictionary_id=created["id"])',
+        'print("ACCEPTANCE_RESULT=" + json.dumps({"used": used, "fetched": fetched, "payload_refs": sent[0]["pronunciation_dictionary"], "deleted": deleted}))'])
+    try:
+        result = core(real, code)
+        evidence(request, real, result)
+        assert result['used']['refs'] == result['payload_refs'] and result['deleted']['deleted']
+    finally:
+        set_config(real, before)
+
+
 @pytest.mark.parametrize('n,tool', [pytest.param(i, tool, marks=pytest.mark.row(f'A-TOOL-{i}'))
                                   for i, tool in enumerate(('fish_speak', 'fish_voices', 'fish_transcribe'), 1)])
 def test_agent(paid, n, tool, request):

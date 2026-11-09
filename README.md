@@ -103,12 +103,27 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `fish_transcribe` | Rich transcription with speakers, timestamps and SRT |
 | `fish_settings` | Check or set this profile's Fish voice, model and saved names; free |
 | `fish_account` | Balance/plan, dated model prices and offline cost estimates; free |
+| `fish_pronunciations` | Create, publish, inspect and select reusable pronunciation dictionaries; free; deletes require approval |
 
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
 through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
 `fish-audio:fish-audio-voice-studio` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
 `gh` only after you approve the draft).
+
+To remember recurring company names, use `fish_pronunciations`: `create` with a `name`, then `publish`
+with the returned `dictionary_id` and `rules` such as `[{"key":"ES","value":"Electric Sheep","type":"alias"}]`.
+Each version is the **complete** rule list. Publish fetches the latest version first unless you supply
+`expected_latest_version_id` (null for the first version); on a conflict, fetch, merge and publish again.
+Use `get`, `versions` and `get_version` to inspect dictionaries and their rules. `list` and `versions`
+accept `cursor` or `page`, `page_size` and `include_total`.
+Set `use` with `refs: [{"id":"DICTIONARY_ID","version":"VERSION_ID"}]` to save up to three defaults for
+this profile's ordinary voice replies and `fish_speak`; `refs: []` clears them. Explicit version IDs stay
+pinned when you publish an update. For one speech call, `fish_speak` accepts `dictionaries` with the same
+references; `dictionaries: []` drops the defaults. References are checked before use or per-call speech.
+Managed references cannot be combined with per-call `pronunciations` or `spoken_as`: publish those words
+into a version, or drop references for that call. Configured inline dictionaries still merge with per-call words.
+`delete` and `delete_version` use Hermes approval; the latest version cannot be deleted.
 
 ## Hermes Desktop
 
@@ -265,7 +280,8 @@ the wallet that users can't see.
   `generate_sample`. Transcription returns `language` when Fish supplies a string.
 - **Files** the model tools upload (`fish_voices` clone samples, `fish_transcribe` recordings) must be regular audio
   files (covers must be images). They refuse symlinks, Hermes config and secret files, and SSH or cloud credential paths.
-- **Approvals:** cloning and deleting voices from chat or the model tools go through Hermes's approval gate and
+- **Approvals:** cloning and deleting voices, and deleting pronunciation dictionaries or historical versions,
+  from chat or the model tools go through Hermes's approval gate and
   follow your Hermes approval settings. By default Hermes asks you, and refuses when no one is there to answer. The
   Desktop Voices page confirms them on the page instead (see [Disclosure](#disclosure)).
 - Report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
@@ -276,6 +292,9 @@ the wallet that users can't see.
   `s2.1-pro-free` while Fish offers it free, announced through 30 November 2026).
 - `fish_account balance` reads the wallet and plan like `/fish balance`; `models` and `estimate` work offline.
   `fish_settings` and `fish_account` have no Fish charge. Before a long or Drama 3 job, ask for `fish_account estimate`.
+- `fish_pronunciations` management calls are free. They send dictionary names, descriptions, rules and IDs to Fish.
+  `use` saves verified version references in this profile's `tts.fish-audio.pronunciation_dictionary`; speech sends those references.
+  Dictionary operations are available in operator mode too, subject to the same config-write and delete approval gates.
 - Fish Audio may use free-model requests to improve its models.
 - With live dictation on (`stt.streaming: true`), microphone audio streams to `api.fish.audio` while you speak,
   through native realtime (Preview), billed $0.36 per hour of open session, per second; `live_transcription: compat`
@@ -332,7 +351,7 @@ Fish's remote HTTP MCP server uses browser sign-in (OAuth, no API key) and is bi
 Which to use:
 
 - Speech replies, voice notes, dictation, the Desktop Voices page and the `fish_speak`, `fish_voices` and
-  `fish_transcribe`, `fish_settings` and `fish_account` tools: this plugin. An MCP server cannot be Hermes's speech provider.
+  `fish_transcribe`, `fish_settings`, `fish_account` and `fish_pronunciations` tools: this plugin. An MCP server cannot be Hermes's speech provider.
 - Story Studio audiobooks and podcasts, images and video: Fish's MCP server.
 
 In Hermes 0.21.7 or newer, add the MCP server with:
