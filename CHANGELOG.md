@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.10.1 — 2026-11-09
+
 - **No stray `[[audio_as_voice]]` line in Desktop or the CLI:** after `fish_speak`, Hermes Desktop and the classic CLI
   showed the gateway's voice-message marker as a literal text line under the audio player. On those local surfaces
   (`desktop`, `cli`, `tui`) the reply hook now adds only the `MEDIA:` line and drops a marker the model copied from the
