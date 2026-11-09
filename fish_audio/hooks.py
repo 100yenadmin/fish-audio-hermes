@@ -46,9 +46,10 @@ def _without_marker(text):
     lines = []
     for line in text.split("\n"):
         if VOICE_MARKER in line:
-            line = line.replace(VOICE_MARKER, "").strip()
-            if not line:
-                continue
+            kept = line.replace(VOICE_MARKER + " ", "").replace(VOICE_MARKER, "").rstrip()
+            if kept.strip():
+                lines.append(kept)  # the line's own indentation stays
+            continue
         lines.append(line)
     return "\n".join(lines)
 

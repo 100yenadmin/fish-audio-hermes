@@ -142,6 +142,9 @@ def test_local_surface_drops_an_echoed_voice_marker(tmp_path):
     hooks.record("a", path, True)
     inline = f"[[audio_as_voice]] MEDIA:{path}"
     assert hooks.on_transform_llm_output(inline, "a", platform="desktop") == f"MEDIA:{path}"
+    hooks.record("a", path, True)
+    nested = f"- Butler\n  - [[audio_as_voice]] MEDIA:{path}"
+    assert hooks.on_transform_llm_output(nested, "a", platform="desktop") == f"- Butler\n  - MEDIA:{path}"
 
 
 def test_local_surface_unchanged_text_returns_none(tmp_path):
