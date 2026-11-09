@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Setup from chat:** `/fish setup` and `fish_settings` list missing profile steps, including a saved key that needs a restart and a different speaking provider; `/fish preview` now samples the current voice without an argument (#91).
+- **Setup from chat:** `/fish setup` (works before a key is saved) and `fish_settings` list what this profile still needs and the next step, including a key saved after the gateway started and a different speaking provider; `/fish preview` now samples the current voice without an argument (#91).
 
 ## 1.11.0 — 2026-11-09
 

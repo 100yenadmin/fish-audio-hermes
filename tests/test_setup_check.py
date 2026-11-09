@@ -1,3 +1,4 @@
+import copy
 import json
 import sys
 from types import SimpleNamespace
@@ -104,3 +105,23 @@ def test_legacy_non_fish_voice_is_ignored(config, monkeypatch):
     assert steps[2]["say"].startswith("Using Fish's default voice")
     config[0]["tts"]["voice"] = "a" * 32
     assert setup_check.checklist("test-key", BASE)[2]["say"] == f"Voice selected: {'a' * 32}."
+
+
+def test_hermes_default_edge_without_own_provider(config, monkeypatch):
+    # Hermes merges its default tts.provider ("edge") into the config it loads; config.yaml itself has none.
+    merged = copy.deepcopy(config[0])
+    merged["tts"]["provider"] = "edge"
+    monkeypatch.setattr(settings, "_config", lambda: merged)
+    say = setup_check.checklist("test-key", BASE)[1]["say"]
+    assert "currently speaks with edge" in say and "`/fish use <voice>` makes Fish the provider" in say
+    assert "hermes config set" not in say
+    config[0]["tts"]["provider"] = "edge"  # The profile chose edge itself: only a person can switch it.
+    assert "hermes config set tts.provider fish-audio" in setup_check.checklist("test-key", BASE)[1]["say"]
+
+
+@pytest.mark.parametrize("line,saved", [("export FISH_API_KEY=synthetic\n", True), ("FISH_API_KEY=  # later\n", False),
+                                        ("FISH_API_KEY=\"\"\n", False), ("OTHER_FISH_API_KEY=x\n", False)])
+def test_saved_key_line_forms(monkeypatch, tmp_path, line, saved):
+    (tmp_path / ".env").write_text(line)
+    monkeypatch.setattr(setup_check.media, "_hermes_home", lambda: tmp_path)
+    assert setup_check._saved_key() is saved

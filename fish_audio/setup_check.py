@@ -6,10 +6,19 @@ def _saved_key():
     try:
         with (media._hermes_home() / ".env").open() as handle:
             # Inspect only the assignment's name and emptiness; retain only a boolean.
-            return any(line.strip().startswith("FISH_API_KEY=") and
-                       bool(line.partition("=")[2].strip().strip("\"'")) for line in handle)
+            return any(line.strip().removeprefix("export ").lstrip().startswith("FISH_API_KEY=") and
+                       bool(line.partition("=")[2].split(" #")[0].strip().strip("\"'")) for line in handle)
     except (OSError, UnicodeError):
         return False
+
+
+def _own_provider():
+    """This profile's own tts.provider from config.yaml; the merged config always carries Hermes's default ("edge")."""
+    try:
+        from hermes_cli import config
+        return settings._mapping(settings._mapping(config.read_raw_config()).get("tts")).get("provider") or None
+    except Exception:
+        return None
 
 
 def first_missing(steps):
@@ -31,7 +40,7 @@ def checklist(key, base):
                    "restart the Hermes gateway or Desktop app.")
     speech_say = "This agent speaks with Fish Audio."
     if not fish:
-        switch = ("`/fish use <voice>` makes Fish the provider." if provider == "unset" else
+        switch = ("`/fish use <voice>` makes Fish the provider." if not pinned and not _own_provider() else
                   "Switch in Desktop Settings ▸ Voice, or run `hermes config set tts.provider fish-audio` "
                   "on the Hermes machine, then restart the gateway.")
         if pinned and operator:
