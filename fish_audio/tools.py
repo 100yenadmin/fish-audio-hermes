@@ -59,9 +59,10 @@ def _speak(args, key, base, session, *, record_media=True):
         pronunciation_tools.validate_refs(args["dictionaries"])
         params["pronunciation_dictionary"] = args["dictionaries"]
     if "pronunciations" in args or "spoken_as" in args:
-        require(not any("id" in group for group in params.get("pronunciation_dictionary", [])),
-                "Managed dictionary references cannot be combined with pronunciations/spoken_as. "
-                "Publish those words into a dictionary version or pass dictionaries: [] to drop the refs for this call.")
+        # Only an explicit per-call `dictionaries` list conflicts; configured refs keep the old rule (inline words replace them for this call).
+        require(not args.get("dictionaries"),
+                "Managed dictionary references cannot be combined with pronunciations/spoken_as in one call. "
+                "Publish those words into a dictionary version, or leave out dictionaries for this call.")
         pronunciations, spoken_as = args.get("pronunciations", {}), args.get("spoken_as", {})
         for name, entries in (("pronunciations", pronunciations), ("spoken_as", spoken_as)):
             require(isinstance(entries, dict) and all(isinstance(k, str) and isinstance(v, str)

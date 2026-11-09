@@ -108,14 +108,21 @@ def test_call_refs_replace_configured_inline_and_leave_defaults(config):
 
 
 @pytest.mark.parametrize("field", ["pronunciations", "spoken_as"])
-@pytest.mark.parametrize("explicit", [False, True])
-def test_refs_inline_conflict(config, field, explicit):
-    if not explicit:
-        config[0]["tts"]["fish-audio"]["pronunciation_dictionary"] = REFS
+def test_explicit_refs_inline_conflict(config, field):
     with respx.mock as mock:
-        result = speak(**{field: {"ES": "Electric Sheep"}}, **({"dictionaries": REFS} if explicit else {}))
+        result = speak(**{field: {"ES": "Electric Sheep"}}, dictionaries=REFS)
         assert not mock.calls
-    assert not result["success"] and "Publish those words" in result["error"] and "dictionaries: []" in result["error"]
+    assert not result["success"] and "Publish those words" in result["error"]
+
+
+@pytest.mark.parametrize("field", ["pronunciations", "spoken_as"])
+def test_configured_refs_give_way_to_inline_words(config, field):
+    config[0]["tts"]["fish-audio"]["pronunciation_dictionary"] = REFS
+    with respx.mock as mock:
+        post = mock.post(BASE + "/v1/tts").respond(content=b"audio")
+        assert speak(**{field: {"ES": "Electric Sheep"}})["success"]
+        sent = json.loads(post.calls.last.request.content)["pronunciation_dictionary"]
+    assert sent and all("items" in group and "id" not in group for group in sent)
 
 
 def test_drop_refs_allows_inline_and_preserves_merge(config):
