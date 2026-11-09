@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.12.1 — 2026-11-10
+
+Documentation only; no behaviour changes.
+- **README:** the first install line is now `hermes plugins install 100yenadmin/fish-audio-hermes --enable --yes-deps`,
+  which installs the latest release on every Hermes version; the catalog name comes second, with the Hermes 0.23.0 note
+  (it installs an older in-tree copy there for now). The README opens with what the plugin does, release, license,
+  Hermes and CI badges, a three-step "Try it" ending with `/fish setup` and `/fish preview`, and a contents line. New
+  settings table; the two troubleshooting sections are merged into one with the bug-report steps; known limitations
+  list the Desktop voice-conversation speech gap (NousResearch/hermes-agent#129305) and the faint API key field
+  (NousResearch/hermes-agent#138994).
+
 ## 1.12.0 — 2026-11-09
 
 - **Setup you can finish from chat:** `/fish setup` works in any chat before a key is saved. It lists what this

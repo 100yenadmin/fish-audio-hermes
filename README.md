@@ -2,31 +2,48 @@
 
 # Fish Audio for Hermes
 
-**The official [Fish Audio](https://fish.audio) plugin for [Hermes Agent](https://github.com/NousResearch/hermes-agent),
-maintained by Electric Sheep.**
+**Your Hermes agent speaks and listens with Fish Audio: expressive voices in 80+ languages, voice design, live dictation.**
 
-Give your agent a voice: expressive speech in 80+ languages, Fish Audio's library of community voices, your own
-cloned or designed voices, and accurate speech-to-text. It works in the Hermes CLI, every messaging app Hermes
-supports and the Desktop app.
+The official [Fish Audio](https://fish.audio) plugin for [Hermes Agent](https://github.com/NousResearch/hermes-agent),
+maintained by Electric Sheep. It works in the Hermes CLI, every messaging app Hermes supports and the Desktop app.
+
+[![Latest release](https://img.shields.io/github/v/release/100yenadmin/fish-audio-hermes)](https://github.com/100yenadmin/fish-audio-hermes/releases/latest)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Hermes >= 0.21.5](https://img.shields.io/badge/Hermes-%E2%89%A5%200.21.5-6f42c1)](https://github.com/NousResearch/hermes-agent)
+[![CI](https://github.com/100yenadmin/fish-audio-hermes/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/100yenadmin/fish-audio-hermes/actions/workflows/ci.yml)
 
 ```bash
-hermes plugins install fish-audio --enable --yes-deps
+hermes plugins install 100yenadmin/fish-audio-hermes --enable --yes-deps
 hermes fish login        # paste your key from https://fish.audio/app/api-keys
 ```
 
-This installs the reviewed release pinned in the Hermes plugin catalog. On Hermes 0.23.0 the catalog name can install
-an older release for now, because Hermes falls back to the catalog copy it shipped with
-([NousResearch/hermes-agent#151856](https://github.com/NousResearch/hermes-agent/issues/151856)); check with
-`hermes plugins list`. To install the latest release from this repository instead (`main` only ever holds a tagged,
-tested release):
+You need a Fish Audio API key (new accounts can start on Fish's free `s2.1-pro-free` model, free through 30 November
+2026). `--yes-deps` installs the plugin's Python dependencies. Then run `/fish setup` in any chat to see what is left.
+This line installs the latest release from this repository; `main` only ever holds a tagged, tested release.
+
+The catalog name works too:
 
 ```bash
-hermes plugins install https://github.com/100yenadmin/fish-audio-hermes --enable --yes-deps
+hermes plugins install fish-audio --enable --yes-deps
 ```
 
-If you already installed it by catalog name and `hermes plugins list` shows an older version, remove it first
-(`hermes plugins remove fish-audio`), then run the line above. Installing over it is refused, and `hermes plugins
-update` stays on the catalog's pin.
+It installs the release pinned in the Hermes plugin catalog. On Hermes 0.23.0 it currently installs an older version,
+because Hermes falls back to the catalog copy it shipped with
+([NousResearch/hermes-agent#151856](https://github.com/NousResearch/hermes-agent/issues/151856)); check with
+`hermes plugins list`. If you already installed it by catalog name and `hermes plugins list` shows an older version,
+remove it first (`hermes plugins remove fish-audio`), then run the first line. Installing over it is refused, and
+`hermes plugins update` stays on the catalog's pin.
+
+### Try it
+
+1. Install with the first line above, and save your key with `hermes fish login` (or in Desktop: **Voices ▸ Enter API key**).
+2. In any chat, send `/fish setup`. It lists what is still missing and the next step, and ends with "Ready. Hear your voice: `/fish preview`".
+3. Send `/fish preview`, or ask your agent "Design yourself a voice that fits your personality". You hear a voice reply; previews and voice designs are billed Fish requests.
+
+**Contents:** [What you get](#what-you-get) · [Setup](#setup) · [Use](#use) · [Hermes Desktop](#hermes-desktop) ·
+[Configuration](#configuration) · [Disclosure](#disclosure) · [Troubleshooting and reporting a bug](#troubleshooting-and-reporting-a-bug) ·
+[Known limitations](#known-limitations) · [Releases](https://github.com/100yenadmin/fish-audio-hermes/releases) ·
+[CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md) · [License](LICENSE)
 
 `--yes-deps` installs the plugin's Python dependencies without asking. Without it, Hermes 0.21.6 and newer asks
 first, and an install with no terminal (a script, or an agent installing the plugin for you) leaves Fish Audio
@@ -188,7 +205,21 @@ settings pages; use the Voices page and `/fish` there.
 
 ## Configuration
 
-All settings are per profile. Set `tts.fish-audio.language: es-MX` (or pass `language` to `fish_speak`) for number, date and unit spelling and word timestamps; it never changes the voice, accent or audio quality.
+All settings are per profile.
+
+| Setting | Where | What it does |
+|---|---|---|
+| Voice | `tts.fish-audio.voice`; `/fish use`, the Voices page, the settings page, `fish_settings` | Any Fish voice id, saved name or own-voice title. Unset: Fish's default voice. |
+| Model | `tts.fish-audio.model`; `/fish model`, the settings page | `s2.1-pro`, `s2-pro`, `drama-3`, `s1` (deprecated) or `s2.1-pro-free`. Unset: chosen from your wallet (see "Which model?"). |
+| Reading speed | `tts.fish-audio.speed`; the settings page, `fish_settings set_speed` | 0.5–2.0, default 1.0. A per-call speed wins. |
+| Pronunciation dictionaries | `tts.fish-audio.pronunciation_dictionary`; `fish_pronunciations use` | Up to three pinned dictionaries for ordinary voice replies. |
+| Streaming | `plugins.entries.fish-audio.settings.streaming` | `auto` streams sentence by sentence on Hermes 0.21.6+; `"off"` uses whole-file speech. |
+| Live dictation | `stt.streaming: true`; `live_transcription` | `realtime` (Preview, word by word) or `compat` (phrase captions). |
+| Free-model policy | `allow_free_model` | `false` never uses `s2.1-pro-free`, even when named. |
+| API endpoint | `base_url` | Fish's API by default; any https URL, or http on loopback, for a self-hosted endpoint. |
+| Operator mode | `operator_account` | The operator manages the key and billing; the agent hides amounts and account links. |
+
+ Set `tts.fish-audio.language: es-MX` (or pass `language` to `fish_speak`) for number, date and unit spelling and word timestamps; it never changes the voice, accent or audio quality.
 
 ```yaml
 tts:
@@ -373,7 +404,7 @@ Ask for each piece of speech through one tool only.
 Fish's [official plugin](https://github.com/fishaudio/fish-audio-plugin) connects Claude Code, claude.ai, Codex and ChatGPT to its MCP server.
 [Fish Audio voice agents (phone agents)](https://docs.fish.audio/agents/overview) are not in this plugin.
 
-## Troubleshooting
+## Troubleshooting and reporting a bug
 
 | Message | Fix |
 |---|---|
@@ -385,7 +416,26 @@ Fish's [official plugin](https://github.com/fishaudio/fish-audio-plugin) connect
 | Fish tools missing after turning the plugin off and on (Hermes 0.21.6 and older) | Add them back with `hermes tools`. Hermes 0.21.7 and newer restore them. |
 | Anything else | Run `hermes fish doctor --no-synth`; when speech itself fails, plain `hermes fish doctor` adds one short billed synthesis. Quote the Fish trace id from the error when you contact Fish Audio support. |
 
+Run `hermes fish doctor --no-synth` to check setup without billed synthesis; it can read Fish account metadata.
+Use `/fish status` for key presence, providers, voice, model, credit and the last failure; operator-managed accounts hide credit.
+Under plugin-host isolation the terminal command is unavailable, so use `/fish status`.
+Plain `hermes fish doctor` makes a billed synthesis; only run it with the user's OK.
+Ask your Hermes agent to "report a problem with Fish Audio": it drafts a report and files nothing until you approve the draft.
+On Hermes older than 0.21.6, plugin skills are not in the agent's system prompt; ask the agent to load the skill
+`fish-audio:fish-audio-report-problem` by that name (it appears in `skills_list`).
+Use the [bug report form](https://github.com/100yenadmin/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
+Report security problems through the [private advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
+
+Releases and notes: [Releases](https://github.com/100yenadmin/fish-audio-hermes/releases) · [CHANGELOG](CHANGELOG.md). To contribute, see [CONTRIBUTING](CONTRIBUTING.md).
+
 ## Known limitations
+
+In Hermes Desktop voice conversations, part or all of a reply sometimes goes unspoken because Desktop stops passing it
+to speech mid-turn. This affects every speech provider; fixes are proposed
+([NousResearch/hermes-agent#129305](https://github.com/NousResearch/hermes-agent/issues/129305)).
+
+An empty API key field in Desktop Settings is hard to see, worst in the dark theme; a fix is proposed
+([NousResearch/hermes-agent#138994](https://github.com/NousResearch/hermes-agent/issues/138994)).
 
 Native live dictation is Preview, with word-by-word drafts; `live_transcription: compat` keeps phrase captions. It covers the composer mic,
 CLI voice mode and TUI; Desktop voice conversations and messaging voice notes keep file transcription. Remote
@@ -410,15 +460,3 @@ Weekly regression alarm: see [bench/README.md](bench/README.md).
 
 Run JavaScript tooling from `devtools/`: `cd devtools && npm ci && npm run typecheck && npm test`.
 `npm run check:bundle` checks the committed `desktop/plugin.js`; `npm run build` rebuilds it.
-
-## Troubleshooting and reporting a bug
-
-Run `hermes fish doctor --no-synth` to check setup without billed synthesis; it can read Fish account metadata.
-Use `/fish status` for key presence, providers, voice, model, credit and the last failure; operator-managed accounts hide credit.
-Under plugin-host isolation the terminal command is unavailable, so use `/fish status`.
-Plain `hermes fish doctor` makes a billed synthesis; only run it with the user's OK.
-Ask your Hermes agent to "report a problem with Fish Audio": it drafts a report and files nothing until you approve the draft.
-On Hermes older than 0.21.6, plugin skills are not in the agent's system prompt; ask the agent to load the skill
-`fish-audio:fish-audio-report-problem` by that name (it appears in `skills_list`).
-Use the [bug report form](https://github.com/100yenadmin/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
-Report security problems through the [private advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
