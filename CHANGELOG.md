@@ -6,7 +6,7 @@
 
 Documentation only; no behaviour changes.
 - **README:** the first install line is now `hermes plugins install 100yenadmin/fish-audio-hermes --enable --yes-deps`,
-  which installs the latest release on every Hermes version; the catalog name comes second, with the Hermes 0.23.0 note
+  which installs the latest release (on Hermes 0.21.5, leave out `--yes-deps`); the catalog name comes second, with the Hermes 0.23.0 note
   (it installs an older in-tree copy there for now). The README opens with what the plugin does, release, license,
   Hermes and CI badges, a three-step "Try it" ending with `/fish setup` and `/fish preview`, and a contents line. New
   settings table; the two troubleshooting sections are merged into one with the bug-report steps; known limitations

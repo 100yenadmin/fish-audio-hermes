@@ -209,7 +209,7 @@ All settings are per profile.
 
 | Setting | Where | What it does |
 |---|---|---|
-| Voice | `tts.fish-audio.voice`; `/fish use`, the Voices page, the settings page, `fish_settings` | Any Fish voice id, saved name or own-voice title. Unset: Fish's default voice. |
+| Voice | `tts.fish-audio.voice`; `/fish use`, the Voices page, the settings page, `fish_settings` | A Fish voice id. `/fish use`, the pages and `fish_settings` also take a saved name or one of your own voice titles and save its id. Unset: Fish's default voice. |
 | Model | `tts.fish-audio.model`; `/fish model`, the settings page | `s2.1-pro`, `s2-pro`, `drama-3`, `s1` (deprecated) or `s2.1-pro-free`. Unset: chosen from your wallet (see "Which model?"). |
 | Reading speed | `tts.fish-audio.speed`; the settings page, `fish_settings set_speed` | 0.5–2.0, default 1.0. A per-call speed wins. |
 | Pronunciation dictionaries | `tts.fish-audio.pronunciation_dictionary`; `fish_pronunciations use` | Up to three pinned dictionaries for ordinary voice replies. |

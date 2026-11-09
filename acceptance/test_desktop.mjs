@@ -233,7 +233,7 @@ test('B-SET-1 alone enters the keyed phase and runs in both themes without libra
   assert.deepEqual({...meta.wallet}, {before:'1.00',after:'1.00'})
   const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-SET-1')
   const version = fs.readFileSync(new URL('../plugin.yaml', import.meta.url), 'utf8').match(/^version:\s*(.+)$/m)[1]
-  assert.equal(spec.min_plugin, version); assert.equal(spec.billed, 'none'); assert.equal(spec.layer, 'b')
+  assert.equal(spec.min_plugin, '1.12.0'); assert.ok(version.localeCompare('1.12.0', undefined, {numeric: true}) >= 0); assert.equal(spec.billed, 'none'); assert.equal(spec.layer, 'b')
   assert.equal(spec.required, true); assert.deepEqual(spec.hosts, ['upstream','evaos'])
 })
 
