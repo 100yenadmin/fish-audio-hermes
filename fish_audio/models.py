@@ -15,6 +15,7 @@ MODEL_CATALOG = [
 # TTS picker view of the single catalog; other model kinds never enter synthesis.
 MODELS = [row for row in MODEL_CATALOG if row["kind"] == "tts"]
 PRICE_AS_OF = "2026-11-09"
+DRAMA3_LAUNCH_ENDS = datetime(2026, 12, 1, 8, 0, tzinfo=timezone.utc)
 PRICE_SOURCE = "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits"
 MODEL_ALIASES = {"drama-3-preview": "drama-3"}
 
@@ -83,7 +84,7 @@ def pricing(now=None, *, include_prices=True):
             "Free period announced through 2026-11-30; requests may improve Fish's models." if ident == "s2.1-pro-free" else
             "Launch period ends 2026-12-01T08:00:00Z." if ident == "drama-3" else notes)
         if include_prices:
-            usd = 10 if ident == "drama-3" and now.isoformat() < "2026-12-01T08:00:00+00:00" else row["usd"]
+            usd = 10 if ident == "drama-3" and now < DRAMA3_LAUNCH_ENDS else row["usd"]
             result.update(price={"usd": usd, "unit": row["unit"]}, price_as_of=PRICE_AS_OF, source=PRICE_SOURCE)
         rows.append(result)
     return rows

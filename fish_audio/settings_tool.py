@@ -20,8 +20,8 @@ def current(key, base):
     if not fish:
         # use_result/use_message own the provider and operator rules; mirror their facts without switching it.
         result["note"] = (f"Saved for Fish Audio, but this agent currently speaks with {provider}. "
-                          "A person can switch with `/fish use <voice>` (only when no provider is set) "
-                          "or in Settings ▸ Voice / `hermes tools`.")
+                          "If this profile has no speech provider of its own, `use` makes Fish Audio its provider; "
+                          "otherwise a person switches it in Settings ▸ Voice or with `hermes tools` ▸ Text-to-Speech ▸ Fish Audio.")
         if commands._managed_provider() and operator:
             result["note"] += " " + commands.use_message(provider, True).removeprefix("Saved. ")
     return result
