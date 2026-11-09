@@ -164,8 +164,9 @@ SCHEMAS = {
         "num_speakers": _field("integer", minimum=1), "min_speakers": _field("integer", minimum=1),
         "max_speakers": _field("integer", minimum=1), "tag_audio_events": _field("boolean", default=True),
         "srt": _field("boolean", default=False)},
-    "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "add_name", "remove_name"]),
+    "fish_settings": {"action": _field("string", enum=["get", "use", "set_model", "set_speed", "add_name", "remove_name"]),
         "voice": _field("string", description="Voice id, saved name or unique own-voice title (use); id or saved name (add_name)."),
+        "speed": _field(["number", "null"], minimum=0.5, maximum=2.0, description="Reading speed (set_speed); null resets to 1.0."),
         "model": _field("string", enum=[r["id"] for r in MODELS]), "name": S},
     "fish_account": {"action": _field("string", enum=["balance", "models", "estimate"]),
         "text": S, "characters": _field("integer", minimum=0), "bytes": _field("integer", minimum=0),
@@ -174,7 +175,7 @@ SCHEMAS = {
         "asr_model": _field("string", enum=["transcribe-1-pro", "transcribe-1"])},
 }
 DESCRIPTIONS = {
-    "fish_settings": "Read or change this profile's Fish voice, model and saved names, using the /fish rules. Free: no Fish charge.",
+    "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
     "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,

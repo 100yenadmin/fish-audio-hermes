@@ -14,7 +14,7 @@ def expected(env, **overrides):
         {"id": "s2-pro", "display": "S2 Pro", "deprecated": False},
         {"id": "s1", "display": "S1 (deprecated)", "deprecated": True},
         {"id": "drama-3", "display": "Drama 3", "deprecated": False}],
-        "aliases": [], "managed": [], **overrides}
+        "speed": 1.0, "aliases": [], "managed": [], **overrides}
 
 
 def test_settings_exact_offline_operator_and_profile(env):
@@ -69,7 +69,7 @@ def test_settings_invalid_flat_envelope(env, body):
     assert env.active().config == before and env.active().saves == 0
 
 
-@pytest.mark.parametrize("leaf", ["voice", "model", "aliases"])
+@pytest.mark.parametrize("leaf", ["voice", "model", "speed", "aliases"])
 def test_managed_flat_envelope(env, managed_layer, leaf):
     managed_layer({"tts": {"fish-audio": {leaf: None}}})
     assert env.get("/settings") == expected(env, managed=[leaf])
@@ -80,6 +80,29 @@ def test_managed_flat_envelope(env, managed_layer, leaf):
     else:
         assert env.post("/settings", **{leaf: None}) == refusal
     assert env.active().saves == 0
+
+
+def test_speed_profile_roundtrip_reset_and_managed_atomicity(env, managed_layer):
+    for speed in (0.5, 1.35, 2.0):
+        assert env.post("/settings", speed=speed) == expected(env, speed=speed)
+        assert env.active().config["tts"]["fish-audio"]["speed"] == speed
+    env.switch("b")
+    assert env.get("/settings")["speed"] == 1.0
+    env.switch("a")
+    assert env.get("/settings")["speed"] == 2.0
+    assert env.post("/settings", speed=None)["speed"] == 1.0
+    assert "speed" not in env.active().config["tts"]["fish-audio"]
+    managed_layer({"tts": {"fish-audio": {"speed": 1.2}}})
+    before = copy.deepcopy(env.active().config)
+    assert env.post("/settings", model="s1", speed=1.5)["kind"] == "managed"
+    assert env.active().config == before
+
+
+@pytest.mark.parametrize("speed", [0.49, 2.01, True, "1.2", [], {}])
+def test_speed_invalid_does_not_write(env, speed):
+    before = copy.deepcopy(env.active().config)
+    assert env.post("/settings", speed=speed)["kind"] == "invalid"
+    assert env.active().config == before and env.active().saves == 0
 
 
 @pytest.mark.parametrize("rule,managed", [("upstream", ["model"]), ("fork", [])])

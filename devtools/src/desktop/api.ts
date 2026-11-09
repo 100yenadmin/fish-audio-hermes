@@ -190,7 +190,7 @@ export const agentKey = (pin: AgentPin) => `${pin.connectionId ?? 'local'}::${pi
 
 // ---- Settings ▸ Plugins ▸ Fish Audio (gateway 1.4.0+). Shapes follow the v1.4.0 wire contract exactly.
 
-export type SettingsKey = 'aliases' | 'model' | 'voice'
+export type SettingsKey = 'aliases' | 'model' | 'speed' | 'voice'
 
 export interface ModelOption {
   id: string
@@ -208,6 +208,7 @@ export interface SettingsResponse {
   /** The configured nested values; null means Fish's default. */
   voice: null | string
   model: null | string
+  speed: number
   models: ModelOption[]
   aliases: VoiceAlias[]
   managed: SettingsKey[]
@@ -219,7 +220,7 @@ export interface AliasesResponse {
 }
 
 /** `model: null` removes the configured model; `voice` accepts only null (voices are set through /use). */
-export const postSettings = (body: { model?: null | string; voice?: null }) => post<SettingsResponse>('/settings', body)
+export const postSettings = (body: { model?: null | string; voice?: null; speed?: null | number }) => post<SettingsResponse>('/settings', body)
 
 export const addAlias = (name: string, voice: string) => post<AliasesResponse & { updated: boolean }>('/aliases', { name, voice })
 

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Set per-profile reading speed (0.5–2.0×) in Desktop Fish Audio settings or with `fish_settings set_speed`;
+  reset to 1.0× by removing the setting. Voice replies, read-aloud and streaming use the saved speed.
+
 ## 1.11.0 — 2026-11-09
 
 - **The agent runs its own voice:** with the new `fish_settings` tool the agent can see and set its own Fish voice,

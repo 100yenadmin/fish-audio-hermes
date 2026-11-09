@@ -53,7 +53,7 @@ def test_pcm_alignment_with_odd_chunks():
 
 def test_http_stream_yields_aligned_pcm_with_resolved_settings(monkeypatch):
     cfg = config()
-    cfg["tts"]["fish-audio"].update(temperature=0.5, sample_rate=44100, opus_bitrate=32000, latency="low")
+    cfg["tts"]["fish-audio"].update(speed=1.35, temperature=0.5, sample_rate=44100, opus_bitrate=32000, latency="low")
     monkeypatch.setattr(settings, "_config", lambda: cfg)
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post("https://api.fish.audio/v1/tts").mock(return_value=httpx.Response(
@@ -64,7 +64,7 @@ def test_http_stream_yields_aligned_pcm_with_resolved_settings(monkeypatch):
     assert request.headers["authorization"] == f"Bearer {KEY}" and request.headers["model"] == "s2.1-pro"
     body = json.loads(request.content)
     assert body == {"text": "[excited] Hello there.", "reference_id": VOICE, "format": "pcm", "sample_rate": 24000,
-                    "latency": "low", "temperature": 0.5, "prosody": {"speed": 1.0}}
+                    "latency": "low", "temperature": 0.5, "prosody": {"speed": 1.35}}
     assert streaming.SAMPLE_RATE == tts.FishAudioTTSProvider.stream_sample_rate == 24000
 
 

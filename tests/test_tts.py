@@ -1,4 +1,5 @@
 import sys
+import json
 from types import ModuleType
 
 import pytest
@@ -57,6 +58,19 @@ def test_synthesize_text_metadata_final_path_and_release(monkeypatch, tmp_path):
     original_client = tts.client._client
     provider.release()
     assert tts.client._client is original_client
+
+
+def test_profile_speed_in_voice_reply_and_read_aloud_payload(monkeypatch, tmp_path):
+    monkeypatch.setattr(tts, "fish_api_key", lambda: "test-key")
+    monkeypatch.setattr(media, "audio_output_dir", lambda: tmp_path)
+    monkeypatch.setattr(settings, "_config", lambda: {"tts": {"fish-audio": {"model": "s2.1-pro", "speed": 1.35}}})
+    with respx.mock as mock:
+        route = mock.post(settings.DEFAULT_BASE_URL + "/v1/tts").respond(content=b"ID3synthetic")
+        tts.FishAudioTTSProvider().synthesize("Voice reply", str(tmp_path / "reply.mp3"))
+        from fish_audio import tools
+        tools._speak({"text": "Read aloud"}, "test-key", settings.DEFAULT_BASE_URL, "")
+        assert len(route.calls) == 2
+        assert all(json.loads(call.request.content)["prosody"]["speed"] == 1.35 for call in route.calls)
 
 
 def test_audio_dir_uses_active_hermes_home(monkeypatch, tmp_path):

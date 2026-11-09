@@ -17,6 +17,7 @@ const SETTINGS: SettingsResponse = {
   ok: true,
   voice: A,
   model: 's2.1-pro',
+  speed: 1.0,
   models: [{ id: 's2.1-pro', display: 'S2.1 Pro', deprecated: false }, { id: 's1', display: 'S1 (deprecated)', deprecated: true }],
   aliases: [{ name: 'narrator', voice: A }],
   managed: []
@@ -188,6 +189,45 @@ describe('settings page body', () => {
 })
 
 describe('settings page writes', () => {
+  it('shows a labelled keyboard slider, saves speed and resets through /settings', async () => {
+    const notify = vi.spyOn(host, 'notify')
+    const { writes } = mount(gateway(SETTINGS, async (_path, opts) => ({ ...SETTINGS, speed: opts.body.speed ?? 1.0 })))
+    await flush()
+    const slider = screen.getByRole('slider', { name: en.settings.readingSpeed }) as HTMLInputElement
+    expect([slider.min, slider.max, slider.step, slider.value, slider.tabIndex]).toEqual(['0.5', '2', '0.05', '1', 0])
+    fireEvent.change(slider, { target: { value: '1.35' } })
+    expect(screen.getByText('1.35×')).toBeTruthy()
+    expect(writes()).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: en.settings.saveSpeed }))
+    await flush()
+    expect(writes()).toEqual([{ path: '/settings', method: 'POST', body: { speed: 1.35 } }])
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.settings.speedSaved })
+    fireEvent.click(screen.getByRole('button', { name: en.settings.resetSpeed }))
+    await flush()
+    expect(writes()[1]).toEqual({ path: '/settings', method: 'POST', body: { speed: null } })
+    expect(slider.value).toBe('1')
+    expect(screen.getByText('1.00×')).toBeTruthy()
+  })
+
+  it('locks speed when managed and preserves it on a gateway refusal', async () => {
+    const { writes } = mount(gateway({ ...SETTINGS, managed: ['speed'] }))
+    await flush()
+    expect((screen.getByRole('slider') as HTMLInputElement).disabled).toBe(true)
+    for (const name of [en.settings.saveSpeed, en.settings.resetSpeed]) {
+      expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
+    }
+    expect(writes()).toEqual([])
+    cleanup()
+    const notify = vi.spyOn(host, 'notify')
+    mount(gateway(SETTINGS, async () => ({ ok: false, kind: 'managed', message: en.settings.managed })))
+    await flush()
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '1.5' } })
+    fireEvent.click(screen.getByRole('button', { name: en.settings.saveSpeed }))
+    await flush()
+    expect(notify).toHaveBeenCalledWith({ kind: 'error', message: en.refusals.managed })
+    expect((screen.getByRole('button', { name: en.settings.saveSpeed }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it.each([['S1 (deprecated)', 's1'], [en.settings.defaultModel, null]])('choosing %s posts exactly {model: %j}', async (label, model) => {
     const notify = vi.spyOn(host, 'notify')
     const { writes } = mount(gateway(SETTINGS, async () => ({ ...SETTINGS, model })))
