@@ -51,8 +51,9 @@ rule list, then `use` the returned dictionary/version IDs as `refs` (up to three
 remember them. Management is free; synthesis is still billed. Version IDs are pinned: publishing an update
 does not switch existing references. Use per-call pronunciations/spoken_as for temporary words.
 `fish_speak` accepts `dictionaries: [{"id":"DICTIONARY_ID","version":"VERSION_ID"}]` for one call,
-replacing configured groups; references are verified before speech. Never combine managed references with
-per-call words: publish those words into a version or pass `dictionaries: []` to drop references for that call.
+replacing configured groups; references are verified before speech. Do not pass `dictionaries` together with
+per-call words in one call: publish those words into a version instead. Per-call words alone replace configured
+references for that call (configured inline groups still merge), so the default rules do not apply to that call.
 `fish_pronunciations use` with `refs: []` clears profile defaults. Dictionary/version deletes require Hermes
 approval, and the latest version cannot be deleted. On a publish conflict, fetch the new version, merge and retry.
 Native `.ogg` is the default voice reply; use `format: wav` for a file. Pass `timestamps: true` for word

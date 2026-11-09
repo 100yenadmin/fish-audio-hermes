@@ -121,8 +121,9 @@ Set `use` with `refs: [{"id":"DICTIONARY_ID","version":"VERSION_ID"}]` to save u
 this profile's ordinary voice replies and `fish_speak`; `refs: []` clears them. Explicit version IDs stay
 pinned when you publish an update. For one speech call, `fish_speak` accepts `dictionaries` with the same
 references; `dictionaries: []` drops the defaults. References are checked before use or per-call speech.
-Managed references cannot be combined with per-call `pronunciations` or `spoken_as`: publish those words
-into a version, or drop references for that call. Configured inline dictionaries still merge with per-call words.
+A `fish_speak` call cannot pass both `dictionaries` and per-call `pronunciations` or `spoken_as`: publish those
+words into a version, or leave out `dictionaries`. Per-call words replace configured references for that call (as
+before), and configured inline dictionaries still merge with per-call words.
 `delete` and `delete_version` use Hermes approval; the latest version cannot be deleted.
 
 ## Hermes Desktop

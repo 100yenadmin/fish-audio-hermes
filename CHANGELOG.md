@@ -4,7 +4,7 @@
 
 - Remember recurring pronunciations with the free `fish_pronunciations` tool: create dictionaries, publish complete
   immutable versions, and use pinned references for ordinary voice replies or individual `fish_speak` calls.
-  References are verified, managed refs and per-call words cannot be mixed, and dictionary/version deletes use
+  References are verified, a call cannot pass both `dictionaries` and per-call words, and dictionary/version deletes use
   Hermes approval. Existing inline pronunciation merging is preserved (#90; pronunciation API drift #84).
 
 ## 1.11.0 — 2026-11-09

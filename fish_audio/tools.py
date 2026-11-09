@@ -156,7 +156,7 @@ SCHEMAS = {
         "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
-        "dictionaries": {**DICTIONARY_REFS, "description": "Published dictionary/version ids, verified before speech; replaces configured dictionaries for this call. [] drops refs, allowing inline words."},
+        "dictionaries": {**DICTIONARY_REFS, "description": "Published dictionary/version ids, verified before speech; replaces configured dictionaries for this call. Not combinable with pronunciations/spoken_as in the same call."},
         "pronunciations": _field("object", additionalProperties=S, maxProperties=200,
                                  description="Phonetic forms: CMU Arpabet for English; drama-3 also accepts IPA."),
         "spoken_as": _field("object", additionalProperties=S, maxProperties=200,
