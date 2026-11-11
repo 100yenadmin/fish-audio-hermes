@@ -509,6 +509,32 @@ def test_pronunciations_tool(real, request):
         set_config(real, before)
 
 
+@pytest.mark.row('A-TOOL-PRON-OPERATOR')
+def test_operator_pronunciations_tool(real, request):
+    before = config(real)
+    try:
+        changed = copy.deepcopy(before)
+        # Operator mode is a plugin transport setting, as in A-OP-MINE; tts holds speech preferences.
+        changed.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['operator_account'] = True
+        set_config(real, changed)
+        code = '\n    '.join([
+            'import json, httpx; from tools.registry import registry',
+            'calls = []',
+            'def no_network(*args, **kwargs):',
+            '    calls.append("attempted"); raise AssertionError("operator dictionary action opened the network")',
+            'httpx.Client.send = no_network',
+            'results = {action: json.loads(registry.dispatch("fish_pronunciations", {"action": action, "name": "Acceptance"})) for action in ("list", "create")}',
+            'print("ACCEPTANCE_RESULT=" + json.dumps({"results": results, "fish_requests": len(calls)}))'])
+        result = core(real, code)
+        evidence(request, real, result)
+        assert result['fish_requests'] == 0
+        for refused in result['results'].values():
+            assert refused['success'] is False
+            assert refused['error'] == "Pronunciation dictionaries on this agent's account are managed by its operator."
+    finally:
+        set_config(real, before)
+
+
 @pytest.mark.parametrize('n,tool', [pytest.param(i, tool, marks=pytest.mark.row(f'A-TOOL-{i}'))
                                   for i, tool in enumerate(('fish_speak', 'fish_voices', 'fish_transcribe'), 1)])
 def test_agent(paid, n, tool, request):

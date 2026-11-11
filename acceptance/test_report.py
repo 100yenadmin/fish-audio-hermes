@@ -55,6 +55,24 @@ def test_gate_fixture(case, tmp_path):
     assert (tmp_path / 'REPORT.md').is_file()
 
 
+@pytest.mark.parametrize('host', ['upstream', 'evaos'])
+def test_operator_dictionary_row_is_required_in_real_catalog(tmp_path, host):
+    inventory = json.loads((HERE / 'rows.yaml').read_text())
+    (tmp_path / 'host.json').write_text(json.dumps({'host': host, 'plugin_ref': 'fixture',
+        'hermes_ref': 'fixture', 'plugin_version': '1.13.0'}))
+    rows = [{'id': s['id'], 'status': 'pass'} for s in inventory
+            if s['layer'] == 'a' and host in s['hosts'] and s['id'] != 'A-TOOL-PRON-OPERATOR']
+    (tmp_path / 'rows-a.json').write_text(json.dumps(rows))
+    (tmp_path / 'cost.json').write_text('{"usd":0}')
+    assert merge(tmp_path, ['a']) == 1
+    report = json.loads((tmp_path / 'report.json').read_text())
+    row = next(r for r in report['rows'] if r['id'] == 'A-TOOL-PRON-OPERATOR')
+    assert row['status'] == 'fail' and row['reason'] == 'required result missing'
+    rows.append({'id': 'A-TOOL-PRON-OPERATOR', 'status': 'pass'})
+    (tmp_path / 'rows-a.json').write_text(json.dumps(rows))
+    assert merge(tmp_path, ['a']) == 0
+
+
 def test_cli_failed_gate_exits_nonzero(tmp_path):
     (tmp_path / 'host.json').write_text(json.dumps({'host': 'upstream', 'plugin_ref': 'fixture', 'hermes_ref': 'fixture', 'plugin_version': '1.7.5'}))
     (tmp_path / 'rows-a.json').write_text('[]')
