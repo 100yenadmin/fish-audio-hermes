@@ -118,7 +118,9 @@ def test_clone_approval_survives_malformed_sample_paths(paths, count):
 
 @pytest.mark.parametrize("action", ["delete", "delete_version"])
 @pytest.mark.parametrize("length", [120, 128, 129])
-def test_dictionary_approval_preserves_ids_up_to_128(action, length):
+def test_dictionary_approval_preserves_ids_up_to_128(action, length, monkeypatch):
+    from fish_audio import settings
+    monkeypatch.setattr(settings, "operator_account", lambda: False)  # independent of any real Hermes home
     dictionary, version = "d" * length, "v" * length
     result = hooks.on_pre_tool_call("fish_pronunciations", {
         "action": action, "dictionary_id": dictionary, "version_id": version})
