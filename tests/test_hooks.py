@@ -21,33 +21,36 @@ def audio(tmp_path, name="test.ogg"):
     return path
 
 
-def test_missing_media_appended_once_and_consumed(tmp_path):
+@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]"), ("file", "[[as_document]]")])
+def test_missing_media_appended_once_and_consumed(tmp_path, delivery, marker):
     path = audio(tmp_path)
-    hooks.record("a", path, True)
-    hooks.record("a", path, True)
-    assert hooks.on_transform_llm_output("Here you go. \n", "a") == f"Here you go.\n[[audio_as_voice]]\nMEDIA:{path}"
+    hooks.record("a", path, delivery)
+    hooks.record("a", path, delivery)
+    assert hooks.on_transform_llm_output("Here you go. \n", "a") == f"Here you go.\n{marker}\nMEDIA:{path}"
     assert hooks.on_transform_llm_output("again", "a") is None
 
 
-def test_existing_media_dedup_and_voice_once(tmp_path):
+@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]"), ("file", "[[as_document]]")])
+def test_existing_media_dedup_and_voice_once(tmp_path, delivery, marker):
     first, second = audio(tmp_path), audio(tmp_path, "second.ogg")
-    hooks.record("a", first, True)
-    hooks.record("a", second, True)
-    text = f"[[audio_as_voice]]\nMEDIA:{first}"
+    hooks.record("a", first, delivery)
+    hooks.record("a", second, delivery)
+    text = f"{marker}\nMEDIA:{first}"
     result = hooks.on_transform_llm_output(text, "a")
-    assert result == text + f"\nMEDIA:{second}" and result.count("[[audio_as_voice]]") == 1
-    hooks.record("a", first, True)
+    assert result == text + f"\nMEDIA:{second}" and result.count(marker) == 1
+    hooks.record("a", first, delivery)
     assert hooks.on_transform_llm_output(text, "a") is None
 
 
-def test_existing_media_gets_missing_voice_marker_without_append(tmp_path):
+@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]"), ("file", "[[as_document]]")])
+def test_existing_media_gets_missing_voice_marker_without_append(tmp_path, delivery, marker):
     path = audio(tmp_path)
-    hooks.record("a", path, True)
-    hooks.record("a", path, True)
+    hooks.record("a", path, delivery)
+    hooks.record("a", path, delivery)
     text = f"Here you go.\nMEDIA:{path}"
     assert hooks.on_transform_llm_output(text, "b") is None
     result = hooks.on_transform_llm_output(text, "a")
-    assert result.count(f"MEDIA:{path}") == 1 and result.count("[[audio_as_voice]]") == 1
+    assert result.count(f"MEDIA:{path}") == 1 and result.count(marker) == 1
     assert hooks.on_transform_llm_output(result, "a") is None
     hooks.record("a", path, False)
     assert hooks.on_transform_llm_output(text, "a") is None
@@ -60,6 +63,16 @@ def test_session_isolation_and_empty_session(tmp_path):
     assert hooks.on_transform_llm_output("A", "a") == f"A\nMEDIA:{path}"
     hooks.record("", path, True)
     assert hooks.on_transform_llm_output() == f"[[audio_as_voice]]\nMEDIA:{path}"
+
+
+def test_delivery_kinds_have_one_marker_each(tmp_path):
+    for mode in ("voice", "file", None):
+        path = audio(tmp_path, f"{mode}.ogg")
+        hooks.record("a", path, mode)
+        hooks.record("a", path, mode)
+    result = hooks.on_transform_llm_output("Ready.", "a")
+    assert all(result.count(marker) == 1 for marker in hooks.DELIVERY_MARKERS.values())
+    assert result.count("MEDIA:") == 3
 
 
 def test_lru_and_ttl(monkeypatch, tmp_path):
@@ -127,23 +140,25 @@ def test_operator_approval_names_no_user_account_and_skips_refused_delete(monkey
 
 
 @pytest.mark.parametrize("platform", ["desktop", "cli", "tui"])
-def test_local_surfaces_get_media_without_voice_marker(tmp_path, platform):
+@pytest.mark.parametrize("delivery", [True, "file"])
+def test_local_surfaces_get_media_without_voice_marker(tmp_path, platform, delivery):
     # Desktop and the classic CLI print the gateway's voice-bubble directive as literal text; only MEDIA: is useful there.
     path = audio(tmp_path)
-    hooks.record("a", path, True)
+    hooks.record("a", path, delivery)
     assert hooks.on_transform_llm_output("Here you go.", "a", platform=platform) == f"Here you go.\nMEDIA:{path}"
 
 
-def test_local_surface_drops_an_echoed_voice_marker(tmp_path):
+@pytest.mark.parametrize("marker", ["[[audio_as_voice]]", "[[as_document]]", "[[audio_as_voice]] [[as_document]]"])
+def test_local_surface_drops_an_echoed_voice_marker(tmp_path, marker):
     path = audio(tmp_path)
     hooks.record("a", path, True)
-    text = f"Option 1 — Butler\n[[audio_as_voice]]\nMEDIA:{path}\nPick one."
+    text = f"Option 1 — Butler\n{marker}\nMEDIA:{path}\nPick one."
     assert hooks.on_transform_llm_output(text, "a", platform="desktop") == f"Option 1 — Butler\nMEDIA:{path}\nPick one."
     hooks.record("a", path, True)
-    inline = f"[[audio_as_voice]] MEDIA:{path}"
+    inline = f"{marker} MEDIA:{path}"
     assert hooks.on_transform_llm_output(inline, "a", platform="desktop") == f"MEDIA:{path}"
     hooks.record("a", path, True)
-    nested = f"- Butler\n  - [[audio_as_voice]] MEDIA:{path}"
+    nested = f"- Butler\n  - {marker} MEDIA:{path}"
     assert hooks.on_transform_llm_output(nested, "a", platform="desktop") == f"- Butler\n  - MEDIA:{path}"
 
 

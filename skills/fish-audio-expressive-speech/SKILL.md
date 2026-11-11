@@ -59,6 +59,16 @@ approval, and the latest version cannot be deleted. On a publish conflict, fetch
 Native `.ogg` is the default voice reply; use `format: wav` for a file. Pass `timestamps: true` for word
 timings (`segments`) and subtitle files (`srt_path`, `vtt_path`).
 
+## Delivery and reply rules
+
+Use `delivery: file` for a downloadable MP3/WAV or a long piece; any supported format works.
+Use `delivery: voice` for a voice note, with `format: ogg` or `mp3`; WAV voice notes are refused.
+Omitting delivery keeps the existing defaults: OGG/MP3 voice notes, WAV a plain media file.
+Remember user rules in Hermes's own memory or preferences; Fish Audio has no reply-policy setting.
+For “reply with voice only to voice notes”, use speech only when the incoming message is a voice note.
+For “always include the text”, include the full spoken text alongside the returned `media_tag`.
+Apply the remembered rule on later turns, and update it when the user changes their preference.
+
 Worked examples (replace the voice ids with voices the user selected):
 
 1. A warm greeting:

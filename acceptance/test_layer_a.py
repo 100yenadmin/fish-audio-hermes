@@ -466,6 +466,37 @@ def test_agent(paid, n, tool, request):
     evidence(request, paid, {'tool': tool, 'success': True, 'reply': reply})
 
 
+@pytest.mark.row('A-TOOL-DELIVERY')
+def test_delivery(paid, request):
+    code = '\n    '.join([
+        'import json, httpx; from tools.registry import registry',
+        'results = {}',
+        'for mode in ("voice", "file"):',
+        '    raw = registry.dispatch("fish_speak", {"text": "Good morning.", "format": "mp3", "delivery": mode})',
+        '    results[mode] = json.loads(raw) if isinstance(raw, str) else raw',
+        'calls = []; original = httpx.Client.send',
+        'def refuse_network(*args, **kwargs):',
+        '    calls.append(True); raise AssertionError("Unexpected Fish request")',
+        'httpx.Client.send = refuse_network',
+        'try:',
+        '    raw = registry.dispatch("fish_speak", {"text": "Good morning.", "format": "wav", "delivery": "voice"})',
+        '    results["refused"] = json.loads(raw) if isinstance(raw, str) else raw',
+        'finally:',
+        '    httpx.Client.send = original',
+        'results["refusal_calls"] = len(calls)',
+        'print("ACCEPTANCE_RESULT=" + json.dumps(results))'])
+    result = core(paid, code)
+    for mode, marker in [('voice', '[[audio_as_voice]]'), ('file', '[[as_document]]')]:
+        item = result[mode]
+        assert item.get('success') is True and item['delivery'] == mode, scrub(item)
+        path = Path(item['file_path'])
+        assert path.is_file() and path.stat().st_size > 0 and path.suffix == '.mp3'
+        assert item['media_tag'] == f'{marker}\nMEDIA:{path}'
+    assert result['refused'] == {'success': False, 'error': 'Voice bubbles need ogg or mp3; use delivery file for wav.'}
+    assert result['refusal_calls'] == 0
+    evidence(request, paid, result)
+
+
 @pytest.mark.row('A-TOOL-4')
 def test_spoken_as(paid, request):
     code = '\n    '.join([

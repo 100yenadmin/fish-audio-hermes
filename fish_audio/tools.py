@@ -9,12 +9,19 @@ from .tool_support import require, voice_id, run
 
 BILLING = " Calls are billed to the user's Fish Audio account."
 SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio emotion cues like [excited] "
-                     "or [whispering]. Voices accept saved names. For plain read-aloud use text_to_speech." + BILLING)
+                     "or [whispering]. Voices accept saved names. For plain read-aloud use text_to_speech. "
+                     "Delivery selects a voice note or a downloadable file." + BILLING)
 
 
 def _speak(args, key, base, session, *, record_media=True):
     text = args.get("text")
     require(isinstance(text, str) and bool(text.strip()), "Nothing to say: the text is empty.")
+    fmt = args.get("format", "ogg")
+    require(fmt in {"ogg", "mp3", "wav"}, "format must be ogg, mp3 or wav.")
+    delivery = args.get("delivery", "voice" if fmt in {"ogg", "mp3"} else None)
+    require("delivery" not in args or delivery in ("voice", "file"), "delivery must be voice or file.")
+    require(delivery != "voice" or fmt in {"ogg", "mp3"},
+            "Voice bubbles need ogg or mp3; use delivery file for wav.")
     model, source = settings.resolve_model_source(args.get("model"), key=key, base_url=base, prefer_call=True)
     defaulted = source != "configured"
     model = models.effective_model(model)
@@ -35,8 +42,6 @@ def _speak(args, key, base, session, *, record_media=True):
         require(row["multi_speaker"], "Multi-speaker speech is supported by: " +
                 ", ".join(r["id"] for r in MODELS if r["multi_speaker"]))
         voice = speakers
-    fmt = args.get("format", "ogg")
-    require(fmt in {"ogg", "mp3", "wav"}, "format must be ogg, mp3 or wav.")
     if "speed" in args:
         speed = args["speed"]
         require(settings._number(speed) and 0.5 <= speed <= 2, "speed must be between 0.5 and 2.0.")
@@ -89,11 +94,12 @@ def _speak(args, key, base, session, *, record_media=True):
     require("timestamps" not in args or type(args["timestamps"]) is bool, "timestamps must be boolean.")
     events = [] if args.get("timestamps") else None
     client.tts_to_file(params, key, base, str(path), events=events)
-    as_voice = fmt in {"ogg", "mp3"}
-    tag = ("[[audio_as_voice]]\n" if as_voice else "") + f"MEDIA:{path}"
+    marker = hooks.DELIVERY_MARKERS.get(delivery)
+    tag = (marker + "\n" if marker else "") + f"MEDIA:{path}"
     if record_media:
-        hooks.record(session, path, as_voice)
+        hooks.record(session, path, delivery)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
+              "delivery": delivery or "file",
               "note": ("Include media_tag verbatim on its own line so the user receives the audio, and add one short line "
                        "of text: a reply that is only media_tag can leave a stray \"MEDIA\" message in streaming chats.")}
     if source == "wallet" and settings.operator_account():
@@ -153,6 +159,7 @@ DICTIONARY_REFS = _field("array", maxItems=3, items=_field("object",
 SCHEMAS = {
     "fish_speak": {"text": S, "voice": VOICE_REF, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
+        "delivery": _field("string", enum=["voice", "file"], description="Voice note (ogg/mp3) or downloadable file; omitted keeps format-based delivery."),
         "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
