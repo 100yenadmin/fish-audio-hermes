@@ -10,8 +10,13 @@ Plan before spending:
 
 1. Split the manuscript by headings or the user's chapter markers. Confirm the chapter titles,
    one voice and one model to use throughout, and the output format (MP3 unless requested otherwise).
+   Pin the voice as its 32-character Fish voice ID (a saved name maps to an ID in `fish_settings`
+   `get` → `names`) and use that ID, never a name, for every chapter: names can be re-pointed later.
 2. Use the project folder the user names, defaulting to `fish-audiobook/<title-slug>/`
    in the working directory. Keep the manuscript and exact chapter text available for resume.
+   If the folder already has `manifest.json`, follow Resume below instead of starting over.
+   Before any synthesis, list every planned output name; if any already exists and is not a file of
+   this manifest, ask before replacing it or use a new folder.
 3. `fish_speak` has no numeric text cap in this plugin; Fish's API reference does not specify one.
    Use 5,000 characters per request as a workflow target, not a guaranteed API limit.
    Split longer chapters at paragraph or sentence boundaries into `chapter-NN-partMM` files;
@@ -23,8 +28,8 @@ Plan before spending:
 
 Create `manifest.json` in the project folder with one entry per chapter:
 `number`, `title`, `text_hash` (SHA-256 of the exact chapter text encoded as UTF-8), `file`,
-`voice`, `model`, `estimated_cost`, `status` (`pending`, `done` or `failed`), and `alignment_file`
-when available. Use project-relative filenames; pending entries can have a null file.
+`voice` (the pinned ID), `model`, `estimated_cost`, `status` (`pending`, `done` or `failed`),
+`alignment_file` when available, and `cache_file` (the audio-cache path) until the copy succeeds. Use project-relative filenames; pending entries can have a null file.
 For a split chapter, keep a `parts` list with each part's text hash, file, estimate, status and
 alignment file; mark the chapter done only when every part is done. Sum part estimates for its cost.
 Initialize the manifest before synthesis. Save it atomically after every chapter and every part
@@ -40,14 +45,16 @@ Synthesize and save:
    and `alignment_path` alongside it, and set the copied alignment JSON's `audio` to the new basename.
    The alignment JSON contains every word segment even when the tool result stops at 500.
 3. Record the files and mark the entry done only after the copies succeed; write the manifest.
-   If a copy fails, retain the cache path for recovery and mark failed; copy again without synthesis.
+   If a copy fails, keep `cache_file` for recovery and mark failed; copy again without synthesis.
    If synthesis fails or is interrupted, record failed and explain any uncertain billing before retrying.
 
-Resume by reading the manifest and recomputing text hashes. Skip done chapters/parts whose hash
+Resume by reading the manifest and recomputing text hashes; keep using its pinned voice ID and model. Skip done chapters/parts whose hash
 still matches; never synthesize them again unless asked. If a recorded file is missing, recover it
 from the cache or ask before a billed replacement. Present changed or failed entries for approval.
-To redo one chapter, say it will be billed again, synthesize only that chapter's entry (its parts
-if split), replace only its files, and update its hash, cost, alignment and status in the manifest.
+To redo one chapter, say it will be billed again and synthesize only that chapter's entry (its
+parts if split). Copy the new audio and sidecars under temporary names first; only when every copy
+succeeds, replace the old set and update the hash, cost, alignment and status in the manifest.
+If any copy fails, keep the old files and manifest entry as they were.
 
 For multi-voice casting and timeline editing, hand off to Fish Audio's Story Studio through
 Fish's own MCP server or web app. It signs in to the user's Fish account with OAuth, not this
