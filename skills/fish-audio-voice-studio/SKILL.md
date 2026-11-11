@@ -8,13 +8,23 @@ Never ask for an API key in chat; use the setup skill or `hermes fish login` on 
 
 When a Fish result or `/fish` reply says the operator manages this agent's voice account, `mine`, `update` and
 `delete` are refused: do not offer them, and skip the metadata and deletion steps at the end of this skill.
-Search, get, clone, design and save still work.
+Search, get, audition, clone, design and save still work.
 
 Search public voices with `action: search`, a query/language/tags, and at most 20 results per page.
 Search also accepts `author_id`, `title_language` (one code or 1–10 codes) and boolean `licensed`;
 these filters apply only to search. Results include `has_more` when Fish returns a boolean.
 Use `action: mine` for voices in that account. Search windows end at 1,000 results;
 "1000+" is a lower bound. Use `action: get` with a voice id to inspect text-only sample descriptions.
+
+## Choosing a voice
+
+For a request like "deep British narrator", search with query words such as `British narrator`, `language: "en"`
+and relevant `tags` such as `deep`; use only query, language and tags for these traits, not invented accent/gender filters.
+Pick 2–4 distinct candidates. Ask for the user's own short passage if they gave none, keeping it at most 200
+characters to keep cost low. Call `fish_voices` once with `action: "audition"`, those `voices` and that `text`;
+each clip is a billed synthesis. Present every returned `media_tag` verbatim on its own line, labelled with its
+voice title, plus a short text line. Say plainly when the match is uncertain: titles are community-written and
+do not guarantee accent or gender. Then offer `/fish use <id>` or a saved name via `/fish alias add <name> <id>`.
 
 For cloning, ask the user to confirm the speaker's permission. Set `consent: true` only after that confirmation.
 Use 10–30 seconds of clean audio, one speaker, without music or background noise. Supply 1–20 local sample

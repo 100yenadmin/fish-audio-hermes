@@ -6,6 +6,7 @@
 - Announce the reading-speed slider value as a multiplier to screen readers (#110).
 - Keep dictionary and version IDs up to 128 characters in deletion approvals and rule keys (#110).
 - Refuse pronunciation dictionary listing, creating, publishing and deletion on operator-managed agents, where dictionaries belong to the operator's whole account (#110).
+- **Voice auditions:** `fish_voices audition` plays up to four voices reading one short passage, with each billed clip attached in chat; the voice-studio skill guides choosing and comparing candidates.
 
 ## 1.12.1 — 2026-11-10
 

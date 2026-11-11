@@ -161,7 +161,10 @@ SCHEMAS = {
                                  description="Phonetic forms: CMU Arpabet for English; drama-3 also accepts IPA."),
         "spoken_as": _field("object", additionalProperties=S, maxProperties=200,
                             description="Plain-text replacements (Fish alias rules), billed on the replaced text.")},
-    "fish_voices": {"action": _field("string", enum=["search", "mine", "get", "clone", "design", "save", "update", "delete"]),
+    "fish_voices": {"action": _field("string", enum=["search", "mine", "get", "audition", "clone", "design", "save", "update", "delete"]),
+        "voices": _field("array", items=VOICE_REF, minItems=1, maxItems=4),
+        "text": _field("string", minLength=1, maxLength=200, description="audition: short passage; defaults to Hi! This is how I sound."),
+        "model": _field("string", enum=[r["id"] for r in MODELS]),
         "query": S, "language": S, "tags": STRINGS, "sort": _field("string", enum=["score", "task_count", "created_at"]),
         "author_id": _field("string", pattern="^[A-Za-z0-9_-]{1,64}$"),
         "title_language": {"oneOf": [S, _field("array", items=S, minItems=1, maxItems=10)]}, "licensed": B,
@@ -206,7 +209,7 @@ DESCRIPTIONS = {
     "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Results include setup: what is missing and the next step. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
-    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,
+    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice; audition plays up to 4 voices reading one short passage (≤200 characters); each clip is a billed synthesis." + BILLING,
     "fish_transcribe": "Transcribe local audio with speaker turns, emotion cues, timestamps and optional SRT." + BILLING}
 REQUIRED = {"fish_pronunciations": ["action"], "fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
 

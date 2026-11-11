@@ -726,6 +726,27 @@ def test_live_stt_compat(paid, request):
         set_config(paid, saved)
 
 
+@pytest.mark.row('A-TOOL-AUDITION')
+def test_voice_audition(paid, request):
+    code = '\n    '.join([
+        'import json, sys; from pathlib import Path; from tools.registry import registry',
+        'call = lambda args: (lambda r: json.loads(r) if isinstance(r, str) else r)(registry.dispatch("fish_voices", args))',
+        'library = call({"action": "search", "query": "narrator", "page_size": 20})',
+        'assert library.get("success") is True, library',
+        'ids = list(dict.fromkeys(i["id"] for i in library["items"]))[:2]',
+        'assert len(ids) == 2, "search must return two distinct library voices"',
+        'out = call({"action": "audition", "voices": ids, "text": "Hear these voices read my words."})',
+        'assert out.get("success") is True and "failed" not in out, out',
+        'assert [c["voice"] for c in out["clips"]] == ids, out',
+        'assert len({c["media_tag"] for c in out["clips"]}) == 2',
+        'assert all(Path(c["file_path"]).suffix == ".ogg" and Path(c["file_path"]).read_bytes().startswith(b"OggS") for c in out["clips"])',
+        'recorded = {p for n, m in list(sys.modules.items()) if n.endswith("fish_audio.hooks") for p, _, _ in m.take("")}',
+        'assert all(c["file_path"] in recorded for c in out["clips"])',
+        'print("ACCEPTANCE_RESULT=" + json.dumps(out))'])
+    result = core(paid, code)
+    evidence(request, paid, result)
+
+
 @pytest.mark.row('A-VOICE-1')
 def test_mine_visibility(paid, request):
     # Each visibility filter returns only voices with that visibility, and the three filters together return them all.
