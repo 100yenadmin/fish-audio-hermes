@@ -240,15 +240,15 @@ for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enter
 
 test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
   const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
-  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'slow-save', 'left-renamed', 'duplicate']) {
+  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'slow-save', 'wait-throws', 'left-renamed', 'duplicate']) {
     let title = mode === 'left-renamed' ? 'Original (edit)' : 'Original', pending, dialog = false, shots = 0, inflight = null
     const rows = [], saves = []
     // A slow Save lands only when something waits on the page, like the real in-flight PATCH.
-    const waits = []
-    const page = { waitForFunction:async()=>{ if (inflight) await inflight }, waitForTimeout:async ms=>{ waits.push(ms) }, getByRole:(role, {name} = {}) => {
+    const waits = [], timers = []
+    const page = { waitForFunction:async()=>{ if (inflight) await inflight }, waitForTimeout:async ms=>{ waits.push(ms); if (mode === 'wait-throws') throw Error('Target closed') }, getByRole:(role, {name} = {}) => {
       const locator = {
         first:()=>locator, count:async()=>mode === 'empty' ? 0 : 1, getAttribute:async()=>`Edit ${title}`,
-        waitFor:async()=>{ if (mode.startsWith('refresh-fail') && name === 'Edit Original (edit)') throw Error('list did not refresh')
+        waitFor:async()=>{ if ((mode.startsWith('refresh-fail') || mode === 'wait-throws') && name === 'Edit Original (edit)') throw Error('list did not refresh')
           if (role === 'dialog') assert.equal(dialog, false); else if (name !== 'Voice name') assert.equal(name, `Edit ${title}`) },
         fill:async value=>{ pending = value }, click:async()=>{
           if (name === 'Save voice' && mode === 'slow-save') inflight = new Promise(r => setTimeout(r, 5)).then(() => { title = pending; saves.push(title); dialog = false })
@@ -258,7 +258,8 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
       }; return locator
     } }
     await vm.runInNewContext(`${run.slice(start,end)}\nmineEditRow(s, 'light')`, {
-      s:{page}, H:'upstream', want:()=>true, openVoices:async()=>{}, shotPath:()=>'', encodeURIComponent, JSON,
+      s:{page}, H:'upstream', want:()=>true, openVoices:async()=>{}, shotPath:()=>'', encodeURIComponent, JSON, Date, String, Error,
+      setTimeout:(resolve, ms)=>{ timers.push(ms); resolve() },
       gw:async(path, init = {}) => {
         if (path.includes('?self=true')) return { body: { items: mode === 'duplicate' ? [{ id: 'v1', title }, { id: 'v2', title }] : [{ id: 'v1', title }] } }
         if (init.method === 'PATCH') {
@@ -281,7 +282,8 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
     if (mode === 'restore-throws') assert.match(rows[0].reason, /title not restored .*\(gateway unreachable\)/)
     assert.equal(rows.length, 1)
     // Only a failure after Save waits out the gateway's in-flight update before restoring.
-    assert.equal(waits.length, ['shot-error', 'refresh-fail', 'refresh-fail+restore-refused', 'slow-save'].includes(mode) ? 1 : 0)
+    assert.equal(waits.length, ['shot-error', 'refresh-fail', 'refresh-fail+restore-refused', 'slow-save', 'wait-throws'].includes(mode) ? 1 : 0)
+    assert.equal(timers.length, mode === 'wait-throws' ? 1 : 0)
     if (waits.length) assert.ok(waits[0] > 120000 && waits[0] <= 125000)
     if (mode === 'left-renamed') assert.match(rows[0].reason, /left renamed by an earlier run/)
   }

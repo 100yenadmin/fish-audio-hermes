@@ -409,7 +409,9 @@ async function mineEditRow(s, theme) {
         const cancel = dialog && [...dialog.querySelectorAll('button')].find(b => b.textContent.trim() === 'Cancel')
         return !dialog || (cancel && !cancel.disabled)
       }, null, { timeout: 65000 }).catch(() => { unsettled = true })
-      await s.page.waitForTimeout(Math.max(0, clickedAt + 125000 - Date.now()))
+      const remaining = () => Math.max(0, clickedAt + 125000 - Date.now())
+      // A closed page must not skip the restore: fall back to a plain timer.
+      await s.page.waitForTimeout(remaining()).catch(() => new Promise(resolve => setTimeout(resolve, remaining())))
     }
     // Always restore by id through the gateway; a failed restore reports the UI error that came before it too.
     let restoreProblem = null
