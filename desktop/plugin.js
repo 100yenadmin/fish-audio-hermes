@@ -1192,6 +1192,7 @@ function Sections({ pin, operator }) {
   const [name, setName] = useState3("");
   const [voice, setVoice] = useState3(null);
   const [speed, setSpeed] = useState3(1);
+  const speedDirty = useRef2(false);
   const [badName, setBadName] = useState3(false);
   const generation = useRef2(0);
   useValue4($favouritesRevision);
@@ -1203,7 +1204,10 @@ function Sections({ pin, operator }) {
       (res) => {
         if (mine !== generation.current) return;
         setState(res);
-        setSpeed((value) => !state || res.managed.includes("speed") || value === (state.speed ?? 1) ? res.speed ?? 1 : value);
+        if (!speedDirty.current || res.managed.includes("speed")) {
+          setSpeed(res.speed ?? 1);
+          speedDirty.current = false;
+        }
       },
       (failure) => mine === generation.current && setError(failure)
     );
@@ -1233,6 +1237,10 @@ function Sections({ pin, operator }) {
     }
   };
   const saved = (message) => host4.notify({ kind: "success", message });
+  const applySettings = (res) => {
+    setState(res);
+    if (!speedDirty.current && typeof res.speed === "number") setSpeed(res.speed);
+  };
   if (error) {
     return /* @__PURE__ */ jsx4(ErrorState3, { description: errorText(error), title: t("settings.loadFailed"), children: /* @__PURE__ */ jsx4(Button4, { onClick: load, size: "xs", variant: "secondary", children: t("retry") }) });
   }
@@ -1245,14 +1253,14 @@ function Sections({ pin, operator }) {
     const model = value === DEFAULT_MODEL ? null : value;
     if (model === state.model) return;
     void write("model", () => postSettings({ model }), (res) => {
-      setState(res);
+      applySettings(res);
       saved(pluginCtx().i18n.t("settings.modelSaved"));
     });
   };
   const aliasVoice = voice ?? current ?? "";
   const saveSpeed = (value) => void write("speed", () => postSettings({ speed: value }), (res) => {
-    setState(res);
-    setSpeed(res.speed);
+    speedDirty.current = false;
+    applySettings(res);
     saved(pluginCtx().i18n.t("settings.speedSaved"));
   });
   const add = () => {
@@ -1283,7 +1291,7 @@ function Sections({ pin, operator }) {
               disabled: managed("voice") || locked,
               loading: busy === "reset",
               onClick: () => void write("reset", () => postSettings({ voice: null }), (res) => {
-                setState(res);
+                applySettings(res);
                 saved(pluginCtx().i18n.t("settings.resetDone"));
               }),
               size: "xs",
@@ -1327,7 +1335,10 @@ function Sections({ pin, operator }) {
               "aria-valuetext": `${speed.toFixed(2)}\xD7`,
               disabled: managed("speed") || locked,
               value: speed,
-              onChange: (e) => setSpeed(Number(e.target.value))
+              onChange: (e) => {
+                speedDirty.current = true;
+                setSpeed(Number(e.target.value));
+              }
             }
           ),
           /* @__PURE__ */ jsxs4("output", { children: [

@@ -245,6 +245,24 @@ describe('settings page writes', () => {
     expect(writes().every(c => c.path.startsWith('/aliases'))).toBe(true)
   })
 
+  it('a model write syncs a clean speed before the next alias reload', async () => {
+    let server = { ...SETTINGS, speed: 1.1 }
+    mount(gateway(() => server, async (path, opts) => path === '/settings'
+      ? (server = { ...server, ...opts.body }) : { ok: true, aliases: server.aliases }))
+    await flush()
+    const slider = screen.getByRole('slider') as HTMLInputElement
+    expect(slider.value).toBe('1.1')
+    server = { ...server, speed: 1.2 }
+    fireEvent.click(screen.getByRole('option', { name: 'S1 (deprecated)' }))
+    await flush()
+    expect(slider.value).toBe('1.2')
+    fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: 'host' } })
+    fireEvent.click(screen.getByRole('button', { name: en.settings.add }))
+    await flush()
+    expect(slider.value).toBe('1.2')
+    expect((screen.getByRole('button', { name: en.settings.saveSpeed }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('locks speed when managed and preserves it on a gateway refusal', async () => {
     const { writes } = mount(gateway({ ...SETTINGS, managed: ['speed'] }))
     await flush()
