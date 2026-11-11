@@ -3,6 +3,7 @@ import asyncio
 import base64
 import copy
 import json
+import unicodedata
 import os
 from pathlib import Path
 import re
@@ -253,6 +254,9 @@ def test_use_unicode_alias(paid, voice, request):
     before = config(paid)
     assert '猫' not in before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
     try:
+        if before.get('tts', {}).get('fish-audio', {}).get('voice') == voice:  # so `use 猫` must change something
+            other = dict(before); other['tts'] = {**before.get('tts', {}), 'fish-audio': {**before['tts']['fish-audio'], 'voice': 'b' * 32}}
+            set_config(paid, other)
         added = command(paid, f'alias add 猫 {voice}')
         used = command(paid, 'use 猫')
         assert config(paid)['tts']['fish-audio']['voice'] == voice
@@ -276,7 +280,7 @@ def test_use_own_title(paid, request):
         na(request, 'own voice listing exceeds the searchable window; title uniqueness cannot be established')
     titles = [item['title'].strip().casefold() for item in items if isinstance(item.get('title'), str)]
     aliases = before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
-    aliases = {name.strip().casefold() for name in aliases}
+    aliases = {unicodedata.normalize('NFKC', name.strip()).casefold() for name in aliases}
     chosen = next((item for item in items if isinstance(item.get('title'), str)
                    and 0 < len(item['title'].strip()) <= 128
                    and titles.count(item['title'].strip().casefold()) == 1

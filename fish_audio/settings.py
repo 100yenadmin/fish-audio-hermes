@@ -96,6 +96,7 @@ def aliases() -> dict[str, str]:
     from .tool_support import ToolInputError
     saved = _mapping(_mapping(_mapping(_config().get("tts")).get("fish-audio")).get("aliases"))
     result = {}
+    # Two stored keys that normalize alike ("Narrator", "narrator", fullwidth forms): the first in code-point order wins.
     for raw in sorted(k for k in saved if isinstance(k, str)):
         voice = saved[raw]
         try:
