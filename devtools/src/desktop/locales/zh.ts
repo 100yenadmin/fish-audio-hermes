@@ -114,6 +114,7 @@ export const zh = {
   save: '保存声音',
   saved: (title: string) => `已保存${title}。可在“我的声音”中找到。`,
   operatorSaved: (title: string) => `已保存${title}。可在声音库的“收藏”中找到。`,
+  savedNameAdded: (name: string, title: string) => `已保存的名称 ${name} 现在指向 ${title}。`,
   apiCredit: 'API 额度',
   lowCredit: '余额不足——请充值以继续使用语音回复。',
   topUpsLine: (amount: string) => `累计充值：${usd(tag, amount)}`,

@@ -54,7 +54,7 @@ describe('locale completeness', () => {
   it.each(Object.entries(locales))('%s has all English keys (including reading speed settings), matching leaf types and arities, and no empty messages', (_locale, messages) => {
     const english = leaves(en)
     const translated = leaves(messages)
-    expect(Object.keys(english)).toHaveLength(151 + 32 + 1 + 1 + 4 + 4)
+    expect(Object.keys(english)).toHaveLength(151 + 32 + 1 + 1 + 4 + 4 + 1)
     expect(Object.keys(translated).sort()).toEqual(Object.keys(english).sort())
     for (const [key, value] of Object.entries(translated)) {
       expect(typeof value, key).toBe(typeof english[key])

@@ -344,7 +344,7 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
       { files: uploaded, title: meta.title, description: meta.description || void 0, consent: meta.consent },
       6e5
     );
-    return done.voice;
+    return { ...done.voice, saved_name: done.saved_name, saved_name_note: done.saved_name_note };
   } catch (error) {
     if (!finishing && still()) {
       for (const item of uploaded) {
@@ -402,6 +402,7 @@ function CloneCard({ pin }) {
       );
       if (!samePin(currentPin(), pin)) return;
       setStatus({ key: keepCreated(pin, voice) ? "operatorCloned" : "cloned", args: [voice.title] });
+      notifySavedName(voice);
       setFiles([]);
       setTitle("");
       setDescription("");
@@ -502,6 +503,7 @@ function DesignCard({ pin }) {
       if (!samePin(currentPin(), pin)) return;
       setSaved({ ...saved, [candidate.design_token]: res.voice.title });
       host2.notify({ kind: "success", message: keepCreated(pin, res.voice) ? pluginCtx().i18n.t("operatorSaved", res.voice.title) : pluginCtx().i18n.t("saved", res.voice.title) });
+      notifySavedName({ ...res.voice, saved_name: res.saved_name, saved_name_note: res.saved_name_note });
       void client.invalidateQueries({ queryKey: ["fish-audio", agentKey(pin), "mine"] });
     } catch (error) {
       if (samePin(currentPin(), pin)) host2.notify({ kind: "error", message: errorText(error) });
@@ -575,6 +577,10 @@ function DesignCard({ pin }) {
       })
     ] })
   ] });
+}
+function notifySavedName(voice) {
+  if (voice.saved_name) host2.notify({ kind: "info", message: pluginCtx().i18n.t("savedNameAdded", voice.saved_name, voice.title) });
+  else if (voice.saved_name_note) host2.notify({ kind: "warning", message: voice.saved_name_note });
 }
 
 // src/desktop/page.tsx
@@ -928,6 +934,7 @@ function EditDialog({ pin, voice, onClose, onUpdated }) {
   const [loaded, setLoaded] = useState2(false);
   const [busy, setBusy] = useState2(false);
   const [error, setError] = useState2(null);
+  const [loadError, setLoadError] = useState2(null);
   useEffect(() => {
     let active = true;
     void readFor(pin, `/voices/${encodeURIComponent(voice.id)}`).then((res) => {
@@ -937,7 +944,7 @@ function EditDialog({ pin, voice, onClose, onUpdated }) {
       setDescription(res.voice.description ?? "");
       setLoaded(true);
     }).catch((error2) => {
-      if (active) setError(error2);
+      if (active) setLoadError(error2);
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -973,6 +980,7 @@ function EditDialog({ pin, voice, onClose, onUpdated }) {
   return /* @__PURE__ */ jsx3(Dialog, { open: true, onOpenChange: (open) => !open && !busy && onClose(), children: /* @__PURE__ */ jsxs3(DialogContent, { children: [
     /* @__PURE__ */ jsx3(DialogHeader, { children: /* @__PURE__ */ jsx3(DialogTitle, { children: /* @__PURE__ */ jsx3("bdi", { children: t("editTitle", voice.title) }) }) }),
     loading && /* @__PURE__ */ jsx3(Rows, { n: 1 }),
+    loadError !== null && /* @__PURE__ */ jsx3("p", { role: "alert", children: errorText(loadError) }),
     error !== null && /* @__PURE__ */ jsx3("p", { role: "alert", children: errorText(error) }),
     /* @__PURE__ */ jsxs3("label", { style: { display: "grid", fontSize: 12, gap: 6 }, children: [
       t("voiceTitle"),
@@ -1539,6 +1547,7 @@ var en = {
   save: "Save voice",
   saved: (title) => `Saved ${title}. Find it in My voices.`,
   operatorSaved: (title) => `Saved ${title}. Find it in the Library under Favourites.`,
+  savedNameAdded: (name, title) => `Saved name ${name} now points to ${title}.`,
   // Account
   apiCredit: "API credit",
   lowCredit: "Low balance \u2014 top up to keep voice replies working.",
@@ -1744,6 +1753,7 @@ var zh = {
   save: "\u4FDD\u5B58\u58F0\u97F3",
   saved: (title) => `\u5DF2\u4FDD\u5B58${title}\u3002\u53EF\u5728\u201C\u6211\u7684\u58F0\u97F3\u201D\u4E2D\u627E\u5230\u3002`,
   operatorSaved: (title) => `\u5DF2\u4FDD\u5B58${title}\u3002\u53EF\u5728\u58F0\u97F3\u5E93\u7684\u201C\u6536\u85CF\u201D\u4E2D\u627E\u5230\u3002`,
+  savedNameAdded: (name, title) => `\u5DF2\u4FDD\u5B58\u7684\u540D\u79F0 ${name} \u73B0\u5728\u6307\u5411 ${title}\u3002`,
   apiCredit: "API \u989D\u5EA6",
   lowCredit: "\u4F59\u989D\u4E0D\u8DB3\u2014\u2014\u8BF7\u5145\u503C\u4EE5\u7EE7\u7EED\u4F7F\u7528\u8BED\u97F3\u56DE\u590D\u3002",
   topUpsLine: (amount) => `\u7D2F\u8BA1\u5145\u503C\uFF1A${usd(tag2, amount)}`,
@@ -1948,6 +1958,7 @@ var zhHant = {
   save: "\u5132\u5B58\u8072\u97F3",
   saved: (title) => `\u5DF2\u5132\u5B58${title}\u3002\u53EF\u5728\u300C\u6211\u7684\u8072\u97F3\u300D\u4E2D\u627E\u5230\u3002`,
   operatorSaved: (title) => `\u5DF2\u5132\u5B58${title}\u3002\u53EF\u5728\u8072\u97F3\u5EAB\u7684\u300C\u6536\u85CF\u300D\u4E2D\u627E\u5230\u3002`,
+  savedNameAdded: (name, title) => `\u5DF2\u5132\u5B58\u7684\u540D\u7A31 ${name} \u73FE\u5728\u6307\u5411 ${title}\u3002`,
   apiCredit: "API \u984D\u5EA6",
   lowCredit: "\u9918\u984D\u4E0D\u8DB3\u2014\u2014\u8ACB\u5132\u503C\u4EE5\u7E7C\u7E8C\u4F7F\u7528\u8A9E\u97F3\u56DE\u8986\u3002",
   topUpsLine: (amount) => `\u7D2F\u8A08\u5132\u503C\uFF1A${usd(tag3, amount)}`,
@@ -2152,6 +2163,7 @@ var ja = {
   save: "\u30DC\u30A4\u30B9\u3092\u4FDD\u5B58",
   saved: (title) => `\u300C${title}\u300D\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002\u300C\u30DE\u30A4\u30DC\u30A4\u30B9\u300D\u3067\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002`,
   operatorSaved: (title) => `\u300C${title}\u300D\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002\u30E9\u30A4\u30D6\u30E9\u30EA\u306E\u300C\u304A\u6C17\u306B\u5165\u308A\u300D\u3067\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002`,
+  savedNameAdded: (name, title) => `\u4FDD\u5B58\u540D ${name} \u304C ${title} \u3092\u6307\u3059\u3088\u3046\u306B\u306A\u308A\u307E\u3057\u305F\u3002`,
   apiCredit: "API \u30AF\u30EC\u30B8\u30C3\u30C8",
   lowCredit: "\u6B8B\u9AD8\u304C\u5C11\u306A\u304F\u306A\u3063\u3066\u3044\u307E\u3059\u3002\u97F3\u58F0\u8FD4\u4FE1\u3092\u4F7F\u3044\u7D9A\u3051\u308B\u306B\u306F\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
   topUpsLine: (amount) => `\u7D2F\u8A08\u30C1\u30E3\u30FC\u30B8\u984D\uFF1A${usd(tag4, amount)}`,
@@ -2358,6 +2370,7 @@ var ar = {
   save: "\u062D\u0641\u0638 \u0627\u0644\u0635\u0648\u062A",
   saved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \xAB\u0623\u0635\u0648\u0627\u062A\u064A\xBB.`,
   operatorSaved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0636\u0645\u0646 \xAB\u0627\u0644\u0645\u0641\u0636\u0644\u0629\xBB.`,
+  savedNameAdded: (name, title) => `\u0627\u0644\u0627\u0633\u0645 \u0627\u0644\u0645\u062D\u0641\u0648\u0638 ${isolate(name)} \u064A\u0634\u064A\u0631 \u0627\u0644\u0622\u0646 \u0625\u0644\u0649 ${isolate(title)}.`,
   apiCredit: "\u0631\u0635\u064A\u062F API",
   lowCredit: "\u0627\u0644\u0631\u0635\u064A\u062F \u0645\u0646\u062E\u0641\u0636 \u2014 \u0627\u0634\u062D\u0646\u0647 \u0644\u062A\u0633\u062A\u0645\u0631 \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0641\u064A \u0627\u0644\u0639\u0645\u0644.",
   topUpsLine: (amount) => `\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646\u0627\u062A \u0645\u0646\u0630 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628: ${isolate(money(amount))}`,
@@ -2562,6 +2575,7 @@ var ru = {
   save: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0433\u043E\u043B\u043E\u0441",
   saved: (title) => `\u0413\u043E\u043B\u043E\u0441 ${title} \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041E\u043D \u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u041C\u043E\u0438 \u0433\u043E\u043B\u043E\u0441\u0430\xBB.`,
   operatorSaved: (title) => `\u0413\u043E\u043B\u043E\u0441 ${title} \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041E\u043D \u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435 \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u0418\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435\xBB.`,
+  savedNameAdded: (name, title) => `\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u0435 \u0438\u043C\u044F ${name} \u0442\u0435\u043F\u0435\u0440\u044C \u0443\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043D\u0430 ${title}.`,
   apiCredit: "\u0411\u0430\u043B\u0430\u043D\u0441 API",
   lowCredit: "\u041D\u0438\u0437\u043A\u0438\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 \u2014 \u043F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0435\u0433\u043E, \u0447\u0442\u043E\u0431\u044B \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u044B\u0435 \u043E\u0442\u0432\u0435\u0442\u044B \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u043B\u0438 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C.",
   topUpsLine: (amount) => `\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F \u0437\u0430 \u0432\u0441\u0451 \u0432\u0440\u0435\u043C\u044F: ${usd(tag6, amount)}`,
@@ -2766,6 +2780,7 @@ var fr = {
   save: "Enregistrer la voix",
   saved: (title) => `${title} enregistr\xE9e. Retrouvez-la dans Mes voix.`,
   operatorSaved: (title) => `${title} enregistr\xE9e. Retrouvez-la dans la Biblioth\xE8que, sous Favoris.`,
+  savedNameAdded: (name, title) => `Le nom enregistr\xE9 ${name} d\xE9signe maintenant ${title}.`,
   apiCredit: "Cr\xE9dit API",
   lowCredit: "Solde faible \u2014 rechargez pour continuer \xE0 recevoir des r\xE9ponses vocales.",
   topUpsLine: (amount) => `Recharges cumul\xE9es : ${usd(tag7, amount)}`,
@@ -2970,6 +2985,7 @@ var de = {
   save: "Stimme speichern",
   saved: (title) => `${title} gespeichert. Sie finden die Stimme unter Meine Stimmen.`,
   operatorSaved: (title) => `${title} gespeichert. Sie finden die Stimme in der Bibliothek unter Favoriten.`,
+  savedNameAdded: (name, title) => `Der gespeicherte Name ${name} verweist jetzt auf ${title}.`,
   apiCredit: "API-Guthaben",
   lowCredit: "Guthaben niedrig \u2014 laden Sie es auf, damit Sprachantworten weiter funktionieren.",
   topUpsLine: (amount) => `Aufladungen insgesamt: ${usd(tag8, amount)}`,
@@ -3174,6 +3190,7 @@ var es = {
   save: "Guardar voz",
   saved: (title) => `${title} guardada. La encontrar\xE1s en Mis voces.`,
   operatorSaved: (title) => `${title} guardada. La encontrar\xE1s en la Biblioteca, en Favoritos.`,
+  savedNameAdded: (name, title) => `El nombre guardado ${name} ahora apunta a ${title}.`,
   apiCredit: "Cr\xE9dito API",
   lowCredit: "Saldo bajo \u2014 recarga para que las respuestas de voz sigan funcionando.",
   topUpsLine: (amount) => `Recargas acumuladas: ${usd(tag9, amount)}`,

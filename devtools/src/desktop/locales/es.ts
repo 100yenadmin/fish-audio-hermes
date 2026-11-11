@@ -114,6 +114,7 @@ export const es = {
   save: 'Guardar voz',
   saved: (title: string) => `${title} guardada. La encontrarás en Mis voces.`,
   operatorSaved: (title: string) => `${title} guardada. La encontrarás en la Biblioteca, en Favoritos.`,
+  savedNameAdded: (name: string, title: string) => `El nombre guardado ${name} ahora apunta a ${title}.`,
   apiCredit: 'Crédito API',
   lowCredit: 'Saldo bajo — recarga para que las respuestas de voz sigan funcionando.',
   topUpsLine: (amount: string) => `Recargas acumuladas: ${usd(tag, amount)}`,

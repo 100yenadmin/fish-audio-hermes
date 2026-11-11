@@ -114,6 +114,7 @@ export const fr = {
   save: 'Enregistrer la voix',
   saved: (title: string) => `${title} enregistrée. Retrouvez-la dans Mes voix.`,
   operatorSaved: (title: string) => `${title} enregistrée. Retrouvez-la dans la Bibliothèque, sous Favoris.`,
+  savedNameAdded: (name: string, title: string) => `Le nom enregistré ${name} désigne maintenant ${title}.`,
   apiCredit: 'Crédit API',
   lowCredit: 'Solde faible — rechargez pour continuer à recevoir des réponses vocales.',
   topUpsLine: (amount: string) => `Recharges cumulées : ${usd(tag, amount)}`,

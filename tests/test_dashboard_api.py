@@ -214,7 +214,9 @@ def test_patch_own_voice_sends_only_supplied_fields(env, fields):
 @pytest.mark.parametrize("ident,fields", [("short", {"title": "New"}), (VOICE, {}), (VOICE, {"title": "x" * 101}),
                                         (VOICE, {"title": "  "}), (VOICE, {"description": "x" * 501})])
 def test_patch_invalid_input_never_updates(env, monkeypatch, ident, fields):
-    monkeypatch.setattr(env.api, "_author_owned", lambda *args: True)
+    def owner_lookup(*args):
+        raise AssertionError("bad input must be refused before the ownership lookup")
+    monkeypatch.setattr(env.api, "_author_owned", owner_lookup)
     with respx.mock as mock:
         refused(env.patch(f"/voices/{ident}", **fields), "invalid")
         assert not mock.calls
@@ -512,6 +514,14 @@ def test_clone_happy_path_uploads_in_chunks_and_cleans_up(env):
     assert sample in content and WAV in content and b'name="visibility"\r\n\r\nprivate' in content
     assert f'{files[0]["upload_id"]}.mp3'.encode() in content
     assert uploads(env) == []
+
+
+@pytest.mark.parametrize("extra", [{"saved_name": "me"}, {"saved_name_note": "Saved names are managed; the operator can add one."}, {}])
+def test_clone_passes_on_the_operator_saved_name(env, monkeypatch, extra):
+    voices = env.api._fa("voices")
+    monkeypatch.setattr(voices, "execute", lambda *a: {"id": OTHER, "title": "Me", "state": "trained", "secret": "x", **extra})
+    body = env.post("/clone/finish", files=[upload(env, WAV)], title="Me", consent=True)
+    assert body == {"ok": True, "voice": {"id": OTHER, "title": "Me", "state": "trained"}, **extra}
 
 
 @pytest.mark.parametrize("consent", [None, False, "true", 1])

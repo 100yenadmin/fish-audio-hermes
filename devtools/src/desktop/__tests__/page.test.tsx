@@ -541,6 +541,8 @@ describe('own voice editor', () => {
     expect(screen.getByRole('alert').textContent).toBe('Detail unavailable')
     expect((screen.getByLabelText(en.descriptionOptional) as HTMLTextAreaElement).disabled).toBe(true)
     change(en.voiceTitle, 'New')
+    // Typing keeps the load error: it explains why the description box is disabled.
+    expect(screen.getByRole('alert').textContent).toBe('Detail unavailable')
     vi.spyOn(host.state.profile, 'get').mockReturnValue('other')
     const before = calls.length
     fireEvent.click(save()); await flush()
@@ -607,7 +609,7 @@ describe('operator account page', () => {
     $available.set({ key: true, version: '1.1.0', account: false })
     $tab.set('create')
     const { calls, t } = mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
-      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' } } : path === '/use' ? { ok: true, message: 'Saved.' } : VOICES)
+      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' }, saved_name: 'warm' } : path === '/use' ? { ok: true, message: 'Saved.' } : VOICES)
     const notify = vi.spyOn(host, 'notify')
     fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
     fireEvent.click(screen.getByRole('button', { name: en.design }))
@@ -617,6 +619,7 @@ describe('operator account page', () => {
     await flush()
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'w'.repeat(32), title: 'Warm' }])
     expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.operatorSaved('Warm') })
+    expect(notify).toHaveBeenCalledWith({ kind: 'info', message: en.savedNameAdded('warm', 'Warm') })
     expect(screen.getByText(en.operatorSaved('Warm'))).toBeTruthy()
     expect(document.body.textContent).not.toContain('My voices')
     act(() => $tab.set('library'))
@@ -625,6 +628,24 @@ describe('operator account page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use' }))
     await flush()
     expect(calls.find(c => c.path === '/use')?.body).toEqual({ voice: 'w'.repeat(32) })
+  })
+
+  it('says why an operator-mode voice got no saved name', async () => {
+    $available.set({ key: true, version: '1.1.0', account: false })
+    $tab.set('create')
+    const note = 'The saved-name limit is reached; the operator can add one.'
+    mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
+      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' }, saved_name_note: note } : VOICES)
+    const notify = vi.spyOn(host, 'notify')
+    notify.mockClear()
+    fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: en.design }))
+    await flush()
+    fireEvent.change(screen.getByLabelText(`${en.saveAs} 1`), { target: { value: 'Warm' } })
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await flush()
+    expect(notify).toHaveBeenCalledWith({ kind: 'warning', message: note })
+    expect(notify.mock.calls.map(([n]) => (n as { message: string }).message).filter(m => m.startsWith('Saved name '))).toEqual([])
   })
 
   it('default mode keeps created voices out of Favourites and points to My voices', async () => {

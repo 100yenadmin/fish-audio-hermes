@@ -114,6 +114,7 @@ export const zhHant = {
   save: '儲存聲音',
   saved: (title: string) => `已儲存${title}。可在「我的聲音」中找到。`,
   operatorSaved: (title: string) => `已儲存${title}。可在聲音庫的「收藏」中找到。`,
+  savedNameAdded: (name: string, title: string) => `已儲存的名稱 ${name} 現在指向 ${title}。`,
   apiCredit: 'API 額度',
   lowCredit: '餘額不足——請儲值以繼續使用語音回覆。',
   topUpsLine: (amount: string) => `累計儲值：${usd(tag, amount)}`,

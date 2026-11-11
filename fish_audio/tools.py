@@ -175,7 +175,7 @@ SCHEMAS = {
         "page": _field("integer", minimum=1), "page_size": _field("integer", minimum=1, maximum=20),
         "voice_id": VOICE, "title": S, "description": S,
         "sample_paths": _field("array", items=S, minItems=1, maxItems=20), "texts": STRINGS,
-        "visibility": _field("string", enum=["private", "unlist", "public"], description="clone/save/update: private or unlist (public is refused); mine: list only voices with this visibility"),
+        "visibility": _field("string", enum=["private", "unlist", "public"], description="clone/save/update: private or unlist (public is refused); mine: list only voices with this visibility (not on operator-managed agents)"),
         "generate_sample": B, "cover_image_path": S,
         "enhance_audio_quality": _field("boolean", default=True), "consent": B,
         "instruction": _field("string", minLength=1, maxLength=2000), "reference_text": _field("string", maxLength=150),
@@ -213,7 +213,7 @@ DESCRIPTIONS = {
     "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Results include setup: what is missing and the next step. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
-    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,
+    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice. On operator-managed agents, mine lists only the voices assigned through saved names (page, query and visibility do not apply there) and update/delete are refused." + BILLING,
     "fish_transcribe": "Transcribe local audio with speaker turns, emotion cues, timestamps and optional SRT." + BILLING}
 REQUIRED = {"fish_pronunciations": ["action"], "fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
 

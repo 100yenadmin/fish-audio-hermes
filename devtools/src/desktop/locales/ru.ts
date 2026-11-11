@@ -114,6 +114,7 @@ export const ru = {
   save: 'Сохранить голос',
   saved: (title: string) => `Голос ${title} сохранён. Он доступен в разделе «Мои голоса».`,
   operatorSaved: (title: string) => `Голос ${title} сохранён. Он доступен в библиотеке в разделе «Избранное».`,
+  savedNameAdded: (name: string, title: string) => `Сохранённое имя ${name} теперь указывает на ${title}.`,
   apiCredit: 'Баланс API',
   lowCredit: 'Низкий баланс — пополните его, чтобы голосовые ответы продолжали работать.',
   topUpsLine: (amount: string) => `Пополнения за всё время: ${usd(tag, amount)}`,

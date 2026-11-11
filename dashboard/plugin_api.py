@@ -220,6 +220,11 @@ def list_voices(q: str = "", mine: bool = Query(False, alias="self"), page: int 
     return {"ok": True, "page": page, **result}
 
 
+def _saved_name(result):
+    """Operator mode registers a saved name for a new voice; pass the name, or the reason there is none, to Desktop."""
+    return {k: result[k] for k in ("saved_name", "saved_name_note") if isinstance(result.get(k), str)}
+
+
 @router.get("/voices/{voice_id}")
 @_protocol
 def get_voice(voice_id: str):
@@ -486,7 +491,7 @@ def design_save(body: DesignSave):
     if description:
         args["description"] = description
     saved = _fa("voices").execute(args, key, base, "")
-    return {"ok": True, "voice": {"id": saved.get("id"), "title": saved.get("title")}}
+    return {"ok": True, "voice": {"id": saved.get("id"), "title": saved.get("title")}, **_saved_name(saved)}
 
 
 # Clone uploads: chunked JSON + base64 into per-upload temp files under the profile's cache. Names are generated
@@ -696,7 +701,8 @@ def clone_finish(body: CloneFinish):
         if description:
             args["description"] = description
         cloned = _fa("voices").execute(args, key, base, "")
-        return {"ok": True, "voice": {"id": cloned.get("id"), "title": cloned.get("title"), "state": cloned.get("state")}}
+        return {"ok": True, "voice": {"id": cloned.get("id"), "title": cloned.get("title"), "state": cloned.get("state")},
+                **_saved_name(cloned)}
     finally:
         with _UPLOAD_LOCK:
             for upload_id in owned:

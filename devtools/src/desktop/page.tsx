@@ -520,6 +520,8 @@ function EditDialog({ pin, voice, onClose, onUpdated }: { pin: AgentPin; voice: 
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  // A failed detail read keeps its message while the user types: it explains the disabled description box.
+  const [loadError, setLoadError] = useState<unknown>(null)
   useEffect(() => {
     let active = true
     void readFor<{ voice: Voice }>(pin, `/voices/${encodeURIComponent(voice.id)}`).then(res => {
@@ -528,7 +530,7 @@ function EditDialog({ pin, voice, onClose, onUpdated }: { pin: AgentPin; voice: 
       setTitle(res.voice.title ?? '')
       setDescription(res.voice.description ?? '')
       setLoaded(true)
-    }).catch(error => { if (active) setError(error) }).finally(() => { if (active) setLoading(false) })
+    }).catch(error => { if (active) setLoadError(error) }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [pin.connectionId, pin.profile, voice.id])
   const fields = {
@@ -562,6 +564,7 @@ function EditDialog({ pin, voice, onClose, onUpdated }: { pin: AgentPin; voice: 
       <DialogContent>
         <DialogHeader><DialogTitle><bdi>{t('editTitle', voice.title)}</bdi></DialogTitle></DialogHeader>
         {loading && <Rows n={1} />}
+        {loadError !== null && <p role="alert">{errorText(loadError)}</p>}
         {error !== null && <p role="alert">{errorText(error)}</p>}
         <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>{t('voiceTitle')}
           <Input required disabled={loading || busy} value={title} onChange={(e: { target: { value: string } }) => { setError(null); setTitle(clamp(e.target.value, LIMITS.title)) }} />

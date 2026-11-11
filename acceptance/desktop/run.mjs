@@ -385,6 +385,7 @@ async function mineEditRow(s, theme) {
     if (matches.length !== 1) { row('B-MINE-EDIT', 'na', 'first own voice title is not unique on the first page', { theme }); return }
     const id = matches[0].id
     const edited = Array.from(original).slice(0, 93).join('') + ' (edit)'
+    let uiError = null
     try {
       await s.page.getByRole('button', { name: `Edit ${original}`, exact: true }).click()
       const input = s.page.getByRole('textbox', { name: 'Voice name', exact: true })
@@ -396,11 +397,17 @@ async function mineEditRow(s, theme) {
       await s.page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 15000 })
       await s.page.getByRole('button', { name: `Edit ${edited}`, exact: true }).waitFor({ state: 'visible', timeout: 15000 })
       evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'renamed')))
-    } finally {
+    } catch (e) { uiError = e }
+    // Always restore by id through the gateway; a failed restore reports the UI error that came before it too.
+    let restoreProblem = null
+    try {
       const restored = await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ title: original }) })
       const check = await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(id)}`)
-      if (restored.body?.ok !== true || check.body?.voice?.title !== original) throw new Error(`title not restored for the first own voice (now "${check.body?.voice?.title}")`)
-    }
+      if (restored.body?.ok !== true || check.body?.voice?.title !== original) restoreProblem = `now "${check.body?.voice?.title}"`
+    } catch (e) { restoreProblem = String(e?.message ?? e).split('\n')[0] }
+    if (restoreProblem) throw new Error(`title not restored for the first own voice (${restoreProblem})` +
+      (uiError ? `; the edit failed first: ${String(uiError?.message ?? uiError).split('\n')[0]}` : ''))
+    if (uiError) throw uiError
     row('B-MINE-EDIT', 'pass', 'own voice renamed through Edit; original title restored and read back by id', { theme, evidence })
   } catch (e) { row('B-MINE-EDIT', 'fail', e.message.split('\n')[0], { theme, evidence }) }
 }

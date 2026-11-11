@@ -114,6 +114,7 @@ export const de = {
   save: 'Stimme speichern',
   saved: (title: string) => `${title} gespeichert. Sie finden die Stimme unter Meine Stimmen.`,
   operatorSaved: (title: string) => `${title} gespeichert. Sie finden die Stimme in der Bibliothek unter Favoriten.`,
+  savedNameAdded: (name: string, title: string) => `Der gespeicherte Name ${name} verweist jetzt auf ${title}.`,
   apiCredit: 'API-Guthaben',
   lowCredit: 'Guthaben niedrig — laden Sie es auf, damit Sprachantworten weiter funktionieren.',
   topUpsLine: (amount: string) => `Aufladungen insgesamt: ${usd(tag, amount)}`,

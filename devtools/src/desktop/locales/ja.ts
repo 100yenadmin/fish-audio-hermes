@@ -114,6 +114,7 @@ export const ja = {
   save: 'ボイスを保存',
   saved: (title: string) => `「${title}」を保存しました。「マイボイス」で確認できます。`,
   operatorSaved: (title: string) => `「${title}」を保存しました。ライブラリの「お気に入り」で確認できます。`,
+  savedNameAdded: (name: string, title: string) => `保存名 ${name} が ${title} を指すようになりました。`,
   apiCredit: 'API クレジット',
   lowCredit: '残高が少なくなっています。音声返信を使い続けるにはチャージしてください。',
   topUpsLine: (amount: string) => `累計チャージ額：${usd(tag, amount)}`,

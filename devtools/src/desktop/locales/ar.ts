@@ -117,6 +117,7 @@ export const ar = {
   save: 'حفظ الصوت',
   saved: (title: string) => `تم حفظ ${isolate(title)}. ستجده في «أصواتي».`,
   operatorSaved: (title: string) => `تم حفظ ${isolate(title)}. ستجده في المكتبة ضمن «المفضلة».`,
+  savedNameAdded: (name: string, title: string) => `الاسم المحفوظ ${isolate(name)} يشير الآن إلى ${isolate(title)}.`,
   apiCredit: 'رصيد API',
   lowCredit: 'الرصيد منخفض — اشحنه لتستمر الردود الصوتية في العمل.',
   topUpsLine: (amount: string) => `إجمالي الشحنات منذ إنشاء الحساب: ${isolate(money(amount))}`,

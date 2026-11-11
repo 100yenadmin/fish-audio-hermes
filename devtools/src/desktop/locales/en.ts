@@ -118,6 +118,7 @@ export const en = {
   save: 'Save voice',
   saved: (title: string) => `Saved ${title}. Find it in My voices.`,
   operatorSaved: (title: string) => `Saved ${title}. Find it in the Library under Favourites.`,
+  savedNameAdded: (name: string, title: string) => `Saved name ${name} now points to ${title}.`,
   // Account
   apiCredit: 'API credit',
   lowCredit: 'Low balance — top up to keep voice replies working.',
