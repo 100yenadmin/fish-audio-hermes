@@ -95,7 +95,7 @@ def _copy_output(result, target, force):
     staged, placed = [], []  # placed: (dest, identity of the file this run put there)
     try:
         for src, dest in pairs:  # Stage every file first; a failure then removes only what this run placed.
-            temp_path, identity = _new_file(dest.parent / f".{dest.name}.fish-tmp", src)
+            temp_path, identity = _new_file(dest.parent / ".fish-tmp", src)
             staged.append((temp_path, identity, dest))
         for temp_path, identity, dest in staged:
             if force:
@@ -147,9 +147,10 @@ def _remove_own(placed):
     """Delete only files that are still exactly the ones this run created (same device and inode)."""
     for dest, identity in placed:
         try:
+            # POSIX has no unlink-if-inode; a file swapped in between these two calls is the accepted residue.
             if identity is not None and _identity(os.lstat(dest)) == identity:
                 dest.unlink()
-        except FileNotFoundError:
+        except OSError:  # cleanup never hides the original error
             pass
 
 
