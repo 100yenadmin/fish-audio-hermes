@@ -147,6 +147,28 @@ words into a version, or leave out `dictionaries`. Per-call words replace config
 before), and configured inline dictionaries still merge with per-call words.
 `delete` and `delete_version` use Hermes approval; the latest version cannot be deleted.
 
+## Spoken briefings on a schedule
+
+With Fish Audio enabled and set up in the scheduling profile, keep the Hermes gateway running and use
+Hermes 0.23.1's cron CLI. For a chat named **Morning Briefing** already known to Hermes's channel directory:
+
+```bash
+hermes cron create '0 8 * * *' \
+  'Write a short morning briefing with three priorities for today. Finish by calling fish_speak with the briefing text, delivery voice and format ogg. Include its media_tag verbatim and one short text line in your final reply.' \
+  --name 'Spoken morning briefing' --timezone Asia/Tokyo --deliver 'telegram:Morning Briefing'
+hermes cron list
+```
+
+This runs each morning at 08:00 in the chosen timezone. Replace the chat name with your known destination;
+an explicit `telegram:CHAT_ID` also works. `--deliver telegram` uses the configured Telegram home channel;
+`--deliver local` saves output locally without sending it. Each spoken run incurs Fish synthesis charges
+and uses Hermes's configured agent model. Use `delivery: file` to send an audio file instead of a voice note.
+Reply rules such as “voice only to voice notes” or “always include the text” belong in Hermes memory or preferences.
+Syntax and target resolution are documented in the Hermes 0.23.1 sources:
+[cron CLI](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/hermes_cli/subcommands/cron.py),
+[cron delivery](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/cron/scheduler_delivery.py) and
+[chat-name resolution](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/tools/send_message_targets.py).
+
 ## Hermes Desktop
 
 ![The Voices page in Hermes Desktop: the Fish Audio voice library searched for "narrator", with Preview, Use and favourite on each voice](docs/media/screenshot-desktop-library.png)

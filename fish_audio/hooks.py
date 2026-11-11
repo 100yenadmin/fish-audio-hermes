@@ -20,11 +20,13 @@ def _prune(now):
             del _PENDING[session]
 
 
-def record(session_id, path, voice):
+def record(session_id, path, delivery=None):
+    if isinstance(delivery, bool):  # Existing preview/audition callers.
+        delivery = "voice" if delivery else None
     with _lock:
         now = _clock()
         _prune(now)
-        _PENDING.setdefault(session_id, []).append((str(path), bool(voice), now))
+        _PENDING.setdefault(session_id, []).append((str(path), delivery, now))
         _PENDING.move_to_end(session_id)
         while len(_PENDING) > 256:
             _PENDING.popitem(last=False)
@@ -37,16 +39,22 @@ def take(session_id):
 
 
 VOICE_MARKER = "[[audio_as_voice]]"
-# Surfaces that play MEDIA: files inline and have no voice-bubble delivery. Messaging gateways strip the marker before
-# sending; Desktop (0.23) and the classic CLI print it as literal text, so it never belongs in a reply there.
+# Hermes applies the voice marker to every audio file in the reply, so a "file" delivery is simply audio without it
+# (Hermes 0.23's [[as_document]] routes images only). Local surfaces also lose a document marker a model writes itself.
+STRIPPED_MARKERS = (VOICE_MARKER, "[[as_document]]")
+# Surfaces that play MEDIA: files inline. Messaging gateways strip delivery markers before sending;
+# Desktop (0.23) and the classic CLI print them as literal text, so neither belongs in a reply there.
 LOCAL_SURFACES = frozenset({"desktop", "cli", "tui"})
 
 
-def _without_marker(text):
+def _without_marker(text, markers=STRIPPED_MARKERS):
     lines = []
     for line in text.split("\n"):
-        if VOICE_MARKER in line:
-            kept = line.replace(VOICE_MARKER + " ", "").replace(VOICE_MARKER, "").rstrip()
+        if any(marker in line for marker in markers):
+            kept = line
+            for marker in markers:
+                kept = kept.replace(marker + " ", "").replace(marker, "")
+            kept = kept.rstrip()
             if kept.strip():
                 lines.append(kept)  # the line's own indentation stays
             continue
@@ -63,21 +71,23 @@ def on_transform_llm_output(response_text="", session_id="", turn_id="", platfor
     if local:
         response_text = _without_marker(response_text)
     root = audio_output_dir().resolve()
-    additions, voice = [], False
-    for name, is_voice, _ in items:
+    additions, deliveries = [], set()
+    for name, delivery, _ in items:
         path = Path(name)
         if not path.is_file() or not path.resolve().is_relative_to(root):
             continue
         tag = f"MEDIA:{path}"
-        voice = voice or is_voice
+        deliveries.add(delivery)
         if tag not in response_text and tag not in additions:
             additions.append(tag)
-    needs_marker = voice and not local and VOICE_MARKER not in response_text
+    # The marker covers the whole reply: an explicit file request this turn must not become a voice note, including
+    # through a marker the model copied from a voice clip's media_tag.
+    if "file" in deliveries and not local:
+        response_text = _without_marker(response_text, (VOICE_MARKER,))
+    needs_marker = "voice" in deliveries and "file" not in deliveries and not local and VOICE_MARKER not in response_text
     if not additions and not needs_marker:
         return response_text if response_text != original else None
-    tail = "\n".join(additions)
-    if needs_marker:
-        tail = "\n".join(part for part in (VOICE_MARKER, tail) if part)
+    tail = "\n".join(([VOICE_MARKER] if needs_marker else []) + additions)
     return "\n".join(part for part in (response_text.rstrip(), tail) if part)
 
 

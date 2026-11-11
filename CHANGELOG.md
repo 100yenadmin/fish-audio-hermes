@@ -7,6 +7,10 @@
 - Keep dictionary and version IDs up to 128 characters in deletion approvals and rule keys (#110).
 - Refuse pronunciation dictionary listing, creating, publishing and deletion on operator-managed agents, where dictionaries belong to the operator's whole account (#110).
 - **Voice auditions:** `fish_voices audition` plays up to four voices reading one short passage, with each billed clip attached in chat; the voice-studio skill guides choosing and comparing candidates.
+- **Voice notes or files:** `fish_speak` accepts `delivery: voice` (OGG/MP3) or `delivery: file` (an audio file, any format); a reply that includes a file request is not turned into voice notes.
+  Omitting it preserves format-based delivery; WAV voice notes are refused before any Fish request (#95).
+- **Reply rules and scheduled briefings:** the expressive-speech skill explains Hermes memory/preferences rules,
+  and the README includes a morning spoken-briefing cron recipe with a named chat destination (#95).
 
 ## 1.12.1 — 2026-11-10
 
