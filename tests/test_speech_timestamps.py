@@ -56,6 +56,11 @@ def test_s3_events_merge_last_alignment_and_write_audio(tmp_path):
         "pronunciation_dictionary": [{"items": [{"key": "Fish", "value": "fish"}]}]}
     assert Path(result["file_path"]).read_bytes() == b"".join(chunks)
     assert result["segments"] == FIXTURE[-1]["alignment"]["segments"]
+    assert "segments_truncated" not in result and "segments_total" not in result
+    alignment_path = Path(result["alignment_path"])
+    assert alignment_path == Path(result["file_path"]).with_suffix(".alignment.json")
+    assert json.loads(alignment_path.read_text()) == {"audio": Path(result["file_path"]).name,
+                                                    "segments": result["segments"]}
     assert [s["text"] for s in result["segments"]] == ["One", "Two", "words", "Three", "more", "words", "here"]
     srt = Path(result["srt_path"]).read_text()
     assert srt == ("1\n00:00:00,000 --> 00:00:00,560\nOne.\n\n2\n00:00:01,040 --> 00:00:01,760\nTwo words.\n\n"
@@ -80,12 +85,25 @@ def test_chunk_offsets_shift_segments_and_later_snapshots_win():
     assert result["segments"] == [{"text": "Hi", "start": 0.0, "end": 0.3}, {"text": "there", "start": 0.3, "end": 0.9},
                                   {"text": "Bye", "start": 16.24, "end": 16.64}, {"text": "now", "start": 16.64, "end": 17.04}]
     assert "00:00:16,240 --> 00:00:17,040\nBye now!" in Path(result["srt_path"]).read_text()
+    assert json.loads(Path(result["alignment_path"]).read_text())["segments"] == result["segments"]
+
+
+def test_long_alignment_file_keeps_every_segment():
+    segments = [{"text": f"word{i}", "start": i * 0.5, "end": i * 0.5 + 0.4} for i in range(601)]
+    events = [{"content": " ".join(s["text"] for s in segments), "alignment": {"segments": segments}}]
+    result, _ = speak(sse(events, [b"ID3audio"]), format="mp3")
+    assert result["success"] and result["segments"] == segments[:500]
+    assert result["segments_truncated"] is True and result["segments_total"] == 601
+    alignment = json.loads(Path(result["alignment_path"]).read_text())
+    assert alignment == {"audio": Path(result["file_path"]).name, "segments": segments}
 
 
 def test_no_alignment_returns_audio_without_subtitles():
     events = [{"content": "Hi.", "chunk_seq": 0, "chunk_audio_offset_sec": 0.0, "alignment": None, "audio_bytes": 4}]
     result, _ = speak(sse(events, [b"OggS"]), format="ogg")
     assert result["success"] and result["segments"] == [] and "srt_path" not in result
+    assert "alignment_path" not in result
+    assert not Path(result["file_path"]).with_suffix(".alignment.json").exists()
 
 
 def test_srt_cues_stay_within_seven_seconds_and_close_at_sentences():
@@ -164,6 +182,24 @@ def test_subtitle_failure_keeps_the_billed_audio(tmp_path):
     result, _ = speak(sse(events, [b"OggS"]), format="ogg")
     assert result["success"] and Path(result["file_path"]).read_bytes() == b"OggS"
     assert "timestamps could not be processed" in result["timestamps_error"] and "srt_path" not in result
+
+
+def test_alignment_write_failure_keeps_audio_segments_and_subtitles(monkeypatch):
+    original = media.atomic_write
+
+    def fail_alignment(path, chunks):
+        if Path(path).suffix == ".json":
+            raise OSError("synthetic alignment write failure")
+        return original(path, chunks)
+
+    monkeypatch.setattr(media, "atomic_write", fail_alignment)
+    result, _ = speak(sse([FIXTURE[-1]], [b"ID3audio"]), format="mp3")
+    path = Path(result["file_path"])
+    assert result["success"] and path.read_bytes() == b"ID3audio" and "timestamps_error" not in result
+    assert "alignment_path" not in result and "could not be saved" in result["alignment_error"]
+    assert result["segments"] and Path(result["srt_path"]).is_file() and Path(result["vtt_path"]).is_file()
+    assert path.with_suffix(".srt").is_file() and path.with_suffix(".vtt").is_file()
+    assert not path.with_suffix(".alignment.json").exists()
 
 
 def test_oversized_timestamp_stream_is_refused_before_decoding(monkeypatch):
