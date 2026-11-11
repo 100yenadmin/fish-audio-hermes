@@ -260,7 +260,7 @@ def handle(raw_args=""):
             if action in {"", "list"}:
                 return "\n".join(f"{n} · {v}" for n, v in sorted(settings.aliases().items())) or "No saved voice names yet. Add one: /fish alias add <name> <voice id>"
             if action == "add":
-                name, voice = (args.split(None, 1) + [""])[:2]  # any whitespace, e.g. a Japanese full-width space
+                name, voice = (args.split(None, 1) + ["", ""])[:2]  # any whitespace, e.g. a Japanese full-width space
                 _, updated = alias_add(name, voice.strip(), key, base)
                 return "Updated." if updated else "Saved."
             if action == "remove":

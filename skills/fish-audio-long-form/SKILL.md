@@ -41,8 +41,9 @@ Synthesize and save:
 1. In chapter order, call `fish_speak` with the chapter/part `text`, the same explicit `voice`
    and `model`, `format: "mp3"` (or the chosen format) and `delivery: "file"`, so chat surfaces send
    a file rather than a voice note. Use `timestamps: true` when subtitles or alignment are wanted.
-2. Immediately record the returned `file_path` as `cache_file` and any returned subtitle/alignment cache paths
-   in the chapter/part entry; save the manifest atomically BEFORE copying. For a redo, save these in a pending
+2. Immediately record the returned `file_path` as `cache_file`, any returned subtitle/alignment cache paths
+   (`srt_cache`, `vtt_cache`, `alignment_cache`) and any `timestamps_error` or `alignment_error` in the chapter/part
+   entry; save the manifest atomically BEFORE copying. For a redo, save these in a pending
    replacement entry without switching the old entry. With the agent's own file tools, copy the audio into
    the project folder using the planned chapter filename. Copy any returned `srt_path`, `vtt_path`
    and `alignment_path` alongside it, and set the copied alignment JSON's `audio` to the new basename.
@@ -51,6 +52,8 @@ Synthesize and save:
    If timestamps were requested but `timestamps_error` is returned without subtitle/alignment paths,
    keep and copy the audio, record `audio_only` with the error, and tell the user. Do not redo it unless asked;
    another synthesis is billed again. A split chapter with such a part stays `audio_only`.
+   If `alignment_error` is returned with subtitles, mark it done but keep the error in the entry and tell the user
+   the full alignment file was not saved (the tool result holds at most 500 segments; the full file needs a billed redo).
    On a first synthesis, if a copy fails, mark the entry failed and copy again from `cache_file` without synthesis.
    If synthesis fails or is interrupted, record failed and explain any uncertain billing before retrying.
 
@@ -63,8 +66,8 @@ To redo one chapter, say it will be billed again and synthesize only that chapte
 parts if split). Copy the new audio and sidecars to new names with a revision suffix
 (`chapter-NN-r2`, then `-r3`), leaving the old files in place. The manifest write is the switch:
 only after every copy succeeds, save the manifest pointing at the new files with the new hash, cost
-and status; then delete the old set. If anything fails before that write, delete only the new copies
-and leave the old files and manifest entry as they were.
+and status; then delete the old set. If anything fails before that write, delete only the new copies,
+remove the pending replacement from the manifest, and leave the old files and entry as they were.
 
 For multi-voice casting and timeline editing, hand off to Fish Audio's Story Studio through
 Fish's own MCP server or web app. It signs in to the user's Fish account with OAuth, not this

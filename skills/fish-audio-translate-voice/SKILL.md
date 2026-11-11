@@ -15,8 +15,9 @@ show billable units (bytes or audio seconds) and no price: show those, say the o
    the user agrees, unless they already asked you to go ahead.
 2. **Transcribe with speakers.** Call `fish_transcribe` with `file_path`, `diarize: "true"` and, when the user knows
    it, `num_speakers`. Keep `speaker_turns`: each has `speaker` (`speaker:0`, `speaker:1`, …), `text`, `start` and
-   `end`. If there are no turns, or every turn has the same speaker, say speakers could not be told apart and ask
-   whether to use one voice.
+   `end`. If every turn has the same speaker, or there are no turns, say speakers could not be told apart and ask
+   whether to use one voice. With no turns, treat the returned `text` as one turn by one speaker, with no times
+   (never invent them).
 3. **Translate turn by turn yourself.** One translated turn per original turn, the same speaker on each, the same
    order. Keep names, numbers and product terms as the user wants; ask about ambiguous terms instead of guessing.
    Add or drop nothing. Fish cues such as `[laughing]` may carry over where the original clearly has them; at most
@@ -35,8 +36,8 @@ show billable units (bytes or audio seconds) and no price: show those, say the o
    and estimate, then wait for the user's go.
 6. **Voice each part.** Call `fish_speak` with the part's `text`, `speakers` as its voice IDs in its own 0, 1, …
    order (2–4 voices) or `voice` for one speaker, a multi-speaker model (`s2.1-pro`, `s2-pro` or `drama-3`; never
-   `s1`), `language` set to the target language, `timestamps: true`, and `format` as the user wants (MP3 for a file
-   to keep). Each part is its own audio file with subtitles starting at 0:00.
+   `s1`), `language` set to the target language, `timestamps: true`, and `format` as the user wants. For audio to keep, use MP3 with
+   `delivery: "file"` so chat surfaces send a file, not a voice note. Each part is its own audio file with subtitles starting at 0:00.
 7. **Deliver.** Return the audio file(s), the subtitles when `srt_path`/`vtt_path` are present (they carry no speaker
    names), and both transcripts as text the user can save: the original with speaker labels and times, and the
    translation with the same labels. If a result has `timestamps_error` or no subtitle paths, deliver the audio and

@@ -415,3 +415,12 @@ def test_model_notice_reads_the_operator_setting_after_the_write(config):
     assert commands.handle("model s2.1-pro-free") == "Saved."
     with settings.operator_terminal():
         assert commands.handle("model s2.1-pro-free").startswith("Saved.\n")
+
+
+@pytest.mark.parametrize("command", ["alias add", "alias add Kate"])
+def test_alias_add_missing_arguments_gets_the_validation_message(config, command):
+    with respx.mock(assert_all_called=True) as mock:
+        reply = commands.handle(command)
+        assert not mock.calls
+    assert "hermes fish doctor" not in reply
+    assert reply in {settings.ALIAS_NAME_ERROR, settings.UNKNOWN_VOICE}

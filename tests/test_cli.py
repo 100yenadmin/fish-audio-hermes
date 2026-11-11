@@ -557,10 +557,10 @@ def test_failed_later_output_removes_the_files_this_run_placed(scripting, tmp_pa
         (tmp_path / "cached").with_suffix(ext).write_text("captions")
     target = tmp_path / "out.mp3"
     real = cli._place_new
-    def fail_vtt(temp_path, dest):
+    def fail_vtt(temp_path, dest, identity):
         if dest.suffix == ".vtt":
             raise OSError("disk full")
-        real(temp_path, dest)
+        return real(temp_path, dest, identity)
     monkeypatch.setattr(cli, "_place_new", fail_vtt)
     assert run("speak", "hi", "--timestamps", "--out", str(target), "--json") == 1
     result = json.loads(capsys.readouterr().out)
