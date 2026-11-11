@@ -186,6 +186,18 @@ def test_key_leak(host):
         assert FAKE not in path.read_text(errors='replace'), 'fake key appeared in host logs'
 
 
+@pytest.mark.row('A-SKILL-TRANSLATE')
+def test_translate_skill(host, request):
+    code = '\n    '.join([
+        'import json; from tools.skills_tool import skill_view',
+        'print("ACCEPTANCE_RESULT=" + skill_view("fish-audio:fish-audio-translate-voice", preprocess=False))'])
+    result = core(host, code)
+    evidence(request, host, {'success': result.get('success'), 'name': result.get('name')})
+    assert result.get('success') is True, scrub(result)
+    content = result['content']
+    assert 'voice-over' in content and '<|speaker:N|>' in content and 'estimate' in content
+
+
 @pytest.mark.row('A-CLI-1')
 def test_status(host, request):
     text = host.cli('fish', 'status')

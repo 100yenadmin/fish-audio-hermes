@@ -7,6 +7,7 @@
   {"id": "A-KEY-3", "title": "key redaction", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "A5"},
   {"id": "A-CLI-1", "title": "status", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "B1"},
   {"id": "A-CLI-2", "title": "doctor no synth", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "B2"},
+  {"id": "A-SKILL-TRANSLATE", "title": "the translate-and-voice skill resolves on the host with its voice-over steps", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.14.0", "min_hermes": "both hosts", "required": true, "billed": "none"},
   {"id": "A-CLI-3", "title": "doctor synth", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "B3"},
   {"id": "A-CLI-SPEAK", "title": "scripting speech JSON and mp3 output", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.14.0", "min_hermes": "both hosts", "required": true, "billed": "cents"},
   {"id": "A-CLI-VOICES", "title": "scripting voice search JSON", "layer": "a", "hosts": ["upstream", "evaos"], "min_plugin": "1.14.0", "min_hermes": "both hosts", "required": true, "billed": "none"},

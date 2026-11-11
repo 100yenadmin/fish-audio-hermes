@@ -3,6 +3,9 @@
 ## Unreleased
 
 - **Scripting CLI:** `hermes fish speak`, `transcribe`, `voices` and `balance` support `--json`, with safe speech output copies and no terminal prompts (#96).
+- **Translate and voice:** a new skill transcribes a clip with speaker turns, translates it, and voices it again with one
+  Fish voice per speaker, one multi-speaker call per part of up to four speakers. It returns both transcripts and new subtitles, shows the cost
+  first, never clones the people in the clip, and calls the result a voice-over, not a synchronized dub (#98).
 
 ## 1.13.0 — 2026-11-11
 
