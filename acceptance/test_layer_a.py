@@ -256,7 +256,11 @@ def test_scripting_cli(paid, request, command):
     args = {'speak': [TEXT, '--format', 'mp3', '--out', str(output), '--force'],
             'transcribe': [str(CORPUS)], 'voices': ['narrator'], 'balance': []}[command]
     result = json.loads(paid.cli('fish', command, *args, '--json').splitlines()[-1])
-    evidence(request, paid, result, {'wer': wer(result.get('text') or '')} if command == 'transcribe' else None)
+    # Diarization defaults to auto, so the text can carry <|speaker:N|> markers; score the words only.
+    spoken = re.sub(r'<\|speaker:\d+\|>', ' ', result.get('text') or '') if command == 'transcribe' else ''
+    evidence(request, paid, result)  # recorded first, so a failed check still shows the command's output
+    if command == 'transcribe':
+        request.node.user_properties.append(('metrics', {'wer': wer(spoken)}))
     assert result['success'] is True
     if command == 'speak':
         assert result.get('out_path') == str(output) and output.is_file()
