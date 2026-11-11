@@ -39,7 +39,9 @@ def take(session_id):
 
 
 VOICE_MARKER = "[[audio_as_voice]]"
-DELIVERY_MARKERS = {"voice": VOICE_MARKER, "file": "[[as_document]]"}
+# Hermes applies the voice marker to every audio file in the reply, so a "file" delivery is simply audio without it
+# (Hermes 0.23's [[as_document]] routes images only). Local surfaces also lose a document marker a model writes itself.
+STRIPPED_MARKERS = (VOICE_MARKER, "[[as_document]]")
 # Surfaces that play MEDIA: files inline. Messaging gateways strip delivery markers before sending;
 # Desktop (0.23) and the classic CLI print them as literal text, so neither belongs in a reply there.
 LOCAL_SURFACES = frozenset({"desktop", "cli", "tui"})
@@ -48,9 +50,9 @@ LOCAL_SURFACES = frozenset({"desktop", "cli", "tui"})
 def _without_marker(text):
     lines = []
     for line in text.split("\n"):
-        if any(marker in line for marker in DELIVERY_MARKERS.values()):
+        if any(marker in line for marker in STRIPPED_MARKERS):
             kept = line
-            for marker in DELIVERY_MARKERS.values():
+            for marker in STRIPPED_MARKERS:
                 kept = kept.replace(marker + " ", "").replace(marker, "")
             kept = kept.rstrip()
             if kept.strip():
@@ -69,20 +71,20 @@ def on_transform_llm_output(response_text="", session_id="", turn_id="", platfor
     if local:
         response_text = _without_marker(response_text)
     root = audio_output_dir().resolve()
-    additions, markers = [], []
+    additions, deliveries = [], set()
     for name, delivery, _ in items:
         path = Path(name)
         if not path.is_file() or not path.resolve().is_relative_to(root):
             continue
         tag = f"MEDIA:{path}"
-        marker = DELIVERY_MARKERS.get(delivery)
-        if marker and not local and marker not in response_text and marker not in markers:
-            markers.append(marker)
+        deliveries.add(delivery)
         if tag not in response_text and tag not in additions:
             additions.append(tag)
-    if not additions and not markers:
+    # The marker covers the whole reply: an explicit file request this turn must not become a voice note.
+    needs_marker = "voice" in deliveries and "file" not in deliveries and not local and VOICE_MARKER not in response_text
+    if not additions and not needs_marker:
         return response_text if response_text != original else None
-    tail = "\n".join(markers + additions)
+    tail = "\n".join(([VOICE_MARKER] if needs_marker else []) + additions)
     return "\n".join(part for part in (response_text.rstrip(), tail) if part)
 
 

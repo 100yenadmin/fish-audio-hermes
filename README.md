@@ -161,7 +161,7 @@ hermes cron list
 This runs each morning at 08:00 in the chosen timezone. Replace the chat name with your known destination;
 an explicit `telegram:CHAT_ID` also works. `--deliver telegram` uses the configured Telegram home channel;
 `--deliver local` saves output locally without sending it. Each spoken run incurs Fish synthesis charges
-and uses Hermes's configured agent model. Use `delivery: file` for a downloadable MP3/WAV instead of a voice note.
+and uses Hermes's configured agent model. Use `delivery: file` to send an audio file instead of a voice note.
 Reply rules such as “voice only to voice notes” or “always include the text” belong in Hermes memory or preferences.
 Syntax and target resolution are documented in the Hermes 0.23.1 sources:
 [cron CLI](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/hermes_cli/subcommands/cron.py),

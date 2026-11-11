@@ -486,12 +486,12 @@ def test_delivery(paid, request):
         'results["refusal_calls"] = len(calls)',
         'print("ACCEPTANCE_RESULT=" + json.dumps(results))'])
     result = core(paid, code)
-    for mode, marker in [('voice', '[[audio_as_voice]]'), ('file', '[[as_document]]')]:
+    for mode, marker in [('voice', '[[audio_as_voice]]\n'), ('file', '')]:
         item = result[mode]
         assert item.get('success') is True and item['delivery'] == mode, scrub(item)
         path = Path(item['file_path'])
         assert path.is_file() and path.stat().st_size > 0 and path.suffix == '.mp3'
-        assert item['media_tag'] == f'{marker}\nMEDIA:{path}'
+        assert item['media_tag'] == f'{marker}MEDIA:{path}'
     assert result['refused'] == {'success': False, 'error': 'Voice bubbles need ogg or mp3; use delivery file for wav.'}
     assert result['refusal_calls'] == 0
     evidence(request, paid, result)

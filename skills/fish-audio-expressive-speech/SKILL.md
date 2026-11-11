@@ -61,7 +61,9 @@ timings (`segments`) and subtitle files (`srt_path`, `vtt_path`).
 
 ## Delivery and reply rules
 
-Use `delivery: file` for a downloadable MP3/WAV or a long piece; any supported format works.
+Use `delivery: file` for an audio file rather than a voice note (a long piece, or audio to keep); any supported format works.
+Use one delivery per reply: chats apply a voice note to every audio file in the message, so a reply that
+mixes them sends all clips as files.
 Use `delivery: voice` for a voice note, with `format: ogg` or `mp3`; WAV voice notes are refused.
 Omitting delivery keeps the existing defaults: OGG/MP3 voice notes, WAV a plain media file.
 Remember user rules in Hermes's own memory or preferences; Fish Audio has no reply-policy setting.

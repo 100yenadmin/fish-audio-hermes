@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Voice notes or files:** `fish_speak` accepts `delivery: voice` (OGG/MP3) or `delivery: file` (any format).
+- **Voice notes or files:** `fish_speak` accepts `delivery: voice` (OGG/MP3) or `delivery: file` (an audio file, any format); a reply that includes a file request is not turned into voice notes.
   Omitting it preserves format-based delivery; WAV voice notes are refused before any Fish request (#95).
 - **Reply rules and scheduled briefings:** the expressive-speech skill explains Hermes memory/preferences rules,
   and the README includes a morning spoken-briefing cron recipe with a named chat destination (#95).

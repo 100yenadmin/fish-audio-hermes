@@ -38,7 +38,7 @@ def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, delivery):
     assert tools.SCHEMAS["fish_speak"]["delivery"]["enum"] == ["voice", "file"]
     args = {} if delivery is None else {"delivery": delivery}
     mode = delivery or ("voice" if fmt != "wav" else None)
-    marker = {"voice": "[[audio_as_voice]]\n", "file": "[[as_document]]\n"}.get(mode, "")
+    marker = "[[audio_as_voice]]\n" if mode == "voice" else ""
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"synthetic audio")
         result = call(tools.fish_speak, text="[excited] hello <|speaker:0|>", voice=VOICE, format=fmt, **args)

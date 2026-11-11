@@ -21,28 +21,28 @@ def audio(tmp_path, name="test.ogg"):
     return path
 
 
-@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]"), ("file", "[[as_document]]")])
+@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]\n"), ("file", "")])
 def test_missing_media_appended_once_and_consumed(tmp_path, delivery, marker):
     path = audio(tmp_path)
     hooks.record("a", path, delivery)
     hooks.record("a", path, delivery)
-    assert hooks.on_transform_llm_output("Here you go. \n", "a") == f"Here you go.\n{marker}\nMEDIA:{path}"
+    assert hooks.on_transform_llm_output("Here you go. \n", "a") == f"Here you go.\n{marker}MEDIA:{path}"
     assert hooks.on_transform_llm_output("again", "a") is None
 
 
-@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]"), ("file", "[[as_document]]")])
+@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]\n"), ("file", "")])
 def test_existing_media_dedup_and_voice_once(tmp_path, delivery, marker):
     first, second = audio(tmp_path), audio(tmp_path, "second.ogg")
     hooks.record("a", first, delivery)
     hooks.record("a", second, delivery)
-    text = f"{marker}\nMEDIA:{first}"
+    text = f"{marker}MEDIA:{first}"
     result = hooks.on_transform_llm_output(text, "a")
-    assert result == text + f"\nMEDIA:{second}" and result.count(marker) == 1
+    assert result == text + f"\nMEDIA:{second}" and result.count("[[audio_as_voice]]") == (1 if marker else 0)
     hooks.record("a", first, delivery)
     assert hooks.on_transform_llm_output(text, "a") is None
 
 
-@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]"), ("file", "[[as_document]]")])
+@pytest.mark.parametrize("delivery,marker", [(True, "[[audio_as_voice]]\n"), ("file", "")])
 def test_existing_media_gets_missing_voice_marker_without_append(tmp_path, delivery, marker):
     path = audio(tmp_path)
     hooks.record("a", path, delivery)
@@ -50,8 +50,12 @@ def test_existing_media_gets_missing_voice_marker_without_append(tmp_path, deliv
     text = f"Here you go.\nMEDIA:{path}"
     assert hooks.on_transform_llm_output(text, "b") is None
     result = hooks.on_transform_llm_output(text, "a")
-    assert result.count(f"MEDIA:{path}") == 1 and result.count(marker) == 1
-    assert hooks.on_transform_llm_output(result, "a") is None
+    if marker:
+        assert result.count(f"MEDIA:{path}") == 1 and result.count("[[audio_as_voice]]") == 1
+        assert hooks.on_transform_llm_output(result, "a") is None
+    else:
+        assert result is None  # the tag is already there and a file needs no marker
+        result = text
     hooks.record("a", path, False)
     assert hooks.on_transform_llm_output(text, "a") is None
 
@@ -65,14 +69,17 @@ def test_session_isolation_and_empty_session(tmp_path):
     assert hooks.on_transform_llm_output() == f"[[audio_as_voice]]\nMEDIA:{path}"
 
 
-def test_delivery_kinds_have_one_marker_each(tmp_path):
+def test_explicit_file_suppresses_the_reply_wide_voice_marker(tmp_path):
+    # Hermes applies the voice marker to every audio file in the reply, so a turn with a file request gets none.
     for mode in ("voice", "file", None):
         path = audio(tmp_path, f"{mode}.ogg")
         hooks.record("a", path, mode)
-        hooks.record("a", path, mode)
     result = hooks.on_transform_llm_output("Ready.", "a")
-    assert all(result.count(marker) == 1 for marker in hooks.DELIVERY_MARKERS.values())
+    assert "[[audio_as_voice]]" not in result and "[[as_document]]" not in result
     assert result.count("MEDIA:") == 3
+    voice = audio(tmp_path, "voice-only.ogg")
+    hooks.record("a", voice, "voice")
+    assert hooks.on_transform_llm_output("Ready.", "a") == f"Ready.\n[[audio_as_voice]]\nMEDIA:{voice}"
 
 
 def test_lru_and_ttl(monkeypatch, tmp_path):

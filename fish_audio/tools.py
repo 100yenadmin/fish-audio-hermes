@@ -10,7 +10,7 @@ from .tool_support import require, voice_id, run
 BILLING = " Calls are billed to the user's Fish Audio account."
 SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio emotion cues like [excited] "
                      "or [whispering]. Voices accept saved names. For plain read-aloud use text_to_speech. "
-                     "Delivery selects a voice note or a downloadable file." + BILLING)
+                     "delivery voice sends a voice note, file an audio file; use one delivery per reply." + BILLING)
 
 
 def _speak(args, key, base, session, *, record_media=True):
@@ -94,8 +94,7 @@ def _speak(args, key, base, session, *, record_media=True):
     require("timestamps" not in args or type(args["timestamps"]) is bool, "timestamps must be boolean.")
     events = [] if args.get("timestamps") else None
     client.tts_to_file(params, key, base, str(path), events=events)
-    marker = hooks.DELIVERY_MARKERS.get(delivery)
-    tag = (marker + "\n" if marker else "") + f"MEDIA:{path}"
+    tag = (hooks.VOICE_MARKER + "\n" if delivery == "voice" else "") + f"MEDIA:{path}"
     if record_media:
         hooks.record(session, path, delivery)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
@@ -159,7 +158,7 @@ DICTIONARY_REFS = _field("array", maxItems=3, items=_field("object",
 SCHEMAS = {
     "fish_speak": {"text": S, "voice": VOICE_REF, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
-        "delivery": _field("string", enum=["voice", "file"], description="Voice note (ogg/mp3) or downloadable file; omitted keeps format-based delivery."),
+        "delivery": _field("string", enum=["voice", "file"], description="voice: a voice note (ogg/mp3); file: an audio file, not a voice note; omitted keeps format-based delivery. Use one delivery per reply."),
         "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
