@@ -244,7 +244,8 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
     let title = mode === 'left-renamed' ? 'Original (edit)' : 'Original', pending, dialog = false, shots = 0, inflight = null
     const rows = [], saves = []
     // A slow Save lands only when something waits on the page, like the real in-flight PATCH.
-    const page = { waitForFunction:async()=>{ if (inflight) await inflight }, getByRole:(role, {name} = {}) => {
+    const waits = []
+    const page = { waitForFunction:async()=>{ if (inflight) await inflight }, waitForTimeout:async ms=>{ waits.push(ms) }, getByRole:(role, {name} = {}) => {
       const locator = {
         first:()=>locator, count:async()=>mode === 'empty' ? 0 : 1, getAttribute:async()=>`Edit ${title}`,
         waitFor:async()=>{ if (mode.startsWith('refresh-fail') && name === 'Edit Original (edit)') throw Error('list did not refresh')
@@ -279,6 +280,9 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
     if (mode === 'refresh-fail+restore-refused') assert.match(rows[0].reason, /the edit failed first: list did not refresh/)
     if (mode === 'restore-throws') assert.match(rows[0].reason, /title not restored .*\(gateway unreachable\)/)
     assert.equal(rows.length, 1)
+    // Only a failure after Save waits out the gateway's in-flight update before restoring.
+    assert.equal(waits.length, ['shot-error', 'refresh-fail', 'refresh-fail+restore-refused', 'slow-save'].includes(mode) ? 1 : 0)
+    if (waits.length) assert.ok(waits[0] > 120000 && waits[0] <= 125000)
     if (mode === 'left-renamed') assert.match(rows[0].reason, /left renamed by an earlier run/)
   }
   const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-MINE-EDIT')

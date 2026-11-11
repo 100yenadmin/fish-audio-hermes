@@ -385,7 +385,7 @@ async function mineEditRow(s, theme) {
     if (matches.length !== 1) { row('B-MINE-EDIT', 'na', 'first own voice title is not unique on the first page', { theme }); return }
     const id = matches[0].id
     const edited = Array.from(original).slice(0, 93).join('') + ' (edit)'
-    let uiFailed = false, uiError = null, saveClicked = false
+    let uiFailed = false, uiError = null, saveClicked = false, clickedAt = 0
     try {
       await s.page.getByRole('button', { name: `Edit ${original}`, exact: true }).click()
       const input = s.page.getByRole('textbox', { name: 'Voice name', exact: true })
@@ -393,14 +393,15 @@ async function mineEditRow(s, theme) {
       await s.page.waitForFunction(() => { const input = document.querySelector('[role="dialog"] input'); return input && !input.disabled })
       await input.fill(edited)
       evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'dialog')))
-      saveClicked = true
+      saveClicked = true; clickedAt = Date.now()
       await s.page.getByRole('button', { name: 'Save voice', exact: true }).click()
       await s.page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 15000 })
       await s.page.getByRole('button', { name: `Edit ${edited}`, exact: true }).waitFor({ state: 'visible', timeout: 15000 })
       evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'renamed')))
     } catch (e) { uiFailed = true; uiError = e }
-    // A Save still in flight could land after the restore and rename the voice again: wait until it settles (the
-    // dialog closes, or its Cancel button is enabled again), past the gateway request's 60 s limit.
+    // A Save still in flight could land after the restore and rename the voice again. Wait until Desktop settles
+    // (the dialog closes, or Cancel is enabled again; Desktop stops waiting at 60 s), then until the gateway's own
+    // ownership check and update could have finished (up to 60 s per Fish call) before restoring.
     let unsettled = false
     if (uiFailed && saveClicked) {
       await s.page.waitForFunction(() => {
@@ -408,6 +409,7 @@ async function mineEditRow(s, theme) {
         const cancel = dialog && [...dialog.querySelectorAll('button')].find(b => b.textContent.trim() === 'Cancel')
         return !dialog || (cancel && !cancel.disabled)
       }, null, { timeout: 65000 }).catch(() => { unsettled = true })
+      await s.page.waitForTimeout(Math.max(0, clickedAt + 125000 - Date.now()))
     }
     // Always restore by id through the gateway; a failed restore reports the UI error that came before it too.
     let restoreProblem = null
