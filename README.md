@@ -128,8 +128,9 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
 through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
-`fish-audio:fish-audio-voice-studio` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
-`gh` only after you approve the draft).
+`fish-audio:fish-audio-voice-studio`, `fish-audio:fish-audio-translate-voice` (transcribe a clip, translate it and
+voice it again with one voice per speaker, as a voice-over with new subtitles) and `fish-audio:fish-audio-report-problem`
+(drafts a bug report and files it with `gh` only after you approve the draft).
 
 To remember recurring company names, use `fish_pronunciations`: `create` with a `name`, then `publish`
 with the returned `dictionary_id` and `rules` such as `[{"key":"ES","value":"Electric Sheep","type":"alias"}]`.

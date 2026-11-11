@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Translate and voice:** a new skill transcribes a clip with speaker turns, translates it, and voices it again with one
+  Fish voice per speaker in a single multi-speaker call. It returns both transcripts and new subtitles, shows the cost
+  first, never clones the people in the clip, and calls the result a voice-over, not a synchronized dub (#98).
+
 ## 1.12.1 — 2026-11-10
 
 Documentation only; no behaviour changes.

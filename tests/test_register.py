@@ -41,6 +41,7 @@ def test_registered_skill_descriptions_match_frontmatter(plugin, fake_ctx):
     plugin.register(fake_ctx)
     shipped = {p.parent.name for p in (Path(plugin.__file__).parent / "skills").glob("*/SKILL.md")}
     assert set(fake_ctx.skills) == shipped and "fish-audio-report-problem" in shipped
+    assert "fish-audio-translate-voice" in fake_ctx.skills
     for name, path in fake_ctx.skills.items():
         frontmatter = yaml.safe_load(path.read_text().split("---", 2)[1])
         assert fake_ctx.skill_descriptions[name] == frontmatter["description"]
@@ -52,7 +53,7 @@ def test_register_needs_no_yaml(plugin, fake_ctx, monkeypatch):
     import sys
     monkeypatch.setitem(sys.modules, "yaml", None)
     plugin.register(fake_ctx)
-    assert len(fake_ctx.skills) == 4 and all(fake_ctx.skill_descriptions.values())
+    assert len(fake_ctx.skills) == 5 and all(fake_ctx.skill_descriptions.values())
 
 
 def test_setup_skill_contains_exact_login_restart_hint(plugin, fake_ctx):
