@@ -31,13 +31,16 @@ export class AgentChanged extends Error {
 
 const readChunk = async (slice: Blob) => bytesToBase64(new Uint8Array(await slice.arrayBuffer()))
 
+/** A new voice, plus the saved name operator mode registered for it (or the reason there is none). */
+export type CreatedVoice = { id: string; title: string; saved_name?: string; saved_name_note?: string }
+
 export async function cloneVoice(
   files: Blob[],
   meta: CloneMeta,
   pin: AgentPin,
   deps: CloneDeps,
   onProgress?: (file: number, sent: number, total: number) => void
-): Promise<{ id: string; title: string }> {
+): Promise<CreatedVoice> {
   const read = deps.readChunk ?? readChunk
   const epoch = deps.epoch?.()
   const still = () => samePin(deps.current(), pin) && deps.epoch?.() === epoch
@@ -69,12 +72,12 @@ export async function cloneVoice(
       }
     }
     finishing = true
-    const done = await send<{ voice: { id: string; title: string } }>(
+    const done = await send<{ voice: { id: string; title: string }; saved_name?: string; saved_name_note?: string }>(
       '/clone/finish',
       { files: uploaded, title: meta.title, description: meta.description || undefined, consent: meta.consent },
       600_000
     )
-    return done.voice
+    return { ...done.voice, saved_name: done.saved_name, saved_name_note: done.saved_name_note }
   } catch (error) {
     // Finish removes the temps itself. Otherwise abort them, but only while the pinned agent is selected:
     // the gateway's expiry cleans up after an agent switch.

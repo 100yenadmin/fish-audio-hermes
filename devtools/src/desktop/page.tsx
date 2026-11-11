@@ -20,6 +20,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Textarea,
   SegmentedControl,
   useQuery,
   useQueryClient,
@@ -40,6 +41,7 @@ import {
   call,
   currentPin,
   errorText,
+  patchVoice,
   pluginCtx,
   post,
   query,
@@ -347,11 +349,12 @@ export async function previewVoice(pin: AgentPin, voiceId: string) {
   }
 }
 
-function VoiceList({ voices, pin, favourites, onDelete }: {
+function VoiceList({ voices, pin, favourites, onDelete, onEdit }: {
   voices: Voice[]
   pin: AgentPin
   favourites?: ReturnType<typeof useFavourites>
   onDelete?: (voice: Voice) => void
+  onEdit?: (voice: Voice) => void
 }) {
   const t = usePluginI18n(PLUGIN_ID)
   const billedNote = useAccountText('billedNote', 'operatorBilledNote')
@@ -458,6 +461,11 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
                   <Codicon name={favourites.has(voice.id) ? 'star-full' : 'star-empty'} />
                 </Button>
               )}
+              {onEdit && (
+                <Button aria-label={t('editVoice', voice.title)} onClick={() => onEdit(voice)} size="icon-xs" variant="ghost">
+                  <Codicon name="edit" />
+                </Button>
+              )}
               {onDelete && (
                 <Button aria-label={t('deleteVoice', voice.title)} onClick={() => onDelete(voice)} size="icon-xs" variant="ghost">
                   <Codicon name="trash" />
@@ -507,6 +515,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
     staleTime: 30_000
   })
   const [target, setTarget] = useState<null | Voice>(null)
+  const [editing, setEditing] = useState<null | Voice>(null)
   return (
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
       <PreviewTextField pin={pin} />
@@ -518,11 +527,83 @@ function MyVoices({ pin }: { pin: AgentPin }) {
       ) : voices.data.items.length === 0 ? (
         <EmptyState description={t('mineEmptyHint')} title={t('mineEmpty')} />
       ) : (
-        <VoiceList onDelete={setTarget} pin={pin} voices={voices.data.items} />
+        <VoiceList onDelete={setTarget} onEdit={setEditing} pin={pin} voices={voices.data.items} />
       )}
       <Pager more={hasMore(voices.data?.items.length, page, voices.data?.total)} page={page} setPage={setPage} />
       <DeleteDialog pin={pin} onClose={() => setTarget(null)} onDeleted={() => void client.invalidateQueries({ queryKey })} voice={target} />
+      {editing && <EditDialog key={editing.id} pin={pin} voice={editing} onClose={() => setEditing(null)} onUpdated={() => void client.invalidateQueries({ queryKey: ['fish-audio', agentKey(pin)] })} />}
     </div>
+  )
+}
+
+function EditDialog({ pin, voice, onClose, onUpdated }: { pin: AgentPin; voice: Voice; onClose: () => void; onUpdated: () => void }) {
+  const t = usePluginI18n(PLUGIN_ID)
+  const [original, setOriginal] = useState(voice)
+  const [title, setTitle] = useState(voice.title ?? '')
+  const [description, setDescription] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  // A failed detail read keeps its message while the user types: it explains the disabled description box.
+  const [loadError, setLoadError] = useState<unknown>(null)
+  useEffect(() => {
+    let active = true
+    void readFor<{ voice: Voice }>(pin, `/voices/${encodeURIComponent(voice.id)}`).then(res => {
+      if (!active) return
+      setOriginal(res.voice)
+      setTitle(res.voice.title ?? '')
+      setDescription(res.voice.description ?? '')
+      setLoaded(true)
+    }).catch(error => { if (active) setLoadError(error) }).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [pin.connectionId, pin.profile, voice.id])
+  const fields = {
+    ...(title.trim() !== (original.title ?? '').trim() ? { title: title.trim() } : {}),
+    ...(loaded && description !== (original.description ?? '') ? { description } : {})
+  }
+  // A longer description set elsewhere is never cut: it blocks Save only when it would be sent.
+  const tooLong = 'description' in fields && [...description].length > LIMITS.description
+  const disabled = loading || busy || !title.trim() || tooLong || !Object.keys(fields).length
+  const save = async () => {
+    if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: pluginCtx().i18n.t('agentChangedNothingSent') })
+    if (disabled) return
+    setBusy(true)
+    try {
+      const result = await patchVoice(pin, voice.id, fields)
+      const updatedTitle = result.title ?? original.title
+      const favourites = readFavourites(pin)
+      if (favourites.some(f => f.id === voice.id)) writeFavourites(pin, favourites.map(f => f.id === voice.id ? { ...f, title: updatedTitle } : f))
+      onUpdated()
+      if (!samePin(currentPin(), pin)) return
+      host.notify({ kind: 'success', message: pluginCtx().i18n.t('voiceUpdated', updatedTitle) })
+      onClose()
+    } catch (error) {
+      if (samePin(currentPin(), pin)) setError(error)
+    } finally {
+      if (samePin(currentPin(), pin)) setBusy(false)
+    }
+  }
+  return (
+    <Dialog open onOpenChange={(open: boolean) => !open && !busy && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle><bdi>{t('editTitle', voice.title)}</bdi></DialogTitle></DialogHeader>
+        {loading && <Rows n={1} />}
+        {loadError !== null && <p role="alert">{errorText(loadError)}</p>}
+        {error !== null && <p role="alert">{errorText(error)}</p>}
+        <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>{t('voiceTitle')}
+          <Input required disabled={loading || busy} value={title} onChange={(e: { target: { value: string } }) => { setError(null); setTitle(clamp(e.target.value, LIMITS.title)) }} />
+        </label>
+        <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>{t('descriptionOptional')}
+          <Textarea disabled={!loaded || busy} value={description} onChange={(e: { target: { value: string } }) => { setError(null); setDescription(e.target.value) }} />
+        </label>
+        {tooLong && <p role="alert" style={{ color: 'var(--ui-orange)', fontSize: 12, margin: 0 }}>{t('descriptionTooLong', LIMITS.description)}</p>}
+        <DialogFooter>
+          <Button disabled={busy} onClick={onClose} variant="ghost">{t('cancel')}</Button>
+          <Button disabled={disabled} loading={busy} onClick={() => void save()}>{t('save')}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

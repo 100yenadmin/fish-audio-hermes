@@ -49,14 +49,13 @@ export const SETTINGS_VERSION = '1.4.0'
 const PLUGINS_PATH = '/capabilities?tab=plugins&plugin=fish-audio'
 const DEFAULT_MODEL = '__fish_default__'
 const HEX32 = /^[0-9a-f]{32}$/
-const NAME = /^[a-z][a-z0-9_-]{1,31}$/
+const NAME = /^\p{L}[\p{L}\p{M}\p{N}_-]{0,31}$/u
 const RESERVED = ['add', 'remove', 'list', 'current', 'default']
 
-/** Decision 2's name rule, checked before sending; the gateway stays authoritative. */
+/** Native-script name rule, checked before sending; the gateway stays authoritative. */
 export function badAliasName(raw: string): boolean {
-  const name = raw.trim().toLowerCase()
-  if (/[^\x00-\x7f]/.test(name)) return false  // the gateway decides: Python casefold makes 'straße' a valid 'strasse'
-  return !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name)
+  const name = raw.trim().normalize('NFKC').toLowerCase()
+  return [...name].length > LIMITS.aliasName || !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name)
 }
 
 const shortId = (id: string) => id.slice(0, 8)
@@ -353,7 +352,6 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
                 <div style={{ flex: '0 1 140px', minWidth: 110 }}>
                   <Input
                     aria-label={t('settings.name')}
-                    maxLength={LIMITS.aliasName}
                     disabled={managed('aliases')}
                     onChange={(e: { target: { value: string } }) => {
                       setName(e.target.value)

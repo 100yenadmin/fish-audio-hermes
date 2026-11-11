@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import { createTestContext, host, resetHost, resetQueryCache } from './sdk-mock'
-import { $available, $availableError, $tab, bindContext, setRefresher } from '../api'
+import { $available, $availableError, $tab, bindContext, setRefresher, ApiError, errorText } from '../api'
 import { $previewText, previewVoice, VoicesPage } from '../page'
 import plugin from '../plugin'
 import * as audio from '../audio'
@@ -547,6 +547,78 @@ describe('#13 follow-ups', () => {
 })
 
 
+describe('own voice editor', () => {
+  beforeEach(() => { $available.set({ key: true, version: '1.14.0', account: true }); $tab.set('mine') })
+  afterEach(() => vi.restoreAllMocks())
+  const id = VOICES.items[0].id
+  const edit = () => fireEvent.click(screen.getByLabelText(en.editVoice('Narrator')))
+  const change = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
+  const save = () => screen.getByRole('button', { name: en.save }) as HTMLButtonElement
+
+  it('loads full detail, disables unchanged/blank saves, and renames the list and favourite', async () => {
+    let resolve!: (value: any) => void, renamed = false
+    const notify = vi.spyOn(host, 'notify')
+    const { calls, t } = mount(async (path, opts) => {
+      if (opts?.method === 'PATCH') { renamed = true; return { ok: true, id, title: opts.body.title } }
+      return path === `/voices/${id}` ? new Promise(yes => { resolve = yes }) :
+        { ...VOICES, items: [{ ...VOICES.items[0], title: renamed ? 'New' : 'Narrator' }] }
+    })
+    t.stored.set('favourites:conn-1::default', [{ id, title: 'Narrator' }])
+    await flush(); edit(); await flush()
+    expect(save().disabled).toBe(true)
+    expect((screen.getByLabelText(en.voiceTitle) as HTMLInputElement).disabled).toBe(true)
+    resolve({ voice: { id, title: 'Narrator', description: 'd'.repeat(600) } }); await flush()
+    expect((screen.getByLabelText(en.descriptionOptional) as HTMLTextAreaElement).value).toBe('d'.repeat(600))
+    expect(save().disabled).toBe(true)
+    change(en.voiceTitle, '  '); expect(save().disabled).toBe(true)
+    change(en.voiceTitle, '😀'.repeat(101))
+    expect(Array.from((screen.getByLabelText(en.voiceTitle) as HTMLInputElement).value)).toHaveLength(100)
+    change(en.voiceTitle, 'New'); fireEvent.click(save()); await flush()
+    expect(calls.find(c => c.body)?.body).toEqual({ title: 'New' })
+    expect(screen.getByLabelText(en.editVoice('New'))).toBeTruthy()
+    expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id, title: 'New' }])
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.voiceUpdated('New') })
+  })
+
+  it('sends only a changed description, permits clearing it, and shows errorText on failure', async () => {
+    const failure = new ApiError('no_key', 'gateway message')
+    const { calls } = mount(async (path, opts) => opts?.method === 'PATCH' ? { ok: false, kind: failure.kind, message: failure.message }
+      : path === `/voices/${id}` ? { voice: { id, title: 'Narrator', description: 'Old' } } : VOICES)
+    await flush(); edit(); await flush()
+    change(en.descriptionOptional, '😀'.repeat(501))  // over the limit: warned and Save refused, never cut silently
+    expect(screen.getByRole('alert').textContent).toBe(en.descriptionTooLong(500))
+    expect((save() as HTMLButtonElement).disabled).toBe(true)
+    change(en.descriptionOptional, ''); fireEvent.click(save()); await flush()
+    expect(calls.find(c => c.body)?.body).toEqual({ description: '' })
+    expect(screen.getByRole('alert').textContent).toBe(errorText(failure))
+  })
+
+  it('falls back to title only after a detail error and refuses a stale-agent Save', async () => {
+    const notify = vi.spyOn(host, 'notify')
+    const { calls } = mount(async (path, opts) => { if (opts?.method === 'PATCH') return { title: opts.body.title }; if (path === `/voices/${id}`) throw Error('Detail unavailable'); return VOICES })
+    await flush(); edit(); await flush()
+    expect(screen.getByRole('alert').textContent).toBe('Detail unavailable')
+    expect((screen.getByLabelText(en.descriptionOptional) as HTMLTextAreaElement).disabled).toBe(true)
+    change(en.voiceTitle, 'New')
+    // Typing keeps the load error: it explains why the description box is disabled.
+    expect(screen.getByRole('alert').textContent).toBe('Detail unavailable')
+    vi.spyOn(host.state.profile, 'get').mockReturnValue('other')
+    const before = calls.length
+    fireEvent.click(save()); await flush()
+    expect(calls).toHaveLength(before)
+    expect(notify).toHaveBeenCalledWith({ kind: 'error', message: en.agentChangedNothingSent })
+    vi.restoreAllMocks()
+    fireEvent.click(save()); await flush()
+    expect(calls.find(c => c.body)?.body).toEqual({ title: 'New' })
+  })
+
+  it.each([true, false])('hides Edit outside My voices (account=%s)', async account => {
+    $available.set({ key: true, version: '1.14.0', account }); if (account) $tab.set('library')
+    mount(async () => VOICES); await flush()
+    expect(screen.queryByLabelText(en.editVoice('Narrator'))).toBeNull()
+  })
+})
+
 describe('operator account page', () => {
   const candidate = { design_token: 'd'.repeat(32), index: 0, mime: 'audio/wav', audio: 'SUQz' }
 
@@ -596,7 +668,7 @@ describe('operator account page', () => {
     $available.set({ key: true, version: '1.1.0', account: false })
     $tab.set('create')
     const { calls, t } = mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
-      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' } } : path === '/use' ? { ok: true, message: 'Saved.' } : VOICES)
+      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' }, saved_name: 'warm' } : path === '/use' ? { ok: true, message: 'Saved.' } : VOICES)
     const notify = vi.spyOn(host, 'notify')
     fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
     fireEvent.click(screen.getByRole('button', { name: en.design }))
@@ -606,6 +678,7 @@ describe('operator account page', () => {
     await flush()
     expect(t.stored.get('favourites:conn-1::default')).toEqual([{ id: 'w'.repeat(32), title: 'Warm' }])
     expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.operatorSaved('Warm') })
+    expect(notify).toHaveBeenCalledWith({ kind: 'info', message: en.savedNameAdded('warm', 'Warm') })
     expect(screen.getByText(en.operatorSaved('Warm'))).toBeTruthy()
     expect(document.body.textContent).not.toContain('My voices')
     act(() => $tab.set('library'))
@@ -614,6 +687,24 @@ describe('operator account page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use' }))
     await flush()
     expect(calls.find(c => c.path === '/use')?.body).toEqual({ voice: 'w'.repeat(32) })
+  })
+
+  it('says why an operator-mode voice got no saved name', async () => {
+    $available.set({ key: true, version: '1.1.0', account: false })
+    $tab.set('create')
+    const note = 'The saved-name limit is reached; the operator can add one.'
+    mount(async path => path === '/design' ? { ok: true, candidates: [candidate] }
+      : path === '/design/save' ? { ok: true, voice: { id: 'w'.repeat(32), title: 'Warm' }, saved_name_note: note } : VOICES)
+    const notify = vi.spyOn(host, 'notify')
+    notify.mockClear()
+    fireEvent.change(screen.getByLabelText(en.designTitle), { target: { value: 'Warm narrator' } })
+    fireEvent.click(screen.getByRole('button', { name: en.design }))
+    await flush()
+    fireEvent.change(screen.getByLabelText(`${en.saveAs} 1`), { target: { value: 'Warm' } })
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await flush()
+    expect(notify).toHaveBeenCalledWith({ kind: 'warning', message: note })
+    expect(notify.mock.calls.map(([n]) => (n as { message: string }).message).filter(m => m.startsWith('Saved name '))).toEqual([])
   })
 
   it('default mode keeps created voices out of Favourites and points to My voices', async () => {

@@ -340,14 +340,14 @@ def test_preview_uses_explicit_tool_model_precedence(config, monkeypatch):
     resolve = settings.resolve_model_source
     preferences = []
     def capture(model, **kwargs):
-        preferences.append(kwargs.get("prefer_call"))
+        preferences.append((model, kwargs.get("key"), kwargs.get("prefer_call")))
         return resolve(model, **kwargs)
     monkeypatch.setattr(settings, "resolve_model_source", capture)
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
         assert commands.handle("preview " + VOICE).startswith("[[audio_as_voice]]")
         assert route.calls.last.request.headers["model"] == "s1"
-        assert preferences == [True]
+        assert preferences == [(None, "test-key", True), ("s1", "", True)]  # Usage estimates the resolved model offline.
 
 
 @pytest.mark.parametrize("nested,managed,wallet,expected", [

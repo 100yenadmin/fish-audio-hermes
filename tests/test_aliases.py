@@ -14,16 +14,48 @@ OTHER = "c" * 32
 
 
 @pytest.mark.parametrize("raw,expected", [("ab", "ab"), (" NaRRaTor ", "narrator"),
-    ("a" + "z" * 31, "a" + "z" * 31), ("host_2-x", "host_2-x")])
+    ("a" + "z" * 31, "a" + "z" * 31), ("host_2-x", "host_2-x"), ("a", "a"),
+    ("猫", "猫"), ("ナレーター", "ナレーター"), ("راوي", "راوي"), ("कथावाचक", "कथावाचक"),
+    ("ß", "ss"), ("Straße", "strasse"), ("STRASSE", "strasse"), ("ＮＡＲＲＡＴＯＲ", "narrator"),
+    ("𐐨" * 32, "𐐨" * 32)])
 def test_name_valid(raw, expected):
     assert settings.alias_name(raw) == expected
 
 
-@pytest.mark.parametrize("raw", ["a", "a" * 33, "2host", "a" * 32, "add", "REMOVE", "list",
-    "current", "default", "two words", "", None])
+@pytest.mark.parametrize("raw", ["a" * 33, "2host", "a" * 32, "add", "REMOVE", "list",
+    "current", "default", "two words", "", None, 123, "猫🐈", "猫\u202e", "क\u200dथावाचक",
+    "\u0301name", "猫.", "猫\n名", "ＡＤＤ", "猫" * 33, "𐐨" * 33, "ß" * 17])
 def test_name_invalid(raw):
-    with pytest.raises(ToolInputError):
+    with pytest.raises(ToolInputError) as exc:
         settings.alias_name(raw)
+    assert str(exc.value) == settings.ALIAS_NAME_ERROR
+
+
+def test_old_ascii_names_unchanged():
+    for name in ("ab", "narrator", "host_2-x", "a0", "x_", "x-", "z" * 32):
+        assert settings.alias_name(name) == settings.normalize_name(name) == name
+
+
+def test_stored_unicode_names_first_raw_key_wins(config):
+    pairs = [("ＮＡＲＲＡＴＯＲ", OTHER), ("narrator", VOICE), ("Straße", VOICE),
+             ("STRASSE", OTHER), ("猫", VOICE), ("bad name", OTHER), (123, VOICE)]
+    for entries in (pairs, list(reversed(pairs))):
+        config[0]["tts"]["fish-audio"] = {"aliases": dict(entries)}
+        assert settings.aliases() == {"narrator": VOICE, "strasse": OTHER, "猫": VOICE}
+        assert settings.resolve_voice(" Straße ") == OTHER
+        assert settings.resolve_voice(" ＮＡＲＲＡＴＯＲ ") == VOICE
+
+
+@pytest.mark.parametrize("name,lookup", [("猫", "猫"), ("Straße", "STRASSE"), ("ＮＡＲＲＡＴＯＲ", "narrator")])
+def test_unicode_command_roundtrip(config, monkeypatch, name, lookup):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    with respx.mock as mock:
+        mock.get(BASE + "/model/" + VOICE).respond(json={})
+        assert commands.handle(f"alias add {name} {VOICE}") == "Saved."
+        assert commands.handle(f"use {lookup}") == "Saved."
+    assert config[0]["tts"]["fish-audio"]["voice"] == VOICE
+    assert commands.handle(f"alias remove {lookup}") == "Removed."
+    assert settings.aliases() == {}
 
 
 def seed(config):
@@ -49,13 +81,13 @@ def test_alias_crud(config, monkeypatch):
 
 
 def test_alias_writes_keep_entries_the_reader_skips(config):
-    config[0]["tts"]["fish-audio"] = {"aliases": {"Short": "legacy-id", "x": VOICE, " Narrator ": VOICE, "host": OTHER}}
+    config[0]["tts"]["fish-audio"] = {"aliases": {"Short": "legacy-id", "bad name": VOICE, " Narrator ": VOICE, "host": OTHER}}
     with respx.mock as mock:
         mock.get(BASE + "/model/" + OTHER).respond(json={})
         commands.alias_add("narrator", OTHER, "test-key", BASE)
-    assert config[0]["tts"]["fish-audio"]["aliases"] == {"Short": "legacy-id", "x": VOICE, "host": OTHER, "narrator": OTHER}
+    assert config[0]["tts"]["fish-audio"]["aliases"] == {"Short": "legacy-id", "bad name": VOICE, "host": OTHER, "narrator": OTHER}
     commands.alias_remove("HOST")
-    assert config[0]["tts"]["fish-audio"]["aliases"] == {"Short": "legacy-id", "x": VOICE, "narrator": OTHER}
+    assert config[0]["tts"]["fish-audio"]["aliases"] == {"Short": "legacy-id", "bad name": VOICE, "narrator": OTHER}
     assert settings.aliases() == {"narrator": OTHER}
 
 

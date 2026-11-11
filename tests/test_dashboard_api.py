@@ -98,6 +98,7 @@ def env(monkeypatch, tmp_path):
     return SimpleNamespace(api=api, profiles=profiles, active=active, switch=switch,
                            get=lambda route, **params: request("GET", route, params=params),
                            post=lambda route, **body: request("POST", route, json=body),
+                           patch=lambda route, **body: request("PATCH", route, json=body),
                            delete=lambda route: request("DELETE", route))
 
 
@@ -193,6 +194,51 @@ def test_get_voice_detail_and_bad_id(env):
         assert voice["id"] == VOICE and voice["samples"] == [{"title": "s", "text": "hi"}]
     refused(env.get("/voices/short"), "invalid")
     refused(env.get("/voices/" + "a" * 31 + "!"), "invalid")
+
+
+@pytest.mark.parametrize("fields", [{"title": "New name"}, {"description": ""}, {"description": "New description"},
+                                     {"title": "New", "description": "Both"}])
+def test_patch_own_voice_sends_only_supplied_fields(env, fields):
+    from urllib.parse import parse_qs
+    base = env.active().base
+    with respx.mock as mock:
+        mock.get(base + f"/model/{VOICE}").respond(json={"title": "Old"})
+        mock.get(base + "/model").respond(json={"items": [{"_id": VOICE}], "total": 1})
+        updated = mock.patch(base + f"/model/{VOICE}").respond(204)
+        assert env.patch(f"/voices/{VOICE}", **fields) == {"ok": True, "id": VOICE, "title": fields.get("title")}
+        request = updated.calls.last.request
+        assert request.headers["content-type"] == "application/x-www-form-urlencoded"
+        assert parse_qs(request.content.decode(), keep_blank_values=True) == {k: [v] for k, v in fields.items()}
+
+
+@pytest.mark.parametrize("ident,fields", [("short", {"title": "New"}), (VOICE, {}), (VOICE, {"title": "x" * 101}),
+                                        (VOICE, {"title": "  "}), (VOICE, {"description": "x" * 501})])
+def test_patch_invalid_input_never_updates(env, monkeypatch, ident, fields):
+    def owner_lookup(*args):
+        raise AssertionError("bad input must be refused before the ownership lookup")
+    monkeypatch.setattr(env.api, "_author_owned", owner_lookup)
+    with respx.mock as mock:
+        refused(env.patch(f"/voices/{ident}", **fields), "invalid")
+        assert not mock.calls
+
+
+def test_patch_not_owner(env):
+    with respx.mock as mock:
+        mock.get(env.active().base + f"/model/{VOICE}").respond(json={"title": "Other"})
+        mock.get(env.active().base + "/model").respond(json={"items": []})
+        result = env.patch(f"/voices/{VOICE}", title="New")
+        refused(result, "not_owner")
+        assert result["message"] == "You can edit only voices your Fish Audio account created."
+        assert all(call.request.method == "GET" for call in mock.calls)
+
+
+def test_voice_detail_keeps_full_description(env):
+    item = {"_id": VOICE, "title": "Narrator", "description": "d" * 600}
+    with respx.mock as mock:
+        mock.get(env.active().base + f"/model/{VOICE}").respond(json=item)
+        mock.get(env.active().base + "/model").respond(json={"items": [item]})
+        assert env.get(f"/voices/{VOICE}")["voice"]["description"] == "d" * 600
+        assert env.get("/voices")["items"][0]["description"] == "d" * 200
 
 
 def test_preview_is_mp3_base64_and_leaves_no_file(env):
@@ -429,7 +475,8 @@ def test_design_returns_audio_and_tokens_but_never_the_signature(env):
         assert base64.b64decode(first["audio"]) == WAV and first["billed"] is True and first["duration_ms"] == 1200
         assert list((env.active().home / "audio").iterdir()) == []
         save = mock.post(base + "/model").respond(json={"_id": OTHER, "title": "Warm", "source": "design"})
-        assert env.post("/design/save", design_token=first["design_token"], title="Warm")["voice"] == {"id": OTHER, "title": "Warm"}
+        saved = env.post("/design/save", design_token=first["design_token"], title="Warm")
+        assert saved == {"ok": True, "voice": {"id": OTHER, "title": "Warm"}}  # no saved name outside operator mode
         assert b"server-signature-xyz" in save.calls.last.request.content and WAV in save.calls.last.request.content
         refused(env.post("/design/save", design_token=first["design_token"], title="Again"), "invalid")
 
@@ -468,6 +515,25 @@ def test_clone_happy_path_uploads_in_chunks_and_cleans_up(env):
     assert sample in content and WAV in content and b'name="visibility"\r\n\r\nprivate' in content
     assert f'{files[0]["upload_id"]}.mp3'.encode() in content
     assert uploads(env) == []
+
+
+@pytest.mark.parametrize("extra", [{"saved_name": "me"}, {"saved_name_note": "Saved names are managed; the operator can add one."}, {}])
+def test_design_save_passes_on_the_operator_saved_name(env, monkeypatch, extra):
+    voices = env.api._fa("voices")
+    candidate = {"index": 0, "text": "t", "signature": "sig", "audio_base64": base64.b64encode(WAV).decode(), "duration_ms": 10}
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(env.active().base + "/v1/voice-design").respond(json={"candidates": [candidate]})
+        token = env.post("/design", instruction="warm", n=1)["candidates"][0]["design_token"]
+    monkeypatch.setattr(voices, "execute", lambda *a: {"id": OTHER, "title": "Warm", "source": "design", **extra})
+    assert env.post("/design/save", design_token=token, title="Warm") == {"ok": True, "voice": {"id": OTHER, "title": "Warm"}, **extra}
+
+
+@pytest.mark.parametrize("extra", [{"saved_name": "me"}, {"saved_name_note": "Saved names are managed; the operator can add one."}, {}])
+def test_clone_passes_on_the_operator_saved_name(env, monkeypatch, extra):
+    voices = env.api._fa("voices")
+    monkeypatch.setattr(voices, "execute", lambda *a: {"id": OTHER, "title": "Me", "state": "trained", "secret": "x", **extra})
+    body = env.post("/clone/finish", files=[upload(env, WAV)], title="Me", consent=True)
+    assert body == {"ok": True, "voice": {"id": OTHER, "title": "Me", "state": "trained"}, **extra}
 
 
 @pytest.mark.parametrize("consent", [None, False, "true", 1])
@@ -832,6 +898,7 @@ def test_operator_available_and_account_never_read_wallet(env, monkeypatch):
     with respx.mock(assert_all_called=False) as mock:
         refused(env.get("/voices", self="true"), "operator_account")
         refused(env.delete(f"/voices/{VOICE}"), "operator_account")
+        refused(env.patch(f"/voices/{VOICE}", title="New"), "operator_account")
         assert not mock.calls
     monkeypatch.setattr(env.api._fa("secrets"), "fish_api_key", lambda: "")
     assert env.get("/account")["kind"] == "operator_account"

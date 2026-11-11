@@ -6,6 +6,7 @@ from collections import OrderedDict
 from pathlib import Path
 import threading
 import time
+import unicodedata
 from uuid import uuid4
 
 from . import client, hooks, media, settings
@@ -37,6 +38,7 @@ def _item(item, detail=False):
               "tags": item.get("tags", [])[:8], "like_count": item.get("like_count", 0),
               "task_count": item.get("task_count", 0), "author": (item.get("author") or {}).get("nickname", "")}
     if detail:
+        result["description"] = item.get("description") or ""
         result.update({name: item.get(name) for name in ("visibility", "state", "source")})
         result["samples"] = [{"title": v.get("title"), "text": v.get("text")} for v in item.get("samples", [])]
     return result
@@ -90,12 +92,67 @@ def _features(value, signature):
 ACCOUNT_VOICES = "Voices on this agent's account are managed by its operator."
 
 
+def _profile_voices(key, base):
+    grouped = {}
+    for name, ident in sorted(settings.aliases().items()):
+        grouped.setdefault(ident, []).append(name)
+    items, lookups = [], 20
+    for ident, names in grouped.items():
+        item = {"id": ident, "name": names[0], "detail": "unavailable"}
+        if lookups > 0:
+            lookups -= 1
+            try:
+                item = {**_item(client.get_json(f"/model/{ident}", {}, key, base), detail=True),
+                        "id": ident, "name": names[0]}
+            except FishAudioError as exc:
+                if exc.status == 401:
+                    raise  # A rejected key is an account problem, not 20 unavailable voices.
+                if exc.status not in {403, 404}:  # 403: this key can't see that voice (e.g. made private)
+                    lookups = 0  # Fish is failing: list the rest by name instead of waiting on each one.
+            except Exception:
+                lookups = 0
+        if len(names) > 1:
+            item["names"] = names
+        items.append(item)
+    note = ("Voices assigned to this agent through its saved names; the operator's other voices are not listed."
+            if items else "No voices assigned yet; the operator assigns voices with saved names.")
+    return {"items": items, "profile_voices": True, "note": note}
+
+
+def _save_name(result, title):
+    if not settings.operator_account() or not result.get("id"):
+        return result
+    from . import commands
+    try:
+        name = settings.normalize_name(title)
+        name = "".join(c if unicodedata.category(c)[0] in "LMN" or c in "_-" else "-" for c in name)
+        name = re.sub("-+", "-", name)
+        name = name[next((i for i, c in enumerate(name) if unicodedata.category(c).startswith("L")), len(name)):][:32]
+        name = name.rstrip("-")
+        name = settings.alias_name(name)
+        with commands._LOCK:
+            saved = settings.aliases()
+            if settings.managed_leaf("tts", "fish-audio", "aliases"):
+                reason = "Saved names are managed"
+            elif name in saved and saved[name] != result["id"]:
+                reason = "The derived saved name is taken by another voice"
+            elif len(saved) >= settings.MAX_ALIASES:
+                reason = "The saved-name limit is reached"
+            else:
+                commands._write_alias(name, result["id"])
+                return {**result, "saved_name": name}
+    except Exception:
+        reason = "A valid saved name could not be registered"
+    return {**result, "saved_name_note": reason + "; the operator can add one."}
+
+
 TITLE_PAGES = 5  # a title lookup reads at most 100 of the voices Fish's search returns
 
 
 def find_own_by_title(title, key, base):
     """Your own voices titled exactly `title` (ignoring case), as (id, title) pairs, plus whether every search result
     was read. Fish's title search also returns longer titles, so another exact match can sit on a later page."""
+    require(not settings.operator_account(), ACCOUNT_VOICES)  # operator `mine` lists saved names, not titles
     want, found = title.strip().casefold(), {}
     for page in range(1, TITLE_PAGES + 1):
         result = execute({"action": "mine", "query": title, "page": page, "page_size": 20}, key, base, "")
@@ -112,7 +169,9 @@ def find_own_by_title(title, key, base):
 def execute(args, key, base, session):
     action = args.get("action")
     # An operator's key can serve many agents: its own voices, edits and deletes span all of them.
-    require(action not in {"mine", "update", "delete"} or not settings.operator_account(), ACCOUNT_VOICES)
+    require(action not in {"update", "delete"} or not settings.operator_account(), ACCOUNT_VOICES)
+    if action == "mine" and settings.operator_account():
+        return _profile_voices(key, base)
     if action == "audition":
         from .tools import _speak  # Lazy: tools dispatches back to this module.
         refs = args.get("voices")
@@ -215,7 +274,7 @@ def execute(args, key, base, session):
         if texts is not None:
             data["texts"] = texts
         item = client.post_multipart("/model", data, _upload(paths) + _cover(args), key, base, 600)
-        return _summary(item, ("title", "state"))
+        return _save_name(_summary(item, ("title", "state")), data["title"])
     if action == "design":
         instruction, n = args.get("instruction"), args.get("n", 2)
         require(isinstance(instruction, str) and bool(instruction.strip()) and len(instruction) <= 2000,
@@ -274,5 +333,5 @@ def execute(args, key, base, session):
         with _lock:
             if _DESIGNS.get(args.get("design_token")) is receipt:
                 del _DESIGNS[args["design_token"]]
-        return _summary(item, ("title", "source"))
+        return _save_name(_summary(item, ("title", "source")), data["title"])
     require(False, "Unknown fish_voices action.")

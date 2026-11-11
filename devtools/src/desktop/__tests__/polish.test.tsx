@@ -75,7 +75,8 @@ it.each(['en', 'ja', 'ar'] as const)('%s renders the remove alias name and its i
   await flush()
   const t = bundles[locale]
   expect(screen.getByRole('button', { name: t.settings.removeAlias('narrator') })).toBeTruthy()
-  expect(screen.getByRole('textbox', { name: t.settings.name }).getAttribute('maxlength')).toBe('32')
+  // Name validation counts code points; HTML maxlength would count UTF-16 units.
+  expect(screen.getByRole('textbox', { name: t.settings.name }).getAttribute('maxlength')).toBeNull()
   expect(screen.getByRole('textbox', { name: t.settings.voice }).getAttribute('maxlength')).toBe('128')
 })
 

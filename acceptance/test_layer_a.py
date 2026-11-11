@@ -3,6 +3,7 @@ import asyncio
 import base64
 import copy
 import json
+import unicodedata
 import os
 from pathlib import Path
 import re
@@ -277,6 +278,24 @@ def test_commands(paid, voice, n, request):
         assert path and Path(path[1]).is_file(), 'preview did not return existing audio'
 
 
+@pytest.mark.row('A-ALIAS-UNICODE')
+def test_use_unicode_alias(paid, voice, request):
+    before = config(paid)
+    assert '猫' not in before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
+    try:
+        if before.get('tts', {}).get('fish-audio', {}).get('voice') == voice:  # so `use 猫` must change something
+            other = dict(before); other['tts'] = {**before.get('tts', {}), 'fish-audio': {**before['tts']['fish-audio'], 'voice': 'b' * 32}}
+            set_config(paid, other)
+        added = command(paid, f'alias add 猫 {voice}')
+        used = command(paid, 'use 猫')
+        assert config(paid)['tts']['fish-audio']['voice'] == voice
+        removed = command(paid, 'alias remove 猫')
+        assert '猫' not in config(paid)['tts']['fish-audio']['aliases']
+        evidence(request, paid, {'add': added, 'use': used, 'remove': removed, 'voice': voice})
+    finally:
+        set_config(paid, before)
+
+
 @pytest.mark.row('A-CMD-TITLE')
 def test_use_own_title(paid, request):
     before, items = config(paid), []
@@ -290,7 +309,7 @@ def test_use_own_title(paid, request):
         na(request, 'own voice listing exceeds the searchable window; title uniqueness cannot be established')
     titles = [item['title'].strip().casefold() for item in items if isinstance(item.get('title'), str)]
     aliases = before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
-    aliases = {name.strip().casefold() for name in aliases}
+    aliases = {unicodedata.normalize('NFKC', name.strip()).casefold() for name in aliases}
     chosen = next((item for item in items if isinstance(item.get('title'), str)
                    and 0 < len(item['title'].strip()) <= 128
                    and titles.count(item['title'].strip().casefold()) == 1
@@ -410,6 +429,32 @@ def test_reading_speed(real, request):
         evidence(request, real, {'saved': saved, 'changed': changed, 'reset': reset})
     finally:
         set_config(real, before)
+
+
+@pytest.mark.row('A-OP-MINE')
+def test_operator_profile_voices(paid, voice, request):
+    before = config(paid)
+    try:
+        changed = copy.deepcopy(before)
+        changed.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['operator_account'] = True
+        changed.setdefault('tts', {}).setdefault('fish-audio', {})['aliases'] = {'acceptance_voice': voice}
+        set_config(paid, changed)
+        result = core(paid, 'from tools.registry import registry; '
+                      'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_voices", {"action": "mine"}))')
+        evidence(request, paid, result)
+        assert result['success'] and result['profile_voices'] is True
+        assert len(result['items']) == 1 and result['items'][0]['id'] == voice
+        assert result['items'][0]['name'] == 'acceptance_voice'
+    finally:
+        set_config(paid, before)
+
+
+@pytest.mark.row('A-USAGE')
+def test_speech_usage(paid, voice, request):
+    result = core(paid, 'from tools.registry import registry; '
+                  f'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_speak", {{"text": "Hello.", "voice": {voice!r}}}))')
+    evidence(request, paid, result)
+    assert result['success'] and result['usage']['billable_bytes'] > 0
 
 
 @pytest.mark.row('A-TOOL-ACCOUNT')

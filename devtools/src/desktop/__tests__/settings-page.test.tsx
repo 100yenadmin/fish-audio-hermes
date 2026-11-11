@@ -293,20 +293,22 @@ describe('settings page writes', () => {
     expect(navigate).toHaveBeenCalledWith('/fish-audio')
   })
 
-  it('Add posts exactly {name, voice} and lists the answer', async () => {
+  it.each([[' Host ', 'Host', 'host'], [' 猫 ', '猫', '猫'], ['𐐨'.repeat(32), '𐐨'.repeat(32), '𐐨'.repeat(32)]])(
+    'Add posts exactly {name, voice} and lists the answer (%s)', async (raw, sent, name) => {
     const notify = vi.spyOn(host, 'notify')
-    const aliases = [{ name: 'host', voice: B }, { name: 'narrator', voice: A }]
+    const aliases = [{ name, voice: B }, { name: 'narrator', voice: A }]
     let server = SETTINGS
     const { writes } = mount(gateway(() => server, async () => ((server = { ...SETTINGS, aliases }), { ok: true, aliases, updated: false })))
     await flush()
-    fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: ' Host ' } })
+    expect(screen.getByLabelText(en.settings.name).hasAttribute('maxlength')).toBe(false)
+    fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: raw } })
     fireEvent.change(screen.getByLabelText(en.settings.voice), { target: { value: B } })
     fireEvent.click(screen.getByRole('button', { name: en.settings.add }))
     await flush()
-    expect(writes()).toEqual([{ path: '/aliases', method: 'POST', body: { name: 'Host', voice: B } }])
-    expect(screen.getByText('host')).toBeTruthy()
+    expect(writes()).toEqual([{ path: '/aliases', method: 'POST', body: { name: sent, voice: B } }])
+    expect(screen.getByText(name)).toBeTruthy()
     expect(screen.getByText('Bright host')).toBeTruthy()  // the new name's voice title, fetched once
-    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.settings.added('host') })
+    expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.settings.added(name) })
     expect((screen.getByLabelText(en.settings.name) as HTMLInputElement).value).toBe('')
   })
 
@@ -321,7 +323,8 @@ describe('settings page writes', () => {
     expect(notify).toHaveBeenCalledWith({ kind: 'success', message: en.settings.updated('narrator') })
   })
 
-  it.each(['x', 'add', A, '9lives', 'has space'])('checks the name rule (%s) before sending', async name => {
+  it.each(['x'.repeat(33), 'add', A, '9lives', 'has space', '猫🐈', '猫\u202e', 'क\u200dथावाचक'])(
+    'checks the name rule (%s) before sending', async name => {
     const { writes } = mount(gateway())
     await flush()
     fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: name } })
@@ -331,9 +334,11 @@ describe('settings page writes', () => {
     expect(screen.getByRole('alert').textContent).toBe(en.settings.badName)
   })
 
-  it('the name rule matches decision 2', () => {
-    for (const ok of ['narrator', 'Host', 'a1', 'my-voice_2', 'x'.repeat(32), 'straße']) expect(badAliasName(ok), ok).toBe(false)
-    for (const bad of ['a', 'x'.repeat(33), '1abc', 'remove', 'DEFAULT', B, 'a.b', '']) expect(badAliasName(bad), bad).toBe(true)
+  it('the name rule accepts native scripts and counts code points', () => {
+    for (const ok of ['a', 'narrator', 'Host', 'a1', 'my-voice_2', 'x'.repeat(32), 'ß', 'Straße', 'STRASSE',
+      '猫', 'ナレーター', 'راوي', 'कथावाचक', 'ＮＡＲＲＡＴＯＲ', '𐐨'.repeat(32)]) expect(badAliasName(ok), ok).toBe(false)
+    for (const bad of ['x'.repeat(33), '1abc', 'remove', 'DEFAULT', 'ＡＤＤ', B, 'a.b', '', 'two words',
+      '猫🐈', '猫\u202e', 'क\u200dथावाचक', '\u0301name', '猫\n名', '猫'.repeat(33), '𐐨'.repeat(33)]) expect(badAliasName(bad), bad).toBe(true)
   })
 
   it("shows the gateway's refusal message (flat kind/message envelope)", async () => {

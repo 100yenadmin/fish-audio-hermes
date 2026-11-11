@@ -111,17 +111,20 @@ def test_settings_managed_list_follows_core_rule(env, managed_layer, rule, manag
     assert env.get("/settings")["managed"] == managed
 
 
-def test_alias_routes_and_use_exact(env):
+@pytest.mark.parametrize("name,raw", [("narrator", "Narrator"), ("猫", "猫"), ("strasse", "Straße"),
+                                   ("narrator", "ＮＡＲＲＡＴＯＲ")])
+def test_alias_routes_and_use_exact(env, name, raw):
     with respx.mock as mock:
         mock.get(env.active().base + "/model/" + VOICE).respond(json={})
-        rows = [{"name": "narrator", "voice": VOICE}]
-        assert env.post("/aliases", name="Narrator", voice=VOICE) == {"ok": True, "aliases": rows, "updated": False}
-        assert env.post("/aliases", name="narrator", voice="narrator") == {"ok": True, "aliases": rows, "updated": True}
+        rows = [{"name": name, "voice": VOICE}]
+        assert env.post("/aliases", name=raw, voice=VOICE) == {"ok": True, "aliases": rows, "updated": False}
+        assert env.post("/aliases", name=name, voice=raw) == {"ok": True, "aliases": rows, "updated": True}
         assert env.get("/settings") == expected(env, aliases=rows)
-        assert env.post("/use", voice="narrator") == {"ok": True, "voice": VOICE, "message": "Saved.",
+        assert env.post("/use", voice=raw) == {"ok": True, "voice": VOICE, "message": "Saved.",
             "provider": None, "operator_pinned": False}
-    assert env.delete("/aliases/narrator") == {"ok": True, "aliases": []}
-    assert env.delete("/aliases/narrator") == {"ok": False, "kind": "not_found", "message": "No saved voice name found."}
+    from urllib.parse import quote
+    assert env.delete("/aliases/" + quote(raw, safe="")) == {"ok": True, "aliases": []}
+    assert env.delete("/aliases/" + quote(raw, safe="")) == {"ok": False, "kind": "not_found", "message": "No saved voice name found."}
     for bad in ("default", "x", "a" * 32):
         assert env.delete(f"/aliases/{bad}") == {"ok": False, "kind": "not_found", "message": "No saved voice name found."}
 

@@ -6,6 +6,11 @@
 - **Translate and voice:** a new skill transcribes a clip with speaker turns, translates it, and voices it again with one
   Fish voice per speaker, one multi-speaker call per part of up to four speakers. It returns both transcripts and new subtitles, shows the cost
   first, never clones the people in the clip, and calls the result a voice-over, not a synchronized dub (#98).
+- On operator-managed agents, Desktop says which saved name a newly cloned or designed voice got, or why it got none; the `fish_voices` description says `mine` lists only saved-name voices there (#122).
+- The Desktop voice editor keeps a detail-load error visible while you type, and the acceptance row reports both errors when restoring a voice title fails after a failed edit (#120).
+- List this profile's saved-name voices in operator mode, automatically name cloned/saved voices, and return billable usage on speech and transcription jobs (#97).
+- Edit your own voice's title and description on Desktop ▸ Voices ▸ My voices (#99).
+- Save voice names in any script, including Japanese, Arabic and Hindi, with Unicode normalization (#99). When two stored names normalize alike, the first in code-point order wins.
 
 ## 1.13.0 — 2026-11-11
 

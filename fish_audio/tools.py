@@ -1,7 +1,7 @@
 """Explicit Fish Audio tools; ordinary read-aloud stays with Hermes TTS."""
 from uuid import uuid4
 
-from . import client, hooks, media, models, settings, tags
+from . import account_tool, client, hooks, media, models, settings, tags
 from . import pronunciations as pronunciation_tools
 from .models import MODELS
 from .secrets import fish_api_key
@@ -105,6 +105,13 @@ def _speak(args, key, base, session, *, record_media=True):
         del result["model"]  # A wallet-chosen default follows the operator's wallet, which the agent's users don't see.
     elif defaulted and model == "s2.1-pro-free":
         result["notice"] = settings.free_model_notice()
+    try:
+        usage = account_tool.estimate({"text": params["text"], "model": model}, operator=settings.operator_account())
+        result["usage"] = {k: v for k, v in usage.items() if k in {"model", "billable_bytes", "usd_estimate", "unit_price"}}
+        if "model" not in result:
+            result["usage"].pop("model", None)
+    except Exception:
+        pass  # Usage is advisory; the billed audio is already ready.
     if events is not None:
         from .transcribe import speech_timestamps
         # The billed audio is already saved: a subtitle failure must not hide it.
@@ -151,7 +158,7 @@ S = _field("string")
 B = _field("boolean")
 STRINGS = _field("array", items=S)
 VOICE = _field("string", pattern="^[A-Za-z0-9_-]{8,128}$")
-VOICE_REF = _field("string", pattern="^[A-Za-z0-9_-]{2,128}$", description="voice id or saved name")
+VOICE_REF = _field("string", minLength=1, maxLength=128, description="voice id or saved name (any script)")
 DICTIONARY_ID = _field("string", minLength=1, maxLength=128, pattern="^[A-Za-z0-9_-]+$")
 DICTIONARY_REFS = _field("array", maxItems=3, items=_field("object",
     properties={"id": DICTIONARY_ID, "version": DICTIONARY_ID}, required=["id", "version"], additionalProperties=False))
@@ -177,7 +184,7 @@ SCHEMAS = {
         "page": _field("integer", minimum=1), "page_size": _field("integer", minimum=1, maximum=20),
         "voice_id": VOICE, "title": S, "description": S,
         "sample_paths": _field("array", items=S, minItems=1, maxItems=20), "texts": STRINGS,
-        "visibility": _field("string", enum=["private", "unlist", "public"], description="clone/save/update: private or unlist (public is refused); mine: list only voices with this visibility"),
+        "visibility": _field("string", enum=["private", "unlist", "public"], description="clone/save/update: private or unlist (public is refused); mine: list only voices with this visibility (not on operator-managed agents)"),
         "generate_sample": B, "cover_image_path": S,
         "enhance_audio_quality": _field("boolean", default=True), "consent": B,
         "instruction": _field("string", minLength=1, maxLength=2000), "reference_text": _field("string", maxLength=150),
@@ -215,7 +222,7 @@ DESCRIPTIONS = {
     "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Results include setup: what is missing and the next step. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
-    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice; audition plays up to 4 voices reading one short passage (≤200 characters); each clip is a billed synthesis." + BILLING,
+    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice; audition plays up to 4 voices reading one short passage (≤200 characters); each clip is a billed synthesis. On operator-managed agents, mine lists only the voices assigned through saved names (page, query and visibility do not apply there) and update/delete are refused." + BILLING,
     "fish_transcribe": "Transcribe local audio with speaker turns, emotion cues, timestamps and optional SRT." + BILLING}
 REQUIRED = {"fish_pronunciations": ["action"], "fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
 

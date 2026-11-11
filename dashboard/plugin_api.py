@@ -220,6 +220,11 @@ def list_voices(q: str = "", mine: bool = Query(False, alias="self"), page: int 
     return {"ok": True, "page": page, **result}
 
 
+def _saved_name(result):
+    """Operator mode registers a saved name for a new voice; pass the name, or the reason there is none, to Desktop."""
+    return {k: result[k] for k in ("saved_name", "saved_name_note") if isinstance(result.get(k), str)}
+
+
 @router.get("/voices/{voice_id}")
 @_protocol
 def get_voice(voice_id: str):
@@ -381,6 +386,31 @@ def delete_voice(voice_id: str):
     return {"ok": True, "id": ident}
 
 
+class VoiceEdit(BaseModel):
+    title: Any = None
+    description: Any = None
+
+
+@router.patch("/voices/{voice_id}")
+@_protocol
+def patch_voice(voice_id: str, body: VoiceEdit):
+    if _fa("settings").operator_account():
+        raise Refusal("operator_account", _fa("voices").ACCOUNT_VOICES)
+    key, base = _scope()
+    ident = _voice_id(voice_id)
+    fields = {}  # validated before the ownership lookup, so bad input costs no Fish requests
+    if "title" in body.model_fields_set:
+        fields["title"] = _text(body.title, "title", 100)
+    if "description" in body.model_fields_set:
+        fields["description"] = _text(body.description, "description", 500, required=False)
+    if not fields:
+        raise Refusal("invalid", "Provide a title or description to update.")
+    if not _author_owned(ident, key, base):
+        raise Refusal("not_owner", "You can edit only voices your Fish Audio account created.")
+    _fa("voices").execute({"action": "update", "voice_id": ident, **fields}, key, base, "")
+    return {"ok": True, "id": ident, "title": fields.get("title")}
+
+
 @router.get("/account")
 @_protocol
 def account():
@@ -461,7 +491,7 @@ def design_save(body: DesignSave):
     if description:
         args["description"] = description
     saved = _fa("voices").execute(args, key, base, "")
-    return {"ok": True, "voice": {"id": saved.get("id"), "title": saved.get("title")}}
+    return {"ok": True, "voice": {"id": saved.get("id"), "title": saved.get("title")}, **_saved_name(saved)}
 
 
 # Clone uploads: chunked JSON + base64 into per-upload temp files under the profile's cache. Names are generated
@@ -671,7 +701,8 @@ def clone_finish(body: CloneFinish):
         if description:
             args["description"] = description
         cloned = _fa("voices").execute(args, key, base, "")
-        return {"ok": True, "voice": {"id": cloned.get("id"), "title": cloned.get("title"), "state": cloned.get("state")}}
+        return {"ok": True, "voice": {"id": cloned.get("id"), "title": cloned.get("title"), "state": cloned.get("state")},
+                **_saved_name(cloned)}
     finally:
         with _UPLOAD_LOCK:
             for upload_id in owned:
