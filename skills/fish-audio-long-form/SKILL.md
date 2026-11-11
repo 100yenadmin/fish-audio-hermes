@@ -67,7 +67,8 @@ parts if split). Copy the new audio and sidecars to new names with a revision su
 (`chapter-NN-r2`, then `-r3`), leaving the old files in place. The manifest write is the switch:
 only after every copy succeeds, save the manifest pointing at the new files with the new hash, cost
 and status; then delete the old set. If anything fails before that write, delete only the new copies,
-remove the pending replacement from the manifest, and leave the old files and entry as they were.
+mark the pending replacement `failed` (keeping its cache paths so the paid audio can be copied again without a new
+synthesis, but never applying it without the user's approval), and leave the old files and entry as they were.
 
 For multi-voice casting and timeline editing, hand off to Fish Audio's Story Studio through
 Fish's own MCP server or web app. It signs in to the user's Fish account with OAuth, not this

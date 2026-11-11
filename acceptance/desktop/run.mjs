@@ -423,8 +423,8 @@ async function mineEditRow(s, theme) {
       const listed = (await gw('/api/plugins/fish-audio/voices?self=true&page=1')).body?.items || []
       const hit = listed.filter(v => v.title === original)
       const unedited = listed.filter(v => v.title === original.slice(0, -' (edit)'.length))
-      const byId = hit.length === 1 ? (await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(hit[0].id)}`)).body?.voice?.title
-        : !hit.length && unedited.length === 1 ? unedited[0].title : null
+      const target = hit.length === 1 ? hit[0] : !hit.length && unedited.length === 1 ? unedited[0] : null
+      const byId = target ? (await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(target.id)}`)).body?.voice?.title : null
       if (typeof byId === 'string' && !byId.endsWith(' (edit)')) {
         row('B-MINE-EDIT', 'na', `the voice list still shows the previous pass's rename; the gateway has the title restored ("${byId}")`, { theme }); return
       }

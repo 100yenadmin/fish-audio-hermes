@@ -36,8 +36,8 @@ show billable units (bytes or audio seconds) and no price: show those, say the o
    and estimate, then wait for the user's go.
 6. **Voice each part.** Call `fish_speak` with the part's `text`, `speakers` as its voice IDs in its own 0, 1, …
    order (2–4 voices) or `voice` for one speaker, a multi-speaker model (`s2.1-pro`, `s2-pro` or `drama-3`; never
-   `s1`), `language` set to the target language, `timestamps: true`, and `format` as the user wants. For audio to keep, use MP3 with
-   `delivery: "file"` so chat surfaces send a file, not a voice note. Each part is its own audio file with subtitles starting at 0:00.
+   `s1`), `language` set to the target language, `timestamps: true`, and `format` as the user wants (MP3 when they don't say). For audio to keep,
+   set `delivery: "file"` so chat surfaces send a file, not a voice note. Each part is its own audio file with subtitles starting at 0:00.
 7. **Deliver.** Return the audio file(s), the subtitles when `srt_path`/`vtt_path` are present (they carry no speaker
    names), and both transcripts as text the user can save: the original with speaker labels and times, and the
    translation with the same labels. If a result has `timestamps_error` or no subtitle paths, deliver the audio and

@@ -247,19 +247,22 @@ def test_doctor(paid, synth, request):
 
 
 @pytest.mark.parametrize('command', [pytest.param('speak', marks=pytest.mark.row('A-CLI-SPEAK')),
+    pytest.param('transcribe', marks=pytest.mark.row('A-CLI-TRANSCRIBE')),
     pytest.param('voices', marks=pytest.mark.row('A-CLI-VOICES')),
     pytest.param('balance', marks=pytest.mark.row('A-CLI-BALANCE'))])
 def test_scripting_cli(paid, request, command):
     output = paid.out / 'cli-speech.mp3'  # inside the run dir: the macOS host sandbox only writes there
     output.unlink(missing_ok=True)  # a file left by an earlier attempt must not satisfy this one
     args = {'speak': [TEXT, '--format', 'mp3', '--out', str(output), '--force'],
-            'voices': ['narrator'], 'balance': []}[command]
+            'transcribe': [str(CORPUS)], 'voices': ['narrator'], 'balance': []}[command]
     result = json.loads(paid.cli('fish', command, *args, '--json').splitlines()[-1])
-    evidence(request, paid, result)
+    evidence(request, paid, result, {'wer': wer(result.get('text') or '')} if command == 'transcribe' else None)
     assert result['success'] is True
     if command == 'speak':
         assert result.get('out_path') == str(output) and output.is_file()
         assert output.read_bytes().startswith((b'ID3', b'\xff\xfb', b'\xff\xf3', b'\xff\xf2'))
+    elif command == 'transcribe':
+        assert isinstance(result.get('text'), str) and result['text'].strip()
     elif command == 'voices':
         assert isinstance(result['items'], list)
 
