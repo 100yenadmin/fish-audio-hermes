@@ -4,9 +4,20 @@ import { createRequire } from 'node:module'
 import fs from 'node:fs'
 import path from 'node:path'
 
+// npm trees (Hermes 0.23.0 and earlier) hoist playwright to the root; pnpm trees (0.23.1+) expose only the Desktop
+// workspace's @playwright/test, which re-exports chromium.
+function playwright(tree) {
+  for (const base of [tree, path.join(tree, 'apps/desktop')]) {
+    const require = createRequire(path.join(base, 'package.json'))
+    for (const name of ['playwright', '@playwright/test']) {
+      try { return require(name) } catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error }
+    }
+  }
+  throw new Error(`playwright not found in ${tree}`)
+}
+
 export async function connect({ tree, cdpPort, vitePort }) {
-  const require = createRequire(path.join(tree, 'package.json'))
-  const { chromium } = require('playwright')
+  const { chromium } = playwright(tree)
   const browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`)
   let page
   for (let i = 0; i < 60 && !page; i++) {
