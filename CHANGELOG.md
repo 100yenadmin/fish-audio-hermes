@@ -12,6 +12,10 @@
 - Edit your own voice's title and description on Desktop ▸ Voices ▸ My voices (#99).
 - Save voice names in any script, including Japanese, Arabic and Hindi, with Unicode normalization (#99). When two stored names normalize alike, the first in code-point order wins.
 - `/fish setup` reads the Fish key only through Hermes's secret scope and no longer opens the profile `.env`; with no key visible it says to restart the gateway or Desktop app after saving one.
+- A reply that mixes a voice clip with a non-voice clip (a design preview, or a WAV without `delivery`) no longer becomes voice notes; the file wins, as it does for `delivery: file` (#125).
+- `fish_speak` with `timestamps: true` keeps its subtitles when the full alignment file is too large to save, and says so (#125).
+- Desktop: previewing the same voice again while its preview is loading no longer starts a second billed preview; the reading-speed slider follows the saved value unless you have moved it (#125).
+- Long-form skill: the manifest records the output format and subtitle choice, each part's cache path is saved before copying, and an entry whose subtitles failed is kept as audio-only instead of done (#125).
 
 ## 1.13.0 — 2026-11-11
 
