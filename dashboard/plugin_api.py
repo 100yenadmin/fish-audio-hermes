@@ -381,6 +381,31 @@ def delete_voice(voice_id: str):
     return {"ok": True, "id": ident}
 
 
+class VoiceEdit(BaseModel):
+    title: Any = None
+    description: Any = None
+
+
+@router.patch("/voices/{voice_id}")
+@_protocol
+def patch_voice(voice_id: str, body: VoiceEdit):
+    if _fa("settings").operator_account():
+        raise Refusal("operator_account", _fa("voices").ACCOUNT_VOICES)
+    key, base = _scope()
+    ident = _voice_id(voice_id)
+    if not _author_owned(ident, key, base):
+        raise Refusal("not_owner", "You can edit only voices your Fish Audio account created.")
+    fields = {}
+    if "title" in body.model_fields_set:
+        fields["title"] = _text(body.title, "title", 100)
+    if "description" in body.model_fields_set:
+        fields["description"] = _text(body.description, "description", 500, required=False)
+    if not fields:
+        raise Refusal("invalid", "Provide a title or description to update.")
+    _fa("voices").execute({"action": "update", "voice_id": ident, **fields}, key, base, "")
+    return {"ok": True, "id": ident, "title": fields.get("title")}
+
+
 @router.get("/account")
 @_protocol
 def account():

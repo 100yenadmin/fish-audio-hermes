@@ -121,7 +121,7 @@ test('only-done signature requires actual sent done frame; silent-count intersec
 })
 
 test('B-LIB-4 requires the Account card credit; a matching status chip cannot count', async () => {
-  const start = run.indexOf("  if (want('B-LIB-4'))"), end = run.indexOf('\n}\n\n// --- main', start)
+  const start = run.indexOf("  if (want('B-LIB-4'))"), end = run.indexOf('\n}\n\nasync function mineEditRow', start)
   for (const [credit, text, expected, pageText = text] of [[undefined,'NaN','fail'], [null,'0.00','fail'], ['NaN','NaN','fail'],
     ['Infinity','Infinity','fail'], ['1.2','1.2','fail'], ['1.2','1.20','pass'], ['1.2','unavailable','fail','Voices Fish $1.20']]) {
     const rows = [], c = {clickText:async()=>{}, sleep:async()=>{}, text:async()=>pageText, shot:async()=>''}
@@ -212,19 +212,20 @@ test('B-SET-1 fails missing UI, keyboard, saved state, persistence and reset evi
   assert.deepEqual(unselected.rows, []); assert.deepEqual(unselected.nav, [])
 })
 
-test('B-SET-1 alone enters the keyed phase and runs in both themes without library rows', async () => {
+for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enters the keyed phase and runs in both themes without library rows`, async () => {
   const start = run.indexOf('async function main()'), end = run.indexOf('\nasync function guard', start)
   const themes = [], commands = [], meta = {}
   let keyed = false
   await vm.runInNewContext(`${run.slice(start,end)}\nmain()`, {
     fs:{mkdirSync(){}, existsSync:()=>false}, path, SHOTS:'shots', OUT:'synthetic', CDP:9281, VITE:5194, H:'upstream', host:{}, args:{'no-launch':true},
-    THEMES:['light','dark'], process:{env:{}}, want:id=>id === 'B-SET-1', buildTree:()=>'/synthetic/tree',
+    THEMES:['light','dark'], process:{env:{}}, want:id=>id === selected, buildTree:()=>'/synthetic/tree',
     hostctl:cmd=>{ commands.push(cmd); if (cmd.endsWith('-key')) keyed = cmd === 'set-real-key' },
     waitGateway:async()=>{}, reloadRenderer:async()=>{}, setup:async()=>{},
     c:{connect:async()=>({page:{evaluate:async()=>true}}), setTheme:async()=>{}, sleep:async()=>{}},
     guard:async(label,fn)=>{ await fn(); return true }, noKeyRows:async()=>{}, pluginPageRow:async()=>{},
     paletteRow:async()=>{}, keyEntryRow:async()=>{}, convRows:async()=>{},
-    settingsPageRow:async(s,theme)=>{ assert.equal(keyed, true); themes.push(theme) },
+    settingsPageRow:async(s,theme)=>{ if (selected === 'B-SET-1') { assert.equal(keyed, true); themes.push(theme) } },
+    mineEditRow:async(s,theme)=>{ assert.equal(keyed, true); themes.push(theme) },
     libraryRows:()=>assert.fail('B-SET-1 does not require the Library'), shotPath(){},
     gw:async()=>({body:{credit:'1.00'}}), row:()=>assert.fail('unexpected row'),
     finish:async result=>Object.assign(meta,result)
@@ -235,6 +236,34 @@ test('B-SET-1 alone enters the keyed phase and runs in both themes without libra
   const version = fs.readFileSync(new URL('../plugin.yaml', import.meta.url), 'utf8').match(/^version:\s*(.+)$/m)[1]
   assert.equal(spec.min_plugin, '1.12.0'); assert.ok(version.localeCompare('1.12.0', undefined, {numeric: true}) >= 0); assert.equal(spec.billed, 'none'); assert.equal(spec.layer, 'b')
   assert.equal(spec.required, true); assert.deepEqual(spec.hosts, ['upstream','evaos'])
+})
+
+test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
+  const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
+  for (const mode of ['success', 'empty', 'shot-error']) {
+    let title = 'Original', pending, dialog = false
+    const rows = [], saves = []
+    const page = { waitForFunction:async()=>{}, getByRole:(role, {name} = {}) => {
+      const locator = {
+        first:()=>locator, count:async()=>mode === 'empty' ? 0 : 1, getAttribute:async()=>`Edit ${title}`,
+        waitFor:async()=>{ if (role === 'dialog') assert.equal(dialog, false); else if (name !== 'Voice name') assert.equal(name, `Edit ${title}`) },
+        fill:async value=>{ pending = value }, click:async()=>{
+          if (name === 'Save voice') { title = pending; saves.push(title); dialog = false }
+          else { assert.equal(name, `Edit ${title}`); dialog = true }
+        }
+      }; return locator
+    } }
+    await vm.runInNewContext(`${run.slice(start,end)}\nmineEditRow(s, 'light')`, {
+      s:{page}, H:'upstream', want:()=>true, openVoices:async()=>{}, shotPath:()=>'',
+      c:{clickText:async()=>{}, shot:async()=>{ if (mode === 'shot-error') throw Error('capture failed'); return 'shot' }},
+      row:(id,status,reason)=>rows.push({id,status,reason})
+    })
+    assert.equal(title, 'Original'); assert.deepEqual(saves, mode === 'empty' ? [] : ['Original (edit)', 'Original'])
+    assert.equal(rows[0].status, mode === 'empty' ? 'na' : mode === 'shot-error' ? 'fail' : 'pass')
+  }
+  const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-MINE-EDIT')
+  assert.equal(spec.min_plugin, '1.14.0'); assert.equal(spec.layer, 'b'); assert.equal(spec.billed, 'none')
+  assert.equal(spec.required, true); assert.deepEqual(spec.hosts, ['upstream'])
 })
 
 async function forcedFailureRow(m, { requests = [], media = [], toast = [], end = () => {}, sleep = () => {} } = {}) {

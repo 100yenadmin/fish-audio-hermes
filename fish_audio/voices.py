@@ -35,6 +35,7 @@ def _item(item, detail=False):
               "tags": item.get("tags", [])[:8], "like_count": item.get("like_count", 0),
               "task_count": item.get("task_count", 0), "author": (item.get("author") or {}).get("nickname", "")}
     if detail:
+        result["description"] = item.get("description") or ""
         result.update({name: item.get(name) for name in ("visibility", "state", "source")})
         result["samples"] = [{"title": v.get("title"), "text": v.get("text")} for v in item.get("samples", [])]
     return result

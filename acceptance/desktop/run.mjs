@@ -368,6 +368,34 @@ async function libraryRows(s, theme, account) {
   }
 }
 
+async function mineEditRow(s, theme) {
+  if (!want('B-MINE-EDIT') || H !== 'upstream') return
+  const evidence = []
+  try {
+    await openVoices(s); await c.clickText(s, 'My voices', { timeout: 5000 })
+    await s.page.waitForFunction(() => document.body.innerText.includes("You haven't created any voices yet") ||
+      document.querySelector('button[aria-label^="Edit "]'), null, { timeout: 15000 })
+    const first = s.page.getByRole('button', { name: /^Edit / }).first()
+    if (!(await first.count())) { row('B-MINE-EDIT', 'na', 'no own voice exists', { theme }); return }
+    const original = (await first.getAttribute('aria-label')).slice(5)
+    const edited = Array.from(original).slice(0, 93).join('') + ' (edit)'
+    const rename = async (from, to) => {
+      await s.page.getByRole('button', { name: `Edit ${from}`, exact: true }).click()
+      const input = s.page.getByRole('textbox', { name: 'Voice name', exact: true })
+      await input.waitFor({ state: 'visible' })
+      await s.page.waitForFunction(() => { const input = document.querySelector('[role="dialog"] input'); return input && !input.disabled })
+      await input.fill(to)
+      await s.page.getByRole('button', { name: 'Save voice', exact: true }).click()
+      await s.page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 15000 })
+      await s.page.getByRole('button', { name: `Edit ${to}`, exact: true }).waitFor({ state: 'visible', timeout: 15000 })
+    }
+    try { await rename(original, edited); evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'renamed'))) }
+    finally { await rename(edited, original) }
+    evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'restored')))
+    row('B-MINE-EDIT', 'pass', 'own voice renamed through Edit and original title restored', { theme, evidence })
+  } catch (e) { row('B-MINE-EDIT', 'fail', e.message.split('\n')[0], { theme, evidence }) }
+}
+
 // --- main ---
 async function main() {
   fs.mkdirSync(SHOTS, { recursive: true })
@@ -390,7 +418,7 @@ async function main() {
     await guard(`palette ${theme}`, () => paletteRow(s, theme))
     await guard(`key entry ${theme}`, () => keyEntryRow(s, theme))
   }
-  const needReal = ['B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
+  const needReal = ['B-MINE-EDIT', 'B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
   if (needReal) {
     let walletBefore = null
     try { hostctl('set-real-key'); await waitGateway(); await c.sleep(3000); meta.reload_after_key = await reloadRenderer(s) } catch (e) { row('B-LIB-1', 'fail', `could not place the real key: ${e.message}`); return finish(meta, s) }
@@ -401,6 +429,7 @@ async function main() {
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue
       await guard(`settings page ${theme}`, () => settingsPageRow(s, theme))
+      if (want('B-MINE-EDIT')) await guard(`mine edit ${theme}`, () => mineEditRow(s, theme))
       if (['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4'].some(want)) await guard(`library ${theme}`, () => libraryRows(s, theme, account))
     }
     for (const theme of THEMES) {

@@ -162,7 +162,7 @@ The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
 
 - **Library:** search Fish Audio's voices by name and language, preview them (a short billed sample), star
   favourites, and choose **Use** to make a voice the agent's voice.
-- **My voices:** the voices you cloned or designed; delete one by typing its name.
+- **My voices:** the voices you cloned or designed; edit a voice's title and description, or delete one by typing its name.
 - **Create:** clone a voice from 1–3 recordings (up to 10 MB each, with the speaker's permission), or describe a
   voice and save the candidate you like.
 - **Account:** API credit, plan credits and top-up links. The status bar shows your API credit, in orange when it

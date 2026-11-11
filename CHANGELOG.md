@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Edit your own voice's title and description on Desktop ▸ Voices ▸ My voices (#99).
 - Save voice names in any script, including Japanese, Arabic and Hindi, with Unicode normalization (#99). When two stored names normalize alike, the first in code-point order wins.
 - Keep unsaved reading-speed slider changes when adding or removing a saved voice name (#110).
 - Announce the reading-speed slider value as a multiplier to screen readers (#110).
