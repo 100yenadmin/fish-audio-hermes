@@ -10,6 +10,7 @@ import unicodedata
 from uuid import uuid4
 
 from . import client, hooks, media, settings
+from .errors import FishAudioError
 from .tool_support import require, integer, voice_id
 
 KINDS = {"mp3", "wav", "ogg", "webm", "flac", "mp4"}
@@ -94,15 +95,21 @@ def _profile_voices(key, base):
     grouped = {}
     for name, ident in sorted(settings.aliases().items()):
         grouped.setdefault(ident, []).append(name)
-    items = []
-    for index, (ident, names) in enumerate(grouped.items()):
+    items, lookups = [], 20
+    for ident, names in grouped.items():
         item = {"id": ident, "name": names[0], "detail": "unavailable"}
-        if index < 20:
+        if lookups > 0:
+            lookups -= 1
             try:
                 item = {**_item(client.get_json(f"/model/{ident}", {}, key, base), detail=True),
                         "id": ident, "name": names[0]}
+            except FishAudioError as exc:
+                if exc.status in {401, 403}:
+                    raise  # A rejected key is an account problem, not 20 unavailable voices.
+                if exc.status != 404:
+                    lookups = 0  # Fish is failing: list the rest by name instead of waiting on each one.
             except Exception:
-                pass
+                lookups = 0
         if len(names) > 1:
             item["names"] = names
         items.append(item)
@@ -120,6 +127,7 @@ def _save_name(result, title):
         name = "".join(c if unicodedata.category(c)[0] in "LMN" or c in "_-" else "-" for c in name)
         name = re.sub("-+", "-", name)
         name = name[next((i for i, c in enumerate(name) if unicodedata.category(c).startswith("L")), len(name)):][:32]
+        name = name.rstrip("-")
         name = settings.alias_name(name)
         with commands._LOCK:
             saved = settings.aliases()
@@ -143,6 +151,7 @@ TITLE_PAGES = 5  # a title lookup reads at most 100 of the voices Fish's search 
 def find_own_by_title(title, key, base):
     """Your own voices titled exactly `title` (ignoring case), as (id, title) pairs, plus whether every search result
     was read. Fish's title search also returns longer titles, so another exact match can sit on a later page."""
+    require(not settings.operator_account(), ACCOUNT_VOICES)  # operator `mine` lists saved names, not titles
     want, found = title.strip().casefold(), {}
     for page in range(1, TITLE_PAGES + 1):
         result = execute({"action": "mine", "query": title, "page": page, "page_size": 20}, key, base, "")

@@ -122,7 +122,8 @@ def test_operator_mine_profile_only(monkeypatch, count, status):
         for i, ident in enumerate(list(dict.fromkeys(saved.values()))[:20]):
             mock.get(BASE + "/model/" + ident).respond(status, json={"_id": ident, "title": str(i), "languages": ["ja"]})
         result = voices.execute({"action": "mine"}, "synthetic-A", BASE, "")
-        assert len(mock.calls) == min(count, 20) * (3 if status == 503 else 1)
+        # A failing Fish (503, retried 3 times) stops further lookups: the rest are listed by name.
+        assert len(mock.calls) == (3 if status == 503 else min(count, 20))
         assert all(c.request.url.path.startswith("/model/") and not c.request.url.query for c in mock.calls)
     assert result["profile_voices"] and len(result["items"]) == count
     assert [r["name"] for r in result["items"]] == sorted(saved)[:count]
@@ -139,9 +140,27 @@ def test_operator_mine_profile_only(monkeypatch, count, status):
         assert "operator assigns voices with saved names" in result["note"]
 
 
+def test_operator_mine_rejected_key_is_an_error(monkeypatch):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    monkeypatch.setattr(settings, "aliases", lambda: {"one": "a" * 32, "two": "b" * 32})
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(BASE + "/model/" + "a" * 32).respond(401, json={})
+        with pytest.raises(voices.FishAudioError) as caught:
+            voices.execute({"action": "mine"}, "synthetic-A", BASE, "")
+        assert caught.value.status == 401 and len(mock.calls) == 1
+
+
+def test_find_own_by_title_refuses_in_operator_mode(monkeypatch):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    with respx.mock(assert_all_called=False) as mock:
+        with pytest.raises(ToolInputError, match="managed by its operator"):
+            voices.find_own_by_title("Kate", "synthetic-A", BASE)
+        assert not mock.calls
+
+
 @pytest.mark.parametrize("action", ["clone", "save"])
 @pytest.mark.parametrize("title,condition,expected", [
-    ("ナレーター", "ok", "ナレーター"), (" 123 !! Warm,  Voice!", "ok", "warm-voice-"),
+    ("ナレーター", "ok", "ナレーター"), (" 123 !! Warm,  Voice!", "ok", "warm-voice"),
     ("猫" * 40, "ok", "猫" * 32), ("ＷＡＲＭ", "taken", None),
     ("Warm", "limit", None), ("Warm", "managed", None), ("123!", "invalid", None),
     ("Warm", "personal", None), ("Warm", "no-id", None),
