@@ -254,6 +254,7 @@ function Library({ pin }: { pin: AgentPin }) {
           {t('favouritesOnly')}
         </Button>
       </div>
+      <PreviewTextField />
       <BilledNote text={billedNote} />
       {!favouritesOnly && voices.error ? (
         <LoadError error={voices.error} onRetry={() => void voices.refetch()} />
@@ -265,6 +266,19 @@ function Library({ pin }: { pin: AgentPin }) {
         <VoiceList favourites={favourites} pin={pin} voices={list} />
       )}
       {!favouritesOnly && <Pager more={more} page={page} setPage={setPage} />}
+    </div>
+  )
+}
+
+function PreviewTextField() {
+  const t = usePluginI18n(PLUGIN_ID)
+  const text = useValue($previewText)
+  return (
+    <div style={{ display: 'grid', gap: 4, maxWidth: 560 }}>
+      <Input aria-label={t('previewText')} maxLength={LIMITS.previewText}
+        onChange={(e: { target: { value: string } }) => $previewText.set(clamp(e.target.value, LIMITS.previewText))}
+        placeholder={t('previewTextPlaceholder')} value={text} />
+      <span style={{ ...muted, fontSize: 12 }}>{t('previewTextHint', LIMITS.previewText)}</span>
     </div>
   )
 }
@@ -297,6 +311,10 @@ function Pager({ page, more, setPage }: { page: number; more: boolean; setPage: 
 
 const inFlightPreviews = new Set<string>()
 
+/** The passage previews read, shared by the Library and My voices tabs for this window; empty plays the gateway's
+ *  default line. Each distinct text is a separate billed preview and a separate cached replay. */
+export const $previewText = atom('')
+
 /** The voice whose Use is in flight, per agent. One at a time: two in flight could land in either order, on the
  *  gateway and on the page. */
 const $usePending = atom<Record<string, string>>({})
@@ -304,7 +322,8 @@ const $usePending = atom<Record<string, string>>({})
 /** Play a billed preview of a voice, or replay one already fetched in this window. */
 export async function previewVoice(pin: AgentPin, voiceId: string) {
   if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: pluginCtx().i18n.t('agentChangedNothingSent') })
-  const key = `preview:${agentKey(pin)}:${voiceId}`
+  const text = $previewText.get().trim()
+  const key = `preview:${agentKey(pin)}:${voiceId}${text ? `:${text}` : ''}`
   if ($playing.get() === key) return stop()
   const cached = cachedPreview(key)
   if (cached) return play(key, cached.audio, cached.mime)
@@ -312,7 +331,7 @@ export async function previewVoice(pin: AgentPin, voiceId: string) {
   inFlightPreviews.add(key)
   const epoch = playbackEpoch()
   try {
-    const res = await post<{ audio: string; mime: string }>('/preview', { voice: voiceId })
+    const res = await post<{ audio: string; mime: string }>('/preview', text ? { voice: voiceId, text } : { voice: voiceId })
     if (!samePin(currentPin(), pin)) return
     rememberPreview(key, res)
     // Returned after the page closed or the plugin was turned off: kept for a free replay, never played.
@@ -332,6 +351,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   const t = usePluginI18n(PLUGIN_ID)
   const billedNote = useAccountText('billedNote', 'operatorBilledNote')
   const playing = useValue($playing)
+  const previewText = useValue($previewText).trim()
   const [busy, setBusy] = useState<null | string>(null)
   const [used, setUsed] = useState<null | string>(null)
   const pendingUse = useValue($usePending)[agentKey(pin)]
@@ -370,7 +390,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   return (
     <div style={{ border: '1px solid var(--ui-stroke-tertiary)', borderRadius: 6 }}>
       {voices.map((voice, i) => {
-        const key = `preview:${agentKey(pin)}:${voice.id}`
+        const key = `preview:${agentKey(pin)}:${voice.id}${previewText ? `:${previewText}` : ''}`
         // Each part is its own bidi island, so Latin names, counts and descriptions keep their order in Arabic.
         const parts = [voice.author, (voice.languages ?? []).join(', '), voice.task_count ? t('uses', voice.task_count) : '', voice.description]
           .filter(Boolean)

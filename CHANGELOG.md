@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Voice auditions:** `fish_voices audition` plays up to four voices reading one short passage, with each billed clip attached in chat; the voice-studio skill guides choosing and comparing candidates.
+
 ## 1.12.1 — 2026-11-10
 
 Documentation only; no behaviour changes.

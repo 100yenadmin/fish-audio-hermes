@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import { createTestContext, host, resetHost, resetQueryCache } from './sdk-mock'
 import { $available, $availableError, $tab, bindContext, setRefresher } from '../api'
-import { previewVoice, VoicesPage } from '../page'
+import { $previewText, previewVoice, VoicesPage } from '../page'
 import plugin from '../plugin'
 import * as audio from '../audio'
 import { en } from '../locales/en'
@@ -27,6 +27,7 @@ afterEach(() => {
   $available.set(null)
   $availableError.set(null)
   $tab.set('library')
+  $previewText.set('')
 })
 
 describe('Voices page', () => {
@@ -142,6 +143,33 @@ describe('selected-agent dispatch and completion guards', () => {
     await flush()
     expect(calls).toEqual([])
     expect(notify).toHaveBeenCalledWith({ kind: 'error', message: en.agentChangedNothingSent })
+  })
+
+  it('previews read the typed passage, each text billed and cached once', async () => {
+    $available.set({ key: true, version: '1.13.0', account: true })
+    const playback = vi.spyOn(audio, 'play').mockImplementation(() => undefined)
+    // Its own voice: the preview cache lives for the window, and other tests preview the shared fixture voice.
+    const voice = 'b'.repeat(32)
+    const listing = { ...VOICES, items: [{ ...VOICES.items[0], id: voice, title: 'Storyteller' }] }
+    const { calls } = mount(async path => (path === '/preview' ? { ok: true, audio: 'SUQz', mime: 'audio/mpeg' } : path.startsWith('/voices') ? listing : { ok: true, key: true }))
+    await flush()
+    const field = screen.getByLabelText(en.previewText) as HTMLInputElement
+    expect(field.maxLength).toBe(200)
+    expect(screen.getByText(en.previewTextHint(200))).toBeTruthy()
+    const previews = () => calls.filter(c => c.path === '/preview').map(c => c.body)
+    fireEvent.click(screen.getByRole('button', { name: en.previewVoice('Storyteller') }))
+    await flush()
+    expect(previews()).toEqual([{ voice }])
+    fireEvent.change(field, { target: { value: '  Chapter one. It was a cold night.  ' } })
+    fireEvent.click(screen.getByRole('button', { name: en.previewVoice('Storyteller') }))
+    await flush()
+    expect(previews()).toEqual([{ voice }, { voice, text: 'Chapter one. It was a cold night.' }])
+    expect(audio.cachedPreview(`preview:conn-1::default:${voice}:Chapter one. It was a cold night.`)).toBeTruthy()
+    audio.stop()
+    fireEvent.click(screen.getByRole('button', { name: en.previewVoice('Storyteller') }))
+    await flush()
+    expect(previews()).toHaveLength(2)  // the same text replays from the cache, unbilled
+    expect(playback).toHaveBeenCalledTimes(3)
   })
 
   it('drops a late preview before caching or playback', async () => {

@@ -213,7 +213,7 @@ function gatewayAtLeast(min) {
 
 // src/desktop/limits.ts
 var clamp = (value, limit) => value.length <= limit ? value : Array.from(value).slice(0, limit).join("");
-var LIMITS = { title: 100, description: 500, instruction: 2e3, sampleText: 150, aliasName: 32, aliasVoice: 128, search: 100 };
+var LIMITS = { title: 100, description: 500, instruction: 2e3, sampleText: 150, aliasName: 32, aliasVoice: 128, search: 100, previewText: 200 };
 
 // src/desktop/page.tsx
 import {
@@ -721,9 +721,27 @@ function Library({ pin }) {
         t("favouritesOnly")
       ] })
     ] }),
+    /* @__PURE__ */ jsx3(PreviewTextField, {}),
     /* @__PURE__ */ jsx3(BilledNote, { text: billedNote }),
     !favouritesOnly && voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !list ? /* @__PURE__ */ jsx3(Rows, {}) : list.length === 0 ? favouritesOnly ? /* @__PURE__ */ jsx3(EmptyState, { description: t("noFavouritesHint"), title: t("noFavourites") }) : /* @__PURE__ */ jsx3(EmptyState, { title: t("noVoices") }) : /* @__PURE__ */ jsx3(VoiceList, { favourites, pin, voices: list }),
     !favouritesOnly && /* @__PURE__ */ jsx3(Pager, { more, page, setPage })
+  ] });
+}
+function PreviewTextField() {
+  const t = usePluginI18n4(PLUGIN_ID);
+  const text = useValue3($previewText);
+  return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 4, maxWidth: 560 }, children: [
+    /* @__PURE__ */ jsx3(
+      Input2,
+      {
+        "aria-label": t("previewText"),
+        maxLength: LIMITS.previewText,
+        onChange: (e) => $previewText.set(clamp(e.target.value, LIMITS.previewText)),
+        placeholder: t("previewTextPlaceholder"),
+        value: text
+      }
+    ),
+    /* @__PURE__ */ jsx3("span", { style: { ...muted, fontSize: 12 }, children: t("previewTextHint", LIMITS.previewText) })
   ] });
 }
 var PAGE_SIZE = 20;
@@ -744,10 +762,12 @@ function Pager({ page, more, setPage }) {
   ] });
 }
 var inFlightPreviews = /* @__PURE__ */ new Set();
+var $previewText = atom4("");
 var $usePending = atom4({});
 async function previewVoice(pin, voiceId) {
   if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: pluginCtx().i18n.t("agentChangedNothingSent") });
-  const key = `preview:${agentKey(pin)}:${voiceId}`;
+  const text = $previewText.get().trim();
+  const key = `preview:${agentKey(pin)}:${voiceId}${text ? `:${text}` : ""}`;
   if ($playing.get() === key) return stop();
   const cached = cachedPreview(key);
   if (cached) return play(key, cached.audio, cached.mime);
@@ -755,7 +775,7 @@ async function previewVoice(pin, voiceId) {
   inFlightPreviews.add(key);
   const epoch2 = playbackEpoch();
   try {
-    const res = await post("/preview", { voice: voiceId });
+    const res = await post("/preview", text ? { voice: voiceId, text } : { voice: voiceId });
     if (!samePin(currentPin(), pin)) return;
     rememberPreview(key, res);
     if (playbackEpoch() === epoch2) play(key, res.audio, res.mime);
@@ -768,6 +788,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
   const t = usePluginI18n4(PLUGIN_ID);
   const billedNote = useAccountText("billedNote", "operatorBilledNote");
   const playing = useValue3($playing);
+  const previewText = useValue3($previewText).trim();
   const [busy, setBusy] = useState2(null);
   const [used, setUsed] = useState2(null);
   const pendingUse = useValue3($usePending)[agentKey(pin)];
@@ -801,7 +822,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
     }
   };
   return /* @__PURE__ */ jsx3("div", { style: { border: "1px solid var(--ui-stroke-tertiary)", borderRadius: 6 }, children: voices.map((voice, i) => {
-    const key = `preview:${agentKey(pin)}:${voice.id}`;
+    const key = `preview:${agentKey(pin)}:${voice.id}${previewText ? `:${previewText}` : ""}`;
     const parts = [voice.author, (voice.languages ?? []).join(", "), voice.task_count ? t("uses", voice.task_count) : "", voice.description].filter(Boolean).map((part, j, all) => /* @__PURE__ */ jsxs3("span", { children: [
       j ? j === all.length - 1 && voice.description ? " \u2014 " : " \xB7 " : "",
       /* @__PURE__ */ jsx3("bdi", { children: part })
@@ -1392,6 +1413,9 @@ var en = {
   },
   favouritesOnly: "Favourites",
   billedNote: "Preview plays a short sample and is billed to your Fish Audio account.",
+  previewText: "Preview text",
+  previewTextPlaceholder: "Type a passage to hear each voice read it",
+  previewTextHint: (n) => `Optional, up to ${n} characters. Each new text is a new billed preview; empty plays a short default line.`,
   preview: "Preview",
   stop: "Stop",
   use: "Use",
@@ -1595,6 +1619,9 @@ var zh = {
   },
   favouritesOnly: "\u6536\u85CF",
   billedNote: "\u8BD5\u542C\u4F1A\u64AD\u653E\u4E00\u5C0F\u6BB5\u6837\u672C\uFF0C\u8D39\u7528\u8BA1\u5165\u4F60\u7684 Fish Audio \u8D26\u6237\u3002",
+  previewText: "\u8BD5\u542C\u6587\u672C",
+  previewTextPlaceholder: "\u8F93\u5165\u4E00\u6BB5\u6587\u5B57\uFF0C\u542C\u6BCF\u4E2A\u58F0\u97F3\u6717\u8BFB",
+  previewTextHint: (n) => `\u53EF\u9009\uFF0C\u6700\u591A ${n} \u4E2A\u5B57\u7B26\u3002\u6BCF\u6BB5\u65B0\u6587\u672C\u90FD\u662F\u4E00\u6B21\u65B0\u7684\u8BA1\u8D39\u8BD5\u542C\uFF1B\u7559\u7A7A\u5219\u64AD\u653E\u4E00\u53E5\u7B80\u77ED\u7684\u9ED8\u8BA4\u8BED\u53E5\u3002`,
   preview: "\u8BD5\u542C",
   stop: "\u505C\u6B62",
   use: "\u4F7F\u7528",
@@ -1795,6 +1822,9 @@ var zhHant = {
   },
   favouritesOnly: "\u6536\u85CF",
   billedNote: "\u8A66\u807D\u6703\u64AD\u653E\u4E00\u5C0F\u6BB5\u7BC4\u4F8B\uFF0C\u8CBB\u7528\u8A08\u5165\u60A8\u7684 Fish Audio \u5E33\u6236\u3002",
+  previewText: "\u8A66\u807D\u6587\u5B57",
+  previewTextPlaceholder: "\u8F38\u5165\u4E00\u6BB5\u6587\u5B57\uFF0C\u807D\u6BCF\u500B\u8072\u97F3\u6717\u8B80",
+  previewTextHint: (n) => `\u9078\u586B\uFF0C\u6700\u591A ${n} \u500B\u5B57\u5143\u3002\u6BCF\u6BB5\u65B0\u6587\u5B57\u90FD\u662F\u4E00\u6B21\u65B0\u7684\u8A08\u8CBB\u8A66\u807D\uFF1B\u7559\u7A7A\u5247\u64AD\u653E\u4E00\u53E5\u7C21\u77ED\u7684\u9810\u8A2D\u8A9E\u53E5\u3002`,
   preview: "\u8A66\u807D",
   stop: "\u505C\u6B62",
   use: "\u4F7F\u7528",
@@ -1995,6 +2025,9 @@ var ja = {
   },
   favouritesOnly: "\u304A\u6C17\u306B\u5165\u308A",
   billedNote: "\u8A66\u8074\u3067\u306F\u77ED\u3044\u30B5\u30F3\u30D7\u30EB\u304C\u518D\u751F\u3055\u308C\u3001Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u306B\u8AB2\u91D1\u3055\u308C\u307E\u3059\u3002",
+  previewText: "\u8A66\u8074\u30C6\u30AD\u30B9\u30C8",
+  previewTextPlaceholder: "\u5404\u30DC\u30A4\u30B9\u306B\u8AAD\u307E\u305B\u305F\u3044\u6587\u7AE0\u3092\u5165\u529B",
+  previewTextHint: (n) => `\u4EFB\u610F\u3001\u6700\u5927 ${n} \u6587\u5B57\u3002\u30C6\u30AD\u30B9\u30C8\u3092\u5909\u3048\u308B\u305F\u3073\u306B\u65B0\u3057\u3044\u8A66\u8074\u3068\u3057\u3066\u8AB2\u91D1\u3055\u308C\u307E\u3059\u3002\u7A7A\u6B04\u306E\u5834\u5408\u306F\u77ED\u3044\u65E2\u5B9A\u306E\u6587\u3092\u518D\u751F\u3057\u307E\u3059\u3002`,
   preview: "\u8A66\u8074",
   stop: "\u505C\u6B62",
   use: "\u4F7F\u7528",
@@ -2197,6 +2230,9 @@ var ar = {
   },
   favouritesOnly: "\u0627\u0644\u0645\u0641\u0636\u0644\u0629",
   billedNote: "\u062A\u0634\u063A\u0651\u0644 \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629 \u0639\u064A\u0646\u0629 \u0642\u0635\u064A\u0631\u0629 \u0648\u062A\u064F\u062D\u062A\u0633\u0628 \u062A\u0643\u0644\u0641\u062A\u0647\u0627 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio.",
+  previewText: "\u0646\u0635 \u0627\u0644\u0645\u0639\u0627\u064A\u0646\u0629",
+  previewTextPlaceholder: "\u0627\u0643\u062A\u0628 \u0646\u0635\u064B\u0627 \u0644\u062A\u0633\u0645\u0639 \u0643\u0644 \u0635\u0648\u062A \u064A\u0642\u0631\u0624\u0647",
+  previewTextHint: (n) => `\u0627\u062E\u062A\u064A\u0627\u0631\u064A\u060C \u062D\u062A\u0649 ${isolate(n)} \u062D\u0631\u0641. \u0643\u0644 \u0646\u0635 \u062C\u062F\u064A\u062F \u0645\u0639\u0627\u064A\u0646\u0629 \u062C\u062F\u064A\u062F\u0629 \u0645\u062F\u0641\u0648\u0639\u0629\u061B \u0625\u0630\u0627 \u062A\u064F\u0631\u0643 \u0641\u0627\u0631\u063A\u064B\u0627 \u062A\u064F\u0634\u063A\u064E\u0651\u0644 \u062C\u0645\u0644\u0629 \u0642\u0635\u064A\u0631\u0629 \u0627\u0641\u062A\u0631\u0627\u0636\u064A\u0629.`,
   preview: "\u0645\u0639\u0627\u064A\u0646\u0629",
   stop: "\u0625\u064A\u0642\u0627\u0641",
   use: "\u0627\u0633\u062A\u062E\u062F\u0627\u0645",
@@ -2397,6 +2433,9 @@ var ru = {
   },
   favouritesOnly: "\u0418\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435",
   billedNote: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0432\u043E\u0441\u043F\u0440\u043E\u0438\u0437\u0432\u043E\u0434\u0438\u0442 \u043A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u043E\u0431\u0440\u0430\u0437\u0435\u0446 \u0438 \u043E\u043F\u043B\u0430\u0447\u0438\u0432\u0430\u0435\u0442\u0441\u044F \u0441 \u0432\u0430\u0448\u0435\u0433\u043E \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430 Fish Audio.",
+  previewText: "\u0422\u0435\u043A\u0441\u0442 \u0434\u043B\u044F \u043F\u0440\u043E\u0441\u043B\u0443\u0448\u0438\u0432\u0430\u043D\u0438\u044F",
+  previewTextPlaceholder: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043E\u0442\u0440\u044B\u0432\u043E\u043A, \u0447\u0442\u043E\u0431\u044B \u0443\u0441\u043B\u044B\u0448\u0430\u0442\u044C \u0435\u0433\u043E \u043A\u0430\u0436\u0434\u044B\u043C \u0433\u043E\u043B\u043E\u0441\u043E\u043C",
+  previewTextHint: (n) => `\u041D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E, \u0434\u043E ${n} \u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432. \u041A\u0430\u0436\u0434\u044B\u0439 \u043D\u043E\u0432\u044B\u0439 \u0442\u0435\u043A\u0441\u0442 \u2014 \u043D\u043E\u0432\u043E\u0435 \u043F\u043B\u0430\u0442\u043D\u043E\u0435 \u043F\u0440\u043E\u0441\u043B\u0443\u0448\u0438\u0432\u0430\u043D\u0438\u0435; \u0435\u0441\u043B\u0438 \u043F\u0443\u0441\u0442\u043E, \u0437\u0432\u0443\u0447\u0438\u0442 \u043A\u043E\u0440\u043E\u0442\u043A\u0430\u044F \u0444\u0440\u0430\u0437\u0430 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E.`,
   preview: "\u041F\u0440\u0435\u0434\u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440",
   stop: "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C",
   use: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u044C",
@@ -2597,6 +2636,9 @@ var fr = {
   },
   favouritesOnly: "Favoris",
   billedNote: "L\u2019aper\xE7u joue un court extrait et est factur\xE9 \xE0 votre compte Fish Audio.",
+  previewText: "Texte d'aper\xE7u",
+  previewTextPlaceholder: "Saisissez un passage \xE0 faire lire par chaque voix",
+  previewTextHint: (n) => `Facultatif, jusqu'\xE0 ${n} caract\xE8res. Chaque nouveau texte est un nouvel aper\xE7u factur\xE9 ; vide, une courte phrase par d\xE9faut est lue.`,
   preview: "\xC9couter",
   stop: "Arr\xEAter",
   use: "Utiliser",
@@ -2797,6 +2839,9 @@ var de = {
   },
   favouritesOnly: "Favoriten",
   billedNote: "Die Vorschau spielt eine kurze H\xF6rprobe ab und wird Ihrem Fish Audio-Konto berechnet.",
+  previewText: "Vorschautext",
+  previewTextPlaceholder: "Text eingeben, den jede Stimme vorlesen soll",
+  previewTextHint: (n) => `Optional, bis zu ${n} Zeichen. Jeder neue Text ist eine neue, kostenpflichtige Vorschau; leer spielt einen kurzen Standardsatz.`,
   preview: "Vorschau",
   stop: "Stoppen",
   use: "Verwenden",
@@ -2997,6 +3042,9 @@ var es = {
   },
   favouritesOnly: "Favoritos",
   billedNote: "La vista previa reproduce una muestra breve y se factura a tu cuenta de Fish Audio.",
+  previewText: "Texto de muestra",
+  previewTextPlaceholder: "Escribe un texto para o\xEDr c\xF3mo lo lee cada voz",
+  previewTextHint: (n) => `Opcional, hasta ${n} caracteres. Cada texto nuevo es una nueva muestra facturada; vac\xEDo reproduce una frase breve predeterminada.`,
   preview: "Vista previa",
   stop: "Detener",
   use: "Usar",

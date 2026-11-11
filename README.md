@@ -120,6 +120,7 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 |---|---|
 | `fish_speak` | Expressive or multi-speaker speech; with `timestamps: true`, word timings plus SRT and WebVTT subtitles |
 | `fish_voices` | Search, list and inspect voices; clone, design, save, update and delete them |
+| `fish_voices` · `audition` | Play up to 4 voices reading your own short passage (≤200 characters); each clip is a billed synthesis |
 | `fish_transcribe` | Rich transcription with speakers, timestamps and SRT |
 | `fish_settings` | Check or set this profile's Fish voice, model, reading speed and saved names; `set_speed` accepts `speed` 0.5–2.0 or `null` to reset; `get` returns `speed`; free |
 | `fish_account` | Balance/plan, dated model prices and offline cost estimates; free |
