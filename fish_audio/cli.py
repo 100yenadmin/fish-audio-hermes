@@ -19,8 +19,6 @@ from .secrets import fish_api_key, redact
 from .tool_support import require, run, ToolInputError
 from .tts import FishAudioTTSProvider
 
-_UMASK = os.umask(0o022)  # read once at import (single-threaded); restored on the next line
-os.umask(_UMASK)
 RESTART_HINT = "If a Hermes gateway or the desktop app is already running for this profile, restart it to pick up the new key."
 
 
@@ -94,52 +92,94 @@ def _copy_output(result, target, force):
                                 for ext in (".srt", ".vtt") if source.with_suffix(ext).is_file()]
     for _, dest in pairs:
         _destination(dest, force)
-    staged, placed = [], []
+    staged, placed = [], []  # placed: (dest, identity of the file this run put there)
     try:
-        for src, dest in pairs:  # Stage every file first; a failure then removes what this run placed.
-            with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False) as temporary:
-                staged.append((Path(temporary.name), dest))
-                with src.open("rb") as audio:
-                    shutil.copyfileobj(audio, temporary)
-            os.chmod(staged[-1][0], 0o666 & ~_UMASK)
-        for temp_path, dest in staged:
+        for src, dest in pairs:  # Stage every file first; a failure then removes only what this run placed.
+            temp_path, identity = _new_file(dest.parent / f".{dest.name}.fish-tmp", src)
+            staged.append((temp_path, identity, dest))
+        for temp_path, identity, dest in staged:
             if force:
                 os.replace(temp_path, dest)
+                placed.append((dest, identity))
             else:
-                _place_new(temp_path, dest)
-            placed.append(dest)
-    except BaseException:
-        if not force:  # Every placed file is new (it did not exist), so removing it restores the folder.
-            for dest in placed:
-                dest.unlink(missing_ok=True)
+                placed.append((dest, identity))  # recorded first: the link shares the staged file's identity
+                placed[-1] = (dest, _place_new(temp_path, dest, identity))
+    except Exception as exc:
+        if not force:
+            _remove_own(placed)
         elif placed:
-            raise ToolInputError("Only some outputs were replaced: " + ", ".join(map(str, placed))) from None
+            raise ToolInputError("Only some outputs were replaced: " + ", ".join(str(d) for d, _ in placed)) from exc
+        raise
+    except BaseException:  # Ctrl-C and exits pass through unchanged after cleanup
+        if not force:
+            _remove_own(placed)
         raise
     finally:
-        for temp_path, _ in staged:
+        for temp_path, _, _ in staged:
             temp_path.unlink(missing_ok=True)
     result["out_path"] = str(target)
 
 
-def _place_new(temp_path, dest):
-    """Put a staged file at dest without ever replacing a file that appeared meanwhile."""
+def _identity(stat):
+    return stat.st_dev, stat.st_ino
+
+
+def _new_file(base, src):
+    """Create a fresh file next to its destination (mode 0666 minus the umask) holding src's bytes."""
+    for attempt in range(100):
+        path = base.with_name(f"{base.name}{attempt}")
+        try:
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+        except FileExistsError:
+            continue
+        try:
+            with os.fdopen(descriptor, "wb") as out, src.open("rb") as data:
+                identity = _identity(os.fstat(out.fileno()))
+                shutil.copyfileobj(data, out)
+        except BaseException:
+            path.unlink(missing_ok=True)
+            raise
+        return path, identity
+    raise ToolInputError("Could not create a temporary output file.")
+
+
+def _remove_own(placed):
+    """Delete only files that are still exactly the ones this run created (same device and inode)."""
+    for dest, identity in placed:
+        try:
+            if identity is not None and _identity(os.lstat(dest)) == identity:
+                dest.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _place_new(temp_path, dest, identity):
+    """Put a staged file at dest without replacing a file that appeared meanwhile; return its identity."""
     try:
-        os.link(temp_path, dest)  # atomic and refuses an existing name
-        return
+        os.link(temp_path, dest)  # atomic, refuses an existing name, keeps the staged file's identity
+        return identity
     except FileExistsError:
         raise ToolInputError("Output exists; use --force to replace a file.") from None
     except OSError:  # no hard links (exFAT, some network drives): exclusive create, then copy
         pass
     try:
-        descriptor = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+        _, created = _new_file_at(dest, temp_path)
     except FileExistsError:
         raise ToolInputError("Output exists; use --force to replace a file.") from None
+    return created
+
+
+def _new_file_at(path, src):
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+    identity = None
     try:
-        with os.fdopen(descriptor, "wb") as out, temp_path.open("rb") as staged:
-            shutil.copyfileobj(staged, out)
+        with os.fdopen(descriptor, "wb") as out, src.open("rb") as data:
+            identity = _identity(os.fstat(out.fileno()))
+            shutil.copyfileobj(data, out)
     except BaseException:
-        dest.unlink(missing_ok=True)
+        _remove_own([(path, identity)])
         raise
+    return path, identity
 
 
 def _script(args):

@@ -1,6 +1,7 @@
 import argparse
 import copy
 import io
+import os
 import json
 from pathlib import Path
 import sys
@@ -539,7 +540,7 @@ def test_file_created_meanwhile_is_not_overwritten(scripting, tmp_path, monkeypa
     result = json.loads(capsys.readouterr().out)
     assert target.read_bytes() == b"theirs" and result["file_path"].endswith("cached.mp3")
     assert "--out failed" in result["error"]
-    assert sorted(p.name for p in tmp_path.iterdir() if p.name.startswith("tmp")) == []
+    assert sorted(p.name for p in tmp_path.iterdir() if "fish-tmp" in p.name) == []
 
 
 def test_no_hard_links_falls_back_to_exclusive_create(scripting, tmp_path, monkeypatch, capsys):
@@ -565,4 +566,40 @@ def test_failed_later_output_removes_the_files_this_run_placed(scripting, tmp_pa
     result = json.loads(capsys.readouterr().out)
     assert "--out failed" in result["error"] and result["file_path"].endswith("cached.mp3")
     assert not target.exists() and not target.with_suffix(".srt").exists()
-    assert not [p for p in tmp_path.iterdir() if p.name.startswith("tmp")]
+    assert not [p for p in tmp_path.iterdir() if "fish-tmp" in p.name]
+
+
+def test_rollback_never_deletes_a_file_another_writer_put_there(scripting, tmp_path, monkeypatch, capsys):
+    for ext in (".srt", ".vtt"):
+        (tmp_path / "cached").with_suffix(ext).write_text("captions")
+    target = tmp_path / "out.mp3"
+    real = cli._place_new
+    def swap_then_fail(temp_path, dest, identity):
+        if dest.suffix == ".vtt":
+            target.unlink()
+            target.write_bytes(b"theirs")  # another writer replaced our placed audio
+            raise OSError("disk full")
+        return real(temp_path, dest, identity)
+    monkeypatch.setattr(cli, "_place_new", swap_then_fail)
+    assert run("speak", "hi", "--timestamps", "--out", str(target), "--json") == 1
+    assert target.read_bytes() == b"theirs" and not target.with_suffix(".srt").exists()
+
+
+def test_interrupt_during_forced_replace_passes_through(scripting, tmp_path, monkeypatch):
+    target = tmp_path / "out.mp3"
+    target.write_bytes(b"old")
+    def interrupt(src, dest):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(cli.os, "replace", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        run("speak", "hi", "--out", str(target), "--force", "--json")
+    assert target.read_bytes() == b"old" and not [p for p in tmp_path.iterdir() if "fish-tmp" in p.name]
+
+
+def test_output_mode_follows_the_umask(scripting, tmp_path, capsys):
+    previous = os.umask(0o077)
+    try:
+        assert run("speak", "hi", "--out", str(tmp_path / "a.mp3"), "--json") == 0
+    finally:
+        os.umask(previous)
+    assert (tmp_path / "a.mp3").stat().st_mode & 0o777 == 0o600
