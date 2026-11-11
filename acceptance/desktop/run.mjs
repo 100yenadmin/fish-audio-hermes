@@ -312,7 +312,9 @@ async function libraryRows(s, theme, account) {
     const r = row('B-LIB-1', uses && chip ? 'pass' : 'fail', `Library lists ${uses} voices; credit chip ${chip ? chip[0] : 'missing'}`, { theme })
     r.metrics = { voices: uses, chip: chip && chip[0], chip_ms: chipMs }; r.evidence.push(await c.shot(s, shotPath('B-LIB-1', theme)))
   }
-  if (!uses) { for (const id of ['B-LIB-2', 'B-LIB-5', 'B-LIB-3']) if (want(id)) row(id, 'fail', 'Library listed no voices', { theme }) }
+  // B-LIB-5 tests 1.13.0 Desktop UI; evaOS loads the older Desktop half bundled in its app, so it runs on upstream only.
+  const lib5 = want('B-LIB-5') && H === 'upstream'
+  if (!uses) { for (const id of ['B-LIB-2', 'B-LIB-5', 'B-LIB-3']) if (want(id) && (id !== 'B-LIB-5' || lib5)) row(id, 'fail', 'Library listed no voices', { theme }) }
   if (want('B-LIB-2') && !args['no-billed'] && uses) {
     await s.page.evaluate(() => { window.__mediaLog && (window.__mediaLog.length = 0) })
     const before = await s.page.evaluate(() => (window.__audioLog || []).length)
@@ -332,7 +334,7 @@ async function libraryRows(s, theme, account) {
     const r = row('B-LIB-2', played && (played.duration > 0) ? 'pass' : 'fail', played ? `preview played via ${played.via}, ${played.duration?.toFixed?.(2)} s` : 'no audio within 15 s of Preview', { theme })
     r.metrics = played || {}; r.evidence.push(await c.shot(s, shotPath('B-LIB-2', theme)))
   } else if (want('B-LIB-2') && uses) row('B-LIB-2', 'skip', 'billed:cents rows disabled (--no-billed)', { theme })
-  if (want('B-LIB-5') && !args['no-billed'] && uses) {
+  if (lib5 && !args['no-billed'] && uses) {
     // The Library's preview text: a typed ~140-character passage plays ~8 s; the default line plays ~3.5 s (B-LIB-2).
     // A different voice from B-LIB-2's, so the window's preview cache cannot answer.
     const passage = 'Chapter one. The rain had not stopped for three days, and the lighthouse keeper was beginning to wonder whether the boat would ever come.'
@@ -363,7 +365,7 @@ async function libraryRows(s, theme, account) {
       r.evidence.push(await c.shot(s, shotPath('B-LIB-5', theme)))
       await field.fill('')
     }
-  } else if (want('B-LIB-5') && uses) row('B-LIB-5', 'skip', 'billed:cents rows disabled (--no-billed)', { theme })
+  } else if (lib5 && uses) row('B-LIB-5', 'skip', 'billed:cents rows disabled (--no-billed)', { theme })
   if (want('B-LIB-3') && uses) {
     const cfg = path.join(host.hermes_home, 'config.yaml')
     const idx = theme === 'dark' ? 1 : 0 // a different voice per theme, so the write is observable

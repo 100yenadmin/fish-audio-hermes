@@ -70,7 +70,7 @@
   {"id": "B-SET-1", "title": "Fish settings page: reading speed", "layer": "b", "hosts": ["upstream", "evaos"], "min_plugin": "1.12.0", "min_hermes": "Settings ▸ Plugins page required (upstream >=0.21.6 SDK)", "required": true, "billed": "none", "matrix_ref": "G9"},
   {"id": "B-LIB-1", "title": "library and credit", "layer": "b", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "G"},
   {"id": "B-LIB-2", "title": "preview", "layer": "b", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "G"},
-  {"id": "B-LIB-5", "title": "preview reads the typed passage", "layer": "b", "hosts": ["upstream", "evaos"], "min_plugin": "1.13.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "G"},
+  {"id": "B-LIB-5", "title": "preview reads the typed passage", "layer": "b", "hosts": ["upstream"], "min_plugin": "1.13.0", "min_hermes": "both hosts", "required": true, "billed": "cents", "matrix_ref": "G"},
   {"id": "B-LIB-3", "title": "use", "layer": "b", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "G"},
   {"id": "B-LIB-4", "title": "mine and account", "layer": "b", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "G"},
   {"id": "B-PAL-1", "title": "palette commands", "layer": "b", "hosts": ["upstream", "evaos"], "min_plugin": "1.0.0", "min_hermes": "both hosts", "required": true, "billed": "none", "matrix_ref": "G"},
