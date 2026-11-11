@@ -50,7 +50,7 @@ def execute(args, key, base, session):
     action = args.get("action")
     require(action in {"list", "get", "versions", "get_version", "create", "publish", "delete", "delete_version", "use"},
             "Unknown fish_pronunciations action.")
-    require(action not in {"list", "publish", "delete", "delete_version"} or not settings.operator_account(),
+    require(action not in {"list", "create", "publish", "delete", "delete_version"} or not settings.operator_account(),
             ACCOUNT_DICTIONARIES)
     if action == "use":
         refs = args.get("refs")

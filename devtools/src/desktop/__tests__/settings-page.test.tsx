@@ -211,6 +211,20 @@ describe('settings page writes', () => {
     expect(slider.getAttribute('aria-valuetext')).toBe('1.00×')
   })
 
+  it('an unsaved speed gives way when the operator starts managing speed', async () => {
+    let server = { ...SETTINGS, speed: 1.1 }
+    mount(gateway(() => server, async () => ({ ok: true, aliases: server.aliases })))
+    await flush()
+    const slider = screen.getByRole('slider') as HTMLInputElement
+    fireEvent.change(slider, { target: { value: '1.35' } })
+    server = { ...server, speed: 1.5, managed: [...server.managed, 'speed'] }
+    fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: 'host' } })
+    fireEvent.click(screen.getByRole('button', { name: en.settings.add }))
+    await flush()
+    expect(slider.value).toBe('1.5')
+    expect(slider.disabled).toBe(true)
+  })
+
   it.each([false, true])('alias reloads refresh saved speed while preserving an unsaved edit (%s)', async dirty => {
     let server = { ...SETTINGS, speed: 1.1 }
     const { writes } = mount(gateway(() => server, async () => ({ ok: true, aliases: server.aliases })))

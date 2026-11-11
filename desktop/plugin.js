@@ -1088,7 +1088,7 @@ function Sections({ pin, operator }) {
       (res) => {
         if (mine !== generation.current) return;
         setState(res);
-        setSpeed((value) => !state || value === (state.speed ?? 1) ? res.speed ?? 1 : value);
+        setSpeed((value) => !state || res.managed.includes("speed") || value === (state.speed ?? 1) ? res.speed ?? 1 : value);
       },
       (failure) => mine === generation.current && setError(failure)
     );

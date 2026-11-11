@@ -164,7 +164,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
       res => {
         if (mine !== generation.current) return
         setState(res)
-        setSpeed(value => !state || value === (state.speed ?? 1.0) ? (res.speed ?? 1.0) : value)
+        setSpeed(value => !state || res.managed.includes('speed') || value === (state.speed ?? 1.0) ? (res.speed ?? 1.0) : value)
       },
       failure => mine === generation.current && setError(failure)
     )

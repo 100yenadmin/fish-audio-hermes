@@ -202,7 +202,7 @@ SCHEMAS = {
         "asr_model": _field("string", enum=["transcribe-1-pro", "transcribe-1"])},
 }
 DESCRIPTIONS = {
-    "fish_pronunciations": "Manage reusable pronunciations: list/get dictionaries, versions/get_version rules, create, publish, delete/delete_version, or use refs as this profile's defaults ([] clears). Each published version holds the COMPLETE rule list, replacing previous rules. Delete actions require Hermes approval; the latest version cannot be deleted. On operator-managed agents, listing, publishing and deleting dictionaries are refused. Free: dictionary management has no Fish charge.",
+    "fish_pronunciations": "Manage reusable pronunciations: list/get dictionaries, versions/get_version rules, create, publish, delete/delete_version, or use refs as this profile's defaults ([] clears). Each published version holds the COMPLETE rule list, replacing previous rules. Delete actions require Hermes approval; the latest version cannot be deleted. On operator-managed agents, listing, creating, publishing and deleting dictionaries are refused. Free: dictionary management has no Fish charge.",
     "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Results include setup: what is missing and the next step. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,

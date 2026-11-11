@@ -91,7 +91,9 @@ def on_pre_tool_call(tool_name="", args=None, **kwargs):
         if tool_name == "fish_pronunciations" and args.get("action") in {"delete", "delete_version"}:
             from . import settings  # Lazy: settings imports modules that import this one.
             if settings.operator_account():
-                return None
+                # Blocked outright, never None: if operator mode were off again at execution, None would delete unapproved.
+                from .pronunciations import ACCOUNT_DICTIONARIES  # Lazy: pronunciations imports settings.
+                return {"action": "block", "message": ACCOUNT_DICTIONARIES}
             dictionary = _approval_string(args.get("dictionary_id", ""), 128)
             version = _approval_string(args.get("version_id", ""), 128) if args["action"] == "delete_version" else None
             target = f"dictionary {json.dumps(dictionary)}"

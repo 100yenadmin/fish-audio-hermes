@@ -331,7 +331,7 @@ the wallet that users can't see.
   `fish_settings` and `fish_account` have no Fish charge. Before a long or Drama 3 job, ask for `fish_account estimate`.
 - `fish_pronunciations` management calls are free. They send dictionary names, descriptions, rules and IDs to Fish.
   `use` saves verified version references in this profile's `tts.fish-audio.pronunciation_dictionary`; speech sends those references.
-  Operator-managed agents refuse listing, publishing and deleting dictionaries; inspecting known dictionaries and versions, creating dictionaries and selecting unmanaged profile defaults remain available.
+  Operator-managed agents refuse listing, creating, publishing and deleting dictionaries (they belong to the operator's whole account); reading a known dictionary or version and choosing unmanaged profile defaults remain available.
 - Fish Audio may use free-model requests to improve its models.
 - With live dictation on (`stt.streaming: true`), microphone audio streams to `api.fish.audio` while you speak,
   through native realtime (Preview), billed $0.36 per hour of open session, per second; `live_transcription: compat`
