@@ -785,8 +785,8 @@ async function previewVoice(pin, voiceId) {
   if (playingFor($playing.get(), base)) return stop();
   const cached = cachedPreview(key);
   if (cached) return play(key, cached.audio, cached.mime);
-  if (inFlightPreviews.has(key)) return;
-  inFlightPreviews.add(key);
+  if (inFlightPreviews.has(base)) return;
+  inFlightPreviews.add(base);
   const epoch2 = playbackEpoch();
   try {
     const res = await post("/preview", text ? { voice: voiceId, text } : { voice: voiceId });
@@ -795,7 +795,7 @@ async function previewVoice(pin, voiceId) {
     if (playbackEpoch() === epoch2) play(key, res.audio, res.mime);
     void refreshAvailability();
   } finally {
-    inFlightPreviews.delete(key);
+    inFlightPreviews.delete(base);
   }
 }
 function VoiceList({ voices, pin, favourites, onDelete, onEdit }) {

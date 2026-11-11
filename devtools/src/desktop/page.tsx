@@ -334,8 +334,8 @@ export async function previewVoice(pin: AgentPin, voiceId: string) {
   if (playingFor($playing.get(), base)) return stop()
   const cached = cachedPreview(key)
   if (cached) return play(key, cached.audio, cached.mime)
-  if (inFlightPreviews.has(key)) return  // one billed preview per voice at a time
-  inFlightPreviews.add(key)
+  if (inFlightPreviews.has(base)) return  // one billed preview per voice at a time
+  inFlightPreviews.add(base)
   const epoch = playbackEpoch()
   try {
     const res = await post<{ audio: string; mime: string }>('/preview', text ? { voice: voiceId, text } : { voice: voiceId })
@@ -345,7 +345,7 @@ export async function previewVoice(pin: AgentPin, voiceId: string) {
     if (playbackEpoch() === epoch) play(key, res.audio, res.mime)
     void refreshAvailability()
   } finally {
-    inFlightPreviews.delete(key)
+    inFlightPreviews.delete(base)
   }
 }
 

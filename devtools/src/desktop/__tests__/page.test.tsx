@@ -402,6 +402,24 @@ describe('review follow-ups', () => {
     expect(rest.mock.calls.filter(([path]) => path === '/preview')).toHaveLength(1)
   })
 
+  it('keeps one billed preview pending when the same voice gets different text', async () => {
+    let resolve!: (value: unknown) => void
+    const promise = new Promise(r => { resolve = r })
+    const voice = 'single-flight-text'
+    const rest = vi.fn((path: string) => path === '/preview' ? promise : Promise.resolve({ ok: true, key: true }))
+    bindContext(createTestContext({ rest }).ctx as any)
+    const playback = vi.spyOn(audio, 'play').mockImplementation(() => undefined)
+    $previewText.set({ 'conn-1::default': 'Text A' })
+    const first = previewVoice(pin, voice)
+    $previewText.set({ 'conn-1::default': 'Text B' })
+    await previewVoice(pin, voice)
+    expect(rest.mock.calls.filter(([path]) => path === '/preview')).toHaveLength(1)
+    resolve({ ok: true, audio: 'SUQz', mime: 'audio/mpeg' })
+    await first
+    expect(playback).toHaveBeenCalledWith(`preview:conn-1::default:${voice}:Text A`, 'SUQz', 'audio/mpeg')
+    expect(audio.cachedPreview(`preview:conn-1::default:${voice}:Text B`)).toBeUndefined()
+  })
+
   it.each([
     [{ subscription_status: 'active', cancel_at_period_end: false }, 'Renews 2026-10-30'],
     [{ subscription_status: 'active', cancel_at_period_end: true }, 'Current period ends 2026-10-30'],
