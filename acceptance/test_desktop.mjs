@@ -241,7 +241,7 @@ for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enter
 test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
   const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
   for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail']) {
-    let title = 'Original', pending, dialog = false
+    let title = 'Original', pending, dialog = false, shots = 0
     const rows = [], saves = []
     const page = { waitForFunction:async()=>{}, getByRole:(role, {name} = {}) => {
       const locator = {
@@ -261,7 +261,7 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
         if (init.method === 'PATCH') { title = JSON.parse(init.body).title; saves.push(title); return { body: { ok: true } } }
         return { body: { voice: { id: 'v1', title } } }
       },
-      c:{clickText:async()=>{}, shot:async()=>{ if (mode === 'shot-error') throw Error('capture failed'); return 'shot' }},
+      c:{clickText:async()=>{}, shot:async()=>{ shots++; if (mode === 'shot-error' && shots > 1) throw Error('capture failed'); return 'shot' }},
       row:(id,status,reason)=>rows.push({id,status,reason})
     })
     assert.equal(title, 'Original'); assert.deepEqual(saves, mode === 'empty' ? [] : ['Original (edit)', 'Original'])
