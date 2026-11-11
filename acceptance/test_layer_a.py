@@ -402,6 +402,32 @@ def test_reading_speed(real, request):
         set_config(real, before)
 
 
+@pytest.mark.row('A-OP-MINE')
+def test_operator_profile_voices(paid, voice, request):
+    before = config(paid)
+    try:
+        changed = copy.deepcopy(before)
+        changed.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['operator_account'] = True
+        changed.setdefault('tts', {}).setdefault('fish-audio', {})['aliases'] = {'acceptance_voice': voice}
+        set_config(paid, changed)
+        result = core(paid, 'from tools.registry import registry; '
+                      'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_voices", {"action": "mine"}))')
+        evidence(request, paid, result)
+        assert result['success'] and result['profile_voices'] is True
+        assert len(result['items']) == 1 and result['items'][0]['id'] == voice
+        assert result['items'][0]['name'] == 'acceptance_voice'
+    finally:
+        set_config(paid, before)
+
+
+@pytest.mark.row('A-USAGE')
+def test_speech_usage(paid, voice, request):
+    result = core(paid, 'from tools.registry import registry; '
+                  f'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_speak", {{"text": "Hello.", "voice": {voice!r}}}))')
+    evidence(request, paid, result)
+    assert result['success'] and result['usage']['billable_bytes'] > 0
+
+
 @pytest.mark.row('A-TOOL-ACCOUNT')
 def test_account_tool(real, request):
     # Other free rows already read the wallet. Only this balance call may use the network here.

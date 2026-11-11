@@ -298,8 +298,15 @@ Choose `transcribe-1-pro`. The plugin never rewrites your configured model.
 Set `plugins.entries.fish-audio.settings.operator_account: true` (Desktop: **Operator-managed account**) when the
 Fish account belongs to the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
 setup or credit problems to the operator. Because one operator account can serve many agents, the account's own
-voices aren't listed, edited or deleted from an agent (no My voices tab; `fish_voices` refuses `mine`, `update` and
-`delete`); cloning and designing still work, and a voice created on the Voices page goes into that agent's Favourites. It defaults to false. Tool descriptions update after a gateway restart.
+voices aren't listed, edited or deleted from an agent (no My voices tab; `fish_voices` refuses `update` and
+`delete`). Instead, `fish_voices action:"mine"` lists only this profile's saved-name voices, with details for up to
+20 voices; unavailable details leave the name and id. Cloning and saving a design automatically add a saved name
+derived from the title when possible; otherwise the result explains why the operator needs to add one.
+A voice created on the Voices page also goes into that agent's Favourites. Operator mode defaults to false.
+`fish_speak` and `fish_transcribe` results include a `usage` object with the model and billable UTF-8 bytes or audio
+seconds. Operator mode hides USD estimates and a wallet-chosen default model; personal accounts also get a USD
+estimate when available. If usage cannot be computed, the completed job is returned without it.
+Tool descriptions update after a gateway restart.
 Operators should also pin `tts.fish-audio.model` or set `allow_free_model: false`, so the model never depends on
 the wallet that users can't see.
 

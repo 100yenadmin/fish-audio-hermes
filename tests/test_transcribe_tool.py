@@ -21,6 +21,27 @@ def call(**args):
     return json.loads(tools.fish_transcribe({"file_path": str(FIXTURES / "synthetic.ogg"), **args}))
 
 
+@pytest.mark.parametrize("operator,duration,fail", [(False, 2, False), (True, 2, False),
+    (False, None, False), (False, "unknown", False), (False, 2, True)])
+def test_transcription_usage(monkeypatch, operator, duration, fail):
+    monkeypatch.setattr(settings, "operator_account", lambda: operator)
+    if fail:
+        def broken(*a, **kw):
+            raise RuntimeError("usage failed")
+        monkeypatch.setattr(transcribe.account_tool, "estimate", broken)
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/v1/asr").respond(json={"text": "hello", "duration": duration})
+        result = call()
+    assert result["success"] and result["text"] == "hello"
+    if fail:
+        assert "usage" not in result
+    else:
+        expected = {"model": "transcribe-1-pro", "audio_seconds": duration}
+        if not operator and type(duration) in {int, float}:
+            expected["usd_estimate"] = transcribe.account_tool.estimate({"audio_seconds": duration})["usd_estimate"]
+        assert result["usage"] == expected
+
+
 @pytest.mark.parametrize("args", [
     {"num_speakers": 2, "min_speakers": 1}, {"num_speakers": 2, "max_speakers": 3},
     {"num_speakers": 2, "model": "transcribe-1"}, {"num_speakers": 2, "diarize": "false"},

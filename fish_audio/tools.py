@@ -1,7 +1,7 @@
 """Explicit Fish Audio tools; ordinary read-aloud stays with Hermes TTS."""
 from uuid import uuid4
 
-from . import client, hooks, media, models, settings, tags
+from . import account_tool, client, hooks, media, models, settings, tags
 from . import pronunciations as pronunciation_tools
 from .models import MODELS
 from .secrets import fish_api_key
@@ -100,6 +100,13 @@ def _speak(args, key, base, session, *, record_media=True):
         del result["model"]  # A wallet-chosen default follows the operator's wallet, which the agent's users don't see.
     elif defaulted and model == "s2.1-pro-free":
         result["notice"] = settings.free_model_notice()
+    try:
+        usage = account_tool.estimate({"text": params["text"], "model": model}, operator=settings.operator_account())
+        result["usage"] = {k: v for k, v in usage.items() if k in {"model", "billable_bytes", "usd_estimate", "unit_price"}}
+        if "model" not in result:
+            result["usage"].pop("model", None)
+    except Exception:
+        pass  # Usage is advisory; the billed audio is already ready.
     if events is not None:
         from .transcribe import speech_timestamps
         # The billed audio is already saved: a subtitle failure must not hide it.

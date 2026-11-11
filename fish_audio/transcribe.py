@@ -6,7 +6,7 @@ import unicodedata
 from pathlib import Path
 from uuid import uuid4
 
-from . import client, media, models
+from . import account_tool, client, media, models, settings
 from .stt import MODEL_PRO, MODEL_T1
 from .tool_support import require, integer
 from .voices import MIMES, KINDS
@@ -162,4 +162,12 @@ def execute(args, key, base, session):
     if args.get("srt"):
         output = media.audio_output_dir() / f"fish-transcribe-{uuid4().hex[:12]}.srt"
         result["srt_path"] = media.atomic_write(output, [_srt(data).encode("utf-8")])
+    try:
+        duration = result["duration"]
+        usage = {"model": model, "audio_seconds": duration}
+        if not settings.operator_account() and type(duration) in {int, float}:
+            usage["usd_estimate"] = account_tool.estimate({"audio_seconds": duration, "asr_model": model})["usd_estimate"]
+        result["usage"] = usage
+    except Exception:
+        pass  # Usage must not hide a completed transcription.
     return result
