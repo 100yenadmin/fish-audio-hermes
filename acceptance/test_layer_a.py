@@ -233,6 +233,23 @@ def test_doctor(paid, synth, request):
         assert re.search(r'(?im)^ok: TTS [1-9]\d* bytes; billed:', text)
 
 
+@pytest.mark.parametrize('command', [pytest.param('speak', marks=pytest.mark.row('A-CLI-SPEAK')),
+    pytest.param('voices', marks=pytest.mark.row('A-CLI-VOICES')),
+    pytest.param('balance', marks=pytest.mark.row('A-CLI-BALANCE'))])
+def test_scripting_cli(paid, request, command):
+    output = paid.out / 'cli-speech.mp3'  # inside the run dir: the macOS host sandbox only writes there
+    args = {'speak': [TEXT, '--format', 'mp3', '--out', str(output), '--force'],
+            'voices': ['narrator'], 'balance': []}[command]
+    result = json.loads(paid.cli('fish', command, *args, '--json').splitlines()[-1])
+    evidence(request, paid, result)
+    assert result['success'] is True
+    if command == 'speak':
+        assert output.is_file()
+        assert output.read_bytes().startswith((b'ID3', b'\xff\xfb', b'\xff\xf3', b'\xff\xf2'))
+    elif command == 'voices':
+        assert isinstance(result['items'], list)
+
+
 @pytest.mark.parametrize('n', [pytest.param(i, marks=pytest.mark.row(f'A-CMD-{i}')) for i in range(1, 7)])
 def test_commands(paid, voice, n, request):
     before = config(paid)

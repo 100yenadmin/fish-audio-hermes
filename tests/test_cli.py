@@ -1,6 +1,8 @@
 import argparse
 import copy
 import io
+import os
+import json
 from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
@@ -13,6 +15,142 @@ from fish_audio import account, cli, commands, settings
 
 BASE = "https://api.fish.audio"
 WALLET = BASE + "/wallet/self/api-credit?check_free_credit=true"
+
+
+@pytest.fixture
+def scripting(config, monkeypatch, tmp_path):
+    from fish_audio import account_tool, secrets, tools, tool_support, transcribe, voices
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setattr(tool_support, "fish_api_key", lambda: "synthetic-key")
+    monkeypatch.setattr(secrets, "fish_api_key", lambda: "synthetic-key")
+    config[0]["plugins"] = {"entries": {"fish-audio": {"settings": {"operator_account": True}}}}
+    calls = []
+    def execute(args, key, base, session, **kwargs):
+        assert not settings.operator_account()
+        calls.append((args, kwargs))
+        return {"file_path": str(tmp_path / "cached.mp3"), "duration": 1, "text": "你好",
+                "srt_path": "captions.srt", "items": [{"title": "Narrator", "id": "voice-id", "languages": ["en"], "tags": ["calm"]}],
+                "credit": "1", "cumulative_top_up": "2", "plan": {"type": "free"}}
+    for module, name in ((tools, "_speak"), (transcribe, "execute"), (voices, "execute"), (account_tool, "execute")):
+        monkeypatch.setattr(module, name, execute)
+    (tmp_path / "cached.mp3").write_bytes(b"ID3synthetic")
+    return calls
+
+
+@pytest.mark.parametrize("argv,expected", [(("speak", "你好"), "cached.mp3"),
+    (("transcribe", "audio.wav"), "你好"), (("voices",), "Narrator — voice-id (en, calm)"),
+    (("balance",), "API credit: 1")])
+@pytest.mark.parametrize("mode", ["json", "human", "failure-json", "failure-human"])
+def test_scripting_envelopes(scripting, monkeypatch, capsys, argv, expected, mode):
+    if mode.startswith("failure"):
+        from fish_audio import account_tool, tools, transcribe, voices
+        def fail(*a, **kw):
+            raise cli.ToolInputError("synthetic-key failed")
+        module, name = {"speak": (tools, "_speak"), "transcribe": (transcribe, "execute"),
+                        "voices": (voices, "execute"), "balance": (account_tool, "execute")}[argv[0]]
+        monkeypatch.setattr(module, name, fail)
+    assert run(*argv, *(["--json"] if mode.endswith("json") else [])) == int(mode.startswith("failure"))
+    captured = capsys.readouterr()
+    assert "synthetic-key" not in captured.out
+    if mode.endswith("json"):
+        assert len(captured.out.splitlines()) == 1
+        assert json.loads(captured.out)["success"] is (not mode.startswith("failure"))
+        assert not captured.err
+    else:
+        assert ("[redacted] failed" if mode.startswith("failure") else expected) in captured.out
+        billed = argv[0] in {"speak", "transcribe"} and not mode.startswith("failure")
+        assert ("billed to your Fish API credit" in captured.err) == billed
+
+
+@pytest.mark.parametrize("source", ["positional", "file", "stdin", "none", "two", "both-flags", "missing-file"])
+def test_speak_sources(scripting, tmp_path, monkeypatch, capsys, source):
+    text = tmp_path / "text.txt"
+    text.write_text("你好", encoding="utf-8")
+    monkeypatch.setattr(sys, "stdin", io.StringIO("你好"))
+    flags = {"positional": ["你好"], "file": ["--text-file", str(text)], "stdin": ["--stdin"],
+             "none": [], "two": ["你好", "--stdin"], "both-flags": ["--stdin", "--text-file", str(text)],
+             "missing-file": ["--text-file", str(tmp_path / "absent")] }[source]
+    failed = source in {"none", "two", "both-flags", "missing-file"}
+    assert run("speak", *flags, "--json") == int(failed)
+    assert json.loads(capsys.readouterr().out)["success"] is not failed
+    assert bool(scripting) is not failed
+    if not failed:
+        assert scripting[0] == ({"text": "你好", "timestamps": False}, {"record_media": False})
+
+
+def test_scripting_flag_mapping(scripting, capsys):
+    assert run("speak", "hello", "--voice", "Eva", "--model", "s2.1-pro", "--format", "wav", "--timestamps", "--json") == 0
+    assert scripting[-1] == ({"text": "hello", "voice": "Eva", "model": "s2.1-pro", "format": "wav", "timestamps": True}, {"record_media": False})
+    assert run("transcribe", "a.wav", "--model", "transcribe-1", "--language", "ja", "--diarize", "--srt", "--json") == 0
+    assert scripting[-1][0] == {"file_path": "a.wav", "model": "transcribe-1", "language": "ja", "diarize": "true", "srt": True}
+    assert run("voices", "clone", "--mine", "--page", "2", "--page-size", "3", "--json") == 0
+    assert scripting[-1][0] == {"action": "mine", "query": "clone", "page": 2, "page_size": 3}
+    assert run("voices", "--json") == 0 and scripting[-1][0] == {"action": "search"}
+    assert run("balance", "--json") == 0 and scripting[-1][0] == {"action": "balance"}
+    capsys.readouterr()
+
+
+@pytest.mark.parametrize("flags", [("--format", "bad"), ("--voice",), ("--unknown",), ("--delete", "id")])
+def test_scripting_parse_errors_are_json(scripting, capsys, flags):
+    with pytest.raises(SystemExit) as exc:
+        run("speak", "hello", *flags, "--json")
+    assert exc.value.code == 1 and not scripting
+    assert json.loads(capsys.readouterr().out)["success"] is False
+
+
+@pytest.mark.parametrize("case", ["copy", "exists", "force", "symlink", "parent-link", "missing-parent", "sidecar-exists"])
+def test_speak_output(scripting, monkeypatch, tmp_path, capsys, case):
+    source, target = tmp_path / "cached.mp3", tmp_path / "out.mp3"
+    for ext in (".srt", ".vtt"):
+        source.with_suffix(ext).write_text("captions")
+    if case in {"exists", "force"}:
+        target.write_bytes(b"old")
+    elif case == "symlink":
+        target.symlink_to(source)
+    elif case == "parent-link":
+        link = tmp_path / "link"
+        link.symlink_to(tmp_path, target_is_directory=True)
+        target = link / "out.mp3"
+    elif case == "missing-parent":
+        target = tmp_path / "missing" / "out.mp3"
+    elif case == "sidecar-exists":
+        target.with_suffix(".srt").write_text("old captions")
+    failed = case not in {"copy", "force", "parent-link"}
+    replaced = []
+    def atomic(real):
+        def place(src, dest):
+            assert Path(src).parent == Path(dest).parent
+            replaced.append(dest)
+            real(src, dest)
+        return place
+    monkeypatch.setattr(cli.os, "replace", atomic(cli.os.replace))
+    monkeypatch.setattr(cli.os, "link", atomic(cli.os.link))
+    assert run("speak", "hello", "--timestamps", "--out", str(target), "--json",
+               *(["--force"] if case == "force" else [])) == int(failed)
+    result = json.loads(capsys.readouterr().out)
+    assert result["success"] is not failed and bool(scripting) is not failed
+    assert len(replaced) == (0 if failed else 3)
+    assert source.read_bytes() == b"ID3synthetic"
+    if not failed:
+        assert result["out_path"] == str(target) and target.read_bytes() == source.read_bytes()
+        assert all(target.with_suffix(ext).read_text() == "captions" for ext in (".srt", ".vtt"))
+
+
+def test_speak_does_not_record_media(config, monkeypatch, tmp_path, capsys):
+    from fish_audio import client, hooks, media, secrets, tool_support
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setattr(tool_support, "fish_api_key", lambda: "synthetic-key")
+    monkeypatch.setattr(secrets, "fish_api_key", lambda: "synthetic-key")
+    monkeypatch.setattr(media, "audio_output_dir", lambda: tmp_path)
+    monkeypatch.setattr(hooks, "_PENDING", {})
+    def synth(params, key, base, path, **kwargs):
+        Path(path).write_bytes(b"ID3synthetic")
+        print("a notice")
+    monkeypatch.setattr(client, "tts_to_file", synth)
+    assert run("speak", "hello", "--model", "s2.1-pro", "--format", "mp3", "--json") == 0
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["success"] and not hooks._PENDING
+    assert "a notice" in captured.err
 
 
 @pytest.fixture
@@ -344,3 +482,124 @@ def test_operator_terminal_errors_keep_their_links(config, status, link, capsys)
     output = capsys.readouterr().out
     assert link in output and "operator" not in output
     assert settings.operator_account() is True  # outside the terminal the setting applies again
+
+
+def hermes_nested(*argv):
+    # Hermes nests the plugin parser under its own top-level parser and calls parse_args there.
+    top = argparse.ArgumentParser(prog="hermes")
+    fish = top.add_subparsers(dest="command").add_parser("fish")
+    cli.setup(fish)
+    return cli.handle(top.parse_args(["fish", *argv]))
+
+
+@pytest.mark.parametrize("argv", [("speak", "Hello", "world"), ("speak", "hi", "--unknown"), ("balance", "extra")])
+def test_nested_leftover_arguments_are_json(scripting, capsys, argv):
+    with pytest.raises(SystemExit) as exc:
+        hermes_nested(*argv, "--json")
+    out = capsys.readouterr().out
+    assert exc.value.code == 1 and not scripting and len(out.splitlines()) == 1
+    result = json.loads(out)
+    assert result["success"] is False and "unrecognized arguments" in result["error"]
+
+
+def test_nested_json_success(scripting, capsys):
+    assert hermes_nested("balance", "--json") == 0 and json.loads(capsys.readouterr().out)["success"] is True
+
+
+@pytest.mark.parametrize("name", ["clip.srt", "clip.vtt", "clip.SRT"])
+@pytest.mark.parametrize("timestamps", [True, False])
+def test_subtitle_named_output_refused_before_billing(scripting, tmp_path, capsys, name, timestamps):
+    assert run("speak", "hi", *(["--timestamps"] if timestamps else []), "--out", str(tmp_path / name), "--json") == 1
+    assert not scripting and "audio file name" in json.loads(capsys.readouterr().out)["error"]
+
+
+def test_output_suffix_sets_format_and_mismatch_is_refused(scripting, tmp_path, capsys):
+    assert run("speak", "hi", "--out", str(tmp_path / "a.mp3"), "--json") == 0
+    assert scripting[-1][0]["format"] == "mp3"
+    capsys.readouterr()
+    calls = len(scripting)
+    assert run("speak", "hi", "--format", "ogg", "--out", str(tmp_path / "b.mp3"), "--json") == 1
+    assert len(scripting) == calls and "does not match" in json.loads(capsys.readouterr().out)["error"]
+
+
+def test_unwritable_output_folder_refused_before_billing(scripting, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(cli.os, "access", lambda path, mode: False)
+    assert run("speak", "hi", "--out", str(tmp_path / "a.mp3"), "--json") == 1
+    assert not scripting and "not writable" in json.loads(capsys.readouterr().out)["error"]
+
+
+def test_file_created_meanwhile_is_not_overwritten(scripting, tmp_path, monkeypatch, capsys):
+    target = tmp_path / "a.mp3"
+    real = cli._destination
+    def late(path, force):
+        real(path, force)
+        if path == target and scripting:  # the copy-time check passes, then another writer creates the file
+            target.write_bytes(b"theirs")
+    monkeypatch.setattr(cli, "_destination", late)
+    assert run("speak", "hi", "--out", str(target), "--json") == 1
+    result = json.loads(capsys.readouterr().out)
+    assert target.read_bytes() == b"theirs" and result["file_path"].endswith("cached.mp3")
+    assert "--out failed" in result["error"]
+    assert sorted(p.name for p in tmp_path.iterdir() if "fish-tmp" in p.name) == []
+
+
+def test_no_hard_links_falls_back_to_exclusive_create(scripting, tmp_path, monkeypatch, capsys):
+    def no_links(src, dest):
+        raise PermissionError("hard links not supported")
+    monkeypatch.setattr(cli.os, "link", no_links)
+    target = tmp_path / "a.mp3"
+    assert run("speak", "hi", "--out", str(target), "--json") == 0
+    assert target.read_bytes() == b"ID3synthetic" and json.loads(capsys.readouterr().out)["out_path"] == str(target)
+
+
+def test_failed_later_output_removes_the_files_this_run_placed(scripting, tmp_path, monkeypatch, capsys):
+    for ext in (".srt", ".vtt"):
+        (tmp_path / "cached").with_suffix(ext).write_text("captions")
+    target = tmp_path / "out.mp3"
+    real = cli._place_new
+    def fail_vtt(temp_path, dest):
+        if dest.suffix == ".vtt":
+            raise OSError("disk full")
+        real(temp_path, dest)
+    monkeypatch.setattr(cli, "_place_new", fail_vtt)
+    assert run("speak", "hi", "--timestamps", "--out", str(target), "--json") == 1
+    result = json.loads(capsys.readouterr().out)
+    assert "--out failed" in result["error"] and result["file_path"].endswith("cached.mp3")
+    assert not target.exists() and not target.with_suffix(".srt").exists()
+    assert not [p for p in tmp_path.iterdir() if "fish-tmp" in p.name]
+
+
+def test_rollback_never_deletes_a_file_another_writer_put_there(scripting, tmp_path, monkeypatch, capsys):
+    for ext in (".srt", ".vtt"):
+        (tmp_path / "cached").with_suffix(ext).write_text("captions")
+    target = tmp_path / "out.mp3"
+    real = cli._place_new
+    def swap_then_fail(temp_path, dest, identity):
+        if dest.suffix == ".vtt":
+            target.unlink()
+            target.write_bytes(b"theirs")  # another writer replaced our placed audio
+            raise OSError("disk full")
+        return real(temp_path, dest, identity)
+    monkeypatch.setattr(cli, "_place_new", swap_then_fail)
+    assert run("speak", "hi", "--timestamps", "--out", str(target), "--json") == 1
+    assert target.read_bytes() == b"theirs" and not target.with_suffix(".srt").exists()
+
+
+def test_interrupt_during_forced_replace_passes_through(scripting, tmp_path, monkeypatch):
+    target = tmp_path / "out.mp3"
+    target.write_bytes(b"old")
+    def interrupt(src, dest):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(cli.os, "replace", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        run("speak", "hi", "--out", str(target), "--force", "--json")
+    assert target.read_bytes() == b"old" and not [p for p in tmp_path.iterdir() if "fish-tmp" in p.name]
+
+
+def test_output_mode_follows_the_umask(scripting, tmp_path, capsys):
+    previous = os.umask(0o077)
+    try:
+        assert run("speak", "hi", "--out", str(tmp_path / "a.mp3"), "--json") == 0
+    finally:
+        os.umask(previous)
+    assert (tmp_path / "a.mp3").stat().st_mode & 0o777 == 0o600

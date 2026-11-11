@@ -113,6 +113,13 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `hermes fish login [--key-stdin] [--yes]` | Save and check a key, offer to switch providers |
 | `hermes fish status` · `hermes fish use <voice-id, name or own title>` | Status and voice choice from your terminal |
 | `hermes fish doctor [--no-synth]` | Check the setup with one billed synthesis, or without it |
+| `hermes fish speak [TEXT] [--text-file PATH / --stdin] [--out PATH] [--json]` | Billed speech; optional voice, model, format and timestamps; `--force` replaces output |
+| `hermes fish transcribe FILE [--model MODEL] [--language L] [--diarize] [--srt] [--json]` | Billed transcription and optional subtitles |
+| `hermes fish voices [QUERY] [--mine] [--page N] [--page-size N] [--json]` | Search voices or list your own |
+| `hermes fish balance [--json]` | Read API credit and plan |
+
+For scripts: `hermes fish speak "Hello" --format mp3 --out hello.mp3 --json`.
+The scripting commands never prompt; `--json` emits one object and exits 0 on success or 1 on failure.
 
 **Model tools** (toolset `fish_audio`; synthesis, transcription, cloning and design are billed)
 
