@@ -240,16 +240,18 @@ for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enter
 
 test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
   const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
-  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'left-renamed', 'duplicate']) {
-    let title = mode === 'left-renamed' ? 'Original (edit)' : 'Original', pending, dialog = false, shots = 0
+  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'slow-save', 'left-renamed', 'duplicate']) {
+    let title = mode === 'left-renamed' ? 'Original (edit)' : 'Original', pending, dialog = false, shots = 0, inflight = null
     const rows = [], saves = []
-    const page = { waitForFunction:async()=>{}, getByRole:(role, {name} = {}) => {
+    // A slow Save lands only when something waits on the page, like the real in-flight PATCH.
+    const page = { waitForFunction:async()=>{ if (inflight) await inflight }, getByRole:(role, {name} = {}) => {
       const locator = {
         first:()=>locator, count:async()=>mode === 'empty' ? 0 : 1, getAttribute:async()=>`Edit ${title}`,
         waitFor:async()=>{ if (mode.startsWith('refresh-fail') && name === 'Edit Original (edit)') throw Error('list did not refresh')
           if (role === 'dialog') assert.equal(dialog, false); else if (name !== 'Voice name') assert.equal(name, `Edit ${title}`) },
         fill:async value=>{ pending = value }, click:async()=>{
-          if (name === 'Save voice') { title = pending; saves.push(title); dialog = false }
+          if (name === 'Save voice' && mode === 'slow-save') inflight = new Promise(r => setTimeout(r, 5)).then(() => { title = pending; saves.push(title); dialog = false })
+          else if (name === 'Save voice') { title = pending; saves.push(title); dialog = false }
           else { assert.equal(name, `Edit ${title}`); dialog = true }
         }
       }; return locator

@@ -385,7 +385,7 @@ async function mineEditRow(s, theme) {
     if (matches.length !== 1) { row('B-MINE-EDIT', 'na', 'first own voice title is not unique on the first page', { theme }); return }
     const id = matches[0].id
     const edited = Array.from(original).slice(0, 93).join('') + ' (edit)'
-    let uiFailed = false, uiError = null
+    let uiFailed = false, uiError = null, saveClicked = false
     try {
       await s.page.getByRole('button', { name: `Edit ${original}`, exact: true }).click()
       const input = s.page.getByRole('textbox', { name: 'Voice name', exact: true })
@@ -393,11 +393,22 @@ async function mineEditRow(s, theme) {
       await s.page.waitForFunction(() => { const input = document.querySelector('[role="dialog"] input'); return input && !input.disabled })
       await input.fill(edited)
       evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'dialog')))
+      saveClicked = true
       await s.page.getByRole('button', { name: 'Save voice', exact: true }).click()
       await s.page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 15000 })
       await s.page.getByRole('button', { name: `Edit ${edited}`, exact: true }).waitFor({ state: 'visible', timeout: 15000 })
       evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'renamed')))
     } catch (e) { uiFailed = true; uiError = e }
+    // A Save still in flight could land after the restore and rename the voice again: wait until it settles (the
+    // dialog closes, or its Cancel button is enabled again), past the gateway request's 60 s limit.
+    let unsettled = false
+    if (uiFailed && saveClicked) {
+      await s.page.waitForFunction(() => {
+        const dialog = document.querySelector('[role="dialog"]')
+        const cancel = dialog && [...dialog.querySelectorAll('button')].find(b => b.textContent.trim() === 'Cancel')
+        return !dialog || (cancel && !cancel.disabled)
+      }, null, { timeout: 65000 }).catch(() => { unsettled = true })
+    }
     // Always restore by id through the gateway; a failed restore reports the UI error that came before it too.
     let restoreProblem = null
     try {
@@ -405,6 +416,7 @@ async function mineEditRow(s, theme) {
       const check = await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(id)}`)
       if (restored.body?.ok !== true || check.body?.voice?.title !== original) restoreProblem = `now "${check.body?.voice?.title}"`
     } catch (e) { restoreProblem = String(e?.message ?? e).split('\n')[0] }
+    if (!restoreProblem && unsettled) restoreProblem = 'the Save never settled, so it may still rename the voice; check it'
     if (restoreProblem) throw new Error(`title not restored for the first own voice (${restoreProblem})` +
       (uiFailed ? `; the edit failed first: ${String(uiError?.message ?? uiError).split('\n')[0]}` : ''))
     if (uiFailed) throw uiError instanceof Error ? uiError : new Error(String(uiError))
