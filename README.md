@@ -432,7 +432,9 @@ code first, and Hermes waits only 30 seconds for the sign-in unless you pass `--
 `hermes mcp login fish-audio` signs in again later.
 Ask for each piece of speech through one tool only.
 Fish's [official plugin](https://github.com/fishaudio/fish-audio-plugin) connects Claude Code, claude.ai, Codex and ChatGPT to its MCP server.
-[Fish Audio voice agents (phone agents)](https://docs.fish.audio/agents/overview) are not in this plugin.
+[Fish Audio voice agents](https://docs.fish.audio/agents/overview), including Live 3, Fish's full-duplex real-time
+voice model, run on Fish's agent platform (website widget, React SDK, WebRTC or a phone number) and are not in this plugin.
+Live dictation in Hermes uses Fish's realtime transcription model, `transcribe-stream-1`.
 
 ## Troubleshooting and reporting a bug
 
