@@ -56,6 +56,8 @@ per-call words in one call: publish those words into a version instead. Per-call
 references for that call (configured inline groups still merge), so the default rules do not apply to that call.
 `fish_pronunciations use` with `refs: []` clears profile defaults. Dictionary/version deletes require Hermes
 approval, and the latest version cannot be deleted. On a publish conflict, fetch the new version, merge and retry.
+On operator-managed agents, listing, publishing and deleting dictionaries are refused; inspecting known dictionaries
+and versions, creating dictionaries and selecting unmanaged profile defaults remain available.
 Native `.ogg` is the default voice reply; use `format: wav` for a file. Pass `timestamps: true` for word
 timings (`segments`) and subtitle files (`srt_path`, `vtt_path`).
 

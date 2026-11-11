@@ -81,16 +81,19 @@ def on_transform_llm_output(response_text="", session_id="", turn_id="", platfor
     return "\n".join(part for part in (response_text.rstrip(), tail) if part)
 
 
-def _approval_string(value):
+def _approval_string(value, limit=80):
     text = "".join(" " if unicodedata.category(char) in {"Cc", "Cf"} else char for char in str(value))
-    return " ".join(text.split())[:80]
+    return " ".join(text.split())[:limit]
 
 
 def on_pre_tool_call(tool_name="", args=None, **kwargs):
     try:
         if tool_name == "fish_pronunciations" and args.get("action") in {"delete", "delete_version"}:
-            dictionary = _approval_string(args.get("dictionary_id", ""))
-            version = _approval_string(args.get("version_id", "")) if args["action"] == "delete_version" else None
+            from . import settings  # Lazy: settings imports modules that import this one.
+            if settings.operator_account():
+                return None
+            dictionary = _approval_string(args.get("dictionary_id", ""), 128)
+            version = _approval_string(args.get("version_id", ""), 128) if args["action"] == "delete_version" else None
             target = f"dictionary {json.dumps(dictionary)}"
             if version is not None:
                 target += f" version {json.dumps(version)}"

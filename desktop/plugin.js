@@ -1088,7 +1088,7 @@ function Sections({ pin, operator }) {
       (res) => {
         if (mine !== generation.current) return;
         setState(res);
-        setSpeed(res.speed ?? 1);
+        setSpeed((value) => !state || value === (state.speed ?? 1) ? res.speed ?? 1 : value);
       },
       (failure) => mine === generation.current && setError(failure)
     );
@@ -1209,6 +1209,7 @@ function Sections({ pin, operator }) {
               min: 0.5,
               max: 2,
               step: 0.05,
+              "aria-valuetext": `${speed.toFixed(2)}\xD7`,
               disabled: managed("speed") || locked,
               value: speed,
               onChange: (e) => setSpeed(Number(e.target.value))

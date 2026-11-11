@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep unsaved reading-speed slider changes when adding or removing a saved voice name (#110).
+- Announce the reading-speed slider value as a multiplier to screen readers (#110).
+- Keep dictionary and version IDs up to 128 characters in deletion approvals and rule keys (#110).
+- Refuse account-wide pronunciation dictionary listing, publishing and deletion on operator-managed agents without prompting for approval (#110).
+
 ## 1.12.1 — 2026-11-10
 
 Documentation only; no behaviour changes.

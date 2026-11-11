@@ -197,6 +197,7 @@ describe('settings page writes', () => {
     expect([slider.min, slider.max, slider.step, slider.value, slider.tabIndex]).toEqual(['0.5', '2', '0.05', '1', 0])
     fireEvent.change(slider, { target: { value: '1.35' } })
     expect(screen.getByText('1.35×')).toBeTruthy()
+    expect(slider.getAttribute('aria-valuetext')).toBe('1.35×')
     expect(writes()).toEqual([])
     fireEvent.click(screen.getByRole('button', { name: en.settings.saveSpeed }))
     await flush()
@@ -207,6 +208,27 @@ describe('settings page writes', () => {
     expect(writes()[1]).toEqual({ path: '/settings', method: 'POST', body: { speed: null } })
     expect(slider.value).toBe('1')
     expect(screen.getByText('1.00×')).toBeTruthy()
+    expect(slider.getAttribute('aria-valuetext')).toBe('1.00×')
+  })
+
+  it.each([false, true])('alias reloads refresh saved speed while preserving an unsaved edit (%s)', async dirty => {
+    let server = { ...SETTINGS, speed: 1.1 }
+    const { writes } = mount(gateway(() => server, async () => ({ ok: true, aliases: server.aliases })))
+    await flush()
+    const slider = screen.getByRole('slider') as HTMLInputElement
+    expect(slider.value).toBe('1.1')
+    if (dirty) fireEvent.change(slider, { target: { value: '1.35' } })
+    server = { ...server, speed: 1.2 }
+    fireEvent.change(screen.getByLabelText(en.settings.name), { target: { value: 'host' } })
+    fireEvent.click(screen.getByRole('button', { name: en.settings.add }))
+    await flush()
+    expect(slider.value).toBe(dirty ? '1.35' : '1.2')
+    expect(slider.getAttribute('aria-valuetext')).toBe(dirty ? '1.35×' : '1.20×')
+    server = { ...server, speed: 1.4, aliases: [] }
+    fireEvent.click(screen.getByRole('button', { name: `${en.settings.remove} narrator` }))
+    await flush()
+    expect(slider.value).toBe(dirty ? '1.35' : '1.4')
+    expect(writes().every(c => c.path.startsWith('/aliases'))).toBe(true)
   })
 
   it('locks speed when managed and preserves it on a gateway refusal', async () => {

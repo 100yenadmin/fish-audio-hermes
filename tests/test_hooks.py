@@ -116,6 +116,20 @@ def test_clone_approval_survives_malformed_sample_paths(paths, count):
     assert result["action"] == "approve" and f"from {count} sample file(s)" in result["message"]
 
 
+@pytest.mark.parametrize("action", ["delete", "delete_version"])
+@pytest.mark.parametrize("length", [120, 128, 129])
+def test_dictionary_approval_preserves_ids_up_to_128(action, length):
+    dictionary, version = "d" * length, "v" * length
+    result = hooks.on_pre_tool_call("fish_pronunciations", {
+        "action": action, "dictionary_id": dictionary, "version_id": version})
+    target = f'dictionary {json.dumps(dictionary[:128])}'
+    rule = "fish-audio:pronunciations:delete:" + dictionary[:128]
+    if action == "delete_version":
+        target += f' version {json.dumps(version[:128])}'
+        rule += ":" + version[:128]
+    assert result == {"action": "approve", "message": "Fish Audio: delete pronunciation " + target, "rule_key": rule}
+
+
 def test_operator_approval_names_no_user_account_and_skips_refused_delete(monkeypatch):
     from fish_audio import settings
     monkeypatch.setattr(settings, "operator_account", lambda: True)
