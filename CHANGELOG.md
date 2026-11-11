@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## 1.13.0 — 2026-11-11
+
+For creators: auditions, voice notes or files, and long-form chapters.
+- **Voice auditions:** `fish_voices audition` plays up to four voices reading one short passage, with each billed
+  clip attached in chat; the voice-studio skill guides choosing and comparing candidates. Desktop Library and
+  My voices get a per-agent "Preview text" box (#93).
+- **Voice notes or files:** `fish_speak` accepts `delivery: voice` (OGG/MP3) or `delivery: file` (an audio file, any format); a reply that includes a file request is not turned into voice notes.
+  Omitting it preserves format-based delivery; WAV voice notes are refused before any Fish request (#95).
+- **Reply rules and scheduled briefings:** the expressive-speech skill explains Hermes memory/preferences rules,
+  and the README includes a morning spoken-briefing cron recipe with a named chat destination (#95).
+- **Long-form chapters:** a registered skill plans a manuscript, shows the cost estimate before synthesis,
+  saves chapter files and a manifest, resumes without redoing finished chapters, and redoes one chapter on request.
+  It explains the Story Studio handoff and its separate OAuth sign-in and app credits (#94).
+- **Complete word alignment:** `fish_speak` with `timestamps: true` writes all segments to an `.alignment.json`
+  sidecar and returns `alignment_path`; the tool result keeps its existing 500-segment cap (#94).
+- Refuse pronunciation dictionary listing, creating, publishing and deletion on operator-managed agents, where dictionaries belong to the operator's whole account (#110).
+- Keep unsaved reading-speed slider changes when adding or removing a saved voice name (#110).
+- Announce the reading-speed slider value as a multiplier to screen readers (#110).
+- Keep dictionary and version IDs up to 128 characters in deletion approvals and rule keys (#110).
+- README: Fish's Live 3 full-duplex voice agents run on Fish's agent platform, not in this plugin; live dictation uses
+  `transcribe-stream-1`.
+
 ## 1.12.1 — 2026-11-10
 
 Documentation only; no behaviour changes.

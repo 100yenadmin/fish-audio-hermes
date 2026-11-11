@@ -9,7 +9,9 @@ import time
 from uuid import uuid4
 
 from . import client, hooks, media, settings
-from .tool_support import require, integer, voice_id
+from .errors import FishAudioError
+from .secrets import redact
+from .tool_support import ToolInputError, require, integer, voice_id
 
 KINDS = {"mp3", "wav", "ogg", "webm", "flac", "mp4"}
 MIMES = {"mp3": "audio/mpeg", "wav": "audio/wav", "ogg": "audio/ogg",
@@ -111,6 +113,38 @@ def execute(args, key, base, session):
     action = args.get("action")
     # An operator's key can serve many agents: its own voices, edits and deletes span all of them.
     require(action not in {"mine", "update", "delete"} or not settings.operator_account(), ACCOUNT_VOICES)
+    if action == "audition":
+        from .tools import _speak  # Lazy: tools dispatches back to this module.
+        refs = args.get("voices")
+        require(isinstance(refs, list) and 1 <= len(refs) <= 4, "voices must contain 1–4 voice ids or saved names.")
+        resolved = [settings.resolve_voice(ref) for ref in refs]
+        require(all(ident is not None for ident in resolved), settings.UNKNOWN_VOICE)
+        require(len(set(resolved)) == len(resolved), "Choose distinct voices; two references resolve to the same voice.")
+        text = args.get("text", "Hi! This is how I sound.")
+        require(isinstance(text, str) and 1 <= len(text.strip()) <= 200, "text must be 1–200 characters after stripping whitespace.")
+        if "language" in args:
+            require(settings._valid("language", args["language"]),
+                    "language must be a BCP-47 tag such as en, es-MX or zh-CN: letters, digits, - and _, at most 35 characters.")
+        result = {"clips": [], "text": text.strip(), "billing": "fish-audio",
+                  "note": "Include each media_tag verbatim on its own line, labelled with the voice name, and add one short line of text."}
+        options = {name: args[name] for name in ("model", "language") if name in args}
+        for ident in resolved:
+            try:
+                clip = _speak({"text": result["text"], "voice": ident, **options}, key, base, session)
+            except (FishAudioError, media.InputFileError, ToolInputError) as exc:
+                if not result["clips"]:
+                    raise  # Nothing was made: a plain failure, mapped like any other action's.
+                result["failed"] = {"voice": ident, "error": redact(str(exc))}
+                break
+            except Exception:
+                if not result["clips"]:
+                    raise
+                result["failed"] = {"voice": ident, "error": "Fish Audio could not complete this call. Check the inputs and try again."}
+                break
+            if not result["clips"]:
+                result.update({name: clip[name] for name in ("model", "notice") if name in clip})
+            result["clips"].append({name: clip[name] for name in ("voice", "file_path", "media_tag")})
+        return result
     if action in {"search", "mine"}:
         page, size, sort = args.get("page", 1), args.get("page_size", 20), args.get("sort", "score")
         require(integer(page, 1) and integer(size, 1, 20), "page must be positive and page_size must be 1–20.")

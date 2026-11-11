@@ -312,7 +312,9 @@ async function libraryRows(s, theme, account) {
     const r = row('B-LIB-1', uses && chip ? 'pass' : 'fail', `Library lists ${uses} voices; credit chip ${chip ? chip[0] : 'missing'}`, { theme })
     r.metrics = { voices: uses, chip: chip && chip[0], chip_ms: chipMs }; r.evidence.push(await c.shot(s, shotPath('B-LIB-1', theme)))
   }
-  if (!uses) { for (const id of ['B-LIB-2', 'B-LIB-3']) if (want(id)) row(id, 'fail', 'Library listed no voices', { theme }) }
+  // B-LIB-5 tests 1.13.0 Desktop UI; evaOS loads the older Desktop half bundled in its app, so it runs on upstream only.
+  const lib5 = want('B-LIB-5') && H === 'upstream'
+  if (!uses) { for (const id of ['B-LIB-2', 'B-LIB-5', 'B-LIB-3']) if (want(id) && (id !== 'B-LIB-5' || lib5)) row(id, 'fail', 'Library listed no voices', { theme }) }
   if (want('B-LIB-2') && !args['no-billed'] && uses) {
     await s.page.evaluate(() => { window.__mediaLog && (window.__mediaLog.length = 0) })
     const before = await s.page.evaluate(() => (window.__audioLog || []).length)
@@ -332,6 +334,38 @@ async function libraryRows(s, theme, account) {
     const r = row('B-LIB-2', played && (played.duration > 0) ? 'pass' : 'fail', played ? `preview played via ${played.via}, ${played.duration?.toFixed?.(2)} s` : 'no audio within 15 s of Preview', { theme })
     r.metrics = played || {}; r.evidence.push(await c.shot(s, shotPath('B-LIB-2', theme)))
   } else if (want('B-LIB-2') && uses) row('B-LIB-2', 'skip', 'billed:cents rows disabled (--no-billed)', { theme })
+  if (lib5 && !args['no-billed'] && uses) {
+    // The Library's preview text: a typed ~140-character passage plays ~8 s; the default line plays ~3.5 s (B-LIB-2).
+    // A different voice from B-LIB-2's, so the window's preview cache cannot answer.
+    const passage = 'Chapter one. The rain had not stopped for three days, and the lighthouse keeper was beginning to wonder whether the boat would ever come.'
+    const field = s.page.getByLabel('Preview text', { exact: true })
+    let r
+    if (!(await field.count())) r = row('B-LIB-5', 'fail', 'no "Preview text" field on the Library tab', { theme })
+    else {
+      await field.fill(passage)
+      await s.page.evaluate(() => { window.__mediaLog && (window.__mediaLog.length = 0) })
+      const before = await s.page.evaluate(() => (window.__audioLog || []).length)
+      const buttons = s.page.locator('button').filter({ hasText: /^\s*Preview\s*$/ })
+      await buttons.nth((await buttons.count()) > 1 ? 1 : 0).click({ timeout: 10000 })
+      let played = null
+      for (let i = 0; i < 80 && !played; i++) {
+        await c.sleep(250)
+        played = await s.page.evaluate(n => {
+          const a = [...document.querySelectorAll('audio')].find(x => x.duration > 0 && (x.currentTime > 0 || !x.paused))
+          if (a) return { via: 'audio', duration: a.duration }
+          const l = (window.__audioLog || []).slice(n).filter(e => e.d > 0)
+          if (l.length) return { via: 'webaudio', duration: l.reduce((x, e) => x + e.d, 0) }
+          const m = (window.__mediaLog || []).find(e => e.d > 0)
+          return m ? { via: 'media.play', duration: m.d } : null
+        }, before)
+      }
+      const ok = played && played.duration >= 5
+      r = row('B-LIB-5', ok ? 'pass' : 'fail', played ? `typed ${passage.length}-character passage played via ${played.via}, ${played.duration.toFixed(2)} s (bar ≥5 s; the default line plays ~3.5 s)` : 'no audio within 20 s of Preview', { theme })
+      r.metrics = { ...(played || {}), passage_chars: passage.length }
+      r.evidence.push(await c.shot(s, shotPath('B-LIB-5', theme)))
+      await field.fill('')
+    }
+  } else if (lib5 && uses) row('B-LIB-5', 'skip', 'billed:cents rows disabled (--no-billed)', { theme })
   if (want('B-LIB-3') && uses) {
     const cfg = path.join(host.hermes_home, 'config.yaml')
     const idx = theme === 'dark' ? 1 : 0 // a different voice per theme, so the write is observable
@@ -390,7 +424,7 @@ async function main() {
     await guard(`palette ${theme}`, () => paletteRow(s, theme))
     await guard(`key entry ${theme}`, () => keyEntryRow(s, theme))
   }
-  const needReal = ['B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
+  const needReal = ['B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-LIB-5', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
   if (needReal) {
     let walletBefore = null
     try { hostctl('set-real-key'); await waitGateway(); await c.sleep(3000); meta.reload_after_key = await reloadRenderer(s) } catch (e) { row('B-LIB-1', 'fail', `could not place the real key: ${e.message}`); return finish(meta, s) }
@@ -401,7 +435,7 @@ async function main() {
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue
       await guard(`settings page ${theme}`, () => settingsPageRow(s, theme))
-      if (['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4'].some(want)) await guard(`library ${theme}`, () => libraryRows(s, theme, account))
+      if (['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-LIB-5'].some(want)) await guard(`library ${theme}`, () => libraryRows(s, theme, account))
     }
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue

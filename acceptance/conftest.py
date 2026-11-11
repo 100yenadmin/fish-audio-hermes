@@ -64,6 +64,18 @@ def save_output(path, text, token):
     path.write_text(text.replace(token, '[redacted]') if token else text)
 
 
+def pnpm_pin(tree):
+    """The pnpm version a Hermes tree pins in pm/lock.json (0.23.1+), or None for an npm-workspace tree."""
+    lock = Path(tree) / 'pm/lock.json'
+    if not lock.exists():
+        return None
+    for item in json.loads(lock.read_text()).get('packages', {}).get('pnpm', {}).get('artifacts', {}).get('darwin-arm64', []):
+        found = re.search(r'/pnpm-(\d+\.\d+\.\d+)\.tgz$', item.get('url', ''))
+        if found:
+            return found.group(1)
+    return None
+
+
 def node_bin():
     """Return the bin directory of the Node that builds Hermes's web UI and runs the Desktop driver.
 
@@ -134,7 +146,12 @@ def build(host, ref):
         node_dir = str(node_bin())
         jsenv = {**env, 'PATH': node_dir + os.pathsep + env['PATH'], 'npm_config_userconfig': os.devnull,
                  'npm_config_cache': str(CACHE / 'npm'), 'RAYON_NUM_THREADS': '4', 'CI': '1'}
-        call(['npm', 'ci', '--workspace', 'web', '--include-workspace-root', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=dest, env=jsenv, timeout=600)
+        pnpm = pnpm_pin(dest)
+        if pnpm:  # Hermes 0.23.1+ installs its JavaScript with the pnpm that pm/lock.json pins.
+            call([str(Path(node_dir) / 'npx'), '--yes', f'pnpm@{pnpm}', 'install', '--frozen-lockfile', '--filter', 'web...',
+                  '--ignore-scripts'], cwd=dest, env=jsenv, timeout=600)
+        else:
+            call(['npm', 'ci', '--workspace', 'web', '--include-workspace-root', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=dest, env=jsenv, timeout=600)
         call([str(Path(node_dir) / 'node'), 'scripts/build/web.mjs', '--source', dest, '--icons', dest,
               '--out', dest / 'hermes_cli/web_dist'], cwd=dest, env=jsenv, timeout=600)
     return repo, dest, sha

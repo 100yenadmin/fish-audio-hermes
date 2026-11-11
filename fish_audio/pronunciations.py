@@ -7,6 +7,7 @@ from .tool_support import integer, require
 
 ROOT = "/v1/pronunciation-dictionaries"
 CONFLICT = "Someone published a newer version; fetch it, merge, and publish again"
+ACCOUNT_DICTIONARIES = "Pronunciation dictionaries on this agent's account are managed by its operator."
 
 
 def _ident(value, name):
@@ -49,6 +50,8 @@ def execute(args, key, base, session):
     action = args.get("action")
     require(action in {"list", "get", "versions", "get_version", "create", "publish", "delete", "delete_version", "use"},
             "Unknown fish_pronunciations action.")
+    require(action not in {"list", "create", "publish", "delete", "delete_version"} or not settings.operator_account(),
+            ACCOUNT_DICTIONARIES)
     if action == "use":
         refs = args.get("refs")
         validate_refs(refs)

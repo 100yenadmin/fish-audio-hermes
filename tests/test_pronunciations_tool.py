@@ -187,8 +187,11 @@ def test_upper_limits():
 def test_delete_gate(operator, action, monkeypatch):
     monkeypatch.setattr(settings, "operator_account", lambda: operator)
     result = hooks.on_pre_tool_call("fish_pronunciations", {"action": action, "dictionary_id": "dictionary-1", "version_id": "version-0"})
-    assert result["action"] == "approve" and "dictionary-1" in result["message"]
-    assert ("version-0" in result["rule_key"]) is (action == "delete_version")
+    if operator:
+        assert result == {"action": "block", "message": pronunciations.ACCOUNT_DICTIONARIES}
+    else:
+        assert result["action"] == "approve" and "dictionary-1" in result["message"]
+        assert ("version-0" in result["rule_key"]) is (action == "delete_version")
     assert hooks.on_pre_tool_call("fish_pronunciations", {"action": "publish"}) is None
 
 
@@ -212,7 +215,9 @@ def test_delete_transport(action):
         assert route.call_count == 1
 
 
-def test_managed_defaults_refused(config, managed_layer):
+@pytest.mark.parametrize("operator", [False, True])
+def test_managed_defaults_refused(config, managed_layer, monkeypatch, operator):
+    monkeypatch.setattr(settings, "operator_account", lambda: operator)
     managed_layer({"tts": {"fish-audio": {"pronunciation_dictionary": REFS}}})
     with respx.mock as mock:
         result = call("use", refs=[])
@@ -225,16 +230,31 @@ def test_managed_install_refused(config):
     assert not call("use", refs=[])["success"] and not config[1]
 
 
-def test_operator_management_allowed(monkeypatch):
+@pytest.mark.parametrize("action", ["list", "create", "publish", "delete", "delete_version"])
+def test_operator_account_management_refused_without_http(monkeypatch, action):
     monkeypatch.setattr(settings, "operator_account", lambda: True)
     with respx.mock as mock:
-        mock.get(ROOT).respond(json={"dictionaries": [], "has_more": False})
+        assert call(action, dictionary_id="dictionary-1", version_id="version-0", rules=RULES) == {
+            "success": False, "error": pronunciations.ACCOUNT_DICTIONARIES}
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("operator", [False, True])
+def test_dictionary_description_explains_operator_limits(monkeypatch, fake_ctx, operator):
+    monkeypatch.setattr(settings, "operator_account", lambda: operator)
+    tools.register(fake_ctx)
+    tool = fake_ctx.tools["fish_pronunciations"]
+    assert "On operator-managed agents, listing, creating, publishing and deleting dictionaries are refused." in tool["description"]
+    assert tool["schema"]["description"] == tool["description"]
+
+
+def test_operator_kept_actions_allowed(monkeypatch):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    with respx.mock as mock:
         mock.get(ROOT + "/dictionary-1").respond(json={"id": "dictionary-1", "latest_version_id": None})
         mock.get(ROOT + "/dictionary-1/versions").respond(json={"versions": [], "has_more": False})
         mock.get(ROOT + "/dictionary-1/versions/version-1").respond(json={"items": RULES})
-        mock.post(ROOT).respond(201, json={"id": "dictionary-1"})
-        mock.post(ROOT + "/dictionary-1/versions").respond(201, json={"id": "version-1"})
-        for action, args in [("list", {}), ("get", {"dictionary_id": "dictionary-1"}),
-            ("versions", {"dictionary_id": "dictionary-1"}), ("create", {"name": "Company"}),
-            ("publish", {"dictionary_id": "dictionary-1", "rules": RULES}), ("use", {"refs": REFS})]:
+        for action, args in [("get", {"dictionary_id": "dictionary-1"}),
+            ("versions", {"dictionary_id": "dictionary-1"}),
+            ("get_version", {"dictionary_id": "dictionary-1", "version_id": "version-1"}), ("use", {"refs": REFS})]:
             assert call(action, **args)["success"]

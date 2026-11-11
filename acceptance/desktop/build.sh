@@ -29,7 +29,15 @@ if [ ! -f "$TREE/.acceptance-ready" ]; then
       git -C "$SRC" fetch --tags origin >&2 || true
     fi
     log "git archive $REF"; mkdir -p "$TREE"; git -C "$SRC" archive "$REF" | tar -x -C "$TREE"
-    log "npm ci (root)"; (cd "$TREE" && npm ci --no-audit --no-fund > "$BASE/npm-ci.log" 2>&1) || { log "npm ci failed, see $BASE/npm-ci.log"; exit 1; }
+    PNPM=""
+    if [ -f "$TREE/pm/lock.json" ]; then  # Hermes 0.23.1+ installs with the pnpm that pm/lock.json pins
+      PNPM=$(/usr/bin/python3 -c 'import json,re,sys;a=json.load(open(sys.argv[1])).get("packages",{}).get("pnpm",{}).get("artifacts",{}).get("darwin-arm64",[]);print(next((m.group(1) for i in a for m in [re.search(r"/pnpm-([0-9.]+)\.tgz$",i.get("url",""))] if m),""))' "$TREE/pm/lock.json")
+    fi
+    if [ -n "$PNPM" ]; then
+      log "pnpm $PNPM install (root)"; (cd "$TREE" && npx --yes "pnpm@$PNPM" install --frozen-lockfile > "$BASE/npm-ci.log" 2>&1) || { log "pnpm install failed, see $BASE/npm-ci.log"; exit 1; }
+    else
+      log "npm ci (root)"; (cd "$TREE" && npm ci --no-audit --no-fund > "$BASE/npm-ci.log" 2>&1) || { log "npm ci failed, see $BASE/npm-ci.log"; exit 1; }
+    fi
   fi
   touch "$TREE/.acceptance-ready"
 fi

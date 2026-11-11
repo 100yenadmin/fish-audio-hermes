@@ -1,5 +1,6 @@
 """Rich ASR preserves Fish speaker markers and can write local subtitles."""
 from bisect import bisect_left
+import json
 import math
 import re
 import unicodedata
@@ -123,6 +124,11 @@ def speech_timestamps(events, audio_path):
         base = Path(audio_path)
         result["srt_path"] = media.atomic_write(base.with_suffix(".srt"), [srt.encode("utf-8")])
         result["vtt_path"] = media.atomic_write(base.with_suffix(".vtt"), [_vtt(srt).encode("utf-8")])
+        alignment = json.dumps({"audio": base.name, "segments": segments}, ensure_ascii=False)
+        try:  # The subtitles above are already saved: a failed alignment file must not hide them.
+            result["alignment_path"] = media.atomic_write(base.with_suffix(".alignment.json"), [alignment.encode("utf-8")])
+        except OSError:
+            result["alignment_error"] = "The complete alignment file could not be saved; the segments above are still here."
     return result
 
 

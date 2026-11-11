@@ -118,8 +118,9 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 
 | Tool | What it does |
 |---|---|
-| `fish_speak` | Expressive or multi-speaker speech; with `timestamps: true`, word timings plus SRT and WebVTT subtitles |
+| `fish_speak` | Expressive or multi-speaker speech; with `timestamps: true`, word timings, complete alignment JSON, SRT and WebVTT subtitles |
 | `fish_voices` | Search, list and inspect voices; clone, design, save, update and delete them |
+| `fish_voices` · `audition` | Play up to 4 voices reading your own short passage (≤200 characters); each clip is a billed synthesis |
 | `fish_transcribe` | Rich transcription with speakers, timestamps and SRT |
 | `fish_settings` | Check or set this profile's Fish voice, model, reading speed and saved names; `set_speed` accepts `speed` 0.5–2.0 or `null` to reset; `get` returns `speed`; free |
 | `fish_account` | Balance/plan, dated model prices and offline cost estimates; free |
@@ -128,7 +129,7 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
 through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
-`fish-audio:fish-audio-voice-studio` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
+`fish-audio:fish-audio-voice-studio`, `fish-audio:fish-audio-long-form` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
 `gh` only after you approve the draft).
 
 To remember recurring company names, use `fish_pronunciations`: `create` with a `name`, then `publish`
@@ -145,6 +146,28 @@ A `fish_speak` call cannot pass both `dictionaries` and per-call `pronunciations
 words into a version, or leave out `dictionaries`. Per-call words replace configured references for that call (as
 before), and configured inline dictionaries still merge with per-call words.
 `delete` and `delete_version` use Hermes approval; the latest version cannot be deleted.
+
+## Spoken briefings on a schedule
+
+With Fish Audio enabled and set up in the scheduling profile, keep the Hermes gateway running and use
+Hermes 0.23.1's cron CLI. For a chat named **Morning Briefing** already known to Hermes's channel directory:
+
+```bash
+hermes cron create '0 8 * * *' \
+  'Write a short morning briefing with three priorities for today. Finish by calling fish_speak with the briefing text, delivery voice and format ogg. Include its media_tag verbatim and one short text line in your final reply.' \
+  --name 'Spoken morning briefing' --timezone Asia/Tokyo --deliver 'telegram:Morning Briefing'
+hermes cron list
+```
+
+This runs each morning at 08:00 in the chosen timezone. Replace the chat name with your known destination;
+an explicit `telegram:CHAT_ID` also works. `--deliver telegram` uses the configured Telegram home channel;
+`--deliver local` saves output locally without sending it. Each spoken run incurs Fish synthesis charges
+and uses Hermes's configured agent model. Use `delivery: file` to send an audio file instead of a voice note.
+Reply rules such as “voice only to voice notes” or “always include the text” belong in Hermes memory or preferences.
+Syntax and target resolution are documented in the Hermes 0.23.1 sources:
+[cron CLI](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/hermes_cli/subcommands/cron.py),
+[cron delivery](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/cron/scheduler_delivery.py) and
+[chat-name resolution](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/tools/send_message_targets.py).
 
 ## Hermes Desktop
 
@@ -331,7 +354,7 @@ the wallet that users can't see.
   `fish_settings` and `fish_account` have no Fish charge. Before a long or Drama 3 job, ask for `fish_account estimate`.
 - `fish_pronunciations` management calls are free. They send dictionary names, descriptions, rules and IDs to Fish.
   `use` saves verified version references in this profile's `tts.fish-audio.pronunciation_dictionary`; speech sends those references.
-  Dictionary operations are available in operator mode too, subject to the same config-write and delete approval gates.
+  Operator-managed agents refuse listing, creating, publishing and deleting dictionaries (they belong to the operator's whole account); reading a known dictionary or version and choosing unmanaged profile defaults remain available.
 - Fish Audio may use free-model requests to improve its models.
 - With live dictation on (`stt.streaming: true`), microphone audio streams to `api.fish.audio` while you speak,
   through native realtime (Preview), billed $0.36 per hour of open session, per second; `live_transcription: compat`
@@ -380,6 +403,13 @@ Measured on 2026-10-11 from Tokyo with plugin v1.3.2, N=3, p50: HTTP streaming t
 3.605 s on s2.1-pro and 2.209 s on s2-pro. On a clean synthetic speech corpus, transcribe-1-pro had English
 word error rate (WER) 1.8% and Japanese/Chinese character error rate (CER) 0. These numbers depend on region and load.
 
+### Long-form audio (chapters)
+
+Use the [long-form skill](skills/fish-audio-long-form/SKILL.md) to split a manuscript into chapter files,
+see the cost estimate before synthesis, and keep a manifest for resume or redoing one chapter.
+With `timestamps: true`, `fish_speak` returns `alignment_path`: a complete `.alignment.json` file next to
+the audio, even when the tool result is limited to 500 segments. The skill also explains the Story Studio handoff.
+
 ## Fish Audio's MCP server and this plugin
 
 This plugin is Hermes's speech provider and uses a developer API key, billed to Fish API credit.
@@ -402,7 +432,9 @@ code first, and Hermes waits only 30 seconds for the sign-in unless you pass `--
 `hermes mcp login fish-audio` signs in again later.
 Ask for each piece of speech through one tool only.
 Fish's [official plugin](https://github.com/fishaudio/fish-audio-plugin) connects Claude Code, claude.ai, Codex and ChatGPT to its MCP server.
-[Fish Audio voice agents (phone agents)](https://docs.fish.audio/agents/overview) are not in this plugin.
+[Fish Audio voice agents](https://docs.fish.audio/agents/overview), including Live 3, Fish's full-duplex real-time
+voice model, run on Fish's agent platform (website widget, React SDK, WebRTC or a phone number) and are not in this plugin.
+Live dictation in Hermes uses Fish's realtime transcription model, `transcribe-stream-1`.
 
 ## Troubleshooting and reporting a bug
 

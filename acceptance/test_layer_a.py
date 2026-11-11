@@ -466,6 +466,53 @@ def test_agent(paid, n, tool, request):
     evidence(request, paid, {'tool': tool, 'success': True, 'reply': reply})
 
 
+@pytest.mark.row('A-TOOL-DELIVERY')
+def test_delivery(paid, request):
+    code = '\n    '.join([
+        'import json, httpx; from tools.registry import registry',
+        'results = {}',
+        'for mode in ("voice", "file"):',
+        '    raw = registry.dispatch("fish_speak", {"text": "Good morning.", "format": "mp3", "delivery": mode})',
+        '    results[mode] = json.loads(raw) if isinstance(raw, str) else raw',
+        'calls = []; original = httpx.Client.send',
+        'def refuse_network(*args, **kwargs):',
+        '    calls.append(True); raise AssertionError("Unexpected Fish request")',
+        'httpx.Client.send = refuse_network',
+        'try:',
+        '    raw = registry.dispatch("fish_speak", {"text": "Good morning.", "format": "wav", "delivery": "voice"})',
+        '    results["refused"] = json.loads(raw) if isinstance(raw, str) else raw',
+        'finally:',
+        '    httpx.Client.send = original',
+        'results["refusal_calls"] = len(calls)',
+        'print("ACCEPTANCE_RESULT=" + json.dumps(results))'])
+    result = core(paid, code)
+    for mode, marker in [('voice', '[[audio_as_voice]]\n'), ('file', '')]:
+        item = result[mode]
+        assert item.get('success') is True and item['delivery'] == mode, scrub(item)
+        path = Path(item['file_path'])
+        assert path.is_file() and path.stat().st_size > 0 and path.suffix == '.mp3'
+        assert item['media_tag'] == f'{marker}MEDIA:{path}'
+    assert result['refused'] == {'success': False, 'error': 'Voice bubbles need ogg or mp3; use delivery file for wav.'}
+    assert result['refusal_calls'] == 0
+
+
+@pytest.mark.row('A-TTS-ALIGN')
+def test_tts_alignment(paid, request):
+    code = '\n    '.join([
+        'import json; from tools.registry import registry',
+        'result = registry.dispatch("fish_speak", {"text": "The sun is shining over the garden today. A little bird sings nearby as we walk slowly beneath the trees.", "timestamps": True, "format": "mp3"})',
+        'print("ACCEPTANCE_RESULT=" + (result if isinstance(result, str) else json.dumps(result)))'])
+    result = core(paid, code)
+    assert result.get('success') is True, scrub(result)
+    path = Path(result['alignment_path'])
+    assert path.is_file() and path == Path(result['file_path']).with_suffix('.alignment.json')
+    alignment = json.loads(path.read_text())
+    assert alignment['audio'] == Path(result['file_path']).name
+    assert 0 < len(alignment['segments']) == len(result['segments']) <= 500
+    assert alignment['segments'][0] == result['segments'][0]
+    evidence(request, paid, result)
+
+
 @pytest.mark.row('A-TOOL-4')
 def test_spoken_as(paid, request):
     code = '\n    '.join([
@@ -724,6 +771,27 @@ def test_live_stt_compat(paid, request):
         paced_live_stt(paid, request)
     finally:
         set_config(paid, saved)
+
+
+@pytest.mark.row('A-TOOL-AUDITION')
+def test_voice_audition(paid, request):
+    code = '\n    '.join([
+        'import json, sys; from pathlib import Path; from tools.registry import registry',
+        'call = lambda args: (lambda r: json.loads(r) if isinstance(r, str) else r)(registry.dispatch("fish_voices", args))',
+        'library = call({"action": "search", "query": "narrator", "page_size": 20})',
+        'assert library.get("success") is True, library',
+        'ids = list(dict.fromkeys(i["id"] for i in library["items"]))[:2]',
+        'assert len(ids) == 2, "search must return two distinct library voices"',
+        'out = call({"action": "audition", "voices": ids, "text": "Hear these voices read my words."})',
+        'assert out.get("success") is True and "failed" not in out, out',
+        'assert [c["voice"] for c in out["clips"]] == ids, out',
+        'assert len({c["media_tag"] for c in out["clips"]}) == 2',
+        'assert all(Path(c["file_path"]).suffix == ".ogg" and Path(c["file_path"]).read_bytes().startswith(b"OggS") for c in out["clips"])',
+        'recorded = {p for n, m in list(sys.modules.items()) if n.endswith("fish_audio.hooks") for p, _, _ in m.take("")}',
+        'assert all(c["file_path"] in recorded for c in out["clips"])',
+        'print("ACCEPTANCE_RESULT=" + json.dumps(out))'])
+    result = core(paid, code)
+    evidence(request, paid, result)
 
 
 @pytest.mark.row('A-VOICE-1')

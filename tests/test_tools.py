@@ -31,16 +31,23 @@ def call(handler, **args):
     return json.loads(handler(args, session_id="s1"))
 
 
-@pytest.mark.parametrize("fmt,wire,voice", [("ogg", "opus", True), ("mp3", "mp3", True), ("wav", "wav", False)])
-def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, voice):
+@pytest.mark.parametrize("fmt,wire,delivery", [(fmt, wire, delivery)
+    for fmt, wire in [("ogg", "opus"), ("mp3", "mp3"), ("wav", "wav")]
+    for delivery in [None, "voice", "file"] if (delivery, fmt) != ("voice", "wav")])
+def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, delivery):
+    assert tools.SCHEMAS["fish_speak"]["delivery"]["enum"] == ["voice", "file"]
+    args = {} if delivery is None else {"delivery": delivery}
+    mode = delivery or ("voice" if fmt != "wav" else None)
+    marker = "[[audio_as_voice]]\n" if mode == "voice" else ""
     with respx.mock(assert_all_called=True) as mock:
         route = mock.post(BASE + "/v1/tts").respond(content=b"synthetic audio")
-        result = call(tools.fish_speak, text="[excited] hello <|speaker:0|>", voice=VOICE, format=fmt)
+        result = call(tools.fish_speak, text="[excited] hello <|speaker:0|>", voice=VOICE, format=fmt, **args)
         assert result["success"], result
         path = Path(result["file_path"])
         assert path.parent == tmp_path and path.suffix == "." + fmt
         assert path.read_bytes() == b"synthetic audio"
-        assert result["media_tag"] == ("[[audio_as_voice]]\n" if voice else "") + f"MEDIA:{path}"
+        assert result["media_tag"] == marker + f"MEDIA:{path}"
+        assert result["delivery"] == (mode or "file")
         assert result["billing"] == "fish-audio"
         # A reply that is only the tag freezes a "MEDIA" fragment in streamed chats, so the note asks for a text line too.
         assert "one short line of text" in result["note"] and "on its own line" in result["note"]
@@ -48,7 +55,18 @@ def test_speak_media_tag_and_native_output(tmp_path, fmt, wire, voice):
         assert body["format"] == wire and body["reference_id"] == VOICE
         assert body["text"] == "[excited] hello <|speaker:0|>"
         assert hooks.take("other") == []
-        assert hooks.take("s1")[0][:2] == (str(path), voice)
+        assert hooks.on_transform_llm_output("Here you go.", "s1") == f"Here you go.\n{marker}MEDIA:{path}"
+
+
+@pytest.mark.parametrize("delivery", ["voice", "invalid", None, [], False])
+def test_speak_invalid_delivery_before_any_fish_call(monkeypatch, delivery):
+    monkeypatch.setattr(settings, "cached_wallet", lambda *args: pytest.fail("wallet lookup before refusal"))
+    with respx.mock(assert_all_called=False) as mock:
+        result = call(tools.fish_speak, text="hello", format="wav", delivery=delivery)
+        assert result == {"success": False, "error": (
+            "Voice bubbles need ogg or mp3; use delivery file for wav." if delivery == "voice"
+            else "delivery must be voice or file.")}
+        assert not mock.calls and hooks.take("s1") == []
 
 
 @pytest.mark.parametrize("speakers", [None, [VOICE, "b" * 32]])

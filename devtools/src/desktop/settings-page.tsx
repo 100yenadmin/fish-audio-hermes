@@ -164,7 +164,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
       res => {
         if (mine !== generation.current) return
         setState(res)
-        setSpeed(res.speed ?? 1.0)
+        setSpeed(value => !state || res.managed.includes('speed') || value === (state.speed ?? 1.0) ? (res.speed ?? 1.0) : value)
       },
       failure => mine === generation.current && setError(failure)
     )
@@ -308,6 +308,7 @@ function Sections({ pin, operator }: { pin: AgentPin; operator: boolean }) {
           action={
             <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <input aria-label={t('settings.readingSpeed')} type="range" min={0.5} max={2.0} step={0.05}
+                aria-valuetext={`${speed.toFixed(2)}×`}
                 disabled={managed('speed') || locked} value={speed}
                 onChange={e => setSpeed(Number(e.target.value))} />
               <output>{speed.toFixed(2)}×</output>

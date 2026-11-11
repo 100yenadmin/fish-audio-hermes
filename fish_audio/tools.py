@@ -9,12 +9,19 @@ from .tool_support import require, voice_id, run
 
 BILLING = " Calls are billed to the user's Fish Audio account."
 SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio emotion cues like [excited] "
-                     "or [whispering]. Voices accept saved names. For plain read-aloud use text_to_speech." + BILLING)
+                     "or [whispering]. Voices accept saved names. For plain read-aloud use text_to_speech. "
+                     "delivery voice sends a voice note, file an audio file; use one delivery per reply." + BILLING)
 
 
 def _speak(args, key, base, session, *, record_media=True):
     text = args.get("text")
     require(isinstance(text, str) and bool(text.strip()), "Nothing to say: the text is empty.")
+    fmt = args.get("format", "ogg")
+    require(fmt in {"ogg", "mp3", "wav"}, "format must be ogg, mp3 or wav.")
+    delivery = args.get("delivery", "voice" if fmt in {"ogg", "mp3"} else None)
+    require("delivery" not in args or delivery in ("voice", "file"), "delivery must be voice or file.")
+    require(delivery != "voice" or fmt in {"ogg", "mp3"},
+            "Voice bubbles need ogg or mp3; use delivery file for wav.")
     model, source = settings.resolve_model_source(args.get("model"), key=key, base_url=base, prefer_call=True)
     defaulted = source != "configured"
     model = models.effective_model(model)
@@ -35,8 +42,6 @@ def _speak(args, key, base, session, *, record_media=True):
         require(row["multi_speaker"], "Multi-speaker speech is supported by: " +
                 ", ".join(r["id"] for r in MODELS if r["multi_speaker"]))
         voice = speakers
-    fmt = args.get("format", "ogg")
-    require(fmt in {"ogg", "mp3", "wav"}, "format must be ogg, mp3 or wav.")
     if "speed" in args:
         speed = args["speed"]
         require(settings._number(speed) and 0.5 <= speed <= 2, "speed must be between 0.5 and 2.0.")
@@ -89,11 +94,11 @@ def _speak(args, key, base, session, *, record_media=True):
     require("timestamps" not in args or type(args["timestamps"]) is bool, "timestamps must be boolean.")
     events = [] if args.get("timestamps") else None
     client.tts_to_file(params, key, base, str(path), events=events)
-    as_voice = fmt in {"ogg", "mp3"}
-    tag = ("[[audio_as_voice]]\n" if as_voice else "") + f"MEDIA:{path}"
+    tag = (hooks.VOICE_MARKER + "\n" if delivery == "voice" else "") + f"MEDIA:{path}"
     if record_media:
-        hooks.record(session, path, as_voice)
+        hooks.record(session, path, delivery)
     result = {"file_path": str(path), "media_tag": tag, "model": model, "voice": voice, "billing": "fish-audio",
+              "delivery": delivery or "file",
               "note": ("Include media_tag verbatim on its own line so the user receives the audio, and add one short line "
                        "of text: a reply that is only media_tag can leave a stray \"MEDIA\" message in streaming chats.")}
     if source == "wallet" and settings.operator_account():
@@ -153,6 +158,7 @@ DICTIONARY_REFS = _field("array", maxItems=3, items=_field("object",
 SCHEMAS = {
     "fish_speak": {"text": S, "voice": VOICE_REF, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
+        "delivery": _field("string", enum=["voice", "file"], description="voice: a voice note (ogg/mp3); file: an audio file, not a voice note; omitted keeps format-based delivery. Use one delivery per reply."),
         "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
         "speed": _field("number", minimum=0.5, maximum=2), "timestamps": B,
@@ -161,7 +167,10 @@ SCHEMAS = {
                                  description="Phonetic forms: CMU Arpabet for English; drama-3 also accepts IPA."),
         "spoken_as": _field("object", additionalProperties=S, maxProperties=200,
                             description="Plain-text replacements (Fish alias rules), billed on the replaced text.")},
-    "fish_voices": {"action": _field("string", enum=["search", "mine", "get", "clone", "design", "save", "update", "delete"]),
+    "fish_voices": {"action": _field("string", enum=["search", "mine", "get", "audition", "clone", "design", "save", "update", "delete"]),
+        "voices": _field("array", items=VOICE_REF, minItems=1, maxItems=4),
+        "text": _field("string", minLength=1, maxLength=200, description="audition: short passage; defaults to Hi! This is how I sound."),
+        "model": _field("string", enum=[r["id"] for r in MODELS]),
         "query": S, "language": S, "tags": STRINGS, "sort": _field("string", enum=["score", "task_count", "created_at"]),
         "author_id": _field("string", pattern="^[A-Za-z0-9_-]{1,64}$"),
         "title_language": {"oneOf": [S, _field("array", items=S, minItems=1, maxItems=10)]}, "licensed": B,
@@ -202,11 +211,11 @@ SCHEMAS = {
         "asr_model": _field("string", enum=["transcribe-1-pro", "transcribe-1"])},
 }
 DESCRIPTIONS = {
-    "fish_pronunciations": "Manage reusable pronunciations: list/get dictionaries, versions/get_version rules, create, publish, delete/delete_version, or use refs as this profile's defaults ([] clears). Each published version holds the COMPLETE rule list, replacing previous rules. Delete actions require Hermes approval; the latest version cannot be deleted. Free: dictionary management has no Fish charge.",
+    "fish_pronunciations": "Manage reusable pronunciations: list/get dictionaries, versions/get_version rules, create, publish, delete/delete_version, or use refs as this profile's defaults ([] clears). Each published version holds the COMPLETE rule list, replacing previous rules. Delete actions require Hermes approval; the latest version cannot be deleted. On operator-managed agents, listing, creating, publishing and deleting dictionaries are refused. Free: dictionary management has no Fish charge.",
     "fish_settings": "Read or change this profile's Fish voice, model, reading speed and saved names, using the /fish rules. Results include setup: what is missing and the next step. Free: no Fish charge.",
     "fish_account": "Read balance/plan or dated model prices; estimate text or transcription cost before a long or Drama 3 job. Models and estimates are offline. Free: no Fish charge.",
     "fish_speak": SPEAK_DESCRIPTION,
-    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice." + BILLING,
+    "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice; audition plays up to 4 voices reading one short passage (≤200 characters); each clip is a billed synthesis." + BILLING,
     "fish_transcribe": "Transcribe local audio with speaker turns, emotion cues, timestamps and optional SRT." + BILLING}
 REQUIRED = {"fish_pronunciations": ["action"], "fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
 
