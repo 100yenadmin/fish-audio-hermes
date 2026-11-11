@@ -1,8 +1,14 @@
-"""hermes fish: local credential entry and bounded diagnostics."""
+"""hermes fish: profile setup, diagnostics and noninteractive scripting."""
+import argparse
 import getpass
+from contextlib import redirect_stdout
+from functools import partial
 from importlib import metadata
+import json
+import os
 from pathlib import Path
 import re
+import shutil
 import sys
 import tempfile
 import time
@@ -10,14 +16,25 @@ import time
 from . import account, commands, models, settings
 from .errors import FishAudioError, response_error
 from .secrets import fish_api_key, redact
-from .tool_support import require, ToolInputError
+from .tool_support import require, run, ToolInputError
 from .tts import FishAudioTTSProvider
 
 RESTART_HINT = "If a Hermes gateway or the desktop app is already running for this profile, restart it to pick up the new key."
 
 
 def setup(parser):
-    sub = parser.add_subparsers(dest="fish_command")
+    original_error = parser.error
+    def error(message):
+        if getattr(parser, "fish_json", False):
+            print(json.dumps({"success": False, "error": redact(message)}, ensure_ascii=False))
+            parser.exit(1)
+        original_error(message)
+    class ScriptParser(argparse.ArgumentParser):
+        def parse_known_args(self, args=None, namespace=None):
+            parser.fish_json = "--json" in (sys.argv[1:] if args is None else args)
+            return super().parse_known_args(args, namespace)
+    parser.error = error
+    sub = parser.add_subparsers(dest="fish_command", parser_class=ScriptParser)
     login = sub.add_parser("login", help="Save a Fish API key locally")
     login.add_argument("--key-stdin", action="store_true")
     login.add_argument("--yes", action="store_true")
@@ -26,7 +43,114 @@ def setup(parser):
     doctor.add_argument("--no-synth", action="store_true")
     use = sub.add_parser("use", help="Select a Fish voice")
     use.add_argument("voice_id")
+    speak = sub.add_parser("speak", help="Synthesize speech for scripts")
+    speak.add_argument("text", nargs="?")
+    for flag in ("text-file", "voice", "model", "out"):
+        speak.add_argument("--" + flag)
+    speak.add_argument("--format", choices=("mp3", "ogg", "wav"))
+    for flag in ("stdin", "timestamps", "force"):
+        speak.add_argument("--" + flag, action="store_true")
+    transcribe = sub.add_parser("transcribe", help="Transcribe an audio file")
+    transcribe.add_argument("file_path")
+    transcribe.add_argument("--model", choices=("transcribe-1-pro", "transcribe-1"))
+    transcribe.add_argument("--language")
+    transcribe.add_argument("--diarize", action="store_const", const="true")
+    transcribe.add_argument("--srt", action="store_true", default=None)
+    voices = sub.add_parser("voices", help="Search voices or list your own")
+    voices.add_argument("query", nargs="?")
+    voices.add_argument("--mine", action="store_true")
+    voices.add_argument("--page", type=int)
+    voices.add_argument("--page-size", type=int)
+    for command in (speak, transcribe, voices, sub.add_parser("balance", help="Show API credit and plan")):
+        command.error = error
+        command.add_argument("--json", action="store_true")
     parser.set_defaults(fish_parser=parser)
+
+
+def _destination(path, force):
+    # A symlinked folder (macOS /tmp) is fine: the copy lands by os.replace, never written through a link.
+    require(not path.is_symlink(), "Output path must not be a symlink.")
+    require(path.parent.is_dir(), "Output parent directory is missing.")
+    require(not path.exists() or force and path.is_file(), "Output exists; use --force to replace a file.")
+
+
+def _copy_output(result, target, force):
+    source = Path(result["file_path"])
+    require(source.resolve() != target.resolve(), "Output must differ from the cached audio path.")
+    pairs = [(source, target)] + [(source.with_suffix(ext), target.with_suffix(ext))
+                                for ext in (".srt", ".vtt") if source.with_suffix(ext).is_file()]
+    for _, dest in pairs:
+        _destination(dest, force)
+    require(len({dest for _, dest in pairs}) == len(pairs), "Audio and subtitle output paths must differ.")
+    for src, dest in pairs:
+        with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False) as temporary:
+            temp_path = Path(temporary.name)
+            try:
+                with src.open("rb") as audio:
+                    shutil.copyfileobj(audio, temporary)
+                temporary.close()
+                _destination(dest, force)
+                os.replace(temp_path, dest)
+            finally:
+                temp_path.unlink(missing_ok=True)
+    result["out_path"] = str(target)
+
+
+def _script(args):
+    from . import account_tool, tools, transcribe, voices
+    command = args.fish_command
+    try:
+        fields = {name: getattr(args, name) for name in
+                  {"speak": ("voice", "model", "format", "timestamps"),
+                   "transcribe": ("file_path", "model", "language", "diarize", "srt"),
+                   "voices": ("query", "page", "page_size"), "balance": ()}[command]
+                  if getattr(args, name) is not None}
+        if command == "speak":
+            require(sum((args.text is not None, args.text_file is not None, args.stdin)) == 1,
+                    "Provide exactly one text source: TEXT, --text-file or --stdin.")
+            fields["text"] = (Path(args.text_file).read_text(encoding="utf-8") if args.text_file is not None
+                              else sys.stdin.read() if args.stdin else args.text)
+            if args.out:
+                for ext in (None, ".srt", ".vtt") if args.timestamps else (None,):
+                    _destination(Path(args.out).with_suffix(ext) if ext else Path(args.out), args.force)
+        elif command in {"voices", "balance"}:
+            fields["action"] = ("mine" if args.mine else "search") if command == "voices" else "balance"
+        operation = {"speak": partial(tools._speak, record_media=False), "transcribe": transcribe.execute,
+                     "voices": voices.execute, "balance": account_tool.execute}[command]
+        with redirect_stdout(sys.stderr):
+            result = json.loads(run(operation, fields))
+        if result.get("success") and command == "speak" and args.out:
+            _copy_output(result, Path(args.out), args.force)
+    except Exception as exc:
+        result = {"success": False, "error": redact(str(exc))}
+    if "error" in result:
+        result["error"] = redact(str(result["error"]))
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False))
+    elif not result.get("success"):
+        print(result.get("error", "Fish Audio command failed."))
+    elif command == "speak":
+        print(result["file_path"])
+        if result.get("out_path"):
+            print(result["out_path"])
+        if result.get("duration") is not None:
+            print(f"Duration: {result['duration']} s")
+    elif command == "transcribe":
+        print(result["text"])
+        if result.get("srt_path"):
+            print(result["srt_path"])
+    elif command == "voices":
+        for item in result.get("items", []):
+            details = ", ".join((item.get("languages") or []) + (item.get("tags") or []))
+            print(f"{item.get('title')} — {item.get('id')}" + (f" ({details})" if details else ""))
+    else:
+        plan = result.get("plan", {})
+        print(f"API credit: {result.get('credit')}; cumulative top-up: {result.get('cumulative_top_up')}\n"
+              f"Plan: {plan.get('type', 'unknown')}; {plan.get('balance', '?')}/{plan.get('total', '?')}; renewal: {plan.get('finished_at', '?')}\n"
+              "App plan credits are separate from API credits.")
+    if not args.json and command in {"speak", "transcribe"}:
+        print("billed to your Fish API credit", file=sys.stderr)
+    return 0 if result.get("success") else 1
 
 
 def _login(args):
@@ -150,6 +274,8 @@ def handle(args):
 def _handle(args):
     try:
         command = args.fish_command
+        if command in {"speak", "transcribe", "voices", "balance"}:
+            return _script(args)
         if command == "login":
             return _login(args)
         if command == "doctor":

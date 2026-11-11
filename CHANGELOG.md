@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Scripting CLI:** `hermes fish speak`, `transcribe`, `voices` and `balance` support `--json`, with safe speech output copies and no terminal prompts (#96).
+
 ## 1.12.1 — 2026-11-10
 
 Documentation only; no behaviour changes.
