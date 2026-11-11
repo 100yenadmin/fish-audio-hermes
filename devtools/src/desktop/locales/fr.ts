@@ -54,7 +54,7 @@ export const fr = {
   billedNote: 'L’aperçu joue un court extrait et est facturé à votre compte Fish Audio.',
   previewText: 'Texte d\'aperçu',
   previewTextPlaceholder: 'Saisissez un passage à faire lire par chaque voix',
-  previewTextHint: (n: number) => `Facultatif, jusqu'à ${n} caractères. Chaque nouveau texte est un nouvel aperçu facturé ; vide, une courte phrase par défaut est lue.`,
+  previewTextHint: (n: number) => `Facultatif, jusqu'à ${n} caractères ; vide, une courte phrase par défaut est lue.`,
   preview: 'Écouter',
   stop: 'Arrêter',
   use: 'Utiliser',

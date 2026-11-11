@@ -54,7 +54,7 @@ export const zhHant = {
   billedNote: '試聽會播放一小段範例，費用計入您的 Fish Audio 帳戶。',
   previewText: '試聽文字',
   previewTextPlaceholder: '輸入一段文字，聽每個聲音朗讀',
-  previewTextHint: (n: number) => `選填，最多 ${n} 個字元。每段新文字都是一次新的計費試聽；留空則播放一句簡短的預設語句。`,
+  previewTextHint: (n: number) => `選填，最多 ${n} 個字元；留空則播放一句簡短的預設語句。`,
   preview: '試聽',
   stop: '停止',
   use: '使用',

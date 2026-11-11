@@ -54,7 +54,7 @@ export const es = {
   billedNote: 'La vista previa reproduce una muestra breve y se factura a tu cuenta de Fish Audio.',
   previewText: 'Texto de muestra',
   previewTextPlaceholder: 'Escribe un texto para oír cómo lo lee cada voz',
-  previewTextHint: (n: number) => `Opcional, hasta ${n} caracteres. Cada texto nuevo es una nueva muestra facturada; vacío reproduce una frase breve predeterminada.`,
+  previewTextHint: (n: number) => `Opcional, hasta ${n} caracteres; vacío reproduce una frase breve predeterminada.`,
   preview: 'Vista previa',
   stop: 'Detener',
   use: 'Usar',

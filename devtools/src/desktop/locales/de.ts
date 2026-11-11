@@ -54,7 +54,7 @@ export const de = {
   billedNote: 'Die Vorschau spielt eine kurze Hörprobe ab und wird Ihrem Fish Audio-Konto berechnet.',
   previewText: 'Vorschautext',
   previewTextPlaceholder: 'Text eingeben, den jede Stimme vorlesen soll',
-  previewTextHint: (n: number) => `Optional, bis zu ${n} Zeichen. Jeder neue Text ist eine neue, kostenpflichtige Vorschau; leer spielt einen kurzen Standardsatz.`,
+  previewTextHint: (n: number) => `Optional, bis zu ${n} Zeichen; leer spielt einen kurzen Standardsatz.`,
   preview: 'Vorschau',
   stop: 'Stoppen',
   use: 'Verwenden',

@@ -56,7 +56,7 @@ export const en = {
   billedNote: 'Preview plays a short sample and is billed to your Fish Audio account.',
   previewText: 'Preview text',
   previewTextPlaceholder: 'Type a passage to hear each voice read it',
-  previewTextHint: (n: number) => `Optional, up to ${n} characters. Each new text is a new billed preview; empty plays a short default line.`,
+  previewTextHint: (n: number) => `Optional, up to ${n} characters; empty plays a short default line.`,
   preview: 'Preview',
   stop: 'Stop',
   use: 'Use',

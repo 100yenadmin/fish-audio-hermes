@@ -333,7 +333,7 @@ async function libraryRows(s, theme, account) {
     r.metrics = played || {}; r.evidence.push(await c.shot(s, shotPath('B-LIB-2', theme)))
   } else if (want('B-LIB-2') && uses) row('B-LIB-2', 'skip', 'billed:cents rows disabled (--no-billed)', { theme })
   if (want('B-LIB-5') && !args['no-billed'] && uses) {
-    // The Library's preview text: a typed ~150-character passage plays for seconds; the default line is ~1.5 s (B-LIB-2).
+    // The Library's preview text: a typed ~140-character passage plays ~8 s; the default line plays ~3.5 s (B-LIB-2).
     // A different voice from B-LIB-2's, so the window's preview cache cannot answer.
     const passage = 'Chapter one. The rain had not stopped for three days, and the lighthouse keeper was beginning to wonder whether the boat would ever come.'
     const field = s.page.getByLabel('Preview text', { exact: true })
@@ -358,7 +358,7 @@ async function libraryRows(s, theme, account) {
         }, before)
       }
       const ok = played && played.duration >= 5
-      r = row('B-LIB-5', ok ? 'pass' : 'fail', played ? `typed ${passage.length}-character passage played via ${played.via}, ${played.duration.toFixed(2)} s (bar ≥5 s; the default line is ~1.5 s)` : 'no audio within 20 s of Preview', { theme })
+      r = row('B-LIB-5', ok ? 'pass' : 'fail', played ? `typed ${passage.length}-character passage played via ${played.via}, ${played.duration.toFixed(2)} s (bar ≥5 s; the default line plays ~3.5 s)` : 'no audio within 20 s of Preview', { theme })
       r.metrics = { ...(played || {}), passage_chars: passage.length }
       r.evidence.push(await c.shot(s, shotPath('B-LIB-5', theme)))
       await field.fill('')
