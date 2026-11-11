@@ -240,7 +240,7 @@ for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enter
 
 test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
   const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
-  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'left-renamed', 'duplicate']) {
+  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'left-renamed', 'duplicate']) {
     let title = mode === 'left-renamed' ? 'Original (edit)' : 'Original', pending, dialog = false, shots = 0
     const rows = [], saves = []
     const page = { waitForFunction:async()=>{}, getByRole:(role, {name} = {}) => {
@@ -260,6 +260,7 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
         if (path.includes('?self=true')) return { body: { items: mode === 'duplicate' ? [{ id: 'v1', title }, { id: 'v2', title }] : [{ id: 'v1', title }] } }
         if (init.method === 'PATCH') {
           if (mode.endsWith('restore-refused') && saves.length) return { body: { ok: false, code: 'not_owner' } }
+          if (mode === 'restore-throws' && saves.length) throw Error('gateway unreachable')
           title = JSON.parse(init.body).title; saves.push(title); return { body: { ok: true } }
         }
         return { body: { voice: { id: 'v1', title } } }
@@ -268,12 +269,14 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
       row:(id,status,reason)=>rows.push({id,status,reason})
     })
     const untouched = ['empty', 'left-renamed', 'duplicate'].includes(mode)
-    const stuck = mode === 'left-renamed' || mode.endsWith('restore-refused')
+    const stuck = mode === 'left-renamed' || mode.endsWith('restore-refused') || mode === 'restore-throws'
     assert.equal(title, stuck ? 'Original (edit)' : 'Original')
-    assert.deepEqual(saves, untouched ? [] : mode.endsWith('restore-refused') ? ['Original (edit)'] : ['Original (edit)', 'Original'])
+    assert.deepEqual(saves, untouched ? [] : mode.endsWith('restore-refused') || mode === 'restore-throws' ? ['Original (edit)'] : ['Original (edit)', 'Original'])
     assert.equal(rows[0].status, ['empty', 'duplicate'].includes(mode) ? 'na' : mode === 'success' ? 'pass' : 'fail')
     if (mode.endsWith('restore-refused')) assert.match(rows[0].reason, /title not restored .*now "Original \(edit\)"/)
     if (mode === 'refresh-fail+restore-refused') assert.match(rows[0].reason, /the edit failed first: list did not refresh/)
+    if (mode === 'restore-throws') assert.match(rows[0].reason, /title not restored .*\(gateway unreachable\)/)
+    assert.equal(rows.length, 1)
     if (mode === 'left-renamed') assert.match(rows[0].reason, /left renamed by an earlier run/)
   }
   const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-MINE-EDIT')

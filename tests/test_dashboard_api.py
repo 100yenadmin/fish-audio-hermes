@@ -475,7 +475,8 @@ def test_design_returns_audio_and_tokens_but_never_the_signature(env):
         assert base64.b64decode(first["audio"]) == WAV and first["billed"] is True and first["duration_ms"] == 1200
         assert list((env.active().home / "audio").iterdir()) == []
         save = mock.post(base + "/model").respond(json={"_id": OTHER, "title": "Warm", "source": "design"})
-        assert env.post("/design/save", design_token=first["design_token"], title="Warm")["voice"] == {"id": OTHER, "title": "Warm"}
+        saved = env.post("/design/save", design_token=first["design_token"], title="Warm")
+        assert saved == {"ok": True, "voice": {"id": OTHER, "title": "Warm"}}  # no saved name outside operator mode
         assert b"server-signature-xyz" in save.calls.last.request.content and WAV in save.calls.last.request.content
         refused(env.post("/design/save", design_token=first["design_token"], title="Again"), "invalid")
 
@@ -514,6 +515,17 @@ def test_clone_happy_path_uploads_in_chunks_and_cleans_up(env):
     assert sample in content and WAV in content and b'name="visibility"\r\n\r\nprivate' in content
     assert f'{files[0]["upload_id"]}.mp3'.encode() in content
     assert uploads(env) == []
+
+
+@pytest.mark.parametrize("extra", [{"saved_name": "me"}, {"saved_name_note": "Saved names are managed; the operator can add one."}, {}])
+def test_design_save_passes_on_the_operator_saved_name(env, monkeypatch, extra):
+    voices = env.api._fa("voices")
+    candidate = {"index": 0, "text": "t", "signature": "sig", "audio_base64": base64.b64encode(WAV).decode(), "duration_ms": 10}
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(env.active().base + "/v1/voice-design").respond(json={"candidates": [candidate]})
+        token = env.post("/design", instruction="warm", n=1)["candidates"][0]["design_token"]
+    monkeypatch.setattr(voices, "execute", lambda *a: {"id": OTHER, "title": "Warm", "source": "design", **extra})
+    assert env.post("/design/save", design_token=token, title="Warm") == {"ok": True, "voice": {"id": OTHER, "title": "Warm"}, **extra}
 
 
 @pytest.mark.parametrize("extra", [{"saved_name": "me"}, {"saved_name_note": "Saved names are managed; the operator can add one."}, {}])
