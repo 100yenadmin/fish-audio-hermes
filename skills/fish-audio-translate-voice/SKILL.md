@@ -8,10 +8,10 @@ voice-over in the new language: its timing follows the translated text, not the 
 voice-over, never a synchronized dub. Never ask for an API key in chat (use the setup skill).
 
 Transcription and speech are billed. When a Fish result says the operator manages this agent's account, estimates
-show bytes and no price: show those, say the operator handles billing, and never say the user's account pays.
+show billable units (bytes or audio seconds) and no price: show those, say the operator handles billing, and never say the user's account pays.
 
-1. **Ask before transcribing.** Say transcription is billed by audio length; for a long clip, `fish_account`
-   `action: "estimate"` with `audio_seconds` gives the price (free). Files over 50 MB are refused. Go on only after
+1. **Ask before transcribing.** Say transcription is billed by audio length; when the clip length is known,
+   `fish_account` `action: "estimate"` with `audio_seconds` gives the price (free). Files over 50 MB are refused. Go on only after
    the user agrees, unless they already asked you to go ahead.
 2. **Transcribe with speakers.** Call `fish_transcribe` with `file_path`, `diarize: "true"` and, when the user knows
    it, `num_speakers`. Keep `speaker_turns`: each has `speaker` (`speaker:0`, `speaker:1`, …), `text`, `start` and
