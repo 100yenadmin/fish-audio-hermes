@@ -240,13 +240,14 @@ for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enter
 
 test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
   const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
-  for (const mode of ['success', 'empty', 'shot-error']) {
+  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail']) {
     let title = 'Original', pending, dialog = false
     const rows = [], saves = []
     const page = { waitForFunction:async()=>{}, getByRole:(role, {name} = {}) => {
       const locator = {
         first:()=>locator, count:async()=>mode === 'empty' ? 0 : 1, getAttribute:async()=>`Edit ${title}`,
-        waitFor:async()=>{ if (role === 'dialog') assert.equal(dialog, false); else if (name !== 'Voice name') assert.equal(name, `Edit ${title}`) },
+        waitFor:async()=>{ if (mode === 'refresh-fail' && name === 'Edit Original (edit)') throw Error('list did not refresh')
+          if (role === 'dialog') assert.equal(dialog, false); else if (name !== 'Voice name') assert.equal(name, `Edit ${title}`) },
         fill:async value=>{ pending = value }, click:async()=>{
           if (name === 'Save voice') { title = pending; saves.push(title); dialog = false }
           else { assert.equal(name, `Edit ${title}`); dialog = true }
@@ -254,12 +255,17 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
       }; return locator
     } }
     await vm.runInNewContext(`${run.slice(start,end)}\nmineEditRow(s, 'light')`, {
-      s:{page}, H:'upstream', want:()=>true, openVoices:async()=>{}, shotPath:()=>'',
+      s:{page}, H:'upstream', want:()=>true, openVoices:async()=>{}, shotPath:()=>'', encodeURIComponent, JSON,
+      gw:async(path, init = {}) => {
+        if (path.includes('?self=true')) return { body: { items: [{ id: 'v1', title }] } }
+        if (init.method === 'PATCH') { title = JSON.parse(init.body).title; saves.push(title); return { body: { ok: true } } }
+        return { body: { voice: { id: 'v1', title } } }
+      },
       c:{clickText:async()=>{}, shot:async()=>{ if (mode === 'shot-error') throw Error('capture failed'); return 'shot' }},
       row:(id,status,reason)=>rows.push({id,status,reason})
     })
     assert.equal(title, 'Original'); assert.deepEqual(saves, mode === 'empty' ? [] : ['Original (edit)', 'Original'])
-    assert.equal(rows[0].status, mode === 'empty' ? 'na' : mode === 'shot-error' ? 'fail' : 'pass')
+    assert.equal(rows[0].status, mode === 'empty' ? 'na' : mode === 'success' ? 'pass' : 'fail')
   }
   const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-MINE-EDIT')
   assert.equal(spec.min_plugin, '1.14.0'); assert.equal(spec.layer, 'b'); assert.equal(spec.billed, 'none')

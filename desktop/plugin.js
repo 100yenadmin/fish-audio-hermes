@@ -916,13 +916,13 @@ function MyVoices({ pin }) {
     voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !voices.data ? /* @__PURE__ */ jsx3(Rows, { n: 3 }) : voices.data.items.length === 0 ? /* @__PURE__ */ jsx3(EmptyState, { description: t("mineEmptyHint"), title: t("mineEmpty") }) : /* @__PURE__ */ jsx3(VoiceList, { onDelete: setTarget, onEdit: setEditing, pin, voices: voices.data.items }),
     /* @__PURE__ */ jsx3(Pager, { more: hasMore(voices.data?.items.length, page, voices.data?.total), page, setPage }),
     /* @__PURE__ */ jsx3(DeleteDialog, { pin, onClose: () => setTarget(null), onDeleted: () => void client.invalidateQueries({ queryKey }), voice: target }),
-    editing && /* @__PURE__ */ jsx3(EditDialog, { pin, voice: editing, onClose: () => setEditing(null), onUpdated: () => void client.invalidateQueries({ queryKey }) }, editing.id)
+    editing && /* @__PURE__ */ jsx3(EditDialog, { pin, voice: editing, onClose: () => setEditing(null), onUpdated: () => void client.invalidateQueries({ queryKey: ["fish-audio", agentKey(pin)] }) }, editing.id)
   ] });
 }
 function EditDialog({ pin, voice, onClose, onUpdated }) {
   const t = usePluginI18n4(PLUGIN_ID);
   const [original, setOriginal] = useState2(voice);
-  const [title, setTitle] = useState2(voice.title);
+  const [title, setTitle] = useState2(voice.title ?? "");
   const [description, setDescription] = useState2("");
   const [loading, setLoading] = useState2(true);
   const [loaded, setLoaded] = useState2(false);
@@ -933,7 +933,7 @@ function EditDialog({ pin, voice, onClose, onUpdated }) {
     void readFor(pin, `/voices/${encodeURIComponent(voice.id)}`).then((res) => {
       if (!active) return;
       setOriginal(res.voice);
-      setTitle(res.voice.title);
+      setTitle(res.voice.title ?? "");
       setDescription(res.voice.description ?? "");
       setLoaded(true);
     }).catch((error2) => {
@@ -946,10 +946,11 @@ function EditDialog({ pin, voice, onClose, onUpdated }) {
     };
   }, [pin.connectionId, pin.profile, voice.id]);
   const fields = {
-    ...title.trim() !== original.title ? { title: title.trim() } : {},
+    ...title.trim() !== (original.title ?? "").trim() ? { title: title.trim() } : {},
     ...loaded && description !== (original.description ?? "") ? { description } : {}
   };
-  const disabled = loading || busy || !title.trim() || !Object.keys(fields).length;
+  const tooLong = "description" in fields && [...description].length > LIMITS.description;
+  const disabled = loading || busy || !title.trim() || tooLong || !Object.keys(fields).length;
   const save = async () => {
     if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: pluginCtx().i18n.t("agentChangedNothingSent") });
     if (disabled) return;
@@ -975,12 +976,19 @@ function EditDialog({ pin, voice, onClose, onUpdated }) {
     error !== null && /* @__PURE__ */ jsx3("p", { role: "alert", children: errorText(error) }),
     /* @__PURE__ */ jsxs3("label", { style: { display: "grid", fontSize: 12, gap: 6 }, children: [
       t("voiceTitle"),
-      /* @__PURE__ */ jsx3(Input2, { required: true, disabled: loading || busy, value: title, onChange: (e) => setTitle(clamp(e.target.value, LIMITS.title)) })
+      /* @__PURE__ */ jsx3(Input2, { required: true, disabled: loading || busy, value: title, onChange: (e) => {
+        setError(null);
+        setTitle(clamp(e.target.value, LIMITS.title));
+      } })
     ] }),
     /* @__PURE__ */ jsxs3("label", { style: { display: "grid", fontSize: 12, gap: 6 }, children: [
       t("descriptionOptional"),
-      /* @__PURE__ */ jsx3(Textarea2, { disabled: !loaded || busy, value: description, onChange: (e) => setDescription(clamp(e.target.value, LIMITS.description)) })
+      /* @__PURE__ */ jsx3(Textarea2, { disabled: !loaded || busy, value: description, onChange: (e) => {
+        setError(null);
+        setDescription(e.target.value);
+      } })
     ] }),
+    tooLong && /* @__PURE__ */ jsx3("p", { role: "alert", style: { color: "var(--ui-orange)", fontSize: 12, margin: 0 }, children: t("descriptionTooLong", LIMITS.description) }),
     /* @__PURE__ */ jsxs3(DialogFooter, { children: [
       /* @__PURE__ */ jsx3(Button3, { disabled: busy, onClick: onClose, variant: "ghost", children: t("cancel") }),
       /* @__PURE__ */ jsx3(Button3, { disabled, loading: busy, onClick: () => void save(), children: t("save") })
@@ -1497,6 +1505,7 @@ var en = {
   editVoice: (title) => `Edit ${title}`,
   editTitle: (title) => `Edit "${title}"`,
   voiceUpdated: (title) => `Updated ${title}`,
+  descriptionTooLong: (n) => `Shorten the description to ${n} characters to save.`,
   deleteTitle: (title) => `Delete "${title}"?`,
   deleteBody: "This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.",
   deleteConfirmLabel: (title) => `Type "${title}" to confirm`,
@@ -1702,6 +1711,7 @@ var zh = {
   editVoice: (title) => `\u7F16\u8F91${title}`,
   editTitle: (title) => `\u7F16\u8F91\u201C${title}\u201D`,
   voiceUpdated: (title) => `\u5DF2\u66F4\u65B0${title}`,
+  descriptionTooLong: (n) => `\u8BF7\u5C06\u8BF4\u660E\u7F29\u77ED\u5230 ${n} \u4E2A\u5B57\u7B26\u4EE5\u5185\u518D\u4FDD\u5B58\u3002`,
   deleteTitle: (title) => `\u5220\u9664\u201C${title}\u201D\uFF1F`,
   deleteBody: "\u8FD9\u5C06\u4ECE\u4F60\u7684 Fish Audio \u8D26\u6237\u4E2D\u79FB\u9664\u6B64\u58F0\u97F3\u3002\u4F7F\u7528\u6B64\u58F0\u97F3\u7684\u667A\u80FD\u4F53\u9700\u8981\u91CD\u65B0\u9009\u62E9\u5176\u4ED6\u58F0\u97F3\u3002",
   deleteConfirmLabel: (title) => `\u8F93\u5165\u201C${title}\u201D\u4EE5\u786E\u8BA4`,
@@ -1905,6 +1915,7 @@ var zhHant = {
   editVoice: (title) => `\u7DE8\u8F2F${title}`,
   editTitle: (title) => `\u7DE8\u8F2F\u300C${title}\u300D`,
   voiceUpdated: (title) => `\u5DF2\u66F4\u65B0${title}`,
+  descriptionTooLong: (n) => `\u8ACB\u5C07\u8AAA\u660E\u7E2E\u77ED\u81F3 ${n} \u500B\u5B57\u5143\u4EE5\u5167\u518D\u5132\u5B58\u3002`,
   deleteTitle: (title) => `\u522A\u9664\u300C${title}\u300D\uFF1F`,
   deleteBody: "\u9019\u5C07\u5F9E\u60A8\u7684 Fish Audio \u5E33\u6236\u4E2D\u79FB\u9664\u6B64\u8072\u97F3\u3002\u4F7F\u7528\u6B64\u8072\u97F3\u7684\u4EE3\u7406\u9700\u8981\u91CD\u65B0\u9078\u64C7\u5176\u4ED6\u8072\u97F3\u3002",
   deleteConfirmLabel: (title) => `\u8F38\u5165\u300C${title}\u300D\u4EE5\u78BA\u8A8D`,
@@ -2108,6 +2119,7 @@ var ja = {
   editVoice: (title) => `${title}\u3092\u7DE8\u96C6`,
   editTitle: (title) => `\u300C${title}\u300D\u3092\u7DE8\u96C6`,
   voiceUpdated: (title) => `${title}\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F`,
+  descriptionTooLong: (n) => `\u4FDD\u5B58\u3059\u308B\u306B\u306F\u8AAC\u660E\u3092 ${n} \u6587\u5B57\u4EE5\u5185\u306B\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
   deleteTitle: (title) => `\u300C${title}\u300D\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F`,
   deleteBody: "\u3053\u306E\u30DC\u30A4\u30B9\u306F Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u304B\u3089\u524A\u9664\u3055\u308C\u307E\u3059\u3002\u3053\u306E\u30DC\u30A4\u30B9\u3092\u4F7F\u7528\u3057\u3066\u3044\u308B\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306B\u306F\u3001\u5225\u306E\u30DC\u30A4\u30B9\u3092\u9078\u629E\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002",
   deleteConfirmLabel: (title) => `\u78BA\u8A8D\u306E\u305F\u3081\u300C${title}\u300D\u3068\u5165\u529B`,
@@ -2313,6 +2325,7 @@ var ar = {
   editVoice: (title) => `\u062A\u0639\u062F\u064A\u0644 ${isolate(title)}`,
   editTitle: (title) => `\u062A\u0639\u062F\u064A\u0644 \xAB${isolate(title)}\xBB`,
   voiceUpdated: (title) => `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B ${isolate(title)}`,
+  descriptionTooLong: (n) => `\u0627\u062E\u062A\u0635\u0631 \u0627\u0644\u0648\u0635\u0641 \u0625\u0644\u0649 ${n} \u062D\u0631\u0641\u064B\u0627 \u0644\u0644\u062D\u0641\u0638.`,
   deleteTitle: (title) => `\u062D\u0630\u0641 \xAB${isolate(title)}\xBB\u061F`,
   deleteBody: "\u0633\u064A\u0624\u062F\u064A \u0647\u0630\u0627 \u0625\u0644\u0649 \u0625\u0632\u0627\u0644\u0629 \u0627\u0644\u0635\u0648\u062A \u0645\u0646 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio. \u0633\u064A\u062D\u062A\u0627\u062C \u0627\u0644\u0648\u0643\u0644\u0627\u0621 \u0627\u0644\u0630\u064A\u0646 \u064A\u0633\u062A\u062E\u062F\u0645\u0648\u0646 \u0647\u0630\u0627 \u0627\u0644\u0635\u0648\u062A \u0625\u0644\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0635\u0648\u062A \u0622\u062E\u0631 \u0644\u0647\u0645.",
   deleteConfirmLabel: (title) => `\u0627\u0643\u062A\u0628 \xAB${isolate(title)}\xBB \u0644\u0644\u062A\u0623\u0643\u064A\u062F`,
@@ -2516,6 +2529,7 @@ var ru = {
   editVoice: (title) => `\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C ${title}`,
   editTitle: (title) => `\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \xAB${title}\xBB`,
   voiceUpdated: (title) => `${title} \u043E\u0431\u043D\u043E\u0432\u043B\u0451\u043D`,
+  descriptionTooLong: (n) => `\u0421\u043E\u043A\u0440\u0430\u0442\u0438\u0442\u0435 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435 \u0434\u043E ${n} \u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C.`,
   deleteTitle: (title) => `\u0423\u0434\u0430\u043B\u0438\u0442\u044C \xAB${title}\xBB?`,
   deleteBody: "\u0413\u043E\u043B\u043E\u0441 \u0431\u0443\u0434\u0435\u0442 \u0443\u0434\u0430\u043B\u0451\u043D \u0438\u0437 \u0432\u0430\u0448\u0435\u0433\u043E \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430 Fish Audio. \u0414\u043B\u044F \u0430\u0433\u0435\u043D\u0442\u043E\u0432, \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u044E\u0449\u0438\u0445 \u044D\u0442\u043E\u0442 \u0433\u043E\u043B\u043E\u0441, \u043F\u043E\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0432\u044B\u0431\u0440\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u043E\u0439.",
   deleteConfirmLabel: (title) => `\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \xAB${title}\xBB \u0434\u043B\u044F \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F`,
@@ -2719,6 +2733,7 @@ var fr = {
   editVoice: (title) => `Modifier ${title}`,
   editTitle: (title) => `Modifier \xAB ${title} \xBB`,
   voiceUpdated: (title) => `${title} mis \xE0 jour`,
+  descriptionTooLong: (n) => `Raccourcissez la description \xE0 ${n} caract\xE8res pour enregistrer.`,
   deleteTitle: (title) => `Supprimer \xAB ${title} \xBB ?`,
   deleteBody: "Cette action supprime la voix de votre compte Fish Audio. Il faudra s\xE9lectionner une autre voix pour les agents qui l\u2019utilisent.",
   deleteConfirmLabel: (title) => `Saisissez \xAB ${title} \xBB pour confirmer`,
@@ -2922,6 +2937,7 @@ var de = {
   editVoice: (title) => `${title} bearbeiten`,
   editTitle: (title) => `\u201E${title}\u201C bearbeiten`,
   voiceUpdated: (title) => `${title} aktualisiert`,
+  descriptionTooLong: (n) => `K\xFCrze die Beschreibung auf ${n} Zeichen, um zu speichern.`,
   deleteTitle: (title) => `\u201E${title}\u201C l\xF6schen?`,
   deleteBody: "Dadurch wird die Stimme aus Ihrem Fish Audio-Konto entfernt. F\xFCr Agenten, die diese Stimme verwenden, muss eine andere Stimme ausgew\xE4hlt werden.",
   deleteConfirmLabel: (title) => `Geben Sie zur Best\xE4tigung \u201E${title}\u201C ein`,
@@ -3125,6 +3141,7 @@ var es = {
   editVoice: (title) => `Editar ${title}`,
   editTitle: (title) => `Editar \xAB${title}\xBB`,
   voiceUpdated: (title) => `${title} actualizado`,
+  descriptionTooLong: (n) => `Acorta la descripci\xF3n a ${n} caracteres para guardar.`,
   deleteTitle: (title) => `\xBFEliminar \xAB${title}\xBB?`,
   deleteBody: "Esto elimina la voz de tu cuenta de Fish Audio. Habr\xE1 que seleccionar otra voz para los agentes que la usan.",
   deleteConfirmLabel: (title) => `Escribe \xAB${title}\xBB para confirmar`,

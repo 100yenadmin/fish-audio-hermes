@@ -84,6 +84,7 @@ export const ar = {
   editVoice: (title: string) => `تعديل ${isolate(title)}`,
   editTitle: (title: string) => `تعديل «${isolate(title)}»`,
   voiceUpdated: (title: string) => `تم تحديث ${isolate(title)}`,
+  descriptionTooLong: (n: number) => `اختصر الوصف إلى ${n} حرفًا للحفظ.`,
   deleteTitle: (title: string) => `حذف «${isolate(title)}»؟`,
   deleteBody: 'سيؤدي هذا إلى إزالة الصوت من حسابك في Fish Audio. سيحتاج الوكلاء الذين يستخدمون هذا الصوت إلى اختيار صوت آخر لهم.',
   deleteConfirmLabel: (title: string) => `اكتب «${isolate(title)}» للتأكيد`,

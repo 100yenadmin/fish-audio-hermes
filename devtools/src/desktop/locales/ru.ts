@@ -81,6 +81,7 @@ export const ru = {
   editVoice: (title: string) => `Изменить ${title}`,
   editTitle: (title: string) => `Изменить «${title}»`,
   voiceUpdated: (title: string) => `${title} обновлён`,
+  descriptionTooLong: (n: number) => `Сократите описание до ${n} символов, чтобы сохранить.`,
   deleteTitle: (title: string) => `Удалить «${title}»?`,
   deleteBody: 'Голос будет удалён из вашего аккаунта Fish Audio. Для агентов, использующих этот голос, потребуется выбрать другой.',
   deleteConfirmLabel: (title: string) => `Введите «${title}» для подтверждения`,

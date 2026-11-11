@@ -526,8 +526,9 @@ describe('own voice editor', () => {
     const { calls } = mount(async (path, opts) => opts?.method === 'PATCH' ? { ok: false, kind: failure.kind, message: failure.message }
       : path === `/voices/${id}` ? { voice: { id, title: 'Narrator', description: 'Old' } } : VOICES)
     await flush(); edit(); await flush()
-    change(en.descriptionOptional, '😀'.repeat(501))
-    expect(Array.from((screen.getByLabelText(en.descriptionOptional) as HTMLTextAreaElement).value)).toHaveLength(500)
+    change(en.descriptionOptional, '😀'.repeat(501))  // over the limit: warned and Save refused, never cut silently
+    expect(screen.getByRole('alert').textContent).toBe(en.descriptionTooLong(500))
+    expect((save() as HTMLButtonElement).disabled).toBe(true)
     change(en.descriptionOptional, ''); fireEvent.click(save()); await flush()
     expect(calls.find(c => c.body)?.body).toEqual({ description: '' })
     expect(screen.getByRole('alert').textContent).toBe(errorText(failure))

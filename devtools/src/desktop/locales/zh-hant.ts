@@ -81,6 +81,7 @@ export const zhHant = {
   editVoice: (title: string) => `編輯${title}`,
   editTitle: (title: string) => `編輯「${title}」`,
   voiceUpdated: (title: string) => `已更新${title}`,
+  descriptionTooLong: (n: number) => `請將說明縮短至 ${n} 個字元以內再儲存。`,
   deleteTitle: (title: string) => `刪除「${title}」？`,
   deleteBody: '這將從您的 Fish Audio 帳戶中移除此聲音。使用此聲音的代理需要重新選擇其他聲音。',
   deleteConfirmLabel: (title: string) => `輸入「${title}」以確認`,

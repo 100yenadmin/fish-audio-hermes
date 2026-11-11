@@ -506,7 +506,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
       )}
       <Pager more={hasMore(voices.data?.items.length, page, voices.data?.total)} page={page} setPage={setPage} />
       <DeleteDialog pin={pin} onClose={() => setTarget(null)} onDeleted={() => void client.invalidateQueries({ queryKey })} voice={target} />
-      {editing && <EditDialog key={editing.id} pin={pin} voice={editing} onClose={() => setEditing(null)} onUpdated={() => void client.invalidateQueries({ queryKey })} />}
+      {editing && <EditDialog key={editing.id} pin={pin} voice={editing} onClose={() => setEditing(null)} onUpdated={() => void client.invalidateQueries({ queryKey: ['fish-audio', agentKey(pin)] })} />}
     </div>
   )
 }
@@ -514,7 +514,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
 function EditDialog({ pin, voice, onClose, onUpdated }: { pin: AgentPin; voice: Voice; onClose: () => void; onUpdated: () => void }) {
   const t = usePluginI18n(PLUGIN_ID)
   const [original, setOriginal] = useState(voice)
-  const [title, setTitle] = useState(voice.title)
+  const [title, setTitle] = useState(voice.title ?? '')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
@@ -525,17 +525,19 @@ function EditDialog({ pin, voice, onClose, onUpdated }: { pin: AgentPin; voice: 
     void readFor<{ voice: Voice }>(pin, `/voices/${encodeURIComponent(voice.id)}`).then(res => {
       if (!active) return
       setOriginal(res.voice)
-      setTitle(res.voice.title)
+      setTitle(res.voice.title ?? '')
       setDescription(res.voice.description ?? '')
       setLoaded(true)
     }).catch(error => { if (active) setError(error) }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [pin.connectionId, pin.profile, voice.id])
   const fields = {
-    ...(title.trim() !== original.title ? { title: title.trim() } : {}),
+    ...(title.trim() !== (original.title ?? '').trim() ? { title: title.trim() } : {}),
     ...(loaded && description !== (original.description ?? '') ? { description } : {})
   }
-  const disabled = loading || busy || !title.trim() || !Object.keys(fields).length
+  // A longer description set elsewhere is never cut: it blocks Save only when it would be sent.
+  const tooLong = 'description' in fields && [...description].length > LIMITS.description
+  const disabled = loading || busy || !title.trim() || tooLong || !Object.keys(fields).length
   const save = async () => {
     if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: pluginCtx().i18n.t('agentChangedNothingSent') })
     if (disabled) return
@@ -562,11 +564,12 @@ function EditDialog({ pin, voice, onClose, onUpdated }: { pin: AgentPin; voice: 
         {loading && <Rows n={1} />}
         {error !== null && <p role="alert">{errorText(error)}</p>}
         <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>{t('voiceTitle')}
-          <Input required disabled={loading || busy} value={title} onChange={(e: { target: { value: string } }) => setTitle(clamp(e.target.value, LIMITS.title))} />
+          <Input required disabled={loading || busy} value={title} onChange={(e: { target: { value: string } }) => { setError(null); setTitle(clamp(e.target.value, LIMITS.title)) }} />
         </label>
         <label style={{ display: 'grid', fontSize: 12, gap: 6 }}>{t('descriptionOptional')}
-          <Textarea disabled={!loaded || busy} value={description} onChange={(e: { target: { value: string } }) => setDescription(clamp(e.target.value, LIMITS.description))} />
+          <Textarea disabled={!loaded || busy} value={description} onChange={(e: { target: { value: string } }) => { setError(null); setDescription(e.target.value) }} />
         </label>
+        {tooLong && <p role="alert" style={{ color: 'var(--ui-orange)', fontSize: 12, margin: 0 }}>{t('descriptionTooLong', LIMITS.description)}</p>}
         <DialogFooter>
           <Button disabled={busy} onClick={onClose} variant="ghost">{t('cancel')}</Button>
           <Button disabled={disabled} loading={busy} onClick={() => void save()}>{t('save')}</Button>

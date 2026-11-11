@@ -81,6 +81,7 @@ export const de = {
   editVoice: (title: string) => `${title} bearbeiten`,
   editTitle: (title: string) => `„${title}“ bearbeiten`,
   voiceUpdated: (title: string) => `${title} aktualisiert`,
+  descriptionTooLong: (n: number) => `Kürze die Beschreibung auf ${n} Zeichen, um zu speichern.`,
   deleteTitle: (title: string) => `„${title}“ löschen?`,
   deleteBody: 'Dadurch wird die Stimme aus Ihrem Fish Audio-Konto entfernt. Für Agenten, die diese Stimme verwenden, muss eine andere Stimme ausgewählt werden.',
   deleteConfirmLabel: (title: string) => `Geben Sie zur Bestätigung „${title}“ ein`,

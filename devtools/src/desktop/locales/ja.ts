@@ -81,6 +81,7 @@ export const ja = {
   editVoice: (title: string) => `${title}を編集`,
   editTitle: (title: string) => `「${title}」を編集`,
   voiceUpdated: (title: string) => `${title}を更新しました`,
+  descriptionTooLong: (n: number) => `保存するには説明を ${n} 文字以内にしてください。`,
   deleteTitle: (title: string) => `「${title}」を削除しますか？`,
   deleteBody: 'このボイスは Fish Audio アカウントから削除されます。このボイスを使用しているエージェントには、別のボイスを選択する必要があります。',
   deleteConfirmLabel: (title: string) => `確認のため「${title}」と入力`,

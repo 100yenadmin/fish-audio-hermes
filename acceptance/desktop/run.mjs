@@ -378,21 +378,30 @@ async function mineEditRow(s, theme) {
     const first = s.page.getByRole('button', { name: /^Edit / }).first()
     if (!(await first.count())) { row('B-MINE-EDIT', 'na', 'no own voice exists', { theme }); return }
     const original = (await first.getAttribute('aria-label')).slice(5)
+    if (original.endsWith(' (edit)')) { row('B-MINE-EDIT', 'fail', `own voice title "${original}" was left renamed by an earlier run; restore it first`, { theme }); return }
+    // Find the voice id before changing anything, so the title is restored through the gateway even if the UI fails.
+    const mine = await gw('/api/plugins/fish-audio/voices?self=true&page=1')
+    const matches = (mine.body?.items || []).filter(v => v.title === original)
+    if (matches.length !== 1) { row('B-MINE-EDIT', 'na', 'first own voice title is not unique on the first page', { theme }); return }
+    const id = matches[0].id
     const edited = Array.from(original).slice(0, 93).join('') + ' (edit)'
-    const rename = async (from, to) => {
-      await s.page.getByRole('button', { name: `Edit ${from}`, exact: true }).click()
+    try {
+      await s.page.getByRole('button', { name: `Edit ${original}`, exact: true }).click()
       const input = s.page.getByRole('textbox', { name: 'Voice name', exact: true })
       await input.waitFor({ state: 'visible' })
       await s.page.waitForFunction(() => { const input = document.querySelector('[role="dialog"] input'); return input && !input.disabled })
-      await input.fill(to)
+      await input.fill(edited)
+      evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'dialog')))
       await s.page.getByRole('button', { name: 'Save voice', exact: true }).click()
       await s.page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 15000 })
-      await s.page.getByRole('button', { name: `Edit ${to}`, exact: true }).waitFor({ state: 'visible', timeout: 15000 })
+      await s.page.getByRole('button', { name: `Edit ${edited}`, exact: true }).waitFor({ state: 'visible', timeout: 15000 })
+      evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'renamed')))
+    } finally {
+      const restored = await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ title: original }) })
+      const check = await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(id)}`)
+      if (restored.body?.ok !== true || check.body?.voice?.title !== original) throw new Error(`title not restored for the first own voice (now "${check.body?.voice?.title}")`)
     }
-    try { await rename(original, edited); evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'renamed'))) }
-    finally { await rename(edited, original) }
-    evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'restored')))
-    row('B-MINE-EDIT', 'pass', 'own voice renamed through Edit and original title restored', { theme, evidence })
+    row('B-MINE-EDIT', 'pass', 'own voice renamed through Edit; original title restored and read back by id', { theme, evidence })
   } catch (e) { row('B-MINE-EDIT', 'fail', e.message.split('\n')[0], { theme, evidence }) }
 }
 
