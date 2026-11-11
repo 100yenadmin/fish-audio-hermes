@@ -132,13 +132,17 @@ def execute(args, key, base, session):
             try:
                 clip = _speak({"text": result["text"], "voice": ident, **options}, key, base, session)
             except (FishAudioError, media.InputFileError, ToolInputError) as exc:
+                if not result["clips"]:
+                    raise  # Nothing was made: a plain failure, mapped like any other action's.
                 result["failed"] = {"voice": ident, "error": redact(str(exc))}
                 break
             except Exception:
+                if not result["clips"]:
+                    raise
                 result["failed"] = {"voice": ident, "error": "Fish Audio could not complete this call. Check the inputs and try again."}
                 break
-            if not result["clips"] and "model" in clip:
-                result["model"] = clip["model"]
+            if not result["clips"]:
+                result.update({name: clip[name] for name in ("model", "notice") if name in clip})
             result["clips"].append({name: clip[name] for name in ("voice", "file_path", "media_tag")})
         return result
     if action in {"search", "mine"}:

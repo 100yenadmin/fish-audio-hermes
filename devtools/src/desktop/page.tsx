@@ -254,7 +254,7 @@ function Library({ pin }: { pin: AgentPin }) {
           {t('favouritesOnly')}
         </Button>
       </div>
-      <PreviewTextField />
+      <PreviewTextField pin={pin} />
       <BilledNote text={billedNote} />
       {!favouritesOnly && voices.error ? (
         <LoadError error={voices.error} onRetry={() => void voices.refetch()} />
@@ -270,13 +270,13 @@ function Library({ pin }: { pin: AgentPin }) {
   )
 }
 
-function PreviewTextField() {
+function PreviewTextField({ pin }: { pin: AgentPin }) {
   const t = usePluginI18n(PLUGIN_ID)
-  const text = useValue($previewText)
+  const text = useValue($previewText)[agentKey(pin)] ?? ''
   return (
     <div style={{ display: 'grid', gap: 4, maxWidth: 560 }}>
-      <Input aria-label={t('previewText')} maxLength={LIMITS.previewText}
-        onChange={(e: { target: { value: string } }) => $previewText.set(clamp(e.target.value, LIMITS.previewText))}
+      <Input aria-label={t('previewText')}
+        onChange={(e: { target: { value: string } }) => $previewText.set({ ...$previewText.get(), [agentKey(pin)]: clamp(e.target.value, LIMITS.previewText) })}
         placeholder={t('previewTextPlaceholder')} value={text} />
       <span style={{ ...muted, fontSize: 12 }}>{t('previewTextHint', LIMITS.previewText)}</span>
     </div>
@@ -311,9 +311,13 @@ function Pager({ page, more, setPage }: { page: number; more: boolean; setPage: 
 
 const inFlightPreviews = new Set<string>()
 
-/** The passage previews read, shared by the Library and My voices tabs for this window; empty plays the gateway's
- *  default line. Each distinct text is a separate billed preview and a separate cached replay. */
-export const $previewText = atom('')
+/** The passage previews read, per agent, shared by the Library and My voices tabs for this window; empty plays the
+ *  gateway's default line. Each distinct text is a separate billed preview and a separate cached replay. */
+export const $previewText = atom<Record<string, string>>({})
+const previewTextFor = (pin: AgentPin) => ($previewText.get()[agentKey(pin)] ?? '').trim()
+const previewBase = (pin: AgentPin, voiceId: string) => `preview:${agentKey(pin)}:${voiceId}`
+/** The preview of this voice that is playing, whatever text it read: its row keeps one Stop control. */
+const playingFor = (playing: null | string, base: string) => playing === base || !!playing?.startsWith(`${base}:`)
 
 /** The voice whose Use is in flight, per agent. One at a time: two in flight could land in either order, on the
  *  gateway and on the page. */
@@ -322,9 +326,10 @@ const $usePending = atom<Record<string, string>>({})
 /** Play a billed preview of a voice, or replay one already fetched in this window. */
 export async function previewVoice(pin: AgentPin, voiceId: string) {
   if (!samePin(currentPin(), pin)) return host.notify({ kind: 'error', message: pluginCtx().i18n.t('agentChangedNothingSent') })
-  const text = $previewText.get().trim()
-  const key = `preview:${agentKey(pin)}:${voiceId}${text ? `:${text}` : ''}`
-  if ($playing.get() === key) return stop()
+  const text = previewTextFor(pin)
+  const base = previewBase(pin, voiceId)
+  const key = `${base}${text ? `:${text}` : ''}`
+  if (playingFor($playing.get(), base)) return stop()
   const cached = cachedPreview(key)
   if (cached) return play(key, cached.audio, cached.mime)
   if (inFlightPreviews.has(key)) return  // one billed preview per voice at a time
@@ -351,7 +356,6 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   const t = usePluginI18n(PLUGIN_ID)
   const billedNote = useAccountText('billedNote', 'operatorBilledNote')
   const playing = useValue($playing)
-  const previewText = useValue($previewText).trim()
   const [busy, setBusy] = useState<null | string>(null)
   const [used, setUsed] = useState<null | string>(null)
   const pendingUse = useValue($usePending)[agentKey(pin)]
@@ -390,7 +394,7 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
   return (
     <div style={{ border: '1px solid var(--ui-stroke-tertiary)', borderRadius: 6 }}>
       {voices.map((voice, i) => {
-        const key = `preview:${agentKey(pin)}:${voice.id}${previewText ? `:${previewText}` : ''}`
+        const isPlaying = playingFor(playing, previewBase(pin, voice.id))
         // Each part is its own bidi island, so Latin names, counts and descriptions keep their order in Arabic.
         const parts = [voice.author, (voice.languages ?? []).join(', '), voice.task_count ? t('uses', voice.task_count) : '', voice.description]
           .filter(Boolean)
@@ -424,15 +428,15 @@ function VoiceList({ voices, pin, favourites, onDelete }: {
             </div>
             <div style={{ alignItems: 'center', display: 'flex', gap: 6 }}>
               <Button
-                aria-label={t(playing === key ? 'stopVoice' : 'previewVoice', voice.title)}
+                aria-label={t(isPlaying ? 'stopVoice' : 'previewVoice', voice.title)}
                 loading={busy === `play:${voice.id}`}
                 onClick={() => void run(`play:${voice.id}`, () => previewVoice(pin, voice.id))}
                 size="xs"
                 title={billedNote}
                 variant="secondary"
               >
-                <Codicon name={playing === key ? 'debug-stop' : 'play'} />
-                {playing === key ? t('stop') : t('preview')}
+                <Codicon name={isPlaying ? 'debug-stop' : 'play'} />
+                {isPlaying ? t('stop') : t('preview')}
               </Button>
               <Button
                 disabled={used === voice.id || (pendingUse !== undefined && pendingUse !== voice.id)}
@@ -505,6 +509,7 @@ function MyVoices({ pin }: { pin: AgentPin }) {
   const [target, setTarget] = useState<null | Voice>(null)
   return (
     <div style={{ display: 'grid', gap: 12, padding: pad }}>
+      <PreviewTextField pin={pin} />
       <BilledNote text={billedNote} />
       {voices.error ? (
         <LoadError error={voices.error} onRetry={() => void voices.refetch()} />

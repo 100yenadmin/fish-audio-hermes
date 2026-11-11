@@ -422,7 +422,7 @@ async function main() {
     await guard(`palette ${theme}`, () => paletteRow(s, theme))
     await guard(`key entry ${theme}`, () => keyEntryRow(s, theme))
   }
-  const needReal = ['B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
+  const needReal = ['B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-LIB-5', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
   if (needReal) {
     let walletBefore = null
     try { hostctl('set-real-key'); await waitGateway(); await c.sleep(3000); meta.reload_after_key = await reloadRenderer(s) } catch (e) { row('B-LIB-1', 'fail', `could not place the real key: ${e.message}`); return finish(meta, s) }
@@ -433,7 +433,7 @@ async function main() {
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue
       await guard(`settings page ${theme}`, () => settingsPageRow(s, theme))
-      if (['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4'].some(want)) await guard(`library ${theme}`, () => libraryRows(s, theme, account))
+      if (['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-LIB-5'].some(want)) await guard(`library ${theme}`, () => libraryRows(s, theme, account))
     }
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue

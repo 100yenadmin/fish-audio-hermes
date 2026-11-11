@@ -721,22 +721,21 @@ function Library({ pin }) {
         t("favouritesOnly")
       ] })
     ] }),
-    /* @__PURE__ */ jsx3(PreviewTextField, {}),
+    /* @__PURE__ */ jsx3(PreviewTextField, { pin }),
     /* @__PURE__ */ jsx3(BilledNote, { text: billedNote }),
     !favouritesOnly && voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !list ? /* @__PURE__ */ jsx3(Rows, {}) : list.length === 0 ? favouritesOnly ? /* @__PURE__ */ jsx3(EmptyState, { description: t("noFavouritesHint"), title: t("noFavourites") }) : /* @__PURE__ */ jsx3(EmptyState, { title: t("noVoices") }) : /* @__PURE__ */ jsx3(VoiceList, { favourites, pin, voices: list }),
     !favouritesOnly && /* @__PURE__ */ jsx3(Pager, { more, page, setPage })
   ] });
 }
-function PreviewTextField() {
+function PreviewTextField({ pin }) {
   const t = usePluginI18n4(PLUGIN_ID);
-  const text = useValue3($previewText);
+  const text = useValue3($previewText)[agentKey(pin)] ?? "";
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 4, maxWidth: 560 }, children: [
     /* @__PURE__ */ jsx3(
       Input2,
       {
         "aria-label": t("previewText"),
-        maxLength: LIMITS.previewText,
-        onChange: (e) => $previewText.set(clamp(e.target.value, LIMITS.previewText)),
+        onChange: (e) => $previewText.set({ ...$previewText.get(), [agentKey(pin)]: clamp(e.target.value, LIMITS.previewText) }),
         placeholder: t("previewTextPlaceholder"),
         value: text
       }
@@ -762,13 +761,17 @@ function Pager({ page, more, setPage }) {
   ] });
 }
 var inFlightPreviews = /* @__PURE__ */ new Set();
-var $previewText = atom4("");
+var $previewText = atom4({});
+var previewTextFor = (pin) => ($previewText.get()[agentKey(pin)] ?? "").trim();
+var previewBase = (pin, voiceId) => `preview:${agentKey(pin)}:${voiceId}`;
+var playingFor = (playing, base) => playing === base || !!playing?.startsWith(`${base}:`);
 var $usePending = atom4({});
 async function previewVoice(pin, voiceId) {
   if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: pluginCtx().i18n.t("agentChangedNothingSent") });
-  const text = $previewText.get().trim();
-  const key = `preview:${agentKey(pin)}:${voiceId}${text ? `:${text}` : ""}`;
-  if ($playing.get() === key) return stop();
+  const text = previewTextFor(pin);
+  const base = previewBase(pin, voiceId);
+  const key = `${base}${text ? `:${text}` : ""}`;
+  if (playingFor($playing.get(), base)) return stop();
   const cached = cachedPreview(key);
   if (cached) return play(key, cached.audio, cached.mime);
   if (inFlightPreviews.has(key)) return;
@@ -788,7 +791,6 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
   const t = usePluginI18n4(PLUGIN_ID);
   const billedNote = useAccountText("billedNote", "operatorBilledNote");
   const playing = useValue3($playing);
-  const previewText = useValue3($previewText).trim();
   const [busy, setBusy] = useState2(null);
   const [used, setUsed] = useState2(null);
   const pendingUse = useValue3($usePending)[agentKey(pin)];
@@ -822,7 +824,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
     }
   };
   return /* @__PURE__ */ jsx3("div", { style: { border: "1px solid var(--ui-stroke-tertiary)", borderRadius: 6 }, children: voices.map((voice, i) => {
-    const key = `preview:${agentKey(pin)}:${voice.id}${previewText ? `:${previewText}` : ""}`;
+    const isPlaying = playingFor(playing, previewBase(pin, voice.id));
     const parts = [voice.author, (voice.languages ?? []).join(", "), voice.task_count ? t("uses", voice.task_count) : "", voice.description].filter(Boolean).map((part, j, all) => /* @__PURE__ */ jsxs3("span", { children: [
       j ? j === all.length - 1 && voice.description ? " \u2014 " : " \xB7 " : "",
       /* @__PURE__ */ jsx3("bdi", { children: part })
@@ -848,15 +850,15 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
             /* @__PURE__ */ jsxs3(
               Button3,
               {
-                "aria-label": t(playing === key ? "stopVoice" : "previewVoice", voice.title),
+                "aria-label": t(isPlaying ? "stopVoice" : "previewVoice", voice.title),
                 loading: busy === `play:${voice.id}`,
                 onClick: () => void run(`play:${voice.id}`, () => previewVoice(pin, voice.id)),
                 size: "xs",
                 title: billedNote,
                 variant: "secondary",
                 children: [
-                  /* @__PURE__ */ jsx3(Codicon3, { name: playing === key ? "debug-stop" : "play" }),
-                  playing === key ? t("stop") : t("preview")
+                  /* @__PURE__ */ jsx3(Codicon3, { name: isPlaying ? "debug-stop" : "play" }),
+                  isPlaying ? t("stop") : t("preview")
                 ]
               }
             ),
@@ -926,6 +928,7 @@ function MyVoices({ pin }) {
   });
   const [target, setTarget] = useState2(null);
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
+    /* @__PURE__ */ jsx3(PreviewTextField, { pin }),
     /* @__PURE__ */ jsx3(BilledNote, { text: billedNote }),
     voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !voices.data ? /* @__PURE__ */ jsx3(Rows, { n: 3 }) : voices.data.items.length === 0 ? /* @__PURE__ */ jsx3(EmptyState, { description: t("mineEmptyHint"), title: t("mineEmpty") }) : /* @__PURE__ */ jsx3(VoiceList, { onDelete: setTarget, pin, voices: voices.data.items }),
     /* @__PURE__ */ jsx3(Pager, { more: hasMore(voices.data?.items.length, page, voices.data?.total), page, setPage }),

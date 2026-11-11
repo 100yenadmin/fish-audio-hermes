@@ -108,3 +108,23 @@ def test_operator_allowed_and_model_visibility(monkeypatch, model, fake_ctx):
     schema = tools.SCHEMAS["fish_voices"]
     assert "audition" in schema["action"]["enum"]
     assert schema["voices"]["minItems"] == 1 and schema["voices"]["maxItems"] == 4
+
+
+def test_first_voice_failure_is_a_plain_failure():
+    # Nothing was made: the result is an ordinary failure, not success with an empty clip list.
+    with respx.mock as mock:
+        route = mock.post(BASE + "/v1/tts").respond(402, json={"message": "raw-body-must-not-leak"})
+        result = audition(voices=VOICES[:2], model="s2.1-pro")
+        assert not result["success"] and "Top up" in result["error"] and "clips" not in result
+        assert "raw-body-must-not-leak" not in json.dumps(result)
+        assert route.call_count == 1
+    assert hooks.take("audition") == []
+
+
+def test_free_model_notice_carried(monkeypatch):
+    monkeypatch.setattr(settings, "resolve_model_source", lambda *a, **k: ("s2.1-pro-free", "wallet"))
+    with respx.mock as mock:
+        mock.post(BASE + "/v1/tts").respond(content=b"OggSsynthetic")
+        result = audition(voices=VOICES[:2])
+    assert result["success"] and result["model"] == "s2.1-pro-free"
+    assert result["notice"] == settings.free_model_notice()

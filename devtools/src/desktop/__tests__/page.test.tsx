@@ -27,7 +27,7 @@ afterEach(() => {
   $available.set(null)
   $availableError.set(null)
   $tab.set('library')
-  $previewText.set('')
+  $previewText.set({})
 })
 
 describe('Voices page', () => {
@@ -154,7 +154,6 @@ describe('selected-agent dispatch and completion guards', () => {
     const { calls } = mount(async path => (path === '/preview' ? { ok: true, audio: 'SUQz', mime: 'audio/mpeg' } : path.startsWith('/voices') ? listing : { ok: true, key: true }))
     await flush()
     const field = screen.getByLabelText(en.previewText) as HTMLInputElement
-    expect(field.maxLength).toBe(200)
     expect(screen.getByText(en.previewTextHint(200))).toBeTruthy()
     const previews = () => calls.filter(c => c.path === '/preview').map(c => c.body)
     fireEvent.click(screen.getByRole('button', { name: en.previewVoice('Storyteller') }))
@@ -170,6 +169,38 @@ describe('selected-agent dispatch and completion guards', () => {
     await flush()
     expect(previews()).toHaveLength(2)  // the same text replays from the cache, unbilled
     expect(playback).toHaveBeenCalledTimes(3)
+  })
+
+  it('preview text: 200 characters (not UTF-16 units), kept per agent, shown on My voices too', async () => {
+    $available.set({ key: true, version: '1.13.0', account: true })
+    mount(async path => (path.startsWith('/voices') ? VOICES : { ok: true, key: true }))
+    await flush()
+    const field = screen.getByLabelText(en.previewText) as HTMLInputElement
+    fireEvent.change(field, { target: { value: '🐟'.repeat(250) } })
+    expect([...field.value]).toHaveLength(200)
+    expect($previewText.get()).toEqual({ 'conn-1::default': '🐟'.repeat(200) })
+    $previewText.set({ 'conn-2::default': 'another agent' })
+    await flush()
+    expect(field.value).toBe('')  // another agent's passage is neither shown nor sent here
+    $tab.set('mine')
+    await flush()
+    expect(screen.getByLabelText(en.previewText)).toBeTruthy()
+  })
+
+  it('keeps Stop on the playing row while the preview text changes', async () => {
+    $available.set({ key: true, version: '1.13.0', account: true })
+    const voice = 'c'.repeat(32)
+    const listing = { ...VOICES, items: [{ ...VOICES.items[0], id: voice, title: 'Keeper' }] }
+    const { calls } = mount(async path => (path.startsWith('/voices') ? listing : { ok: true, key: true }))
+    await flush()
+    audio.$playing.set(`preview:conn-1::default:${voice}`)
+    await flush()
+    fireEvent.change(screen.getByLabelText(en.previewText), { target: { value: 'New words' } })
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: en.stopVoice('Keeper') }))
+    await flush()
+    expect(audio.$playing.get()).toBeNull()
+    expect(calls.filter(c => c.path === '/preview')).toEqual([])  // stopping never bills
   })
 
   it('drops a late preview before caching or playback', async () => {
