@@ -32,7 +32,11 @@ def setup(parser):
     class ScriptParser(argparse.ArgumentParser):
         def parse_known_args(self, args=None, namespace=None):
             parser.fish_json = "--json" in (sys.argv[1:] if args is None else args)
-            return super().parse_known_args(args, namespace)
+            namespace, extras = super().parse_known_args(args, namespace)
+            # Hermes's own top-level parser would reject leftovers with plain text and exit 2.
+            if extras and parser.fish_json:
+                self.error("unrecognized arguments: " + " ".join(extras))
+            return namespace, extras
     parser.error = error
     sub = parser.add_subparsers(dest="fish_command", parser_class=ScriptParser)
     login = sub.add_parser("login", help="Save a Fish API key locally")
@@ -68,10 +72,18 @@ def setup(parser):
 
 
 def _destination(path, force):
-    # A symlinked folder (macOS /tmp) is fine: the copy lands by os.replace, never written through a link.
+    # A symlinked folder (macOS /tmp) is fine: each file lands by link or replace, never written through a link.
     require(not path.is_symlink(), "Output path must not be a symlink.")
     require(path.parent.is_dir(), "Output parent directory is missing.")
+    require(os.access(path.parent, os.W_OK), "Output directory is not writable.")
     require(not path.exists() or force and path.is_file(), "Output exists; use --force to replace a file.")
+
+
+def _outputs(target, timestamps):
+    """Every path --out may write: the audio, plus its subtitles when timestamps are on."""
+    paths = [target] + ([target.with_suffix(ext) for ext in (".srt", ".vtt")] if timestamps else [])
+    require(len(set(paths)) == len(paths), "Use an audio file name for --out (not .srt or .vtt).")
+    return paths
 
 
 def _copy_output(result, target, force):
@@ -81,24 +93,39 @@ def _copy_output(result, target, force):
                                 for ext in (".srt", ".vtt") if source.with_suffix(ext).is_file()]
     for _, dest in pairs:
         _destination(dest, force)
-    require(len({dest for _, dest in pairs}) == len(pairs), "Audio and subtitle output paths must differ.")
-    for src, dest in pairs:
-        with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False) as temporary:
-            temp_path = Path(temporary.name)
-            try:
+    mode = 0o666 & ~_umask()
+    staged = []
+    try:
+        for src, dest in pairs:  # Stage every file first, so a failed copy leaves no new output behind.
+            with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False) as temporary:
+                staged.append((Path(temporary.name), dest))
                 with src.open("rb") as audio:
                     shutil.copyfileobj(audio, temporary)
-                temporary.close()
-                _destination(dest, force)
+            os.chmod(staged[-1][0], mode)
+        for temp_path, dest in staged:
+            if force:
                 os.replace(temp_path, dest)
-            finally:
-                temp_path.unlink(missing_ok=True)
+            else:  # os.link refuses an existing name, so a file created meanwhile is never overwritten.
+                try:
+                    os.link(temp_path, dest)
+                except FileExistsError:
+                    raise ToolInputError("Output exists; use --force to replace a file.") from None
+    finally:
+        for temp_path, _ in staged:
+            temp_path.unlink(missing_ok=True)
     result["out_path"] = str(target)
+
+
+def _umask():
+    current = os.umask(0)
+    os.umask(current)
+    return current
 
 
 def _script(args):
     from . import account_tool, tools, transcribe, voices
     command = args.fish_command
+    called = False
     try:
         fields = {name: getattr(args, name) for name in
                   {"speak": ("voice", "model", "format", "timestamps"),
@@ -111,16 +138,25 @@ def _script(args):
             fields["text"] = (Path(args.text_file).read_text(encoding="utf-8") if args.text_file is not None
                               else sys.stdin.read() if args.stdin else args.text)
             if args.out:
-                for ext in (None, ".srt", ".vtt") if args.timestamps else (None,):
-                    _destination(Path(args.out).with_suffix(ext) if ext else Path(args.out), args.force)
+                suffix = Path(args.out).suffix.lower().lstrip(".")
+                if suffix in {"mp3", "ogg", "wav"}:
+                    require(fields.setdefault("format", suffix) == suffix,
+                            f"--format {fields['format']} does not match the --out file name (.{suffix}).")
+                for path in _outputs(Path(args.out), args.timestamps):
+                    _destination(path, args.force)
         elif command in {"voices", "balance"}:
             fields["action"] = ("mine" if args.mine else "search") if command == "voices" else "balance"
         operation = {"speak": partial(tools._speak, record_media=False), "transcribe": transcribe.execute,
                      "voices": voices.execute, "balance": account_tool.execute}[command]
+        called = command in {"speak", "transcribe"}
         with redirect_stdout(sys.stderr):
             result = json.loads(run(operation, fields))
         if result.get("success") and command == "speak" and args.out:
-            _copy_output(result, Path(args.out), args.force)
+            try:
+                _copy_output(result, Path(args.out), args.force)
+            except Exception as exc:  # The speech is billed and cached: say where it is.
+                result = {"success": False, "error": f"The audio is saved at {result['file_path']} but was not copied: {exc}",
+                          "file_path": result["file_path"]}
     except Exception as exc:
         result = {"success": False, "error": redact(str(exc))}
     if "error" in result:
@@ -130,6 +166,9 @@ def _script(args):
     elif not result.get("success"):
         print(result.get("error", "Fish Audio command failed."))
     elif command == "speak":
+        for note in ("notice", "timestamps_error"):
+            if result.get(note):
+                print(result[note], file=sys.stderr)
         print(result["file_path"])
         if result.get("out_path"):
             print(result["out_path"])
@@ -148,7 +187,7 @@ def _script(args):
         print(f"API credit: {result.get('credit')}; cumulative top-up: {result.get('cumulative_top_up')}\n"
               f"Plan: {plan.get('type', 'unknown')}; {plan.get('balance', '?')}/{plan.get('total', '?')}; renewal: {plan.get('finished_at', '?')}\n"
               "App plan credits are separate from API credits.")
-    if not args.json and command in {"speak", "transcribe"}:
+    if not args.json and called and (result.get("success") or result.get("file_path")):
         print("billed to your Fish API credit", file=sys.stderr)
     return 0 if result.get("success") else 1
 

@@ -57,7 +57,8 @@ def test_scripting_envelopes(scripting, monkeypatch, capsys, argv, expected, mod
         assert not captured.err
     else:
         assert ("[redacted] failed" if mode.startswith("failure") else expected) in captured.out
-        assert ("billed to your Fish API credit" in captured.err) == (argv[0] in {"speak", "transcribe"})
+        billed = argv[0] in {"speak", "transcribe"} and not mode.startswith("failure")
+        assert ("billed to your Fish API credit" in captured.err) == billed
 
 
 @pytest.mark.parametrize("source", ["positional", "file", "stdin", "none", "two", "both-flags", "missing-file"])
@@ -114,13 +115,15 @@ def test_speak_output(scripting, monkeypatch, tmp_path, capsys, case):
     elif case == "sidecar-exists":
         target.with_suffix(".srt").write_text("old captions")
     failed = case not in {"copy", "force", "parent-link"}
-    replace = cli.os.replace
     replaced = []
-    def atomic(src, dest):
-        assert src.parent == dest.parent
-        replaced.append(dest)
-        replace(src, dest)
-    monkeypatch.setattr(cli.os, "replace", atomic)
+    def atomic(real):
+        def place(src, dest):
+            assert Path(src).parent == Path(dest).parent
+            replaced.append(dest)
+            real(src, dest)
+        return place
+    monkeypatch.setattr(cli.os, "replace", atomic(cli.os.replace))
+    monkeypatch.setattr(cli.os, "link", atomic(cli.os.link))
     assert run("speak", "hello", "--timestamps", "--out", str(target), "--json",
                *(["--force"] if case == "force" else [])) == int(failed)
     result = json.loads(capsys.readouterr().out)
@@ -478,3 +481,61 @@ def test_operator_terminal_errors_keep_their_links(config, status, link, capsys)
     output = capsys.readouterr().out
     assert link in output and "operator" not in output
     assert settings.operator_account() is True  # outside the terminal the setting applies again
+
+
+def hermes_nested(*argv):
+    # Hermes nests the plugin parser under its own top-level parser and calls parse_args there.
+    top = argparse.ArgumentParser(prog="hermes")
+    fish = top.add_subparsers(dest="command").add_parser("fish")
+    cli.setup(fish)
+    return cli.handle(top.parse_args(["fish", *argv]))
+
+
+@pytest.mark.parametrize("argv", [("speak", "Hello", "world"), ("speak", "hi", "--unknown"), ("balance", "extra")])
+def test_nested_leftover_arguments_are_json(scripting, capsys, argv):
+    with pytest.raises(SystemExit) as exc:
+        hermes_nested(*argv, "--json")
+    out = capsys.readouterr().out
+    assert exc.value.code == 1 and not scripting and len(out.splitlines()) == 1
+    result = json.loads(out)
+    assert result["success"] is False and "unrecognized arguments" in result["error"]
+
+
+def test_nested_json_success(scripting, capsys):
+    assert hermes_nested("balance", "--json") == 0 and json.loads(capsys.readouterr().out)["success"] is True
+
+
+@pytest.mark.parametrize("name", ["clip.srt", "clip.vtt"])
+def test_subtitle_named_output_refused_before_billing(scripting, tmp_path, capsys, name):
+    assert run("speak", "hi", "--timestamps", "--out", str(tmp_path / name), "--json") == 1
+    assert not scripting and "audio file name" in json.loads(capsys.readouterr().out)["error"]
+
+
+def test_output_suffix_sets_format_and_mismatch_is_refused(scripting, tmp_path, capsys):
+    assert run("speak", "hi", "--out", str(tmp_path / "a.mp3"), "--json") == 0
+    assert scripting[-1][0]["format"] == "mp3"
+    capsys.readouterr()
+    calls = len(scripting)
+    assert run("speak", "hi", "--format", "ogg", "--out", str(tmp_path / "b.mp3"), "--json") == 1
+    assert len(scripting) == calls and "does not match" in json.loads(capsys.readouterr().out)["error"]
+
+
+def test_unwritable_output_folder_refused_before_billing(scripting, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(cli.os, "access", lambda path, mode: False)
+    assert run("speak", "hi", "--out", str(tmp_path / "a.mp3"), "--json") == 1
+    assert not scripting and "not writable" in json.loads(capsys.readouterr().out)["error"]
+
+
+def test_file_created_meanwhile_is_not_overwritten(scripting, tmp_path, monkeypatch, capsys):
+    target = tmp_path / "a.mp3"
+    real = cli._destination
+    def late(path, force):
+        real(path, force)
+        if path == target and scripting:  # the copy-time check passes, then another writer creates the file
+            target.write_bytes(b"theirs")
+    monkeypatch.setattr(cli, "_destination", late)
+    assert run("speak", "hi", "--out", str(target), "--json") == 1
+    result = json.loads(capsys.readouterr().out)
+    assert target.read_bytes() == b"theirs" and result["file_path"].endswith("cached.mp3")
+    assert "was not copied" in result["error"]
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name.startswith("tmp")) == []

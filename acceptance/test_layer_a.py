@@ -236,9 +236,9 @@ def test_doctor(paid, synth, request):
 @pytest.mark.parametrize('command', [pytest.param('speak', marks=pytest.mark.row('A-CLI-SPEAK')),
     pytest.param('voices', marks=pytest.mark.row('A-CLI-VOICES')),
     pytest.param('balance', marks=pytest.mark.row('A-CLI-BALANCE'))])
-def test_scripting_cli(paid, request, tmp_path, command):
-    output = tmp_path / 'cli-speech.mp3'
-    args = {'speak': [TEXT, '--format', 'mp3', '--out', str(output)],
+def test_scripting_cli(paid, request, command):
+    output = paid.out / 'cli-speech.mp3'  # inside the run dir: the macOS host sandbox only writes there
+    args = {'speak': [TEXT, '--format', 'mp3', '--out', str(output), '--force'],
             'voices': ['narrator'], 'balance': []}[command]
     result = json.loads(paid.cli('fish', command, *args, '--json').splitlines()[-1])
     evidence(request, paid, result)
