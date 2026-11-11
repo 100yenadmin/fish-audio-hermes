@@ -109,7 +109,7 @@ def test_operator_account_refuses_account_wide_voice_management(monkeypatch, arg
         assert len(mock.calls) == 1
 
 
-@pytest.mark.parametrize("count,status", [(0, 200), (2, 200), (2, 404), (2, 503), (22, 200)])
+@pytest.mark.parametrize("count,status", [(0, 200), (2, 200), (2, 403), (2, 404), (2, 503), (22, 200)])
 def test_operator_mine_profile_only(monkeypatch, count, status):
     monkeypatch.setattr(settings, "operator_account", lambda: True)
     saved = {f"voice{i:02}": f"{i:032x}" for i in range(count)}

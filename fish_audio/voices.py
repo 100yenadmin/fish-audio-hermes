@@ -104,9 +104,9 @@ def _profile_voices(key, base):
                 item = {**_item(client.get_json(f"/model/{ident}", {}, key, base), detail=True),
                         "id": ident, "name": names[0]}
             except FishAudioError as exc:
-                if exc.status in {401, 403}:
+                if exc.status == 401:
                     raise  # A rejected key is an account problem, not 20 unavailable voices.
-                if exc.status != 404:
+                if exc.status not in {403, 404}:  # 403: this key can't see that voice (e.g. made private)
                     lookups = 0  # Fish is failing: list the rest by name instead of waiting on each one.
             except Exception:
                 lookups = 0
