@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Save voice names in any script, including Japanese, Arabic and Hindi, with Unicode normalization (#99).
 - Keep unsaved reading-speed slider changes when adding or removing a saved voice name (#110).
 - Announce the reading-speed slider value as a multiplier to screen readers (#110).
 - Keep dictionary and version IDs up to 128 characters in deletion approvals and rule keys (#110).

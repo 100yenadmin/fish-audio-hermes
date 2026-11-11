@@ -71,17 +71,24 @@ def _config():
         return {}
 
 
-ALIAS_RE = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
 RESERVED = {"add", "remove", "list", "current", "default"}
 MAX_ALIASES = 50
 UNKNOWN_VOICE = "Unknown voice or name. See `/fish alias`."
+ALIAS_NAME_ERROR = ("Use a name of 1–32 letters (any script), digits, marks, underscores or "
+                    "hyphens, starting with a letter; reserved words and voice ids cannot be names.")
+
+
+def normalize_name(raw) -> str:
+    return unicodedata.normalize("NFKC", raw.strip()).casefold() if isinstance(raw, str) else ""
 
 
 def alias_name(raw) -> str:
     from .tool_support import ToolInputError
-    name = raw.strip().casefold() if isinstance(raw, str) else ""
-    if not ALIAS_RE.fullmatch(name) or name in RESERVED or re.fullmatch(r"[0-9a-f]{32}", name):
-        raise ToolInputError("Use a name of 2–32 letters, digits, underscores or hyphens, starting with a letter; reserved words and voice ids cannot be names.")
+    name = normalize_name(raw)
+    if (not 1 <= len(name) <= 32 or not unicodedata.category(name[0]).startswith("L")
+            or any(unicodedata.category(c)[0] not in "LMN" and c not in "_-" for c in name[1:])
+            or name in RESERVED or re.fullmatch(r"[0-9a-f]{32}", name)):
+        raise ToolInputError(ALIAS_NAME_ERROR)
     return name
 
 
@@ -89,13 +96,14 @@ def aliases() -> dict[str, str]:
     from .tool_support import ToolInputError
     saved = _mapping(_mapping(_mapping(_config().get("tts")).get("fish-audio")).get("aliases"))
     result = {}
-    for raw, voice in saved.items():
+    for raw in sorted(k for k in saved if isinstance(k, str)):
+        voice = saved[raw]
         try:
             name = alias_name(raw)
         except ToolInputError:
             continue
         if isinstance(voice, str) and re.fullmatch(r"[0-9a-f]{32}", voice):
-            result[name] = voice
+            result.setdefault(name, voice)
     return result
 
 
@@ -104,7 +112,7 @@ def resolve_voice(value) -> str | None:
         return None
     if re.fullmatch(r"[0-9a-f]{32}", value):
         return value
-    saved = aliases().get(value.strip().casefold())
+    saved = aliases().get(normalize_name(value))
     return saved or (value if re.fullmatch(r"[A-Za-z0-9_-]{8,128}", value) else None)
 
 

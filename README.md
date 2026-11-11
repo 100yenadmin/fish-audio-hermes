@@ -62,7 +62,7 @@ read-aloud and voice notes go through it.
 | **Expressive speech** | Fish Audio S2 models follow emotion and delivery cues such as `[excited]`, `[whispering]` and `[laughing]`. Drama 3 (`drama-3`) takes plain-language direction and word-level tags such as `<whisper>…</whisper>`. Multi-speaker dialogue and custom pronunciations are supported too. |
 | **Streaming voice** | CLI voice mode and Desktop voice replies stream each sentence as it is ready. In our tests the first audio bytes arrived 0.24–0.38 s after a sentence was sent (see [Streaming voice](#configuration) for how this was measured). |
 | **Voice library** | Search Fish Audio's community voices from chat (`/fish voices narrator`) and switch with `/fish use <id>`. |
-| **Voice names** | Save a voice under a short name (`/fish alias add narrator <id>`), then use the name wherever a voice id goes: `/fish use narrator`, `/fish preview narrator` or `fish_speak`. |
+| **Voice names** | Save a voice under a short name in any script (`/fish alias add 猫 <voice id>`), then use the name wherever a voice id goes: `/fish use 猫`, `/fish preview 猫` or `fish_speak`. |
 | **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting from chat go through Hermes's approval gate, so by default Hermes asks you first. |
 | **Speech-to-text** | Voice notes use `transcribe-1-pro`. Live dictation uses native realtime (Preview) for word-by-word captions without sound or speaker tags in CLI voice mode, TUI and Desktop (Hermes 0.21.6+). `fish_transcribe` adds speaker turns, timestamps and SRT subtitles. |
 | **Desktop Voices page** | In Hermes Desktop: browse and preview voices, pick one for the agent, clone or design your own, and check your credit. |
@@ -107,7 +107,7 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3`) |
 | `/fish preview [voice-id, name or own title] [text]` | Hear the current voice or a chosen voice (a billed synthesis); use a single-word title for previews |
 | `/fish alias` | List your saved voice names |
-| `/fish alias add <name> <voice-id>` | Save a name for a voice: 2–32 letters, digits, `-` or `_`, starting with a letter |
+| `/fish alias add <name> <voice-id>` | Save a name for a voice: 1–32 letters (any script), digits, marks, `-` or `_`, starting with a letter |
 | `/fish alias remove <name>` | Delete a saved name |
 | `/fish balance` | API credit and plan |
 | `hermes fish login [--key-stdin] [--yes]` | Save and check a key, offer to switch providers |

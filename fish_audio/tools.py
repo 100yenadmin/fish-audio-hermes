@@ -146,7 +146,7 @@ S = _field("string")
 B = _field("boolean")
 STRINGS = _field("array", items=S)
 VOICE = _field("string", pattern="^[A-Za-z0-9_-]{8,128}$")
-VOICE_REF = _field("string", pattern="^[A-Za-z0-9_-]{2,128}$", description="voice id or saved name")
+VOICE_REF = _field("string", minLength=1, maxLength=128, description="voice id or saved name (any script)")
 DICTIONARY_ID = _field("string", minLength=1, maxLength=128, pattern="^[A-Za-z0-9_-]+$")
 DICTIONARY_REFS = _field("array", maxItems=3, items=_field("object",
     properties={"id": DICTIONARY_ID, "version": DICTIONARY_ID}, required=["id", "version"], additionalProperties=False))

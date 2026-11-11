@@ -248,6 +248,21 @@ def test_commands(paid, voice, n, request):
         assert path and Path(path[1]).is_file(), 'preview did not return existing audio'
 
 
+@pytest.mark.row('A-ALIAS-UNICODE')
+def test_use_unicode_alias(paid, voice, request):
+    before = config(paid)
+    assert '猫' not in before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
+    try:
+        added = command(paid, f'alias add 猫 {voice}')
+        used = command(paid, 'use 猫')
+        assert config(paid)['tts']['fish-audio']['voice'] == voice
+        removed = command(paid, 'alias remove 猫')
+        assert '猫' not in config(paid)['tts']['fish-audio']['aliases']
+        evidence(request, paid, {'add': added, 'use': used, 'remove': removed, 'voice': voice})
+    finally:
+        set_config(paid, before)
+
+
 @pytest.mark.row('A-CMD-TITLE')
 def test_use_own_title(paid, request):
     before, items = config(paid), []

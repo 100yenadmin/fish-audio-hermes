@@ -1012,12 +1012,11 @@ var SETTINGS_VERSION = "1.4.0";
 var PLUGINS_PATH = "/capabilities?tab=plugins&plugin=fish-audio";
 var DEFAULT_MODEL = "__fish_default__";
 var HEX32 = /^[0-9a-f]{32}$/;
-var NAME = /^[a-z][a-z0-9_-]{1,31}$/;
+var NAME = /^\p{L}[\p{L}\p{M}\p{N}_-]{0,31}$/u;
 var RESERVED = ["add", "remove", "list", "current", "default"];
 function badAliasName(raw) {
-  const name = raw.trim().toLowerCase();
-  if (/[^\x00-\x7f]/.test(name)) return false;
-  return !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name);
+  const name = raw.trim().normalize("NFKC").toLowerCase();
+  return [...name].length > LIMITS.aliasName || !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name);
 }
 var shortId = (id) => id.slice(0, 8);
 var CONTROL_HEIGHT = 32;
@@ -1278,7 +1277,6 @@ function Sections({ pin, operator }) {
                 Input3,
                 {
                   "aria-label": t("settings.name"),
-                  maxLength: LIMITS.aliasName,
                   disabled: managed("aliases"),
                   onChange: (e) => {
                     setName(e.target.value);
@@ -1526,7 +1524,7 @@ var en = {
     resetSpeed: "Reset reading speed",
     speedSaved: "Reading speed saved",
     namesSection: "Voice names",
-    namesHint: "Use a name anywhere you'd type a voice id, for example /fish use narrator.",
+    namesHint: "Use a name in any script anywhere you would type a voice id, for example /fish use \u732B.",
     noNames: "No names yet",
     addName: "Add a name",
     name: "Name",
@@ -1538,7 +1536,7 @@ var en = {
     added: (name) => `Saved ${name}`,
     updated: (name) => `Updated ${name}`,
     removed: (name) => `Removed ${name}`,
-    badName: "Use 2\u201332 letters, digits, - or _, starting with a letter. Voice ids and the words add, remove, list, current and default are not allowed.",
+    badName: "Use 1\u201332 letters (any script), digits, marks, - or _, starting with a letter. Voice ids and the words add, remove, list, current and default are not allowed.",
     linksSection: "Links",
     fishAccount: "Fish Audio account",
     agentSettingsNote: "API key, server address, streaming and transport are under Agent settings.",
@@ -1726,7 +1724,7 @@ var zh = {
     resetSpeed: "\u91CD\u7F6E\u6717\u8BFB\u901F\u5EA6",
     speedSaved: "\u6717\u8BFB\u901F\u5EA6\u5DF2\u4FDD\u5B58",
     namesSection: "\u58F0\u97F3\u540D\u79F0",
-    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F93\u5165\u58F0\u97F3 ID \u7684\u5730\u65B9\u90FD\u53EF\u4EE5\u4F7F\u7528\u540D\u79F0\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
+    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F93\u5165\u58F0\u97F3 ID \u7684\u5730\u65B9\u90FD\u53EF\u4EE5\u4F7F\u7528\u4EFB\u610F\u6587\u5B57\u7CFB\u7EDF\u7684\u540D\u79F0\uFF0C\u4F8B\u5982 /fish use \u732B\u3002",
     noNames: "\u8FD8\u6CA1\u6709\u540D\u79F0",
     addName: "\u6DFB\u52A0\u540D\u79F0",
     name: "\u540D\u79F0",
@@ -1738,7 +1736,7 @@ var zh = {
     added: (name) => `\u5DF2\u4FDD\u5B58 ${name}`,
     updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
     removed: (name) => `\u5DF2\u79FB\u9664 ${name}`,
-    badName: "\u8BF7\u4F7F\u7528 2\u201332 \u4E2A\u5B57\u6BCD\u3001\u6570\u5B57\u3001- \u6216 _\uFF0C\u5E76\u4EE5\u5B57\u6BCD\u5F00\u5934\u3002\u4E0D\u80FD\u4F7F\u7528\u58F0\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
+    badName: "\u8BF7\u4F7F\u7528 1\u201332 \u4E2A\u4EFB\u610F\u6587\u5B57\u7CFB\u7EDF\u7684\u5B57\u6BCD\u3001\u6570\u5B57\u3001\u7EC4\u5408\u6807\u8BB0\u3001- \u6216 _\uFF0C\u5E76\u4EE5\u5B57\u6BCD\u5F00\u5934\u3002\u4E0D\u80FD\u4F7F\u7528\u58F0\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
     linksSection: "\u94FE\u63A5",
     fishAccount: "Fish Audio \u8D26\u6237",
     agentSettingsNote: "API \u5BC6\u94A5\u3001\u670D\u52A1\u5668\u5730\u5740\u3001\u6D41\u5F0F\u4F20\u8F93\u548C\u4F20\u8F93\u65B9\u5F0F\u4F4D\u4E8E\u201C\u667A\u80FD\u4F53\u8BBE\u7F6E\u201D\u4E2D\u3002",
@@ -1926,7 +1924,7 @@ var zhHant = {
     resetSpeed: "\u91CD\u8A2D\u6717\u8B80\u901F\u5EA6",
     speedSaved: "\u6717\u8B80\u901F\u5EA6\u5DF2\u5132\u5B58",
     namesSection: "\u8072\u97F3\u540D\u7A31",
-    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F38\u5165\u8072\u97F3 ID \u7684\u5730\u65B9\u90FD\u80FD\u4F7F\u7528\u540D\u7A31\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
+    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F38\u5165\u8072\u97F3 ID \u7684\u5730\u65B9\u90FD\u80FD\u4F7F\u7528\u4EFB\u610F\u6587\u5B57\u7CFB\u7D71\u7684\u540D\u7A31\uFF0C\u4F8B\u5982 /fish use \u732B\u3002",
     noNames: "\u5C1A\u7121\u540D\u7A31",
     addName: "\u65B0\u589E\u540D\u7A31",
     name: "\u540D\u7A31",
@@ -1938,7 +1936,7 @@ var zhHant = {
     added: (name) => `\u5DF2\u5132\u5B58 ${name}`,
     updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
     removed: (name) => `\u5DF2\u79FB\u9664 ${name}`,
-    badName: "\u8ACB\u4F7F\u7528 2\u201332 \u500B\u5B57\u6BCD\u3001\u6578\u5B57\u3001- \u6216 _\uFF0C\u4E26\u4EE5\u5B57\u6BCD\u958B\u982D\u3002\u4E0D\u80FD\u4F7F\u7528\u8072\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
+    badName: "\u8ACB\u4F7F\u7528 1\u201332 \u500B\u4EFB\u610F\u6587\u5B57\u7CFB\u7D71\u7684\u5B57\u6BCD\u3001\u6578\u5B57\u3001\u7D44\u5408\u6A19\u8A18\u3001- \u6216 _\uFF0C\u4E26\u4EE5\u5B57\u6BCD\u958B\u982D\u3002\u4E0D\u80FD\u4F7F\u7528\u8072\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
     linksSection: "\u9023\u7D50",
     fishAccount: "Fish Audio \u5E33\u6236",
     agentSettingsNote: "API \u91D1\u9470\u3001\u4F3A\u670D\u5668\u4F4D\u5740\u3001\u4E32\u6D41\u548C\u50B3\u8F38\u65B9\u5F0F\u4F4D\u65BC\u300C\u4EE3\u7406\u7A0B\u5F0F\u8A2D\u5B9A\u300D\u4E2D\u3002",
@@ -2126,7 +2124,7 @@ var ja = {
     resetSpeed: "\u8AAD\u307F\u4E0A\u3052\u901F\u5EA6\u3092\u30EA\u30BB\u30C3\u30C8",
     speedSaved: "\u8AAD\u307F\u4E0A\u3052\u901F\u5EA6\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F",
     namesSection: "\u30DC\u30A4\u30B9\u540D",
-    namesHint: "\u30DC\u30A4\u30B9 ID \u3092\u5165\u529B\u3059\u308B\u5834\u6240\u306A\u3089\u3069\u3053\u3067\u3082\u540D\u524D\u3092\u4F7F\u3048\u307E\u3059\u3002\u4F8B\uFF1A/fish use narrator",
+    namesHint: "\u30DC\u30A4\u30B9 ID \u3092\u5165\u529B\u3059\u308B\u5834\u6240\u306A\u3089\u3069\u3053\u3067\u3082\u3001\u3069\u306E\u6587\u5B57\u4F53\u7CFB\u306E\u540D\u524D\u3082\u4F7F\u3048\u307E\u3059\u3002\u4F8B\uFF1A/fish use \u732B",
     noNames: "\u307E\u3060\u540D\u524D\u306F\u3042\u308A\u307E\u305B\u3093",
     addName: "\u540D\u524D\u3092\u8FFD\u52A0",
     name: "\u540D\u524D",
@@ -2138,7 +2136,7 @@ var ja = {
     added: (name) => `${name} \u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F`,
     updated: (name) => `${name} \u3092\u66F4\u65B0\u3057\u307E\u3057\u305F`,
     removed: (name) => `${name} \u3092\u524A\u9664\u3057\u307E\u3057\u305F`,
-    badName: "\u82F1\u5B57\u3067\u59CB\u307E\u308B 2\u301C32 \u6587\u5B57\u306E\u82F1\u6570\u5B57\u3001- \u307E\u305F\u306F _ \u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044\u3002\u30DC\u30A4\u30B9 ID \u3068 add\u3001remove\u3001list\u3001current\u3001default \u306F\u4F7F\u3048\u307E\u305B\u3093\u3002",
+    badName: "\u4EFB\u610F\u306E\u6587\u5B57\u4F53\u7CFB\u306E\u6587\u5B57\u3067\u59CB\u307E\u308B 1\u301C32 \u6587\u5B57\u306E\u540D\u524D\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044\u3002\u6587\u5B57\u3001\u6570\u5B57\u3001\u7D50\u5408\u8A18\u53F7\u3001-\u3001_ \u304C\u4F7F\u3048\u307E\u3059\u3002\u30DC\u30A4\u30B9 ID \u3068 add\u3001remove\u3001list\u3001current\u3001default \u306F\u4F7F\u3048\u307E\u305B\u3093\u3002",
     linksSection: "\u30EA\u30F3\u30AF",
     fishAccount: "Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8",
     agentSettingsNote: "API \u30AD\u30FC\u3001\u30B5\u30FC\u30D0\u30FC\u30A2\u30C9\u30EC\u30B9\u3001\u30B9\u30C8\u30EA\u30FC\u30DF\u30F3\u30B0\u3001\u8EE2\u9001\u65B9\u5F0F\u306F\u300C\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u8A2D\u5B9A\u300D\u306B\u3042\u308A\u307E\u3059\u3002",
@@ -2328,7 +2326,7 @@ var ar = {
     resetSpeed: "\u0625\u0639\u0627\u062F\u0629 \u0636\u0628\u0637 \u0633\u0631\u0639\u0629 \u0627\u0644\u0642\u0631\u0627\u0621\u0629",
     speedSaved: "\u062A\u0645 \u062D\u0641\u0638 \u0633\u0631\u0639\u0629 \u0627\u0644\u0642\u0631\u0627\u0621\u0629",
     namesSection: "\u0623\u0633\u0645\u0627\u0621 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
-    namesHint: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0627\u0633\u0645 \u0641\u064A \u0623\u064A \u0645\u0643\u0627\u0646 \u062A\u0643\u062A\u0628 \u0641\u064A\u0647 \u0645\u0639\u0631\u0651\u0641 \u0635\u0648\u062A\u060C \u0645\u062B\u0644 /fish use narrator.",
+    namesHint: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0633\u0645\u064B\u0627 \u0628\u0623\u064A \u0646\u0638\u0627\u0645 \u0643\u062A\u0627\u0628\u0629 \u0641\u064A \u0623\u064A \u0645\u0643\u0627\u0646 \u062A\u0643\u062A\u0628 \u0641\u064A\u0647 \u0645\u0639\u0631\u0651\u0641 \u0635\u0648\u062A\u060C \u0645\u062B\u0644 /fish use \u732B.",
     noNames: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0633\u0645\u0627\u0621 \u0628\u0639\u062F",
     addName: "\u0625\u0636\u0627\u0641\u0629 \u0627\u0633\u0645",
     name: "\u0627\u0644\u0627\u0633\u0645",
@@ -2340,7 +2338,7 @@ var ar = {
     added: (name) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(name)}`,
     updated: (name) => `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B ${isolate(name)}`,
     removed: (name) => `\u062A\u0645\u062A \u0625\u0632\u0627\u0644\u0629 ${isolate(name)}`,
-    badName: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0645\u0646 2 \u0625\u0644\u0649 32 \u062D\u0631\u0641\u064B\u0627 \u0644\u0627\u062A\u064A\u0646\u064A\u064B\u0627 \u0623\u0648 \u0631\u0642\u0645\u064B\u0627 \u0623\u0648 - \u0623\u0648 _\u060C \u0639\u0644\u0649 \u0623\u0646 \u064A\u0628\u062F\u0623 \u0628\u062D\u0631\u0641. \u0644\u0627 \u064A\u064F\u0633\u0645\u062D \u0628\u0645\u0639\u0631\u0651\u0641\u0627\u062A \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0648\u0644\u0627 \u0628\u0627\u0644\u0643\u0644\u0645\u0627\u062A add \u0648remove \u0648list \u0648current \u0648default.",
+    badName: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0645\u0646 1 \u0625\u0644\u0649 32 \u062D\u0631\u0641\u064B\u0627 (\u0628\u0623\u064A \u0646\u0638\u0627\u0645 \u0643\u062A\u0627\u0628\u0629) \u0623\u0648 \u0631\u0642\u0645\u064B\u0627 \u0623\u0648 \u0639\u0644\u0627\u0645\u0629 \u062A\u0634\u0643\u064A\u0644 \u0623\u0648 - \u0623\u0648 _\u060C \u0639\u0644\u0649 \u0623\u0646 \u064A\u0628\u062F\u0623 \u0628\u062D\u0631\u0641. \u0644\u0627 \u064A\u064F\u0633\u0645\u062D \u0628\u0645\u0639\u0631\u0651\u0641\u0627\u062A \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0648\u0644\u0627 \u0628\u0627\u0644\u0643\u0644\u0645\u0627\u062A add \u0648remove \u0648list \u0648current \u0648default.",
     linksSection: "\u0631\u0648\u0627\u0628\u0637",
     fishAccount: "\u062D\u0633\u0627\u0628 Fish Audio",
     agentSettingsNote: "\u0645\u0641\u062A\u0627\u062D API \u0648\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062E\u0627\u062F\u0645 \u0648\u0627\u0644\u0628\u062B \u0648\u0637\u0631\u064A\u0642\u0629 \u0627\u0644\u0646\u0642\u0644 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \xAB\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0648\u0643\u064A\u0644\xBB.",
@@ -2528,7 +2526,7 @@ var ru = {
     resetSpeed: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0447\u0442\u0435\u043D\u0438\u044F",
     speedSaved: "\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0447\u0442\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430",
     namesSection: "\u0418\u043C\u0435\u043D\u0430 \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
-    namesHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u043C\u044F \u0432\u0435\u0437\u0434\u0435, \u0433\u0434\u0435 \u0432\u0432\u043E\u0434\u0438\u0442\u0435 ID \u0433\u043E\u043B\u043E\u0441\u0430, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 /fish use narrator.",
+    namesHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u043C\u044F \u0432 \u043B\u044E\u0431\u043E\u0439 \u043F\u0438\u0441\u044C\u043C\u0435\u043D\u043D\u043E\u0441\u0442\u0438 \u0432\u0435\u0437\u0434\u0435, \u0433\u0434\u0435 \u0432\u0432\u043E\u0434\u0438\u0442\u0435 ID \u0433\u043E\u043B\u043E\u0441\u0430, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 /fish use \u732B.",
     noNames: "\u0418\u043C\u0451\u043D \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
     addName: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0438\u043C\u044F",
     name: "\u0418\u043C\u044F",
@@ -2540,7 +2538,7 @@ var ru = {
     added: (name) => `\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E: ${name}`,
     updated: (name) => `\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${name}`,
     removed: (name) => `\u0423\u0434\u0430\u043B\u0435\u043D\u043E: ${name}`,
-    badName: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u043E\u0442 2 \u0434\u043E 32 \u043B\u0430\u0442\u0438\u043D\u0441\u043A\u0438\u0445 \u0431\u0443\u043A\u0432, \u0446\u0438\u0444\u0440, - \u0438\u043B\u0438 _, \u043D\u0430\u0447\u0438\u043D\u0430\u044F \u0441 \u0431\u0443\u043A\u0432\u044B. ID \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u0438 \u0441\u043B\u043E\u0432\u0430 add, remove, list, current \u0438 default \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A\u0430\u044E\u0442\u0441\u044F.",
+    badName: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u043E\u0442 1 \u0434\u043E 32 \u0431\u0443\u043A\u0432 (\u043B\u044E\u0431\u043E\u0439 \u043F\u0438\u0441\u044C\u043C\u0435\u043D\u043D\u043E\u0441\u0442\u0438), \u0446\u0438\u0444\u0440, \u043A\u043E\u043C\u0431\u0438\u043D\u0438\u0440\u0443\u0435\u043C\u044B\u0445 \u0437\u043D\u0430\u043A\u043E\u0432, - \u0438\u043B\u0438 _, \u043D\u0430\u0447\u0438\u043D\u0430\u044F \u0441 \u0431\u0443\u043A\u0432\u044B. ID \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u0438 \u0441\u043B\u043E\u0432\u0430 add, remove, list, current \u0438 default \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A\u0430\u044E\u0442\u0441\u044F.",
     linksSection: "\u0421\u0441\u044B\u043B\u043A\u0438",
     fishAccount: "\u0410\u043A\u043A\u0430\u0443\u043D\u0442 Fish Audio",
     agentSettingsNote: "API-\u043A\u043B\u044E\u0447, \u0430\u0434\u0440\u0435\u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430, \u043F\u043E\u0442\u043E\u043A\u043E\u0432\u0430\u044F \u043F\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0438 \u0442\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442 \u043D\u0430\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0430\u0433\u0435\u043D\u0442\u0430\xBB.",
@@ -2728,7 +2726,7 @@ var fr = {
     resetSpeed: "R\xE9initialiser la vitesse de lecture",
     speedSaved: "Vitesse de lecture enregistr\xE9e",
     namesSection: "Noms de voix",
-    namesHint: "Utilisez un nom partout o\xF9 vous saisiriez un identifiant de voix, par exemple /fish use narrator.",
+    namesHint: "Utilisez un nom dans toute \xE9criture partout o\xF9 vous saisiriez un identifiant de voix, par exemple /fish use \u732B.",
     noNames: "Aucun nom pour le moment",
     addName: "Ajouter un nom",
     name: "Nom",
@@ -2740,7 +2738,7 @@ var fr = {
     added: (name) => `${name} enregistr\xE9`,
     updated: (name) => `${name} mis \xE0 jour`,
     removed: (name) => `${name} retir\xE9`,
-    badName: "Utilisez 2 \xE0 32 lettres latines, chiffres, - ou _, en commen\xE7ant par une lettre. Les identifiants de voix et les mots add, remove, list, current et default ne sont pas autoris\xE9s.",
+    badName: "Utilisez 1 \xE0 32 lettres (de toute \xE9criture), chiffres, signes combinatoires, - ou _, en commen\xE7ant par une lettre. Les identifiants de voix et les mots add, remove, list, current et default ne sont pas autoris\xE9s.",
     linksSection: "Liens",
     fishAccount: "Compte Fish Audio",
     agentSettingsNote: "La cl\xE9 API, l\u2019adresse du serveur, le streaming et le transport se trouvent dans R\xE9glages de l\u2019agent.",
@@ -2928,7 +2926,7 @@ var de = {
     resetSpeed: "Lesegeschwindigkeit zur\xFCcksetzen",
     speedSaved: "Lesegeschwindigkeit gespeichert",
     namesSection: "Stimmennamen",
-    namesHint: "Verwenden Sie einen Namen \xFCberall dort, wo Sie eine Stimmen-ID eingeben w\xFCrden, zum Beispiel /fish use narrator.",
+    namesHint: "Verwenden Sie Namen in jeder Schrift \xFCberall dort, wo Sie eine Stimmen-ID eingeben w\xFCrden, zum Beispiel /fish use \u732B.",
     noNames: "Noch keine Namen",
     addName: "Namen hinzuf\xFCgen",
     name: "Name",
@@ -2940,7 +2938,7 @@ var de = {
     added: (name) => `${name} gespeichert`,
     updated: (name) => `${name} aktualisiert`,
     removed: (name) => `${name} entfernt`,
-    badName: "Verwenden Sie 2\u201332 lateinische Buchstaben, Ziffern, - oder _, beginnend mit einem Buchstaben. Stimmen-IDs und die W\xF6rter add, remove, list, current und default sind nicht erlaubt.",
+    badName: "Verwenden Sie 1\u201332 Buchstaben (beliebiger Schrift), Ziffern, kombinierende Zeichen, - oder _, beginnend mit einem Buchstaben. Stimmen-IDs und die W\xF6rter add, remove, list, current und default sind nicht erlaubt.",
     linksSection: "Links",
     fishAccount: "Fish Audio-Konto",
     agentSettingsNote: "API-Schl\xFCssel, Serveradresse, Streaming und Transport finden Sie unter Agent-Einstellungen.",
@@ -3128,7 +3126,7 @@ var es = {
     resetSpeed: "Restablecer velocidad de lectura",
     speedSaved: "Velocidad de lectura guardada",
     namesSection: "Nombres de voces",
-    namesHint: "Usa un nombre en cualquier lugar donde escribir\xEDas un ID de voz, por ejemplo /fish use narrator.",
+    namesHint: "Usa un nombre en cualquier escritura donde escribir\xEDas un ID de voz, por ejemplo /fish use \u732B.",
     noNames: "A\xFAn no hay nombres",
     addName: "A\xF1adir un nombre",
     name: "Nombre",
@@ -3140,7 +3138,7 @@ var es = {
     added: (name) => `${name} guardado`,
     updated: (name) => `${name} actualizado`,
     removed: (name) => `${name} quitado`,
-    badName: "Usa de 2 a 32 letras latinas, d\xEDgitos, - o _, empezando por una letra. No se permiten IDs de voz ni las palabras add, remove, list, current y default.",
+    badName: "Usa de 1 a 32 letras (de cualquier escritura), d\xEDgitos, marcas combinantes, - o _, empezando por una letra. No se permiten IDs de voz ni las palabras add, remove, list, current y default.",
     linksSection: "Enlaces",
     fishAccount: "Cuenta de Fish Audio",
     agentSettingsNote: "La clave de API, la direcci\xF3n del servidor, el streaming y el transporte est\xE1n en Ajustes del agente.",

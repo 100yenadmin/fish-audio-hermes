@@ -119,10 +119,15 @@ def test_names_crud_validation_and_cap(config):
         assert call("add_name", name="Narrator", voice=VOICE)["names"] == {"narrator": VOICE}
         assert call("add_name", name="host", voice="narrator")["names"]["host"] == VOICE
         assert "narrator" not in call("remove_name", name="NARRATOR")["names"]
-        for name in ("a", "add", "a" * 33):
+        for name in ("2host", "add", "a" * 33):
             assert call("add_name", name=name, voice=VOICE)["error"] == commands.handle(f"alias add {name} {VOICE}")
         assert call("remove_name", name="missing")["error"] == "No saved voice name found."
         assert "Use a name" in call("add_name", name="bad name", voice=VOICE)["error"]
+        for name in ("猫", "راوي", "कथावाचक", "Straße", "ＮＡＲＲＡＴＯＲ"):
+            normalized = settings.normalize_name(name)
+            assert call("add_name", name=name, voice=VOICE)["names"][normalized] == VOICE
+            assert call("use", voice=name)["voice"] == VOICE
+            assert normalized not in call("remove_name", name=name)["names"]
         data["tts"]["fish-audio"]["aliases"] = {f"voice{i}": VOICE for i in range(50)}
         assert "50" in call("add_name", name="extra", voice=VOICE)["error"]
         assert call("add_name", name="voice0", voice=VOICE)["success"]
