@@ -29,7 +29,7 @@ Plan before spending:
 Create `manifest.json` in the project folder with one entry per chapter:
 `number`, `title`, `text_hash` (SHA-256 of the exact chapter text encoded as UTF-8), `file`,
 `voice` (the pinned ID), `model`, `estimated_cost`, `status` (`pending`, `done` or `failed`),
-`alignment_file` when available, and `cache_file` (the audio-cache path) until the copy succeeds. Use project-relative filenames; pending entries can have a null file.
+`alignment_file` when available, and `cache_file` (the audio-cache path it was copied from). Use project-relative filenames; pending entries can have a null file.
 For a split chapter, keep a `parts` list with each part's text hash, file, estimate, status and
 alignment file; mark the chapter done only when every part is done. Sum part estimates for its cost.
 Initialize the manifest before synthesis. Save it atomically after every chapter and every part
@@ -45,16 +45,18 @@ Synthesize and save:
    and `alignment_path` alongside it, and set the copied alignment JSON's `audio` to the new basename.
    The alignment JSON contains every word segment even when the tool result stops at 500.
 3. Record the files and mark the entry done only after the copies succeed; write the manifest.
-   If a copy fails, keep `cache_file` for recovery and mark failed; copy again without synthesis.
+   On a first synthesis, if a copy fails, mark the entry failed and copy again from `cache_file` without synthesis.
    If synthesis fails or is interrupted, record failed and explain any uncertain billing before retrying.
 
 Resume by reading the manifest and recomputing text hashes; keep using its pinned voice ID and model. Skip done chapters/parts whose hash
-still matches; never synthesize them again unless asked. If a recorded file is missing, recover it
-from the cache or ask before a billed replacement. Present changed or failed entries for approval.
+still matches; never synthesize them again unless asked. If a recorded file is missing, copy it again
+from `cache_file` if that still exists; otherwise ask before a billed replacement. Present changed or failed entries for approval.
 To redo one chapter, say it will be billed again and synthesize only that chapter's entry (its
-parts if split). Copy the new audio and sidecars under temporary names first; only when every copy
-succeeds, replace the old set and update the hash, cost, alignment and status in the manifest.
-If any copy fails, keep the old files and manifest entry as they were.
+parts if split). Copy the new audio and sidecars to new names with a revision suffix
+(`chapter-NN-r2`, then `-r3`), leaving the old files in place. The manifest write is the switch:
+only after every copy succeeds, save the manifest pointing at the new files with the new hash, cost
+and status; then delete the old set. If anything fails before that write, delete only the new copies
+and leave the old files and manifest entry as they were.
 
 For multi-voice casting and timeline editing, hand off to Fish Audio's Story Studio through
 Fish's own MCP server or web app. It signs in to the user's Fish account with OAuth, not this
