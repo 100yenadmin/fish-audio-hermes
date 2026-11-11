@@ -505,9 +505,10 @@ def test_nested_json_success(scripting, capsys):
     assert hermes_nested("balance", "--json") == 0 and json.loads(capsys.readouterr().out)["success"] is True
 
 
-@pytest.mark.parametrize("name", ["clip.srt", "clip.vtt"])
-def test_subtitle_named_output_refused_before_billing(scripting, tmp_path, capsys, name):
-    assert run("speak", "hi", "--timestamps", "--out", str(tmp_path / name), "--json") == 1
+@pytest.mark.parametrize("name", ["clip.srt", "clip.vtt", "clip.SRT"])
+@pytest.mark.parametrize("timestamps", [True, False])
+def test_subtitle_named_output_refused_before_billing(scripting, tmp_path, capsys, name, timestamps):
+    assert run("speak", "hi", *(["--timestamps"] if timestamps else []), "--out", str(tmp_path / name), "--json") == 1
     assert not scripting and "audio file name" in json.loads(capsys.readouterr().out)["error"]
 
 
@@ -537,5 +538,31 @@ def test_file_created_meanwhile_is_not_overwritten(scripting, tmp_path, monkeypa
     assert run("speak", "hi", "--out", str(target), "--json") == 1
     result = json.loads(capsys.readouterr().out)
     assert target.read_bytes() == b"theirs" and result["file_path"].endswith("cached.mp3")
-    assert "was not copied" in result["error"]
+    assert "--out failed" in result["error"]
     assert sorted(p.name for p in tmp_path.iterdir() if p.name.startswith("tmp")) == []
+
+
+def test_no_hard_links_falls_back_to_exclusive_create(scripting, tmp_path, monkeypatch, capsys):
+    def no_links(src, dest):
+        raise PermissionError("hard links not supported")
+    monkeypatch.setattr(cli.os, "link", no_links)
+    target = tmp_path / "a.mp3"
+    assert run("speak", "hi", "--out", str(target), "--json") == 0
+    assert target.read_bytes() == b"ID3synthetic" and json.loads(capsys.readouterr().out)["out_path"] == str(target)
+
+
+def test_failed_later_output_removes_the_files_this_run_placed(scripting, tmp_path, monkeypatch, capsys):
+    for ext in (".srt", ".vtt"):
+        (tmp_path / "cached").with_suffix(ext).write_text("captions")
+    target = tmp_path / "out.mp3"
+    real = cli._place_new
+    def fail_vtt(temp_path, dest):
+        if dest.suffix == ".vtt":
+            raise OSError("disk full")
+        real(temp_path, dest)
+    monkeypatch.setattr(cli, "_place_new", fail_vtt)
+    assert run("speak", "hi", "--timestamps", "--out", str(target), "--json") == 1
+    result = json.loads(capsys.readouterr().out)
+    assert "--out failed" in result["error"] and result["file_path"].endswith("cached.mp3")
+    assert not target.exists() and not target.with_suffix(".srt").exists()
+    assert not [p for p in tmp_path.iterdir() if p.name.startswith("tmp")]

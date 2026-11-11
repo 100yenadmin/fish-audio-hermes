@@ -19,6 +19,8 @@ from .secrets import fish_api_key, redact
 from .tool_support import require, run, ToolInputError
 from .tts import FishAudioTTSProvider
 
+_UMASK = os.umask(0o022)  # read once at import (single-threaded); restored on the next line
+os.umask(_UMASK)
 RESTART_HINT = "If a Hermes gateway or the desktop app is already running for this profile, restart it to pick up the new key."
 
 
@@ -81,9 +83,8 @@ def _destination(path, force):
 
 def _outputs(target, timestamps):
     """Every path --out may write: the audio, plus its subtitles when timestamps are on."""
-    paths = [target] + ([target.with_suffix(ext) for ext in (".srt", ".vtt")] if timestamps else [])
-    require(len(set(paths)) == len(paths), "Use an audio file name for --out (not .srt or .vtt).")
-    return paths
+    require(target.suffix.lower() not in {".srt", ".vtt"}, "Use an audio file name for --out (not .srt or .vtt).")
+    return [target] + ([target.with_suffix(ext) for ext in (".srt", ".vtt")] if timestamps else [])
 
 
 def _copy_output(result, target, force):
@@ -93,33 +94,52 @@ def _copy_output(result, target, force):
                                 for ext in (".srt", ".vtt") if source.with_suffix(ext).is_file()]
     for _, dest in pairs:
         _destination(dest, force)
-    mode = 0o666 & ~_umask()
-    staged = []
+    staged, placed = [], []
     try:
-        for src, dest in pairs:  # Stage every file first, so a failed copy leaves no new output behind.
+        for src, dest in pairs:  # Stage every file first; a failure then removes what this run placed.
             with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False) as temporary:
                 staged.append((Path(temporary.name), dest))
                 with src.open("rb") as audio:
                     shutil.copyfileobj(audio, temporary)
-            os.chmod(staged[-1][0], mode)
+            os.chmod(staged[-1][0], 0o666 & ~_UMASK)
         for temp_path, dest in staged:
             if force:
                 os.replace(temp_path, dest)
-            else:  # os.link refuses an existing name, so a file created meanwhile is never overwritten.
-                try:
-                    os.link(temp_path, dest)
-                except FileExistsError:
-                    raise ToolInputError("Output exists; use --force to replace a file.") from None
+            else:
+                _place_new(temp_path, dest)
+            placed.append(dest)
+    except BaseException:
+        if not force:  # Every placed file is new (it did not exist), so removing it restores the folder.
+            for dest in placed:
+                dest.unlink(missing_ok=True)
+        elif placed:
+            raise ToolInputError("Only some outputs were replaced: " + ", ".join(map(str, placed))) from None
+        raise
     finally:
         for temp_path, _ in staged:
             temp_path.unlink(missing_ok=True)
     result["out_path"] = str(target)
 
 
-def _umask():
-    current = os.umask(0)
-    os.umask(current)
-    return current
+def _place_new(temp_path, dest):
+    """Put a staged file at dest without ever replacing a file that appeared meanwhile."""
+    try:
+        os.link(temp_path, dest)  # atomic and refuses an existing name
+        return
+    except FileExistsError:
+        raise ToolInputError("Output exists; use --force to replace a file.") from None
+    except OSError:  # no hard links (exFAT, some network drives): exclusive create, then copy
+        pass
+    try:
+        descriptor = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+    except FileExistsError:
+        raise ToolInputError("Output exists; use --force to replace a file.") from None
+    try:
+        with os.fdopen(descriptor, "wb") as out, temp_path.open("rb") as staged:
+            shutil.copyfileobj(staged, out)
+    except BaseException:
+        dest.unlink(missing_ok=True)
+        raise
 
 
 def _script(args):
@@ -155,7 +175,7 @@ def _script(args):
             try:
                 _copy_output(result, Path(args.out), args.force)
             except Exception as exc:  # The speech is billed and cached: say where it is.
-                result = {"success": False, "error": f"The audio is saved at {result['file_path']} but was not copied: {exc}",
+                result = {"success": False, "error": f"The audio is billed and saved at {result['file_path']}; --out failed: {exc}",
                           "file_path": result["file_path"]}
     except Exception as exc:
         result = {"success": False, "error": redact(str(exc))}
