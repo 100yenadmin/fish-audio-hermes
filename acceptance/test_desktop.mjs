@@ -240,8 +240,8 @@ for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enter
 
 test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
   const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
-  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'slow-save', 'wait-throws', 'left-renamed', 'duplicate']) {
-    let title = mode === 'left-renamed' ? 'Original (edit)' : 'Original', pending, dialog = false, shots = 0, inflight = null
+  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'slow-save', 'wait-throws', 'left-renamed', 'stale-list', 'duplicate']) {
+    let title = ['left-renamed', 'stale-list'].includes(mode) ? 'Original (edit)' : 'Original', pending, dialog = false, shots = 0, inflight = null
     const rows = [], saves = []
     // A slow Save lands only when something waits on the page, like the real in-flight PATCH.
     const waits = [], timers = []
@@ -267,16 +267,16 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
           if (mode === 'restore-throws' && saves.length) throw Error('gateway unreachable')
           title = JSON.parse(init.body).title; saves.push(title); return { body: { ok: true } }
         }
-        return { body: { voice: { id: 'v1', title } } }
+        return { body: { voice: { id: 'v1', title: mode === 'stale-list' ? 'Original' : title } } }
       },
       c:{clickText:async()=>{}, shot:async()=>{ shots++; if (mode === 'shot-error' && shots > 1) throw Error('capture failed'); return 'shot' }},
       row:(id,status,reason)=>rows.push({id,status,reason})
     })
-    const untouched = ['empty', 'left-renamed', 'duplicate'].includes(mode)
-    const stuck = mode === 'left-renamed' || mode.endsWith('restore-refused') || mode === 'restore-throws'
+    const untouched = ['empty', 'left-renamed', 'stale-list', 'duplicate'].includes(mode)
+    const stuck = ['left-renamed', 'stale-list'].includes(mode) || mode.endsWith('restore-refused') || mode === 'restore-throws'
     assert.equal(title, stuck ? 'Original (edit)' : 'Original')
     assert.deepEqual(saves, untouched ? [] : mode.endsWith('restore-refused') || mode === 'restore-throws' ? ['Original (edit)'] : ['Original (edit)', 'Original'])
-    assert.equal(rows[0].status, ['empty', 'duplicate'].includes(mode) ? 'na' : mode === 'success' ? 'pass' : 'fail')
+    assert.equal(rows[0].status, ['empty', 'duplicate', 'stale-list'].includes(mode) ? 'na' : mode === 'success' ? 'pass' : 'fail')
     if (mode.endsWith('restore-refused')) assert.match(rows[0].reason, /title not restored .*now "Original \(edit\)"/)
     if (mode === 'refresh-fail+restore-refused') assert.match(rows[0].reason, /the edit failed first: list did not refresh/)
     if (mode === 'restore-throws') assert.match(rows[0].reason, /title not restored .*\(gateway unreachable\)/)
@@ -286,6 +286,7 @@ test('B-MINE-EDIT renames and restores, including after a screenshot error; empt
     assert.equal(timers.length, mode === 'wait-throws' ? 1 : 0)
     if (waits.length) assert.ok(waits[0] > 120000 && waits[0] <= 125000)
     if (mode === 'left-renamed') assert.match(rows[0].reason, /left renamed by an earlier run/)
+    if (mode === 'stale-list') assert.match(rows[0].reason, /by id the title is restored \("Original"\)/)
   }
   const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-MINE-EDIT')
   assert.equal(spec.min_plugin, '1.14.0'); assert.equal(spec.layer, 'b'); assert.equal(spec.billed, 'none')

@@ -412,7 +412,16 @@ async function mineEditRow(s, theme) {
     const first = s.page.getByRole('button', { name: /^Edit / }).first()
     if (!(await first.count())) { row('B-MINE-EDIT', 'na', 'no own voice exists', { theme }); return }
     const original = (await first.getAttribute('aria-label')).slice(5)
-    if (original.endsWith(' (edit)')) { row('B-MINE-EDIT', 'fail', `own voice title "${original}" was left renamed by an earlier run; restore it first`, { theme }); return }
+    if (original.endsWith(' (edit)')) {
+      // Fish's voice list can lag a restore made moments earlier (the other theme's pass), so trust the title by id.
+      const listed = (await gw('/api/plugins/fish-audio/voices?self=true&page=1')).body?.items || []
+      const hit = listed.filter(v => v.title === original)
+      const byId = hit.length === 1 ? (await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(hit[0].id)}`)).body?.voice?.title : null
+      if (typeof byId === 'string' && !byId.endsWith(' (edit)')) {
+        row('B-MINE-EDIT', 'na', `Fish's voice list still shows the previous pass's rename; by id the title is restored ("${byId}")`, { theme }); return
+      }
+      row('B-MINE-EDIT', 'fail', `own voice title "${original}" was left renamed by an earlier run; restore it first`, { theme }); return
+    }
     // Find the voice id before changing anything, so the title is restored through the gateway even if the UI fails.
     const mine = await gw('/api/plugins/fish-audio/voices?self=true&page=1')
     const matches = (mine.body?.items || []).filter(v => v.title === original)
