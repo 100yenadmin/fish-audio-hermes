@@ -127,7 +127,7 @@ def speech_timestamps(events, audio_path):
         alignment = json.dumps({"audio": base.name, "segments": segments}, ensure_ascii=False)
         try:  # The subtitles above are already saved: a failed alignment file must not hide them.
             result["alignment_path"] = media.atomic_write(base.with_suffix(".alignment.json"), [alignment.encode("utf-8")])
-        except OSError:
+        except (OSError, ValueError):
             result["alignment_error"] = "The complete alignment file could not be saved; the segments above are still here."
     return result
 

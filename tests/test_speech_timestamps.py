@@ -184,12 +184,13 @@ def test_subtitle_failure_keeps_the_billed_audio(tmp_path):
     assert "timestamps could not be processed" in result["timestamps_error"] and "srt_path" not in result
 
 
-def test_alignment_write_failure_keeps_audio_segments_and_subtitles(monkeypatch):
+@pytest.mark.parametrize("error", [OSError, ValueError])
+def test_alignment_write_failure_keeps_audio_segments_and_subtitles(monkeypatch, error):
     original = media.atomic_write
 
     def fail_alignment(path, chunks):
-        if Path(path).suffix == ".json":
-            raise OSError("synthetic alignment write failure")
+        if str(path).endswith(".alignment.json"):
+            raise error("synthetic alignment write failure")
         return original(path, chunks)
 
     monkeypatch.setattr(media, "atomic_write", fail_alignment)
