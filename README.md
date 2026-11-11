@@ -118,7 +118,7 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 
 | Tool | What it does |
 |---|---|
-| `fish_speak` | Expressive or multi-speaker speech; with `timestamps: true`, word timings plus SRT and WebVTT subtitles |
+| `fish_speak` | Expressive or multi-speaker speech; with `timestamps: true`, word timings, complete alignment JSON, SRT and WebVTT subtitles |
 | `fish_voices` | Search, list and inspect voices; clone, design, save, update and delete them |
 | `fish_voices` · `audition` | Play up to 4 voices reading your own short passage (≤200 characters); each clip is a billed synthesis |
 | `fish_transcribe` | Rich transcription with speakers, timestamps and SRT |
@@ -129,7 +129,7 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
 through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
-`fish-audio:fish-audio-voice-studio` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
+`fish-audio:fish-audio-voice-studio`, `fish-audio:fish-audio-long-form` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
 `gh` only after you approve the draft).
 
 To remember recurring company names, use `fish_pronunciations`: `create` with a `name`, then `publish`
@@ -402,6 +402,13 @@ Measured on 2026-10-11 from Tokyo with plugin v1.3.2, N=3, p50: HTTP streaming t
 0.293 s on s2.1-pro, 0.266 s on s2-pro and 0.244 s on s1. Whole-file MP3 synthesis of 310 characters took
 3.605 s on s2.1-pro and 2.209 s on s2-pro. On a clean synthetic speech corpus, transcribe-1-pro had English
 word error rate (WER) 1.8% and Japanese/Chinese character error rate (CER) 0. These numbers depend on region and load.
+
+### Long-form audio (chapters)
+
+Use the [long-form skill](skills/fish-audio-long-form/SKILL.md) to split a manuscript into chapter files,
+see the cost estimate before synthesis, and keep a manifest for resume or redoing one chapter.
+With `timestamps: true`, `fish_speak` returns `alignment_path`: a complete `.alignment.json` file next to
+the audio, even when the tool result is limited to 500 segments. The skill also explains the Story Studio handoff.
 
 ## Fish Audio's MCP server and this plugin
 

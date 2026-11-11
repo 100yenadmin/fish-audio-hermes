@@ -494,6 +494,22 @@ def test_delivery(paid, request):
         assert item['media_tag'] == f'{marker}MEDIA:{path}'
     assert result['refused'] == {'success': False, 'error': 'Voice bubbles need ogg or mp3; use delivery file for wav.'}
     assert result['refusal_calls'] == 0
+
+
+@pytest.mark.row('A-TTS-ALIGN')
+def test_tts_alignment(paid, request):
+    code = '\n    '.join([
+        'import json; from tools.registry import registry',
+        'result = registry.dispatch("fish_speak", {"text": "The sun is shining over the garden today. A little bird sings nearby as we walk slowly beneath the trees.", "timestamps": True, "format": "mp3"})',
+        'print("ACCEPTANCE_RESULT=" + (result if isinstance(result, str) else json.dumps(result)))'])
+    result = core(paid, code)
+    assert result.get('success') is True, scrub(result)
+    path = Path(result['alignment_path'])
+    assert path.is_file() and path == Path(result['file_path']).with_suffix('.alignment.json')
+    alignment = json.loads(path.read_text())
+    assert alignment['audio'] == Path(result['file_path']).name
+    assert 0 < len(alignment['segments']) == len(result['segments']) <= 500
+    assert alignment['segments'][0] == result['segments'][0]
     evidence(request, paid, result)
 
 

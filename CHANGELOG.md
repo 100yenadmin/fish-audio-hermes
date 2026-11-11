@@ -11,6 +11,11 @@
   Omitting it preserves format-based delivery; WAV voice notes are refused before any Fish request (#95).
 - **Reply rules and scheduled briefings:** the expressive-speech skill explains Hermes memory/preferences rules,
   and the README includes a morning spoken-briefing cron recipe with a named chat destination (#95).
+- **Long-form chapters:** a registered skill plans a manuscript, shows the cost estimate before synthesis,
+  saves chapter files and a manifest, resumes without redoing finished chapters, and redoes one chapter on request.
+  It explains the Story Studio handoff and its separate OAuth sign-in and app credits (#94).
+- **Complete word alignment:** `fish_speak` with `timestamps: true` writes all segments to an `.alignment.json`
+  sidecar and returns `alignment_path`; the tool result keeps its existing 500-segment cap (#94).
 
 ## 1.12.1 — 2026-11-10
 
