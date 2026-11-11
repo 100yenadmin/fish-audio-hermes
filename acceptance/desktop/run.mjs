@@ -411,14 +411,22 @@ async function mineEditRow(s, theme) {
       document.querySelector('button[aria-label^="Edit "]'), null, { timeout: 15000 })
     const first = s.page.getByRole('button', { name: /^Edit / }).first()
     if (!(await first.count())) { row('B-MINE-EDIT', 'na', 'no own voice exists', { theme }); return }
-    const original = (await first.getAttribute('aria-label')).slice(5)
+    let original = (await first.getAttribute('aria-label')).slice(5)
+    // The other theme's pass restores the title through the gateway, so Desktop's list (or Fish's) can still show
+    // its rename: reopen My voices a few times before judging.
+    for (let i = 0; i < 3 && original.endsWith(' (edit)'); i++) {
+      await c.clickText(s, 'Library', { timeout: 5000 }); await c.clickText(s, 'My voices', { timeout: 5000 })
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      original = (await first.getAttribute('aria-label')).slice(5)
+    }
     if (original.endsWith(' (edit)')) {
-      // Fish's voice list can lag a restore made moments earlier (the other theme's pass), so trust the title by id.
       const listed = (await gw('/api/plugins/fish-audio/voices?self=true&page=1')).body?.items || []
       const hit = listed.filter(v => v.title === original)
-      const byId = hit.length === 1 ? (await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(hit[0].id)}`)).body?.voice?.title : null
+      const unedited = listed.filter(v => v.title === original.slice(0, -' (edit)'.length))
+      const byId = hit.length === 1 ? (await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(hit[0].id)}`)).body?.voice?.title
+        : !hit.length && unedited.length === 1 ? unedited[0].title : null
       if (typeof byId === 'string' && !byId.endsWith(' (edit)')) {
-        row('B-MINE-EDIT', 'na', `Fish's voice list still shows the previous pass's rename; by id the title is restored ("${byId}")`, { theme }); return
+        row('B-MINE-EDIT', 'na', `the voice list still shows the previous pass's rename; the gateway has the title restored ("${byId}")`, { theme }); return
       }
       row('B-MINE-EDIT', 'fail', `own voice title "${original}" was left renamed by an earlier run; restore it first`, { theme }); return
     }
