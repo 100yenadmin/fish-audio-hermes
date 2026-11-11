@@ -38,6 +38,12 @@ if [ ! -f "$TREE/.acceptance-ready" ]; then
     else
       log "npm ci (root)"; (cd "$TREE" && npm ci --no-audit --no-fund > "$BASE/npm-ci.log" 2>&1) || { log "npm ci failed, see $BASE/npm-ci.log"; exit 1; }
     fi
+    # Electron 44+ needs its binary installed separately after the workspace dependency install.
+    ELECTRON_INSTALL=$(cd "$TREE/apps/desktop" && node -e 'if (parseInt(require("electron/package.json").version, 10) >= 44) process.stdout.write(require.resolve("electron/install.js"))') || { log "Electron package check failed"; exit 1; }
+    if [ -n "$ELECTRON_INSTALL" ]; then
+      log "install Electron binary"
+      (cd "$TREE/apps/desktop" && node "$ELECTRON_INSTALL" > "$BASE/electron-install.log" 2>&1) || { log "Electron binary install failed, see $BASE/electron-install.log"; exit 1; }
+    fi
   fi
   touch "$TREE/.acceptance-ready"
 fi
