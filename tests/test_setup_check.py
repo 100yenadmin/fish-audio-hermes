@@ -28,21 +28,21 @@ def test_no_key_checklist_and_settings(config, monkeypatch, home):
         result = json.loads(tools.fish_settings({"action": "get"}))
         assert not mock.calls
         assert not json.loads(tools.fish_settings({"action": "use", "voice": VOICE}))["success"]
-    assert "✗ " + commands.NO_KEY in reply and reply.endswith("Next: " + commands.NO_KEY)
+    assert "✗ " + commands.NO_KEY in reply and reply.endswith("Next: " + commands.NO_KEY + " " + setup_check.RESTART_HINT)
     assert "never paste API keys into chat" in reply
     assert result["success"] and not result["setup_ready"] and not result["setup"][0]["ok"]
 
 
-@pytest.mark.parametrize("assignment,saved", [("synthetic-not-a-key", True), ("", False), ('""', False)])
-def test_saved_key_restart(config, monkeypatch, home, assignment, saved):
-    (home / ".env").write_text("OTHER=synthetic\nFISH_API_KEY=" + assignment + "\n")
-    # Exercise the same profile-home resolver as media.py, including the Hermes API.
-    monkeypatch.setattr(media, "_hermes_home", hermes_home)
-    monkeypatch.setitem(sys.modules, "hermes_constants", SimpleNamespace(get_hermes_home=lambda: home))
+def test_no_key_never_reads_env(config, monkeypatch, home):
+    # Catalog rule 11: the key comes only from Hermes's secret scope; the profile .env is never opened.
+    (home / ".env").write_text("FISH_API_KEY=synthetic-not-a-key\n")
     monkeypatch.setattr(commands, "fish_api_key", lambda: "")
+    opened = []
+    real_open = type(home).open
+    monkeypatch.setattr(type(home), "open", lambda self, *a, **k: opened.append(self.name) or real_open(self, *a, **k))
     reply = commands.handle("setup")
-    assert ("restart the Hermes gateway or Desktop app" in reply) is saved
-    assert "synthetic" not in reply
+    assert ".env" not in opened
+    assert setup_check.RESTART_HINT in reply and "synthetic" not in reply
 
 
 @pytest.mark.parametrize("provider", ["edge", None, "evaos-fishaudio", "fish-audio"])
@@ -119,9 +119,3 @@ def test_hermes_default_edge_without_own_provider(config, monkeypatch):
     assert "hermes config set tts.provider fish-audio" in setup_check.checklist("test-key", BASE)[1]["say"]
 
 
-@pytest.mark.parametrize("line,saved", [("export FISH_API_KEY=synthetic\n", True), ("FISH_API_KEY=  # later\n", False),
-                                        ("FISH_API_KEY=\"\"\n", False), ("OTHER_FISH_API_KEY=x\n", False)])
-def test_saved_key_line_forms(monkeypatch, tmp_path, line, saved):
-    (tmp_path / ".env").write_text(line)
-    monkeypatch.setattr(setup_check.media, "_hermes_home", lambda: tmp_path)
-    assert setup_check._saved_key() is saved

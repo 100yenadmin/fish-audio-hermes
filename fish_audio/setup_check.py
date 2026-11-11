@@ -1,15 +1,9 @@
 """Offline setup steps for the active profile; never return credential values."""
-from . import commands, media, settings
+from . import commands, settings
 
-
-def _saved_key():
-    try:
-        with (media._hermes_home() / ".env").open() as handle:
-            # Inspect only the assignment's name and emptiness; retain only a boolean.
-            return any(line.strip().removeprefix("export ").lstrip().startswith("FISH_API_KEY=") and
-                       bool(line.partition("=")[2].split(" #")[0].strip().strip("\"'")) for line in handle)
-    except (OSError, UnicodeError):
-        return False
+# The key is read only through Hermes's secret scope (never the profile .env), so a key saved after this process
+# started is invisible here; say how to pick it up instead of probing the file.
+RESTART_HINT = "If you saved a key just now, restart the Hermes gateway or Desktop app so it is picked up."
 
 
 def _own_provider():
@@ -35,9 +29,8 @@ def checklist(key, base):
     key_say = "A Fish key is visible to this process." if key else commands.NO_KEY
     if operator and not key:
         key_say = "Ask the operator of this agent to finish the Fish Audio setup."
-    elif not key and _saved_key():
-        key_say = ("The Fish key is saved, but this running gateway/app started before it; "
-                   "restart the Hermes gateway or Desktop app.")
+    elif not key:
+        key_say = commands.NO_KEY + " " + RESTART_HINT
     speech_say = "This agent speaks with Fish Audio."
     if not fish:
         switch = ("`/fish use <voice>` makes Fish the provider." if not pinned and not _own_provider() else
