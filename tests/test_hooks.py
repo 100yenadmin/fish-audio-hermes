@@ -82,6 +82,16 @@ def test_explicit_file_suppresses_the_reply_wide_voice_marker(tmp_path):
     assert hooks.on_transform_llm_output("Ready.", "a") == f"Ready.\n[[audio_as_voice]]\nMEDIA:{voice}"
 
 
+def test_file_request_removes_a_copied_voice_marker(tmp_path):
+    voice, file = audio(tmp_path, "v.ogg"), audio(tmp_path, "f.mp3")
+    hooks.record("a", voice, "voice")
+    hooks.record("a", file, "file")
+    text = f"Here.\n[[audio_as_voice]]\nMEDIA:{voice}\nMEDIA:{file}"
+    assert hooks.on_transform_llm_output(text, "a") == f"Here.\nMEDIA:{voice}\nMEDIA:{file}"
+    hooks.record("a", voice, "voice")
+    assert hooks.on_transform_llm_output(f"[[audio_as_voice]]\nMEDIA:{voice}", "a") is None  # voice-only keeps it
+
+
 def test_lru_and_ttl(monkeypatch, tmp_path):
     path = audio(tmp_path)
     for i in range(256):

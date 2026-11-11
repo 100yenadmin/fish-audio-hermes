@@ -47,12 +47,12 @@ STRIPPED_MARKERS = (VOICE_MARKER, "[[as_document]]")
 LOCAL_SURFACES = frozenset({"desktop", "cli", "tui"})
 
 
-def _without_marker(text):
+def _without_marker(text, markers=STRIPPED_MARKERS):
     lines = []
     for line in text.split("\n"):
-        if any(marker in line for marker in STRIPPED_MARKERS):
+        if any(marker in line for marker in markers):
             kept = line
-            for marker in STRIPPED_MARKERS:
+            for marker in markers:
                 kept = kept.replace(marker + " ", "").replace(marker, "")
             kept = kept.rstrip()
             if kept.strip():
@@ -80,7 +80,10 @@ def on_transform_llm_output(response_text="", session_id="", turn_id="", platfor
         deliveries.add(delivery)
         if tag not in response_text and tag not in additions:
             additions.append(tag)
-    # The marker covers the whole reply: an explicit file request this turn must not become a voice note.
+    # The marker covers the whole reply: an explicit file request this turn must not become a voice note, including
+    # through a marker the model copied from a voice clip's media_tag.
+    if "file" in deliveries and not local:
+        response_text = _without_marker(response_text, (VOICE_MARKER,))
     needs_marker = "voice" in deliveries and "file" not in deliveries and not local and VOICE_MARKER not in response_text
     if not additions and not needs_marker:
         return response_text if response_text != original else None
