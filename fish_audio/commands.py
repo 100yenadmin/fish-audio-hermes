@@ -159,10 +159,11 @@ def verify_voice(ident, key, base):
 def _write_alias(name, ident):
     """Adds (ident) or removes (None) one name in the raw config mapping. Entries that settings.aliases() skips, such as a
     hand-edited name that breaks the rules, stay as they are."""
+    name = settings.normalize_name(name)
     def change(cfg):
         nested = cfg.setdefault("tts", {}).setdefault("fish-audio", {})
         raw = nested.get("aliases") if isinstance(nested.get("aliases"), dict) else {}
-        raw = {k: v for k, v in raw.items() if not (isinstance(k, str) and k.strip().casefold() == name)}
+        raw = {k: v for k, v in raw.items() if not (isinstance(k, str) and settings.normalize_name(k) == name)}
         if ident is not None:
             raw[name] = ident
         nested["aliases"] = raw
@@ -188,9 +189,9 @@ def alias_add(name, voice, key, base):
 
 def alias_remove(name):
     require_unmanaged("aliases")
-    if not isinstance(name, str) or name.strip().casefold() not in settings.aliases():
+    name = settings.normalize_name(name)
+    if name not in settings.aliases():
         raise WriteRefusal("not_found", "No saved voice name found.")
-    name = name.strip().casefold()
     with _LOCK:
         saved = settings.aliases()
         if name not in saved:
@@ -259,7 +260,7 @@ def handle(raw_args=""):
             if action in {"", "list"}:
                 return "\n".join(f"{n} · {v}" for n, v in sorted(settings.aliases().items())) or "No saved voice names yet. Add one: /fish alias add <name> <voice id>"
             if action == "add":
-                name, _, voice = args.partition(" ")
+                name, voice = (args.split(None, 1) + ["", ""])[:2]  # any whitespace, e.g. a Japanese full-width space
                 _, updated = alias_add(name, voice.strip(), key, base)
                 return "Updated." if updated else "Saved."
             if action == "remove":

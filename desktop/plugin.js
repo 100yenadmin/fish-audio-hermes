@@ -190,6 +190,10 @@ function errorText(error) {
 }
 var currentPin = () => ({ connectionId: host.state.connectionId.get(), profile: host.state.profile.get() });
 var samePin = (a, b) => a.connectionId === b.connectionId && a.profile === b.profile;
+function patchVoice(pin, id, fields) {
+  if (!samePin(currentPin(), pin)) return Promise.reject(new ApiError("agent_changed", pluginCtx().i18n.t("agentChangedNothingSent")));
+  return call(`/voices/${encodeURIComponent(id)}`, { method: "PATCH", body: fields, timeoutMs: 6e4 });
+}
 var agentKey = (pin) => `${pin.connectionId ?? "local"}::${pin.profile}`;
 var postSettings = (body) => post("/settings", body);
 var addAlias = (name, voice) => post("/aliases", { name, voice });
@@ -236,6 +240,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Textarea as Textarea2,
   SegmentedControl,
   useQuery,
   useQueryClient as useQueryClient2,
@@ -339,7 +344,7 @@ async function cloneVoice(files, meta, pin, deps, onProgress) {
       { files: uploaded, title: meta.title, description: meta.description || void 0, consent: meta.consent },
       6e5
     );
-    return done.voice;
+    return { ...done.voice, saved_name: done.saved_name, saved_name_note: done.saved_name_note };
   } catch (error) {
     if (!finishing && still()) {
       for (const item of uploaded) {
@@ -397,6 +402,7 @@ function CloneCard({ pin }) {
       );
       if (!samePin(currentPin(), pin)) return;
       setStatus({ key: keepCreated(pin, voice) ? "operatorCloned" : "cloned", args: [voice.title] });
+      notifySavedName(voice);
       setFiles([]);
       setTitle("");
       setDescription("");
@@ -497,6 +503,7 @@ function DesignCard({ pin }) {
       if (!samePin(currentPin(), pin)) return;
       setSaved({ ...saved, [candidate.design_token]: res.voice.title });
       host2.notify({ kind: "success", message: keepCreated(pin, res.voice) ? pluginCtx().i18n.t("operatorSaved", res.voice.title) : pluginCtx().i18n.t("saved", res.voice.title) });
+      notifySavedName({ ...res.voice, saved_name: res.saved_name, saved_name_note: res.saved_name_note });
       void client.invalidateQueries({ queryKey: ["fish-audio", agentKey(pin), "mine"] });
     } catch (error) {
       if (samePin(currentPin(), pin)) host2.notify({ kind: "error", message: errorText(error) });
@@ -570,6 +577,10 @@ function DesignCard({ pin }) {
       })
     ] })
   ] });
+}
+function notifySavedName(voice) {
+  if (voice.saved_name) host2.notify({ kind: "info", message: pluginCtx().i18n.t("savedNameAdded", voice.saved_name, voice.title) });
+  else if (voice.saved_name_note) host2.notify({ kind: "warning", message: voice.saved_name_note });
 }
 
 // src/desktop/page.tsx
@@ -774,8 +785,8 @@ async function previewVoice(pin, voiceId) {
   if (playingFor($playing.get(), base)) return stop();
   const cached = cachedPreview(key);
   if (cached) return play(key, cached.audio, cached.mime);
-  if (inFlightPreviews.has(key)) return;
-  inFlightPreviews.add(key);
+  if (inFlightPreviews.has(base)) return;
+  inFlightPreviews.add(base);
   const epoch2 = playbackEpoch();
   try {
     const res = await post("/preview", text ? { voice: voiceId, text } : { voice: voiceId });
@@ -784,10 +795,10 @@ async function previewVoice(pin, voiceId) {
     if (playbackEpoch() === epoch2) play(key, res.audio, res.mime);
     void refreshAvailability();
   } finally {
-    inFlightPreviews.delete(key);
+    inFlightPreviews.delete(base);
   }
 }
-function VoiceList({ voices, pin, favourites, onDelete }) {
+function VoiceList({ voices, pin, favourites, onDelete, onEdit }) {
   const t = usePluginI18n4(PLUGIN_ID);
   const billedNote = useAccountText("billedNote", "operatorBilledNote");
   const playing = useValue3($playing);
@@ -884,6 +895,7 @@ function VoiceList({ voices, pin, favourites, onDelete }) {
                 children: /* @__PURE__ */ jsx3(Codicon3, { name: favourites.has(voice.id) ? "star-full" : "star-empty" })
               }
             ),
+            onEdit && /* @__PURE__ */ jsx3(Button3, { "aria-label": t("editVoice", voice.title), onClick: () => onEdit(voice), size: "icon-xs", variant: "ghost", children: /* @__PURE__ */ jsx3(Codicon3, { name: "edit" }) }),
             onDelete && /* @__PURE__ */ jsx3(Button3, { "aria-label": t("deleteVoice", voice.title), onClick: () => onDelete(voice), size: "icon-xs", variant: "ghost", children: /* @__PURE__ */ jsx3(Codicon3, { name: "trash" }) })
           ] })
         ]
@@ -927,13 +939,93 @@ function MyVoices({ pin }) {
     staleTime: 3e4
   });
   const [target, setTarget] = useState2(null);
+  const [editing, setEditing] = useState2(null);
   return /* @__PURE__ */ jsxs3("div", { style: { display: "grid", gap: 12, padding: pad }, children: [
     /* @__PURE__ */ jsx3(PreviewTextField, { pin }),
     /* @__PURE__ */ jsx3(BilledNote, { text: billedNote }),
-    voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !voices.data ? /* @__PURE__ */ jsx3(Rows, { n: 3 }) : voices.data.items.length === 0 ? /* @__PURE__ */ jsx3(EmptyState, { description: t("mineEmptyHint"), title: t("mineEmpty") }) : /* @__PURE__ */ jsx3(VoiceList, { onDelete: setTarget, pin, voices: voices.data.items }),
+    voices.error ? /* @__PURE__ */ jsx3(LoadError, { error: voices.error, onRetry: () => void voices.refetch() }) : !voices.data ? /* @__PURE__ */ jsx3(Rows, { n: 3 }) : voices.data.items.length === 0 ? /* @__PURE__ */ jsx3(EmptyState, { description: t("mineEmptyHint"), title: t("mineEmpty") }) : /* @__PURE__ */ jsx3(VoiceList, { onDelete: setTarget, onEdit: setEditing, pin, voices: voices.data.items }),
     /* @__PURE__ */ jsx3(Pager, { more: hasMore(voices.data?.items.length, page, voices.data?.total), page, setPage }),
-    /* @__PURE__ */ jsx3(DeleteDialog, { pin, onClose: () => setTarget(null), onDeleted: () => void client.invalidateQueries({ queryKey }), voice: target })
+    /* @__PURE__ */ jsx3(DeleteDialog, { pin, onClose: () => setTarget(null), onDeleted: () => void client.invalidateQueries({ queryKey }), voice: target }),
+    editing && /* @__PURE__ */ jsx3(EditDialog, { pin, voice: editing, onClose: () => setEditing(null), onUpdated: () => void client.invalidateQueries({ queryKey: ["fish-audio", agentKey(pin)] }) }, editing.id)
   ] });
+}
+function EditDialog({ pin, voice, onClose, onUpdated }) {
+  const t = usePluginI18n4(PLUGIN_ID);
+  const [original, setOriginal] = useState2(voice);
+  const [title, setTitle] = useState2(voice.title ?? "");
+  const [description, setDescription] = useState2("");
+  const [loading, setLoading] = useState2(true);
+  const [loaded, setLoaded] = useState2(false);
+  const [busy, setBusy] = useState2(false);
+  const [error, setError] = useState2(null);
+  const [loadError, setLoadError] = useState2(null);
+  useEffect(() => {
+    let active = true;
+    void readFor(pin, `/voices/${encodeURIComponent(voice.id)}`).then((res) => {
+      if (!active) return;
+      setOriginal(res.voice);
+      setTitle(res.voice.title ?? "");
+      setDescription(res.voice.description ?? "");
+      setLoaded(true);
+    }).catch((error2) => {
+      if (active) setLoadError(error2);
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [pin.connectionId, pin.profile, voice.id]);
+  const fields = {
+    ...title.trim() !== (original.title ?? "").trim() ? { title: title.trim() } : {},
+    ...loaded && description !== (original.description ?? "") ? { description } : {}
+  };
+  const tooLong = "description" in fields && [...description].length > LIMITS.description;
+  const disabled = loading || busy || !title.trim() || tooLong || !Object.keys(fields).length;
+  const save = async () => {
+    if (!samePin(currentPin(), pin)) return host3.notify({ kind: "error", message: pluginCtx().i18n.t("agentChangedNothingSent") });
+    if (disabled) return;
+    setBusy(true);
+    try {
+      const result = await patchVoice(pin, voice.id, fields);
+      const updatedTitle = result.title ?? original.title;
+      const favourites = readFavourites(pin);
+      if (favourites.some((f) => f.id === voice.id)) writeFavourites(pin, favourites.map((f) => f.id === voice.id ? { ...f, title: updatedTitle } : f));
+      onUpdated();
+      if (!samePin(currentPin(), pin)) return;
+      host3.notify({ kind: "success", message: pluginCtx().i18n.t("voiceUpdated", updatedTitle) });
+      onClose();
+    } catch (error2) {
+      if (samePin(currentPin(), pin)) setError(error2);
+    } finally {
+      if (samePin(currentPin(), pin)) setBusy(false);
+    }
+  };
+  return /* @__PURE__ */ jsx3(Dialog, { open: true, onOpenChange: (open) => !open && !busy && onClose(), children: /* @__PURE__ */ jsxs3(DialogContent, { children: [
+    /* @__PURE__ */ jsx3(DialogHeader, { children: /* @__PURE__ */ jsx3(DialogTitle, { children: /* @__PURE__ */ jsx3("bdi", { children: t("editTitle", voice.title) }) }) }),
+    loading && /* @__PURE__ */ jsx3(Rows, { n: 1 }),
+    loadError !== null && /* @__PURE__ */ jsx3("p", { role: "alert", children: errorText(loadError) }),
+    error !== null && /* @__PURE__ */ jsx3("p", { role: "alert", children: errorText(error) }),
+    /* @__PURE__ */ jsxs3("label", { style: { display: "grid", fontSize: 12, gap: 6 }, children: [
+      t("voiceTitle"),
+      /* @__PURE__ */ jsx3(Input2, { required: true, disabled: loading || busy, value: title, onChange: (e) => {
+        setError(null);
+        setTitle(clamp(e.target.value, LIMITS.title));
+      } })
+    ] }),
+    /* @__PURE__ */ jsxs3("label", { style: { display: "grid", fontSize: 12, gap: 6 }, children: [
+      t("descriptionOptional"),
+      /* @__PURE__ */ jsx3(Textarea2, { disabled: !loaded || busy, value: description, onChange: (e) => {
+        setError(null);
+        setDescription(e.target.value);
+      } })
+    ] }),
+    tooLong && /* @__PURE__ */ jsx3("p", { role: "alert", style: { color: "var(--ui-orange)", fontSize: 12, margin: 0 }, children: t("descriptionTooLong", LIMITS.description) }),
+    /* @__PURE__ */ jsxs3(DialogFooter, { children: [
+      /* @__PURE__ */ jsx3(Button3, { disabled: busy, onClick: onClose, variant: "ghost", children: t("cancel") }),
+      /* @__PURE__ */ jsx3(Button3, { disabled, loading: busy, onClick: () => void save(), children: t("save") })
+    ] })
+  ] }) });
 }
 function DeleteDialog({ pin, voice, onClose, onDeleted }) {
   const t = usePluginI18n4(PLUGIN_ID);
@@ -1036,12 +1128,11 @@ var SETTINGS_VERSION = "1.4.0";
 var PLUGINS_PATH = "/capabilities?tab=plugins&plugin=fish-audio";
 var DEFAULT_MODEL = "__fish_default__";
 var HEX32 = /^[0-9a-f]{32}$/;
-var NAME = /^[a-z][a-z0-9_-]{1,31}$/;
+var NAME = /^\p{L}[\p{L}\p{M}\p{N}_-]{0,31}$/u;
 var RESERVED = ["add", "remove", "list", "current", "default"];
 function badAliasName(raw) {
-  const name = raw.trim().toLowerCase();
-  if (/[^\x00-\x7f]/.test(name)) return false;
-  return !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name);
+  const name = raw.trim().normalize("NFKC").toLowerCase();
+  return [...name].length > LIMITS.aliasName || !NAME.test(name) || HEX32.test(name) || RESERVED.includes(name);
 }
 var shortId = (id) => id.slice(0, 8);
 var CONTROL_HEIGHT = 32;
@@ -1101,6 +1192,7 @@ function Sections({ pin, operator }) {
   const [name, setName] = useState3("");
   const [voice, setVoice] = useState3(null);
   const [speed, setSpeed] = useState3(1);
+  const speedDirty = useRef2(false);
   const [badName, setBadName] = useState3(false);
   const generation = useRef2(0);
   useValue4($favouritesRevision);
@@ -1112,7 +1204,10 @@ function Sections({ pin, operator }) {
       (res) => {
         if (mine !== generation.current) return;
         setState(res);
-        setSpeed((value) => !state || res.managed.includes("speed") || value === (state.speed ?? 1) ? res.speed ?? 1 : value);
+        if (!speedDirty.current || res.managed.includes("speed")) {
+          setSpeed(res.speed ?? 1);
+          speedDirty.current = false;
+        }
       },
       (failure) => mine === generation.current && setError(failure)
     );
@@ -1142,6 +1237,10 @@ function Sections({ pin, operator }) {
     }
   };
   const saved = (message) => host4.notify({ kind: "success", message });
+  const applySettings = (res) => {
+    setState(res);
+    if (!speedDirty.current && typeof res.speed === "number") setSpeed(res.speed);
+  };
   if (error) {
     return /* @__PURE__ */ jsx4(ErrorState3, { description: errorText(error), title: t("settings.loadFailed"), children: /* @__PURE__ */ jsx4(Button4, { onClick: load, size: "xs", variant: "secondary", children: t("retry") }) });
   }
@@ -1154,14 +1253,14 @@ function Sections({ pin, operator }) {
     const model = value === DEFAULT_MODEL ? null : value;
     if (model === state.model) return;
     void write("model", () => postSettings({ model }), (res) => {
-      setState(res);
+      applySettings(res);
       saved(pluginCtx().i18n.t("settings.modelSaved"));
     });
   };
   const aliasVoice = voice ?? current ?? "";
   const saveSpeed = (value) => void write("speed", () => postSettings({ speed: value }), (res) => {
-    setState(res);
-    setSpeed(res.speed);
+    speedDirty.current = false;
+    applySettings(res);
     saved(pluginCtx().i18n.t("settings.speedSaved"));
   });
   const add = () => {
@@ -1192,7 +1291,7 @@ function Sections({ pin, operator }) {
               disabled: managed("voice") || locked,
               loading: busy === "reset",
               onClick: () => void write("reset", () => postSettings({ voice: null }), (res) => {
-                setState(res);
+                applySettings(res);
                 saved(pluginCtx().i18n.t("settings.resetDone"));
               }),
               size: "xs",
@@ -1236,7 +1335,10 @@ function Sections({ pin, operator }) {
               "aria-valuetext": `${speed.toFixed(2)}\xD7`,
               disabled: managed("speed") || locked,
               value: speed,
-              onChange: (e) => setSpeed(Number(e.target.value))
+              onChange: (e) => {
+                speedDirty.current = true;
+                setSpeed(Number(e.target.value));
+              }
             }
           ),
           /* @__PURE__ */ jsxs4("output", { children: [
@@ -1302,7 +1404,6 @@ function Sections({ pin, operator }) {
                 Input3,
                 {
                   "aria-label": t("settings.name"),
-                  maxLength: LIMITS.aliasName,
                   disabled: managed("aliases"),
                   onChange: (e) => {
                     setName(e.target.value);
@@ -1447,6 +1548,10 @@ var en = {
   mineEmpty: "You haven't created any voices yet",
   mineEmptyHint: "Clone your voice or design a new one in Create.",
   delete: "Delete",
+  editVoice: (title) => `Edit ${title}`,
+  editTitle: (title) => `Edit "${title}"`,
+  voiceUpdated: (title) => `Updated ${title}`,
+  descriptionTooLong: (n) => `Shorten the description to ${n} characters to save.`,
   deleteTitle: (title) => `Delete "${title}"?`,
   deleteBody: "This removes the voice from your Fish Audio account. Agents using this voice will need another voice selected.",
   deleteConfirmLabel: (title) => `Type "${title}" to confirm`,
@@ -1480,6 +1585,7 @@ var en = {
   save: "Save voice",
   saved: (title) => `Saved ${title}. Find it in My voices.`,
   operatorSaved: (title) => `Saved ${title}. Find it in the Library under Favourites.`,
+  savedNameAdded: (name, title) => `Saved name ${name} now points to ${title}.`,
   // Account
   apiCredit: "API credit",
   lowCredit: "Low balance \u2014 top up to keep voice replies working.",
@@ -1553,7 +1659,7 @@ var en = {
     resetSpeed: "Reset reading speed",
     speedSaved: "Reading speed saved",
     namesSection: "Voice names",
-    namesHint: "Use a name anywhere you'd type a voice id, for example /fish use narrator.",
+    namesHint: "Use a name in any script anywhere you would type a voice id, for example /fish use \u732B.",
     noNames: "No names yet",
     addName: "Add a name",
     name: "Name",
@@ -1565,7 +1671,7 @@ var en = {
     added: (name) => `Saved ${name}`,
     updated: (name) => `Updated ${name}`,
     removed: (name) => `Removed ${name}`,
-    badName: "Use 2\u201332 letters, digits, - or _, starting with a letter. Voice ids and the words add, remove, list, current and default are not allowed.",
+    badName: "Use 1\u201332 letters (any script), digits, marks, - or _, starting with a letter. Voice ids and the words add, remove, list, current and default are not allowed.",
     linksSection: "Links",
     fishAccount: "Fish Audio account",
     agentSettingsNote: "API key, server address, streaming and transport are under Agent settings.",
@@ -1652,6 +1758,10 @@ var zh = {
   mineEmpty: "\u4F60\u5C1A\u672A\u521B\u5EFA\u4EFB\u4F55\u58F0\u97F3",
   mineEmptyHint: "\u5728\u201C\u521B\u5EFA\u201D\u4E2D\u514B\u9686\u4F60\u7684\u58F0\u97F3\uFF0C\u6216\u8BBE\u8BA1\u4E00\u4E2A\u65B0\u58F0\u97F3\u3002",
   delete: "\u5220\u9664",
+  editVoice: (title) => `\u7F16\u8F91${title}`,
+  editTitle: (title) => `\u7F16\u8F91\u201C${title}\u201D`,
+  voiceUpdated: (title) => `\u5DF2\u66F4\u65B0${title}`,
+  descriptionTooLong: (n) => `\u8BF7\u5C06\u8BF4\u660E\u7F29\u77ED\u5230 ${n} \u4E2A\u5B57\u7B26\u4EE5\u5185\u518D\u4FDD\u5B58\u3002`,
   deleteTitle: (title) => `\u5220\u9664\u201C${title}\u201D\uFF1F`,
   deleteBody: "\u8FD9\u5C06\u4ECE\u4F60\u7684 Fish Audio \u8D26\u6237\u4E2D\u79FB\u9664\u6B64\u58F0\u97F3\u3002\u4F7F\u7528\u6B64\u58F0\u97F3\u7684\u667A\u80FD\u4F53\u9700\u8981\u91CD\u65B0\u9009\u62E9\u5176\u4ED6\u58F0\u97F3\u3002",
   deleteConfirmLabel: (title) => `\u8F93\u5165\u201C${title}\u201D\u4EE5\u786E\u8BA4`,
@@ -1684,6 +1794,7 @@ var zh = {
   save: "\u4FDD\u5B58\u58F0\u97F3",
   saved: (title) => `\u5DF2\u4FDD\u5B58${title}\u3002\u53EF\u5728\u201C\u6211\u7684\u58F0\u97F3\u201D\u4E2D\u627E\u5230\u3002`,
   operatorSaved: (title) => `\u5DF2\u4FDD\u5B58${title}\u3002\u53EF\u5728\u58F0\u97F3\u5E93\u7684\u201C\u6536\u85CF\u201D\u4E2D\u627E\u5230\u3002`,
+  savedNameAdded: (name, title) => `\u5DF2\u4FDD\u5B58\u7684\u540D\u79F0 ${name} \u73B0\u5728\u6307\u5411 ${title}\u3002`,
   apiCredit: "API \u989D\u5EA6",
   lowCredit: "\u4F59\u989D\u4E0D\u8DB3\u2014\u2014\u8BF7\u5145\u503C\u4EE5\u7EE7\u7EED\u4F7F\u7528\u8BED\u97F3\u56DE\u590D\u3002",
   topUpsLine: (amount) => `\u7D2F\u8BA1\u5145\u503C\uFF1A${usd(tag2, amount)}`,
@@ -1756,7 +1867,7 @@ var zh = {
     resetSpeed: "\u91CD\u7F6E\u6717\u8BFB\u901F\u5EA6",
     speedSaved: "\u6717\u8BFB\u901F\u5EA6\u5DF2\u4FDD\u5B58",
     namesSection: "\u58F0\u97F3\u540D\u79F0",
-    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F93\u5165\u58F0\u97F3 ID \u7684\u5730\u65B9\u90FD\u53EF\u4EE5\u4F7F\u7528\u540D\u79F0\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
+    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F93\u5165\u58F0\u97F3 ID \u7684\u5730\u65B9\u90FD\u53EF\u4EE5\u4F7F\u7528\u4EFB\u610F\u6587\u5B57\u7CFB\u7EDF\u7684\u540D\u79F0\uFF0C\u4F8B\u5982 /fish use \u732B\u3002",
     noNames: "\u8FD8\u6CA1\u6709\u540D\u79F0",
     addName: "\u6DFB\u52A0\u540D\u79F0",
     name: "\u540D\u79F0",
@@ -1768,7 +1879,7 @@ var zh = {
     added: (name) => `\u5DF2\u4FDD\u5B58 ${name}`,
     updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
     removed: (name) => `\u5DF2\u79FB\u9664 ${name}`,
-    badName: "\u8BF7\u4F7F\u7528 2\u201332 \u4E2A\u5B57\u6BCD\u3001\u6570\u5B57\u3001- \u6216 _\uFF0C\u5E76\u4EE5\u5B57\u6BCD\u5F00\u5934\u3002\u4E0D\u80FD\u4F7F\u7528\u58F0\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
+    badName: "\u8BF7\u4F7F\u7528 1\u201332 \u4E2A\u4EFB\u610F\u6587\u5B57\u7CFB\u7EDF\u7684\u5B57\u6BCD\u3001\u6570\u5B57\u3001\u7EC4\u5408\u6807\u8BB0\u3001- \u6216 _\uFF0C\u5E76\u4EE5\u5B57\u6BCD\u5F00\u5934\u3002\u4E0D\u80FD\u4F7F\u7528\u58F0\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
     linksSection: "\u94FE\u63A5",
     fishAccount: "Fish Audio \u8D26\u6237",
     agentSettingsNote: "API \u5BC6\u94A5\u3001\u670D\u52A1\u5668\u5730\u5740\u3001\u6D41\u5F0F\u4F20\u8F93\u548C\u4F20\u8F93\u65B9\u5F0F\u4F4D\u4E8E\u201C\u667A\u80FD\u4F53\u8BBE\u7F6E\u201D\u4E2D\u3002",
@@ -1855,6 +1966,10 @@ var zhHant = {
   mineEmpty: "\u60A8\u5C1A\u672A\u5EFA\u7ACB\u4EFB\u4F55\u8072\u97F3",
   mineEmptyHint: "\u5728\u300C\u5EFA\u7ACB\u300D\u4E2D\u514B\u9686\u60A8\u7684\u8072\u97F3\uFF0C\u6216\u8A2D\u8A08\u4E00\u500B\u65B0\u8072\u97F3\u3002",
   delete: "\u522A\u9664",
+  editVoice: (title) => `\u7DE8\u8F2F${title}`,
+  editTitle: (title) => `\u7DE8\u8F2F\u300C${title}\u300D`,
+  voiceUpdated: (title) => `\u5DF2\u66F4\u65B0${title}`,
+  descriptionTooLong: (n) => `\u8ACB\u5C07\u8AAA\u660E\u7E2E\u77ED\u81F3 ${n} \u500B\u5B57\u5143\u4EE5\u5167\u518D\u5132\u5B58\u3002`,
   deleteTitle: (title) => `\u522A\u9664\u300C${title}\u300D\uFF1F`,
   deleteBody: "\u9019\u5C07\u5F9E\u60A8\u7684 Fish Audio \u5E33\u6236\u4E2D\u79FB\u9664\u6B64\u8072\u97F3\u3002\u4F7F\u7528\u6B64\u8072\u97F3\u7684\u4EE3\u7406\u9700\u8981\u91CD\u65B0\u9078\u64C7\u5176\u4ED6\u8072\u97F3\u3002",
   deleteConfirmLabel: (title) => `\u8F38\u5165\u300C${title}\u300D\u4EE5\u78BA\u8A8D`,
@@ -1887,6 +2002,7 @@ var zhHant = {
   save: "\u5132\u5B58\u8072\u97F3",
   saved: (title) => `\u5DF2\u5132\u5B58${title}\u3002\u53EF\u5728\u300C\u6211\u7684\u8072\u97F3\u300D\u4E2D\u627E\u5230\u3002`,
   operatorSaved: (title) => `\u5DF2\u5132\u5B58${title}\u3002\u53EF\u5728\u8072\u97F3\u5EAB\u7684\u300C\u6536\u85CF\u300D\u4E2D\u627E\u5230\u3002`,
+  savedNameAdded: (name, title) => `\u5DF2\u5132\u5B58\u7684\u540D\u7A31 ${name} \u73FE\u5728\u6307\u5411 ${title}\u3002`,
   apiCredit: "API \u984D\u5EA6",
   lowCredit: "\u9918\u984D\u4E0D\u8DB3\u2014\u2014\u8ACB\u5132\u503C\u4EE5\u7E7C\u7E8C\u4F7F\u7528\u8A9E\u97F3\u56DE\u8986\u3002",
   topUpsLine: (amount) => `\u7D2F\u8A08\u5132\u503C\uFF1A${usd(tag3, amount)}`,
@@ -1959,7 +2075,7 @@ var zhHant = {
     resetSpeed: "\u91CD\u8A2D\u6717\u8B80\u901F\u5EA6",
     speedSaved: "\u6717\u8B80\u901F\u5EA6\u5DF2\u5132\u5B58",
     namesSection: "\u8072\u97F3\u540D\u7A31",
-    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F38\u5165\u8072\u97F3 ID \u7684\u5730\u65B9\u90FD\u80FD\u4F7F\u7528\u540D\u7A31\uFF0C\u4F8B\u5982 /fish use narrator\u3002",
+    namesHint: "\u5728\u4EFB\u4F55\u9700\u8981\u8F38\u5165\u8072\u97F3 ID \u7684\u5730\u65B9\u90FD\u80FD\u4F7F\u7528\u4EFB\u610F\u6587\u5B57\u7CFB\u7D71\u7684\u540D\u7A31\uFF0C\u4F8B\u5982 /fish use \u732B\u3002",
     noNames: "\u5C1A\u7121\u540D\u7A31",
     addName: "\u65B0\u589E\u540D\u7A31",
     name: "\u540D\u7A31",
@@ -1971,7 +2087,7 @@ var zhHant = {
     added: (name) => `\u5DF2\u5132\u5B58 ${name}`,
     updated: (name) => `\u5DF2\u66F4\u65B0 ${name}`,
     removed: (name) => `\u5DF2\u79FB\u9664 ${name}`,
-    badName: "\u8ACB\u4F7F\u7528 2\u201332 \u500B\u5B57\u6BCD\u3001\u6578\u5B57\u3001- \u6216 _\uFF0C\u4E26\u4EE5\u5B57\u6BCD\u958B\u982D\u3002\u4E0D\u80FD\u4F7F\u7528\u8072\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
+    badName: "\u8ACB\u4F7F\u7528 1\u201332 \u500B\u4EFB\u610F\u6587\u5B57\u7CFB\u7D71\u7684\u5B57\u6BCD\u3001\u6578\u5B57\u3001\u7D44\u5408\u6A19\u8A18\u3001- \u6216 _\uFF0C\u4E26\u4EE5\u5B57\u6BCD\u958B\u982D\u3002\u4E0D\u80FD\u4F7F\u7528\u8072\u97F3 ID\uFF0C\u4E5F\u4E0D\u80FD\u4F7F\u7528 add\u3001remove\u3001list\u3001current \u548C default\u3002",
     linksSection: "\u9023\u7D50",
     fishAccount: "Fish Audio \u5E33\u6236",
     agentSettingsNote: "API \u91D1\u9470\u3001\u4F3A\u670D\u5668\u4F4D\u5740\u3001\u4E32\u6D41\u548C\u50B3\u8F38\u65B9\u5F0F\u4F4D\u65BC\u300C\u4EE3\u7406\u7A0B\u5F0F\u8A2D\u5B9A\u300D\u4E2D\u3002",
@@ -2058,6 +2174,10 @@ var ja = {
   mineEmpty: "\u30DC\u30A4\u30B9\u306F\u307E\u3060\u4F5C\u6210\u3055\u308C\u3066\u3044\u307E\u305B\u3093",
   mineEmptyHint: "\u300C\u4F5C\u6210\u300D\u3067\u81EA\u5206\u306E\u58F0\u3092\u30AF\u30ED\u30FC\u30F3\u3059\u308B\u304B\u3001\u65B0\u3057\u3044\u30DC\u30A4\u30B9\u3092\u30C7\u30B6\u30A4\u30F3\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
   delete: "\u524A\u9664",
+  editVoice: (title) => `${title}\u3092\u7DE8\u96C6`,
+  editTitle: (title) => `\u300C${title}\u300D\u3092\u7DE8\u96C6`,
+  voiceUpdated: (title) => `${title}\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F`,
+  descriptionTooLong: (n) => `\u4FDD\u5B58\u3059\u308B\u306B\u306F\u8AAC\u660E\u3092 ${n} \u6587\u5B57\u4EE5\u5185\u306B\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
   deleteTitle: (title) => `\u300C${title}\u300D\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F`,
   deleteBody: "\u3053\u306E\u30DC\u30A4\u30B9\u306F Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8\u304B\u3089\u524A\u9664\u3055\u308C\u307E\u3059\u3002\u3053\u306E\u30DC\u30A4\u30B9\u3092\u4F7F\u7528\u3057\u3066\u3044\u308B\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u306B\u306F\u3001\u5225\u306E\u30DC\u30A4\u30B9\u3092\u9078\u629E\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002",
   deleteConfirmLabel: (title) => `\u78BA\u8A8D\u306E\u305F\u3081\u300C${title}\u300D\u3068\u5165\u529B`,
@@ -2090,6 +2210,7 @@ var ja = {
   save: "\u30DC\u30A4\u30B9\u3092\u4FDD\u5B58",
   saved: (title) => `\u300C${title}\u300D\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002\u300C\u30DE\u30A4\u30DC\u30A4\u30B9\u300D\u3067\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002`,
   operatorSaved: (title) => `\u300C${title}\u300D\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002\u30E9\u30A4\u30D6\u30E9\u30EA\u306E\u300C\u304A\u6C17\u306B\u5165\u308A\u300D\u3067\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002`,
+  savedNameAdded: (name, title) => `\u4FDD\u5B58\u540D ${name} \u304C ${title} \u3092\u6307\u3059\u3088\u3046\u306B\u306A\u308A\u307E\u3057\u305F\u3002`,
   apiCredit: "API \u30AF\u30EC\u30B8\u30C3\u30C8",
   lowCredit: "\u6B8B\u9AD8\u304C\u5C11\u306A\u304F\u306A\u3063\u3066\u3044\u307E\u3059\u3002\u97F3\u58F0\u8FD4\u4FE1\u3092\u4F7F\u3044\u7D9A\u3051\u308B\u306B\u306F\u30C1\u30E3\u30FC\u30B8\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
   topUpsLine: (amount) => `\u7D2F\u8A08\u30C1\u30E3\u30FC\u30B8\u984D\uFF1A${usd(tag4, amount)}`,
@@ -2162,7 +2283,7 @@ var ja = {
     resetSpeed: "\u8AAD\u307F\u4E0A\u3052\u901F\u5EA6\u3092\u30EA\u30BB\u30C3\u30C8",
     speedSaved: "\u8AAD\u307F\u4E0A\u3052\u901F\u5EA6\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F",
     namesSection: "\u30DC\u30A4\u30B9\u540D",
-    namesHint: "\u30DC\u30A4\u30B9 ID \u3092\u5165\u529B\u3059\u308B\u5834\u6240\u306A\u3089\u3069\u3053\u3067\u3082\u540D\u524D\u3092\u4F7F\u3048\u307E\u3059\u3002\u4F8B\uFF1A/fish use narrator",
+    namesHint: "\u30DC\u30A4\u30B9 ID \u3092\u5165\u529B\u3059\u308B\u5834\u6240\u306A\u3089\u3069\u3053\u3067\u3082\u3001\u3069\u306E\u6587\u5B57\u4F53\u7CFB\u306E\u540D\u524D\u3082\u4F7F\u3048\u307E\u3059\u3002\u4F8B\uFF1A/fish use \u732B",
     noNames: "\u307E\u3060\u540D\u524D\u306F\u3042\u308A\u307E\u305B\u3093",
     addName: "\u540D\u524D\u3092\u8FFD\u52A0",
     name: "\u540D\u524D",
@@ -2174,7 +2295,7 @@ var ja = {
     added: (name) => `${name} \u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F`,
     updated: (name) => `${name} \u3092\u66F4\u65B0\u3057\u307E\u3057\u305F`,
     removed: (name) => `${name} \u3092\u524A\u9664\u3057\u307E\u3057\u305F`,
-    badName: "\u82F1\u5B57\u3067\u59CB\u307E\u308B 2\u301C32 \u6587\u5B57\u306E\u82F1\u6570\u5B57\u3001- \u307E\u305F\u306F _ \u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044\u3002\u30DC\u30A4\u30B9 ID \u3068 add\u3001remove\u3001list\u3001current\u3001default \u306F\u4F7F\u3048\u307E\u305B\u3093\u3002",
+    badName: "\u4EFB\u610F\u306E\u6587\u5B57\u4F53\u7CFB\u306E\u6587\u5B57\u3067\u59CB\u307E\u308B 1\u301C32 \u6587\u5B57\u306E\u540D\u524D\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044\u3002\u6587\u5B57\u3001\u6570\u5B57\u3001\u7D50\u5408\u8A18\u53F7\u3001-\u3001_ \u304C\u4F7F\u3048\u307E\u3059\u3002\u30DC\u30A4\u30B9 ID \u3068 add\u3001remove\u3001list\u3001current\u3001default \u306F\u4F7F\u3048\u307E\u305B\u3093\u3002",
     linksSection: "\u30EA\u30F3\u30AF",
     fishAccount: "Fish Audio \u30A2\u30AB\u30A6\u30F3\u30C8",
     agentSettingsNote: "API \u30AD\u30FC\u3001\u30B5\u30FC\u30D0\u30FC\u30A2\u30C9\u30EC\u30B9\u3001\u30B9\u30C8\u30EA\u30FC\u30DF\u30F3\u30B0\u3001\u8EE2\u9001\u65B9\u5F0F\u306F\u300C\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u8A2D\u5B9A\u300D\u306B\u3042\u308A\u307E\u3059\u3002",
@@ -2263,6 +2384,10 @@ var ar = {
   mineEmpty: "\u0644\u0645 \u062A\u0646\u0634\u0626 \u0623\u064A \u0623\u0635\u0648\u0627\u062A \u0628\u0639\u062F",
   mineEmptyHint: "\u0627\u0633\u062A\u0646\u0633\u062E \u0635\u0648\u062A\u0643 \u0623\u0648 \u0635\u0645\u0651\u0645 \u0635\u0648\u062A\u064B\u0627 \u062C\u062F\u064A\u062F\u064B\u0627 \u0641\u064A \xAB\u0625\u0646\u0634\u0627\u0621\xBB.",
   delete: "\u062D\u0630\u0641",
+  editVoice: (title) => `\u062A\u0639\u062F\u064A\u0644 ${isolate(title)}`,
+  editTitle: (title) => `\u062A\u0639\u062F\u064A\u0644 \xAB${isolate(title)}\xBB`,
+  voiceUpdated: (title) => `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B ${isolate(title)}`,
+  descriptionTooLong: (n) => `\u0627\u062E\u062A\u0635\u0631 \u0627\u0644\u0648\u0635\u0641 \u0625\u0644\u0649 ${n} \u062D\u0631\u0641\u064B\u0627 \u0644\u0644\u062D\u0641\u0638.`,
   deleteTitle: (title) => `\u062D\u0630\u0641 \xAB${isolate(title)}\xBB\u061F`,
   deleteBody: "\u0633\u064A\u0624\u062F\u064A \u0647\u0630\u0627 \u0625\u0644\u0649 \u0625\u0632\u0627\u0644\u0629 \u0627\u0644\u0635\u0648\u062A \u0645\u0646 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A Fish Audio. \u0633\u064A\u062D\u062A\u0627\u062C \u0627\u0644\u0648\u0643\u0644\u0627\u0621 \u0627\u0644\u0630\u064A\u0646 \u064A\u0633\u062A\u062E\u062F\u0645\u0648\u0646 \u0647\u0630\u0627 \u0627\u0644\u0635\u0648\u062A \u0625\u0644\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0635\u0648\u062A \u0622\u062E\u0631 \u0644\u0647\u0645.",
   deleteConfirmLabel: (title) => `\u0627\u0643\u062A\u0628 \xAB${isolate(title)}\xBB \u0644\u0644\u062A\u0623\u0643\u064A\u062F`,
@@ -2295,6 +2420,7 @@ var ar = {
   save: "\u062D\u0641\u0638 \u0627\u0644\u0635\u0648\u062A",
   saved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \xAB\u0623\u0635\u0648\u0627\u062A\u064A\xBB.`,
   operatorSaved: (title) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(title)}. \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0636\u0645\u0646 \xAB\u0627\u0644\u0645\u0641\u0636\u0644\u0629\xBB.`,
+  savedNameAdded: (name, title) => `\u0627\u0644\u0627\u0633\u0645 \u0627\u0644\u0645\u062D\u0641\u0648\u0638 ${isolate(name)} \u064A\u0634\u064A\u0631 \u0627\u0644\u0622\u0646 \u0625\u0644\u0649 ${isolate(title)}.`,
   apiCredit: "\u0631\u0635\u064A\u062F API",
   lowCredit: "\u0627\u0644\u0631\u0635\u064A\u062F \u0645\u0646\u062E\u0641\u0636 \u2014 \u0627\u0634\u062D\u0646\u0647 \u0644\u062A\u0633\u062A\u0645\u0631 \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u0635\u0648\u062A\u064A\u0629 \u0641\u064A \u0627\u0644\u0639\u0645\u0644.",
   topUpsLine: (amount) => `\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u062D\u0646\u0627\u062A \u0645\u0646\u0630 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628: ${isolate(money(amount))}`,
@@ -2367,7 +2493,7 @@ var ar = {
     resetSpeed: "\u0625\u0639\u0627\u062F\u0629 \u0636\u0628\u0637 \u0633\u0631\u0639\u0629 \u0627\u0644\u0642\u0631\u0627\u0621\u0629",
     speedSaved: "\u062A\u0645 \u062D\u0641\u0638 \u0633\u0631\u0639\u0629 \u0627\u0644\u0642\u0631\u0627\u0621\u0629",
     namesSection: "\u0623\u0633\u0645\u0627\u0621 \u0627\u0644\u0623\u0635\u0648\u0627\u062A",
-    namesHint: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0627\u0633\u0645 \u0641\u064A \u0623\u064A \u0645\u0643\u0627\u0646 \u062A\u0643\u062A\u0628 \u0641\u064A\u0647 \u0645\u0639\u0631\u0651\u0641 \u0635\u0648\u062A\u060C \u0645\u062B\u0644 /fish use narrator.",
+    namesHint: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0633\u0645\u064B\u0627 \u0628\u0623\u064A \u0646\u0638\u0627\u0645 \u0643\u062A\u0627\u0628\u0629 \u0641\u064A \u0623\u064A \u0645\u0643\u0627\u0646 \u062A\u0643\u062A\u0628 \u0641\u064A\u0647 \u0645\u0639\u0631\u0651\u0641 \u0635\u0648\u062A\u060C \u0645\u062B\u0644 /fish use \u732B.",
     noNames: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0633\u0645\u0627\u0621 \u0628\u0639\u062F",
     addName: "\u0625\u0636\u0627\u0641\u0629 \u0627\u0633\u0645",
     name: "\u0627\u0644\u0627\u0633\u0645",
@@ -2379,7 +2505,7 @@ var ar = {
     added: (name) => `\u062A\u0645 \u062D\u0641\u0638 ${isolate(name)}`,
     updated: (name) => `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B ${isolate(name)}`,
     removed: (name) => `\u062A\u0645\u062A \u0625\u0632\u0627\u0644\u0629 ${isolate(name)}`,
-    badName: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0645\u0646 2 \u0625\u0644\u0649 32 \u062D\u0631\u0641\u064B\u0627 \u0644\u0627\u062A\u064A\u0646\u064A\u064B\u0627 \u0623\u0648 \u0631\u0642\u0645\u064B\u0627 \u0623\u0648 - \u0623\u0648 _\u060C \u0639\u0644\u0649 \u0623\u0646 \u064A\u0628\u062F\u0623 \u0628\u062D\u0631\u0641. \u0644\u0627 \u064A\u064F\u0633\u0645\u062D \u0628\u0645\u0639\u0631\u0651\u0641\u0627\u062A \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0648\u0644\u0627 \u0628\u0627\u0644\u0643\u0644\u0645\u0627\u062A add \u0648remove \u0648list \u0648current \u0648default.",
+    badName: "\u0627\u0633\u062A\u062E\u062F\u0645 \u0645\u0646 1 \u0625\u0644\u0649 32 \u062D\u0631\u0641\u064B\u0627 (\u0628\u0623\u064A \u0646\u0638\u0627\u0645 \u0643\u062A\u0627\u0628\u0629) \u0623\u0648 \u0631\u0642\u0645\u064B\u0627 \u0623\u0648 \u0639\u0644\u0627\u0645\u0629 \u062A\u0634\u0643\u064A\u0644 \u0623\u0648 - \u0623\u0648 _\u060C \u0639\u0644\u0649 \u0623\u0646 \u064A\u0628\u062F\u0623 \u0628\u062D\u0631\u0641. \u0644\u0627 \u064A\u064F\u0633\u0645\u062D \u0628\u0645\u0639\u0631\u0651\u0641\u0627\u062A \u0627\u0644\u0623\u0635\u0648\u0627\u062A \u0648\u0644\u0627 \u0628\u0627\u0644\u0643\u0644\u0645\u0627\u062A add \u0648remove \u0648list \u0648current \u0648default.",
     linksSection: "\u0631\u0648\u0627\u0628\u0637",
     fishAccount: "\u062D\u0633\u0627\u0628 Fish Audio",
     agentSettingsNote: "\u0645\u0641\u062A\u0627\u062D API \u0648\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062E\u0627\u062F\u0645 \u0648\u0627\u0644\u0628\u062B \u0648\u0637\u0631\u064A\u0642\u0629 \u0627\u0644\u0646\u0642\u0644 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \xAB\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0648\u0643\u064A\u0644\xBB.",
@@ -2466,6 +2592,10 @@ var ru = {
   mineEmpty: "\u0412\u044B \u0435\u0449\u0451 \u043D\u0435 \u0441\u043E\u0437\u0434\u0430\u043B\u0438 \u043D\u0438 \u043E\u0434\u043D\u043E\u0433\u043E \u0433\u043E\u043B\u043E\u0441\u0430",
   mineEmptyHint: "\u041A\u043B\u043E\u043D\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0432\u043E\u0439 \u0433\u043E\u043B\u043E\u0441 \u0438\u043B\u0438 \u0441\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u043D\u043E\u0432\u044B\u0439 \u043D\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0435 \xAB\u0421\u043E\u0437\u0434\u0430\u0442\u044C\xBB.",
   delete: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+  editVoice: (title) => `\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C ${title}`,
+  editTitle: (title) => `\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \xAB${title}\xBB`,
+  voiceUpdated: (title) => `${title} \u043E\u0431\u043D\u043E\u0432\u043B\u0451\u043D`,
+  descriptionTooLong: (n) => `\u0421\u043E\u043A\u0440\u0430\u0442\u0438\u0442\u0435 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435 \u0434\u043E ${n} \u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432, \u0447\u0442\u043E\u0431\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C.`,
   deleteTitle: (title) => `\u0423\u0434\u0430\u043B\u0438\u0442\u044C \xAB${title}\xBB?`,
   deleteBody: "\u0413\u043E\u043B\u043E\u0441 \u0431\u0443\u0434\u0435\u0442 \u0443\u0434\u0430\u043B\u0451\u043D \u0438\u0437 \u0432\u0430\u0448\u0435\u0433\u043E \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430 Fish Audio. \u0414\u043B\u044F \u0430\u0433\u0435\u043D\u0442\u043E\u0432, \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u044E\u0449\u0438\u0445 \u044D\u0442\u043E\u0442 \u0433\u043E\u043B\u043E\u0441, \u043F\u043E\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0432\u044B\u0431\u0440\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u043E\u0439.",
   deleteConfirmLabel: (title) => `\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \xAB${title}\xBB \u0434\u043B\u044F \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F`,
@@ -2498,6 +2628,7 @@ var ru = {
   save: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0433\u043E\u043B\u043E\u0441",
   saved: (title) => `\u0413\u043E\u043B\u043E\u0441 ${title} \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041E\u043D \u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u041C\u043E\u0438 \u0433\u043E\u043B\u043E\u0441\u0430\xBB.`,
   operatorSaved: (title) => `\u0413\u043E\u043B\u043E\u0441 ${title} \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D. \u041E\u043D \u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435 \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u0418\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435\xBB.`,
+  savedNameAdded: (name, title) => `\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u0435 \u0438\u043C\u044F ${name} \u0442\u0435\u043F\u0435\u0440\u044C \u0443\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442 \u043D\u0430 ${title}.`,
   apiCredit: "\u0411\u0430\u043B\u0430\u043D\u0441 API",
   lowCredit: "\u041D\u0438\u0437\u043A\u0438\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 \u2014 \u043F\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0435\u0433\u043E, \u0447\u0442\u043E\u0431\u044B \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u044B\u0435 \u043E\u0442\u0432\u0435\u0442\u044B \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u043B\u0438 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C.",
   topUpsLine: (amount) => `\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F \u0437\u0430 \u0432\u0441\u0451 \u0432\u0440\u0435\u043C\u044F: ${usd(tag6, amount)}`,
@@ -2570,7 +2701,7 @@ var ru = {
     resetSpeed: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0447\u0442\u0435\u043D\u0438\u044F",
     speedSaved: "\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0447\u0442\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430",
     namesSection: "\u0418\u043C\u0435\u043D\u0430 \u0433\u043E\u043B\u043E\u0441\u043E\u0432",
-    namesHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u043C\u044F \u0432\u0435\u0437\u0434\u0435, \u0433\u0434\u0435 \u0432\u0432\u043E\u0434\u0438\u0442\u0435 ID \u0433\u043E\u043B\u043E\u0441\u0430, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 /fish use narrator.",
+    namesHint: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u043C\u044F \u0432 \u043B\u044E\u0431\u043E\u0439 \u043F\u0438\u0441\u044C\u043C\u0435\u043D\u043D\u043E\u0441\u0442\u0438 \u0432\u0435\u0437\u0434\u0435, \u0433\u0434\u0435 \u0432\u0432\u043E\u0434\u0438\u0442\u0435 ID \u0433\u043E\u043B\u043E\u0441\u0430, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 /fish use \u732B.",
     noNames: "\u0418\u043C\u0451\u043D \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
     addName: "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0438\u043C\u044F",
     name: "\u0418\u043C\u044F",
@@ -2582,7 +2713,7 @@ var ru = {
     added: (name) => `\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E: ${name}`,
     updated: (name) => `\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${name}`,
     removed: (name) => `\u0423\u0434\u0430\u043B\u0435\u043D\u043E: ${name}`,
-    badName: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u043E\u0442 2 \u0434\u043E 32 \u043B\u0430\u0442\u0438\u043D\u0441\u043A\u0438\u0445 \u0431\u0443\u043A\u0432, \u0446\u0438\u0444\u0440, - \u0438\u043B\u0438 _, \u043D\u0430\u0447\u0438\u043D\u0430\u044F \u0441 \u0431\u0443\u043A\u0432\u044B. ID \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u0438 \u0441\u043B\u043E\u0432\u0430 add, remove, list, current \u0438 default \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A\u0430\u044E\u0442\u0441\u044F.",
+    badName: "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u043E\u0442 1 \u0434\u043E 32 \u0431\u0443\u043A\u0432 (\u043B\u044E\u0431\u043E\u0439 \u043F\u0438\u0441\u044C\u043C\u0435\u043D\u043D\u043E\u0441\u0442\u0438), \u0446\u0438\u0444\u0440, \u043A\u043E\u043C\u0431\u0438\u043D\u0438\u0440\u0443\u0435\u043C\u044B\u0445 \u0437\u043D\u0430\u043A\u043E\u0432, - \u0438\u043B\u0438 _, \u043D\u0430\u0447\u0438\u043D\u0430\u044F \u0441 \u0431\u0443\u043A\u0432\u044B. ID \u0433\u043E\u043B\u043E\u0441\u043E\u0432 \u0438 \u0441\u043B\u043E\u0432\u0430 add, remove, list, current \u0438 default \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A\u0430\u044E\u0442\u0441\u044F.",
     linksSection: "\u0421\u0441\u044B\u043B\u043A\u0438",
     fishAccount: "\u0410\u043A\u043A\u0430\u0443\u043D\u0442 Fish Audio",
     agentSettingsNote: "API-\u043A\u043B\u044E\u0447, \u0430\u0434\u0440\u0435\u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430, \u043F\u043E\u0442\u043E\u043A\u043E\u0432\u0430\u044F \u043F\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0438 \u0442\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442 \u043D\u0430\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u0432 \u0440\u0430\u0437\u0434\u0435\u043B\u0435 \xAB\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0430\u0433\u0435\u043D\u0442\u0430\xBB.",
@@ -2669,6 +2800,10 @@ var fr = {
   mineEmpty: "Vous n\u2019avez pas encore cr\xE9\xE9 de voix",
   mineEmptyHint: "Clonez votre voix ou concevez-en une nouvelle dans Cr\xE9er.",
   delete: "Supprimer",
+  editVoice: (title) => `Modifier ${title}`,
+  editTitle: (title) => `Modifier \xAB ${title} \xBB`,
+  voiceUpdated: (title) => `${title} mis \xE0 jour`,
+  descriptionTooLong: (n) => `Raccourcissez la description \xE0 ${n} caract\xE8res pour enregistrer.`,
   deleteTitle: (title) => `Supprimer \xAB ${title} \xBB ?`,
   deleteBody: "Cette action supprime la voix de votre compte Fish Audio. Il faudra s\xE9lectionner une autre voix pour les agents qui l\u2019utilisent.",
   deleteConfirmLabel: (title) => `Saisissez \xAB ${title} \xBB pour confirmer`,
@@ -2701,6 +2836,7 @@ var fr = {
   save: "Enregistrer la voix",
   saved: (title) => `${title} enregistr\xE9e. Retrouvez-la dans Mes voix.`,
   operatorSaved: (title) => `${title} enregistr\xE9e. Retrouvez-la dans la Biblioth\xE8que, sous Favoris.`,
+  savedNameAdded: (name, title) => `Le nom enregistr\xE9 ${name} d\xE9signe maintenant ${title}.`,
   apiCredit: "Cr\xE9dit API",
   lowCredit: "Solde faible \u2014 rechargez pour continuer \xE0 recevoir des r\xE9ponses vocales.",
   topUpsLine: (amount) => `Recharges cumul\xE9es : ${usd(tag7, amount)}`,
@@ -2773,7 +2909,7 @@ var fr = {
     resetSpeed: "R\xE9initialiser la vitesse de lecture",
     speedSaved: "Vitesse de lecture enregistr\xE9e",
     namesSection: "Noms de voix",
-    namesHint: "Utilisez un nom partout o\xF9 vous saisiriez un identifiant de voix, par exemple /fish use narrator.",
+    namesHint: "Utilisez un nom dans toute \xE9criture partout o\xF9 vous saisiriez un identifiant de voix, par exemple /fish use \u732B.",
     noNames: "Aucun nom pour le moment",
     addName: "Ajouter un nom",
     name: "Nom",
@@ -2785,7 +2921,7 @@ var fr = {
     added: (name) => `${name} enregistr\xE9`,
     updated: (name) => `${name} mis \xE0 jour`,
     removed: (name) => `${name} retir\xE9`,
-    badName: "Utilisez 2 \xE0 32 lettres latines, chiffres, - ou _, en commen\xE7ant par une lettre. Les identifiants de voix et les mots add, remove, list, current et default ne sont pas autoris\xE9s.",
+    badName: "Utilisez 1 \xE0 32 lettres (de toute \xE9criture), chiffres, signes combinatoires, - ou _, en commen\xE7ant par une lettre. Les identifiants de voix et les mots add, remove, list, current et default ne sont pas autoris\xE9s.",
     linksSection: "Liens",
     fishAccount: "Compte Fish Audio",
     agentSettingsNote: "La cl\xE9 API, l\u2019adresse du serveur, le streaming et le transport se trouvent dans R\xE9glages de l\u2019agent.",
@@ -2872,6 +3008,10 @@ var de = {
   mineEmpty: "Sie haben noch keine Stimmen erstellt",
   mineEmptyHint: "Klonen Sie Ihre Stimme oder entwerfen Sie unter Erstellen eine neue.",
   delete: "L\xF6schen",
+  editVoice: (title) => `${title} bearbeiten`,
+  editTitle: (title) => `\u201E${title}\u201C bearbeiten`,
+  voiceUpdated: (title) => `${title} aktualisiert`,
+  descriptionTooLong: (n) => `K\xFCrze die Beschreibung auf ${n} Zeichen, um zu speichern.`,
   deleteTitle: (title) => `\u201E${title}\u201C l\xF6schen?`,
   deleteBody: "Dadurch wird die Stimme aus Ihrem Fish Audio-Konto entfernt. F\xFCr Agenten, die diese Stimme verwenden, muss eine andere Stimme ausgew\xE4hlt werden.",
   deleteConfirmLabel: (title) => `Geben Sie zur Best\xE4tigung \u201E${title}\u201C ein`,
@@ -2904,6 +3044,7 @@ var de = {
   save: "Stimme speichern",
   saved: (title) => `${title} gespeichert. Sie finden die Stimme unter Meine Stimmen.`,
   operatorSaved: (title) => `${title} gespeichert. Sie finden die Stimme in der Bibliothek unter Favoriten.`,
+  savedNameAdded: (name, title) => `Der gespeicherte Name ${name} verweist jetzt auf ${title}.`,
   apiCredit: "API-Guthaben",
   lowCredit: "Guthaben niedrig \u2014 laden Sie es auf, damit Sprachantworten weiter funktionieren.",
   topUpsLine: (amount) => `Aufladungen insgesamt: ${usd(tag8, amount)}`,
@@ -2976,7 +3117,7 @@ var de = {
     resetSpeed: "Lesegeschwindigkeit zur\xFCcksetzen",
     speedSaved: "Lesegeschwindigkeit gespeichert",
     namesSection: "Stimmennamen",
-    namesHint: "Verwenden Sie einen Namen \xFCberall dort, wo Sie eine Stimmen-ID eingeben w\xFCrden, zum Beispiel /fish use narrator.",
+    namesHint: "Verwenden Sie Namen in jeder Schrift \xFCberall dort, wo Sie eine Stimmen-ID eingeben w\xFCrden, zum Beispiel /fish use \u732B.",
     noNames: "Noch keine Namen",
     addName: "Namen hinzuf\xFCgen",
     name: "Name",
@@ -2988,7 +3129,7 @@ var de = {
     added: (name) => `${name} gespeichert`,
     updated: (name) => `${name} aktualisiert`,
     removed: (name) => `${name} entfernt`,
-    badName: "Verwenden Sie 2\u201332 lateinische Buchstaben, Ziffern, - oder _, beginnend mit einem Buchstaben. Stimmen-IDs und die W\xF6rter add, remove, list, current und default sind nicht erlaubt.",
+    badName: "Verwenden Sie 1\u201332 Buchstaben (beliebiger Schrift), Ziffern, kombinierende Zeichen, - oder _, beginnend mit einem Buchstaben. Stimmen-IDs und die W\xF6rter add, remove, list, current und default sind nicht erlaubt.",
     linksSection: "Links",
     fishAccount: "Fish Audio-Konto",
     agentSettingsNote: "API-Schl\xFCssel, Serveradresse, Streaming und Transport finden Sie unter Agent-Einstellungen.",
@@ -3075,6 +3216,10 @@ var es = {
   mineEmpty: "A\xFAn no has creado ninguna voz",
   mineEmptyHint: "Clona tu voz o dise\xF1a una nueva en Crear.",
   delete: "Eliminar",
+  editVoice: (title) => `Editar ${title}`,
+  editTitle: (title) => `Editar \xAB${title}\xBB`,
+  voiceUpdated: (title) => `${title} actualizado`,
+  descriptionTooLong: (n) => `Acorta la descripci\xF3n a ${n} caracteres para guardar.`,
   deleteTitle: (title) => `\xBFEliminar \xAB${title}\xBB?`,
   deleteBody: "Esto elimina la voz de tu cuenta de Fish Audio. Habr\xE1 que seleccionar otra voz para los agentes que la usan.",
   deleteConfirmLabel: (title) => `Escribe \xAB${title}\xBB para confirmar`,
@@ -3107,6 +3252,7 @@ var es = {
   save: "Guardar voz",
   saved: (title) => `${title} guardada. La encontrar\xE1s en Mis voces.`,
   operatorSaved: (title) => `${title} guardada. La encontrar\xE1s en la Biblioteca, en Favoritos.`,
+  savedNameAdded: (name, title) => `El nombre guardado ${name} ahora apunta a ${title}.`,
   apiCredit: "Cr\xE9dito API",
   lowCredit: "Saldo bajo \u2014 recarga para que las respuestas de voz sigan funcionando.",
   topUpsLine: (amount) => `Recargas acumuladas: ${usd(tag9, amount)}`,
@@ -3179,7 +3325,7 @@ var es = {
     resetSpeed: "Restablecer velocidad de lectura",
     speedSaved: "Velocidad de lectura guardada",
     namesSection: "Nombres de voces",
-    namesHint: "Usa un nombre en cualquier lugar donde escribir\xEDas un ID de voz, por ejemplo /fish use narrator.",
+    namesHint: "Usa un nombre en cualquier escritura donde escribir\xEDas un ID de voz, por ejemplo /fish use \u732B.",
     noNames: "A\xFAn no hay nombres",
     addName: "A\xF1adir un nombre",
     name: "Nombre",
@@ -3191,7 +3337,7 @@ var es = {
     added: (name) => `${name} guardado`,
     updated: (name) => `${name} actualizado`,
     removed: (name) => `${name} quitado`,
-    badName: "Usa de 2 a 32 letras latinas, d\xEDgitos, - o _, empezando por una letra. No se permiten IDs de voz ni las palabras add, remove, list, current y default.",
+    badName: "Usa de 1 a 32 letras (de cualquier escritura), d\xEDgitos, marcas combinantes, - o _, empezando por una letra. No se permiten IDs de voz ni las palabras add, remove, list, current y default.",
     linksSection: "Enlaces",
     fishAccount: "Cuenta de Fish Audio",
     agentSettingsNote: "La clave de API, la direcci\xF3n del servidor, el streaming y el transporte est\xE1n en Ajustes del agente.",

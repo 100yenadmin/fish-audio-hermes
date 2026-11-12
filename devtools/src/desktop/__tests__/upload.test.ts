@@ -31,6 +31,11 @@ function harness(handlers: Record<string, (body: any, n: number) => any> = {}) {
 }
 
 describe('clone upload', () => {
+  it('passes on the saved name operator mode gave the new voice', async () => {
+    const h = harness({ '/clone/finish': () => ({ ok: true, voice: { id: 'v1', title: 'Me' }, saved_name: 'me' }) })
+    expect(await cloneVoice([blob(10)], { title: 'Me', consent: true }, A, h.deps)).toEqual({ id: 'v1', title: 'Me', saved_name: 'me' })
+  })
+
   it('chunks each file, then finishes with the ids, sizes, title and consent', async () => {
     const h = harness()
     const progress: number[] = []

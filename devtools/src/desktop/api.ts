@@ -186,6 +186,11 @@ export const currentPin = (): AgentPin => ({ connectionId: host.state.connection
 
 export const samePin = (a: AgentPin, b: AgentPin) => a.connectionId === b.connectionId && a.profile === b.profile
 
+export function patchVoice(pin: AgentPin, id: string, fields: { title?: string; description?: string }) {
+  if (!samePin(currentPin(), pin)) return Promise.reject(new ApiError('agent_changed', pluginCtx().i18n.t('agentChangedNothingSent')))
+  return call<{ ok: true; id: string; title: string | null }>(`/voices/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields, timeoutMs: 60_000 })
+}
+
 export const agentKey = (pin: AgentPin) => `${pin.connectionId ?? 'local'}::${pin.profile}`
 
 // ---- Settings ▸ Plugins ▸ Fish Audio (gateway 1.4.0+). Shapes follow the v1.4.0 wire contract exactly.

@@ -3,6 +3,7 @@ import asyncio
 import base64
 import copy
 import json
+import unicodedata
 import os
 from pathlib import Path
 import re
@@ -186,6 +187,18 @@ def test_key_leak(host):
         assert FAKE not in path.read_text(errors='replace'), 'fake key appeared in host logs'
 
 
+@pytest.mark.row('A-SKILL-TRANSLATE')
+def test_translate_skill(host, request):
+    code = '\n    '.join([
+        'import json; from tools.skills_tool import skill_view',
+        'print("ACCEPTANCE_RESULT=" + skill_view("fish-audio:fish-audio-translate-voice", preprocess=False))'])
+    result = core(host, code)
+    evidence(request, host, {'success': result.get('success'), 'name': result.get('name')})
+    assert result.get('success') is True, scrub(result)
+    content = result['content']
+    assert 'voice-over' in content and '<|speaker:N|>' in content and 'estimate' in content
+
+
 @pytest.mark.row('A-CLI-1')
 def test_status(host, request):
     text = host.cli('fish', 'status')
@@ -233,6 +246,31 @@ def test_doctor(paid, synth, request):
         assert re.search(r'(?im)^ok: TTS [1-9]\d* bytes; billed:', text)
 
 
+@pytest.mark.parametrize('command', [pytest.param('speak', marks=pytest.mark.row('A-CLI-SPEAK')),
+    pytest.param('transcribe', marks=pytest.mark.row('A-CLI-TRANSCRIBE')),
+    pytest.param('voices', marks=pytest.mark.row('A-CLI-VOICES')),
+    pytest.param('balance', marks=pytest.mark.row('A-CLI-BALANCE'))])
+def test_scripting_cli(paid, request, command):
+    output = paid.out / 'cli-speech.mp3'  # inside the run dir: the macOS host sandbox only writes there
+    output.unlink(missing_ok=True)  # a file left by an earlier attempt must not satisfy this one
+    args = {'speak': [TEXT, '--format', 'mp3', '--out', str(output), '--force'],
+            'transcribe': [str(CORPUS)], 'voices': ['narrator'], 'balance': []}[command]
+    result = json.loads(paid.cli('fish', command, *args, '--json').splitlines()[-1])
+    # Diarization defaults to auto, so the text can carry <|speaker:N|> markers; score the words only.
+    spoken = re.sub(r'<\|speaker:\d+\|>', ' ', result.get('text') or '') if command == 'transcribe' else ''
+    evidence(request, paid, result)  # recorded first, so a failed check still shows the command's output
+    if command == 'transcribe':
+        request.node.user_properties.append(('metrics', {'wer': wer(spoken)}))
+    assert result['success'] is True
+    if command == 'speak':
+        assert result.get('out_path') == str(output) and output.is_file()
+        assert output.read_bytes().startswith((b'ID3', b'\xff\xfb', b'\xff\xf3', b'\xff\xf2'))
+    elif command == 'transcribe':
+        assert isinstance(result.get('text'), str) and result['text'].strip()
+    elif command == 'voices':
+        assert isinstance(result['items'], list)
+
+
 @pytest.mark.parametrize('n', [pytest.param(i, marks=pytest.mark.row(f'A-CMD-{i}')) for i in range(1, 7)])
 def test_commands(paid, voice, n, request):
     before = config(paid)
@@ -248,6 +286,24 @@ def test_commands(paid, voice, n, request):
         assert path and Path(path[1]).is_file(), 'preview did not return existing audio'
 
 
+@pytest.mark.row('A-ALIAS-UNICODE')
+def test_use_unicode_alias(paid, voice, request):
+    before = config(paid)
+    assert '猫' not in before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
+    try:
+        if before.get('tts', {}).get('fish-audio', {}).get('voice') == voice:  # so `use 猫` must change something
+            other = dict(before); other['tts'] = {**before.get('tts', {}), 'fish-audio': {**before['tts']['fish-audio'], 'voice': 'b' * 32}}
+            set_config(paid, other)
+        added = command(paid, f'alias add 猫 {voice}')
+        used = command(paid, 'use 猫')
+        assert config(paid)['tts']['fish-audio']['voice'] == voice
+        removed = command(paid, 'alias remove 猫')
+        assert '猫' not in config(paid)['tts']['fish-audio']['aliases']
+        evidence(request, paid, {'add': added, 'use': used, 'remove': removed, 'voice': voice})
+    finally:
+        set_config(paid, before)
+
+
 @pytest.mark.row('A-CMD-TITLE')
 def test_use_own_title(paid, request):
     before, items = config(paid), []
@@ -261,7 +317,7 @@ def test_use_own_title(paid, request):
         na(request, 'own voice listing exceeds the searchable window; title uniqueness cannot be established')
     titles = [item['title'].strip().casefold() for item in items if isinstance(item.get('title'), str)]
     aliases = before.get('tts', {}).get('fish-audio', {}).get('aliases', {})
-    aliases = {name.strip().casefold() for name in aliases}
+    aliases = {unicodedata.normalize('NFKC', name.strip()).casefold() for name in aliases}
     chosen = next((item for item in items if isinstance(item.get('title'), str)
                    and 0 < len(item['title'].strip()) <= 128
                    and titles.count(item['title'].strip().casefold()) == 1
@@ -383,6 +439,32 @@ def test_reading_speed(real, request):
         set_config(real, before)
 
 
+@pytest.mark.row('A-OP-MINE')
+def test_operator_profile_voices(paid, voice, request):
+    before = config(paid)
+    try:
+        changed = copy.deepcopy(before)
+        changed.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['operator_account'] = True
+        changed.setdefault('tts', {}).setdefault('fish-audio', {})['aliases'] = {'acceptance_voice': voice}
+        set_config(paid, changed)
+        result = core(paid, 'from tools.registry import registry; '
+                      'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_voices", {"action": "mine"}))')
+        evidence(request, paid, result)
+        assert result['success'] and result['profile_voices'] is True
+        assert len(result['items']) == 1 and result['items'][0]['id'] == voice
+        assert result['items'][0]['name'] == 'acceptance_voice'
+    finally:
+        set_config(paid, before)
+
+
+@pytest.mark.row('A-USAGE')
+def test_speech_usage(paid, voice, request):
+    result = core(paid, 'from tools.registry import registry; '
+                  f'print("ACCEPTANCE_RESULT=" + registry.dispatch("fish_speak", {{"text": "Hello.", "voice": {voice!r}}}))')
+    evidence(request, paid, result)
+    assert result['success'] and result['usage']['billable_bytes'] > 0
+
+
 @pytest.mark.row('A-TOOL-ACCOUNT')
 def test_account_tool(real, request):
     # Other free rows already read the wallet. Only this balance call may use the network here.
@@ -431,6 +513,32 @@ def test_pronunciations_tool(real, request):
         result = core(real, code)
         evidence(request, real, result)
         assert result['used']['refs'] == result['payload_refs'] and result['deleted']['deleted']
+    finally:
+        set_config(real, before)
+
+
+@pytest.mark.row('A-TOOL-PRON-OPERATOR')
+def test_operator_pronunciations_tool(real, request):
+    before = config(real)
+    try:
+        changed = copy.deepcopy(before)
+        # Operator mode is a plugin transport setting, as in A-OP-MINE; tts holds speech preferences.
+        changed.setdefault('plugins', {}).setdefault('entries', {}).setdefault('fish-audio', {}).setdefault('settings', {})['operator_account'] = True
+        set_config(real, changed)
+        code = '\n    '.join([
+            'import json, httpx; from tools.registry import registry',
+            'calls = []',
+            'def no_network(*args, **kwargs):',
+            '    calls.append("attempted"); raise AssertionError("operator dictionary action opened the network")',
+            'httpx.Client.send = no_network',
+            'results = {action: json.loads(registry.dispatch("fish_pronunciations", {"action": action, "name": "Acceptance"})) for action in ("list", "create")}',
+            'print("ACCEPTANCE_RESULT=" + json.dumps({"results": results, "fish_requests": len(calls)}))'])
+        result = core(real, code)
+        evidence(request, real, result)
+        assert result['fish_requests'] == 0
+        for refused in result['results'].values():
+            assert refused['success'] is False
+            assert refused['error'] == "Pronunciation dictionaries on this agent's account are managed by its operator."
     finally:
         set_config(real, before)
 

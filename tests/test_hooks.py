@@ -92,6 +92,18 @@ def test_file_request_removes_a_copied_voice_marker(tmp_path):
     assert hooks.on_transform_llm_output(f"[[audio_as_voice]]\nMEDIA:{voice}", "a") is None  # voice-only keeps it
 
 
+@pytest.mark.parametrize("reply", ["Ready.", "Ready.\n[[audio_as_voice]]"])
+@pytest.mark.parametrize("delivery", [None, False])
+def test_voice_and_non_voice_clip_use_file_delivery(tmp_path, reply, delivery):
+    voice, file = audio(tmp_path, "voice.ogg"), audio(tmp_path, "file.wav")
+    hooks.record("a", voice, True)
+    if delivery is None:
+        hooks.record("a", file)  # WAV speech with omitted delivery.
+    else:
+        hooks.record("a", file, delivery)  # Voice-design preview.
+    assert hooks.on_transform_llm_output(reply, "a") == f"Ready.\nMEDIA:{voice}\nMEDIA:{file}"
+
+
 def test_lru_and_ttl(monkeypatch, tmp_path):
     path = audio(tmp_path)
     for i in range(256):

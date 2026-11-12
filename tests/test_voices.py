@@ -8,6 +8,7 @@ import respx
 
 from fish_audio import media, settings, voices
 from fish_audio.tool_support import ToolInputError
+from test_commands import config
 
 BASE = "https://api.fish.audio"
 WAV = b"RIFF\x10\0\0\0WAVEsynthetic-audio"
@@ -90,7 +91,7 @@ def test_partial_design_write_failure_removes_only_its_files_and_receipts(tmp_pa
     assert other.read_bytes() == b"keep" and set(voices._DESIGNS) == {"existing"}
 
 
-@pytest.mark.parametrize("args", [{"action": "mine"}, {"action": "update", "voice_id": "a" * 32, "title": "x"},
+@pytest.mark.parametrize("args", [{"action": "update", "voice_id": "a" * 32, "title": "x"},
                                   {"action": "delete", "voice_id": "a" * 32}])
 def test_operator_account_refuses_account_wide_voice_management(monkeypatch, args):
     # One operator key can serve many agents: its own voices, edits and deletes span all of them.
@@ -106,3 +107,84 @@ def test_operator_account_refuses_account_wide_voice_management(monkeypatch, arg
         mock.delete(BASE + "/model/" + "a" * 32).respond(json={})
         voices.execute(args, "synthetic-A", BASE, "")
         assert len(mock.calls) == 1
+
+
+@pytest.mark.parametrize("count,status", [(0, 200), (2, 200), (2, 403), (2, 404), (2, 503), (22, 200)])
+def test_operator_mine_profile_only(monkeypatch, count, status):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    saved = {f"voice{i:02}": f"{i:032x}" for i in range(count)}
+    if count:
+        saved["z-duplicate"] = saved["voice00"]
+    monkeypatch.setattr(settings, "aliases", lambda: saved)
+    monkeypatch.setattr(voices.client.time, "sleep", lambda *a: None)
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(BASE + "/model").mock(side_effect=AssertionError("account list forbidden"))
+        for i, ident in enumerate(list(dict.fromkeys(saved.values()))[:20]):
+            mock.get(BASE + "/model/" + ident).respond(status, json={"_id": ident, "title": str(i), "languages": ["ja"]})
+        result = voices.execute({"action": "mine"}, "synthetic-A", BASE, "")
+        # A failing Fish (503, retried 3 times) stops further lookups: the rest are listed by name.
+        assert len(mock.calls) == (3 if status == 503 else min(count, 20))
+        assert all(c.request.url.path.startswith("/model/") and not c.request.url.query for c in mock.calls)
+    assert result["profile_voices"] and len(result["items"]) == count
+    assert [r["name"] for r in result["items"]] == sorted(saved)[:count]
+    for i, item in enumerate(result["items"]):
+        assert item["id"] == saved[item["name"]]
+        if status == 200 and i < 20:
+            assert item["title"] == str(i) and item["languages"] == ["ja"]
+        else:
+            assert item == {"id": saved[item["name"]], "name": item["name"], "detail": "unavailable",
+                            **({"names": ["voice00", "z-duplicate"]} if i == 0 else {})}
+    if count:
+        assert result["items"][0]["names"] == ["voice00", "z-duplicate"]
+    else:
+        assert "operator assigns voices with saved names" in result["note"]
+
+
+def test_operator_mine_rejected_key_is_an_error(monkeypatch):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    monkeypatch.setattr(settings, "aliases", lambda: {"one": "a" * 32, "two": "b" * 32})
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(BASE + "/model/" + "a" * 32).respond(401, json={})
+        with pytest.raises(voices.FishAudioError) as caught:
+            voices.execute({"action": "mine"}, "synthetic-A", BASE, "")
+        assert caught.value.status == 401 and len(mock.calls) == 1
+
+
+def test_find_own_by_title_refuses_in_operator_mode(monkeypatch):
+    monkeypatch.setattr(settings, "operator_account", lambda: True)
+    with respx.mock(assert_all_called=False) as mock:
+        with pytest.raises(ToolInputError, match="managed by its operator"):
+            voices.find_own_by_title("Kate", "synthetic-A", BASE)
+        assert not mock.calls
+
+
+@pytest.mark.parametrize("action", ["clone", "save"])
+@pytest.mark.parametrize("title,condition,expected", [
+    ("ナレーター", "ok", "ナレーター"), (" 123 !! Warm,  Voice!", "ok", "warm-voice"),
+    ("猫" * 40, "ok", "猫" * 32), ("ＷＡＲＭ", "taken", None),
+    ("Warm", "limit", None), ("Warm", "managed", None), ("123!", "invalid", None),
+    ("Warm", "personal", None), ("Warm", "no-id", None),
+])
+def test_new_voice_saved_names(config, monkeypatch, action, title, condition, expected):
+    monkeypatch.setattr(settings, "operator_account", lambda: condition != "personal")
+    monkeypatch.setattr(settings, "managed_leaf", lambda *p: condition == "managed")
+    saved = {"Warm": "b" * 32} if condition == "taken" else (
+        {f"voice{i}": "b" * 32 for i in range(settings.MAX_ALIASES)} if condition == "limit" else {})
+    config[0]["tts"]["fish-audio"] = {"aliases": saved.copy()}
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BASE + "/model").respond(json={"title": title, **({} if condition == "no-id" else {"_id": "a" * 32})})
+        args = {"action": action, "title": title, "consent": True,
+                "sample_paths": [str(Path(__file__).parent / "fixtures/synthetic.mp3")]}
+        if action == "save":
+            mock.post(BASE + "/v1/voice-design").respond(json={"candidates": [CANDIDATE]})
+            args["design_token"] = voices.execute({"action": "design", "instruction": "warm"}, "synthetic-A", BASE, "")["candidates"][0]["design_token"]
+        result = voices.execute(args, "synthetic-A", BASE, "")
+    if expected:
+        assert result["saved_name"] == expected and settings.aliases()[expected] == "a" * 32
+    else:
+        assert config[0]["tts"]["fish-audio"]["aliases"] == saved and "saved_name" not in result
+        if condition not in {"personal", "no-id"}:
+            assert "operator can add one" in result["saved_name_note"]
+            assert {"taken": "taken", "limit": "limit", "managed": "managed", "invalid": "valid"}[condition] in result["saved_name_note"]
+        else:
+            assert "saved_name_note" not in result

@@ -402,6 +402,83 @@ async function libraryRows(s, theme, account) {
   }
 }
 
+async function mineEditRow(s, theme) {
+  if (!want('B-MINE-EDIT') || H !== 'upstream') return
+  const evidence = []
+  try {
+    await openVoices(s); await c.clickText(s, 'My voices', { timeout: 5000 })
+    await s.page.waitForFunction(() => document.body.innerText.includes("You haven't created any voices yet") ||
+      document.querySelector('button[aria-label^="Edit "]'), null, { timeout: 15000 })
+    const first = s.page.getByRole('button', { name: /^Edit / }).first()
+    if (!(await first.count())) { row('B-MINE-EDIT', 'na', 'no own voice exists', { theme }); return }
+    let original = (await first.getAttribute('aria-label')).slice(5)
+    // The other theme's pass restores the title through the gateway, so Desktop's list (or Fish's) can still show
+    // its rename: reopen My voices a few times before judging.
+    for (let i = 0; i < 3 && original.endsWith(' (edit)'); i++) {
+      await c.clickText(s, 'Library', { timeout: 5000 }); await c.clickText(s, 'My voices', { timeout: 5000 })
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      original = (await first.getAttribute('aria-label')).slice(5)
+    }
+    if (original.endsWith(' (edit)')) {
+      const listed = (await gw('/api/plugins/fish-audio/voices?self=true&page=1')).body?.items || []
+      const hit = listed.filter(v => v.title === original)
+      const unedited = listed.filter(v => v.title === original.slice(0, -' (edit)'.length))
+      const target = hit.length === 1 ? hit[0] : !hit.length && unedited.length === 1 ? unedited[0] : null
+      const byId = target ? (await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(target.id)}`)).body?.voice?.title : null
+      if (typeof byId === 'string' && !byId.endsWith(' (edit)')) {
+        row('B-MINE-EDIT', 'na', `the voice list still shows the previous pass's rename; the gateway has the title restored ("${byId}")`, { theme }); return
+      }
+      row('B-MINE-EDIT', 'fail', `own voice title "${original}" was left renamed by an earlier run; restore it first`, { theme }); return
+    }
+    // Find the voice id before changing anything, so the title is restored through the gateway even if the UI fails.
+    const mine = await gw('/api/plugins/fish-audio/voices?self=true&page=1')
+    const matches = (mine.body?.items || []).filter(v => v.title === original)
+    if (matches.length !== 1) { row('B-MINE-EDIT', 'na', 'first own voice title is not unique on the first page', { theme }); return }
+    const id = matches[0].id
+    const edited = Array.from(original).slice(0, 93).join('') + ' (edit)'
+    let uiFailed = false, uiError = null, saveClicked = false, clickedAt = 0
+    try {
+      await s.page.getByRole('button', { name: `Edit ${original}`, exact: true }).click()
+      const input = s.page.getByRole('textbox', { name: 'Voice name', exact: true })
+      await input.waitFor({ state: 'visible' })
+      await s.page.waitForFunction(() => { const input = document.querySelector('[role="dialog"] input'); return input && !input.disabled })
+      await input.fill(edited)
+      evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'dialog')))
+      saveClicked = true; clickedAt = Date.now()
+      await s.page.getByRole('button', { name: 'Save voice', exact: true }).click()
+      await s.page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 15000 })
+      await s.page.getByRole('button', { name: `Edit ${edited}`, exact: true }).waitFor({ state: 'visible', timeout: 15000 })
+      evidence.push(await c.shot(s, shotPath('B-MINE-EDIT', theme, 'renamed')))
+    } catch (e) { uiFailed = true; uiError = e }
+    // A Save still in flight could land after the restore and rename the voice again. Wait until Desktop settles
+    // (the dialog closes, or Cancel is enabled again; Desktop stops waiting at 60 s), then until the gateway's own
+    // ownership check and update could have finished (up to 60 s per Fish call) before restoring.
+    let unsettled = false
+    if (uiFailed && saveClicked) {
+      await s.page.waitForFunction(() => {
+        const dialog = document.querySelector('[role="dialog"]')
+        const cancel = dialog && [...dialog.querySelectorAll('button')].find(b => b.textContent.trim() === 'Cancel')
+        return !dialog || (cancel && !cancel.disabled)
+      }, null, { timeout: 65000 }).catch(() => { unsettled = true })
+      const remaining = () => Math.max(0, clickedAt + 125000 - Date.now())
+      // A closed page must not skip the restore: fall back to a plain timer.
+      await s.page.waitForTimeout(remaining()).catch(() => new Promise(resolve => setTimeout(resolve, remaining())))
+    }
+    // Always restore by id through the gateway; a failed restore reports the UI error that came before it too.
+    let restoreProblem = null
+    try {
+      const restored = await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ title: original }) })
+      const check = await gw(`/api/plugins/fish-audio/voices/${encodeURIComponent(id)}`)
+      if (restored.body?.ok !== true || check.body?.voice?.title !== original) restoreProblem = `now "${check.body?.voice?.title}"`
+    } catch (e) { restoreProblem = String(e?.message ?? e).split('\n')[0] }
+    if (!restoreProblem && unsettled) restoreProblem = 'the Save never settled, so it may still rename the voice; check it'
+    if (restoreProblem) throw new Error(`title not restored for the first own voice (${restoreProblem})` +
+      (uiFailed ? `; the edit failed first: ${String(uiError?.message ?? uiError).split('\n')[0]}` : ''))
+    if (uiFailed) throw uiError instanceof Error ? uiError : new Error(String(uiError))
+    row('B-MINE-EDIT', 'pass', 'own voice renamed through Edit; original title restored and read back by id', { theme, evidence })
+  } catch (e) { row('B-MINE-EDIT', 'fail', String(e?.message ?? e).split('\n')[0], { theme, evidence }) }
+}
+
 // --- main ---
 async function main() {
   fs.mkdirSync(SHOTS, { recursive: true })
@@ -424,7 +501,7 @@ async function main() {
     await guard(`palette ${theme}`, () => paletteRow(s, theme))
     await guard(`key entry ${theme}`, () => keyEntryRow(s, theme))
   }
-  const needReal = ['B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-LIB-5', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
+  const needReal = ['B-MINE-EDIT', 'B-SET-1', 'B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-LIB-5', 'B-CONV-1', 'B-CONV-2', 'B-CONV-3', 'B-CONV-3L', 'B-CONV-4', 'B-CONV-5', 'B-DICT-1', 'B-EVAOS-CONV-1'].some(want)
   if (needReal) {
     let walletBefore = null
     try { hostctl('set-real-key'); await waitGateway(); await c.sleep(3000); meta.reload_after_key = await reloadRenderer(s) } catch (e) { row('B-LIB-1', 'fail', `could not place the real key: ${e.message}`); return finish(meta, s) }
@@ -435,6 +512,7 @@ async function main() {
     for (const theme of THEMES) {
       if (!(await guard(`theme ${theme}`, () => c.setTheme(s, theme)))) continue
       await guard(`settings page ${theme}`, () => settingsPageRow(s, theme))
+      if (want('B-MINE-EDIT')) await guard(`mine edit ${theme}`, () => mineEditRow(s, theme))
       if (['B-LIB-1', 'B-LIB-2', 'B-LIB-3', 'B-LIB-4', 'B-LIB-5'].some(want)) await guard(`library ${theme}`, () => libraryRows(s, theme, account))
     }
     for (const theme of THEMES) {

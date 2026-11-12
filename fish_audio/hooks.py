@@ -21,8 +21,10 @@ def _prune(now):
 
 
 def record(session_id, path, delivery=None):
-    if isinstance(delivery, bool):  # Existing preview/audition callers.
-        delivery = "voice" if delivery else None
+    if delivery is True:  # Existing preview/audition callers.
+        delivery = "voice"
+    elif delivery is False or delivery is None:
+        delivery = "file"
     with _lock:
         now = _clock()
         _prune(now)

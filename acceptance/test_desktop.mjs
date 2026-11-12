@@ -121,7 +121,7 @@ test('only-done signature requires actual sent done frame; silent-count intersec
 })
 
 test('B-LIB-4 requires the Account card credit; a matching status chip cannot count', async () => {
-  const start = run.indexOf("  if (want('B-LIB-4'))"), end = run.indexOf('\n}\n\n// --- main', start)
+  const start = run.indexOf("  if (want('B-LIB-4'))"), end = run.indexOf('\n}\n\nasync function mineEditRow', start)
   for (const [credit, text, expected, pageText = text] of [[undefined,'NaN','fail'], [null,'0.00','fail'], ['NaN','NaN','fail'],
     ['Infinity','Infinity','fail'], ['1.2','1.2','fail'], ['1.2','1.20','pass'], ['1.2','unavailable','fail','Voices Fish $1.20']]) {
     const rows = [], c = {clickText:async()=>{}, sleep:async()=>{}, text:async()=>pageText, shot:async()=>''}
@@ -212,19 +212,20 @@ test('B-SET-1 fails missing UI, keyboard, saved state, persistence and reset evi
   assert.deepEqual(unselected.rows, []); assert.deepEqual(unselected.nav, [])
 })
 
-test('B-SET-1 alone enters the keyed phase and runs in both themes without library rows', async () => {
+for (const selected of ['B-SET-1', 'B-MINE-EDIT']) test(`${selected} alone enters the keyed phase and runs in both themes without library rows`, async () => {
   const start = run.indexOf('async function main()'), end = run.indexOf('\nasync function guard', start)
   const themes = [], commands = [], meta = {}
   let keyed = false
   await vm.runInNewContext(`${run.slice(start,end)}\nmain()`, {
     fs:{mkdirSync(){}, existsSync:()=>false}, path, SHOTS:'shots', OUT:'synthetic', CDP:9281, VITE:5194, H:'upstream', host:{}, args:{'no-launch':true},
-    THEMES:['light','dark'], process:{env:{}}, want:id=>id === 'B-SET-1', buildTree:()=>'/synthetic/tree',
+    THEMES:['light','dark'], process:{env:{}}, want:id=>id === selected, buildTree:()=>'/synthetic/tree',
     hostctl:cmd=>{ commands.push(cmd); if (cmd.endsWith('-key')) keyed = cmd === 'set-real-key' },
     waitGateway:async()=>{}, reloadRenderer:async()=>{}, setup:async()=>{},
     c:{connect:async()=>({page:{evaluate:async()=>true}}), setTheme:async()=>{}, sleep:async()=>{}},
     guard:async(label,fn)=>{ await fn(); return true }, noKeyRows:async()=>{}, pluginPageRow:async()=>{},
     paletteRow:async()=>{}, keyEntryRow:async()=>{}, convRows:async()=>{},
-    settingsPageRow:async(s,theme)=>{ assert.equal(keyed, true); themes.push(theme) },
+    settingsPageRow:async(s,theme)=>{ if (selected === 'B-SET-1') { assert.equal(keyed, true); themes.push(theme) } },
+    mineEditRow:async(s,theme)=>{ assert.equal(keyed, true); themes.push(theme) },
     libraryRows:()=>assert.fail('B-SET-1 does not require the Library'), shotPath(){},
     gw:async()=>({body:{credit:'1.00'}}), row:()=>assert.fail('unexpected row'),
     finish:async result=>Object.assign(meta,result)
@@ -235,6 +236,62 @@ test('B-SET-1 alone enters the keyed phase and runs in both themes without libra
   const version = fs.readFileSync(new URL('../plugin.yaml', import.meta.url), 'utf8').match(/^version:\s*(.+)$/m)[1]
   assert.equal(spec.min_plugin, '1.12.0'); assert.ok(version.localeCompare('1.12.0', undefined, {numeric: true}) >= 0); assert.equal(spec.billed, 'none'); assert.equal(spec.layer, 'b')
   assert.equal(spec.required, true); assert.deepEqual(spec.hosts, ['upstream','evaos'])
+})
+
+test('B-MINE-EDIT renames and restores, including after a screenshot error; empty accounts are na', async () => {
+  const start = run.indexOf('async function mineEditRow'), end = run.indexOf('\n// --- main ---', start)
+  for (const mode of ['success', 'empty', 'shot-error', 'refresh-fail', 'restore-refused', 'refresh-fail+restore-refused', 'restore-throws', 'slow-save', 'wait-throws', 'left-renamed', 'stale-list', 'stale-page', 'list-lies', 'refreshed', 'duplicate']) {
+    let title = ['left-renamed', 'stale-list', 'stale-page', 'list-lies', 'refreshed'].includes(mode) ? 'Original (edit)' : 'Original', label = null, clicks = 0, pending, dialog = false, shots = 0, inflight = null
+    const rows = [], saves = []
+    // A slow Save lands only when something waits on the page, like the real in-flight PATCH.
+    const waits = [], timers = []
+    const page = { waitForFunction:async()=>{ if (inflight) await inflight }, waitForTimeout:async ms=>{ waits.push(ms); if (mode === 'wait-throws') throw Error('Target closed') }, getByRole:(role, {name} = {}) => {
+      const locator = {
+        first:()=>locator, count:async()=>mode === 'empty' ? 0 : 1, getAttribute:async()=>`Edit ${label ?? title}`,
+        waitFor:async()=>{ if ((mode.startsWith('refresh-fail') || mode === 'wait-throws') && name === 'Edit Original (edit)') throw Error('list did not refresh')
+          if (role === 'dialog') assert.equal(dialog, false); else if (name !== 'Voice name') assert.equal(name, `Edit ${title}`) },
+        fill:async value=>{ pending = value }, click:async()=>{
+          if (name === 'Save voice' && mode === 'slow-save') inflight = new Promise(r => setTimeout(r, 5)).then(() => { title = pending; saves.push(title); dialog = false })
+          else if (name === 'Save voice') { title = pending; saves.push(title); dialog = false }
+          else { assert.equal(name, `Edit ${title}`); dialog = true }
+        }
+      }; return locator
+    } }
+    await vm.runInNewContext(`${run.slice(start,end)}\nmineEditRow(s, 'light')`, {
+      s:{page}, H:'upstream', want:()=>true, openVoices:async()=>{}, shotPath:()=>'', encodeURIComponent, JSON, Date, String, Error,
+      setTimeout:(resolve, ms)=>{ timers.push(ms); resolve() },
+      gw:async(path, init = {}) => {
+        if (path.includes('?self=true') && ['stale-page', 'list-lies'].includes(mode)) return { body: { items: [{ id: 'v1', title: 'Original' }] } }
+        if (path.includes('?self=true')) return { body: { items: mode === 'duplicate' ? [{ id: 'v1', title }, { id: 'v2', title }] : [{ id: 'v1', title }] } }
+        if (init.method === 'PATCH') {
+          if (mode.endsWith('restore-refused') && saves.length) return { body: { ok: false, code: 'not_owner' } }
+          if (mode === 'restore-throws' && saves.length) throw Error('gateway unreachable')
+          title = JSON.parse(init.body).title; saves.push(title); return { body: { ok: true } }
+        }
+        return { body: { voice: { id: 'v1', title: ['stale-list', 'stale-page'].includes(mode) ? 'Original' : title } } }
+      },
+      c:{clickText:async(_, text)=>{ if (text === 'My voices' && mode === 'refreshed' && ++clicks === 3) { title = 'Original'; label = null } }, shot:async()=>{ shots++; if (mode === 'shot-error' && shots > 1) throw Error('capture failed'); return 'shot' }},
+      row:(id,status,reason)=>rows.push({id,status,reason})
+    })
+    const untouched = ['empty', 'left-renamed', 'stale-list', 'stale-page', 'list-lies', 'duplicate'].includes(mode)
+    const stuck = ['left-renamed', 'stale-list', 'stale-page', 'list-lies'].includes(mode) || mode.endsWith('restore-refused') || mode === 'restore-throws'
+    assert.equal(title, stuck ? 'Original (edit)' : 'Original')
+    assert.deepEqual(saves, untouched ? [] : mode.endsWith('restore-refused') || mode === 'restore-throws' ? ['Original (edit)'] : ['Original (edit)', 'Original'])
+    assert.equal(rows[0].status, ['empty', 'duplicate', 'stale-list', 'stale-page'].includes(mode) ? 'na' : ['success', 'refreshed'].includes(mode) ? 'pass' : 'fail')
+    if (mode.endsWith('restore-refused')) assert.match(rows[0].reason, /title not restored .*now "Original \(edit\)"/)
+    if (mode === 'refresh-fail+restore-refused') assert.match(rows[0].reason, /the edit failed first: list did not refresh/)
+    if (mode === 'restore-throws') assert.match(rows[0].reason, /title not restored .*\(gateway unreachable\)/)
+    assert.equal(rows.length, 1)
+    // Only a failure after Save waits out the gateway's in-flight update before restoring.
+    assert.equal(waits.length, ['shot-error', 'refresh-fail', 'refresh-fail+restore-refused', 'slow-save', 'wait-throws'].includes(mode) ? 1 : 0)
+    assert.equal(timers.length, mode === 'wait-throws' ? 1 : ['left-renamed', 'stale-list', 'stale-page', 'list-lies'].includes(mode) ? 3 : mode === 'refreshed' ? 2 : 0)
+    if (waits.length) assert.ok(waits[0] > 120000 && waits[0] <= 125000)
+    if (['left-renamed', 'list-lies'].includes(mode)) assert.match(rows[0].reason, /left renamed by an earlier run/)
+    if (['stale-list', 'stale-page'].includes(mode)) assert.match(rows[0].reason, /the gateway has the title restored \("Original"\)/)
+  }
+  const spec = JSON.parse(fs.readFileSync(new URL('./rows.yaml', import.meta.url))).find(r=>r.id === 'B-MINE-EDIT')
+  assert.equal(spec.min_plugin, '1.14.0'); assert.equal(spec.layer, 'b'); assert.equal(spec.billed, 'none')
+  assert.equal(spec.required, true); assert.deepEqual(spec.hosts, ['upstream'])
 })
 
 async function forcedFailureRow(m, { requests = [], media = [], toast = [], end = () => {}, sleep = () => {} } = {}) {

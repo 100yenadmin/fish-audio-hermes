@@ -62,7 +62,7 @@ read-aloud and voice notes go through it.
 | **Expressive speech** | Fish Audio S2 models follow emotion and delivery cues such as `[excited]`, `[whispering]` and `[laughing]`. Drama 3 (`drama-3`) takes plain-language direction and word-level tags such as `<whisper>…</whisper>`. Multi-speaker dialogue and custom pronunciations are supported too. |
 | **Streaming voice** | CLI voice mode and Desktop voice replies stream each sentence as it is ready. In our tests the first audio bytes arrived 0.24–0.38 s after a sentence was sent (see [Streaming voice](#configuration) for how this was measured). |
 | **Voice library** | Search Fish Audio's community voices from chat (`/fish voices narrator`) and switch with `/fish use <id>`. |
-| **Voice names** | Save a voice under a short name (`/fish alias add narrator <id>`), then use the name wherever a voice id goes: `/fish use narrator`, `/fish preview narrator` or `fish_speak`. |
+| **Voice names** | Save a voice under a short name in any script (`/fish alias add 猫 <voice id>`), then use the name wherever a voice id goes: `/fish use 猫`, `/fish preview 猫` or `fish_speak`. |
 | **Your own voices** | Clone a voice from a short sample, or describe one in words and pick from the candidates. Cloning and deleting from chat go through Hermes's approval gate, so by default Hermes asks you first. |
 | **Speech-to-text** | Voice notes use `transcribe-1-pro`. Live dictation uses native realtime (Preview) for word-by-word captions without sound or speaker tags in CLI voice mode, TUI and Desktop (Hermes 0.21.6+). `fish_transcribe` adds speaker turns, timestamps and SRT subtitles. |
 | **Desktop Voices page** | In Hermes Desktop: browse and preview voices, pick one for the agent, clone or design your own, and check your credit. |
@@ -107,12 +107,19 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 | `/fish model <id>` | Pick a model (`s2.1-pro`, `s2.1-pro-free`, `s2-pro`, `s1`, `drama-3`) |
 | `/fish preview [voice-id, name or own title] [text]` | Hear the current voice or a chosen voice (a billed synthesis); use a single-word title for previews |
 | `/fish alias` | List your saved voice names |
-| `/fish alias add <name> <voice-id>` | Save a name for a voice: 2–32 letters, digits, `-` or `_`, starting with a letter |
+| `/fish alias add <name> <voice-id>` | Save a name for a voice: 1–32 letters (any script), digits, marks, `-` or `_`, starting with a letter |
 | `/fish alias remove <name>` | Delete a saved name |
 | `/fish balance` | API credit and plan |
 | `hermes fish login [--key-stdin] [--yes]` | Save and check a key, offer to switch providers |
 | `hermes fish status` · `hermes fish use <voice-id, name or own title>` | Status and voice choice from your terminal |
 | `hermes fish doctor [--no-synth]` | Check the setup with one billed synthesis, or without it |
+| `hermes fish speak [TEXT] [--text-file PATH / --stdin] [--out PATH] [--json]` | Billed speech; optional voice, model, format and timestamps; `--force` replaces output |
+| `hermes fish transcribe FILE [--model MODEL] [--language L] [--diarize] [--srt] [--json]` | Billed transcription and optional subtitles |
+| `hermes fish voices [QUERY] [--mine] [--page N] [--page-size N] [--json]` | Search voices or list your own |
+| `hermes fish balance [--json]` | Read API credit and plan |
+
+For scripts: `hermes fish speak "Hello" --format mp3 --out hello.mp3 --json`.
+The scripting commands never prompt; `--json` emits one object and exits 0 on success or 1 on failure.
 
 **Model tools** (toolset `fish_audio`; synthesis, transcription, cloning and design are billed)
 
@@ -129,8 +136,9 @@ Never paste API keys into a chat. `/fish` refuses them and tells you to rotate t
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
 through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,
-`fish-audio:fish-audio-voice-studio`, `fish-audio:fish-audio-long-form` and `fish-audio:fish-audio-report-problem` (drafts a bug report and files it with
-`gh` only after you approve the draft).
+`fish-audio:fish-audio-voice-studio`, `fish-audio:fish-audio-long-form`, `fish-audio:fish-audio-translate-voice` (transcribe a clip,
+translate it and voice it again with one voice per speaker, as a voice-over with new subtitles) and
+`fish-audio:fish-audio-report-problem` (drafts a bug report and files it with `gh` only after you approve the draft).
 
 To remember recurring company names, use `fish_pronunciations`: `create` with a `name`, then `publish`
 with the returned `dictionary_id` and `rules` such as `[{"key":"ES","value":"Electric Sheep","type":"alias"}]`.
@@ -185,7 +193,7 @@ The plugin adds a **Voices** page to Hermes Desktop for the selected agent:
 
 - **Library:** search Fish Audio's voices by name and language, preview them (a short billed sample), star
   favourites, and choose **Use** to make a voice the agent's voice.
-- **My voices:** the voices you cloned or designed; delete one by typing its name.
+- **My voices:** the voices you cloned or designed; edit a voice's title and description, or delete one by typing its name.
 - **Create:** clone a voice from 1–3 recordings (up to 10 MB each, with the speaker's permission), or describe a
   voice and save the candidate you like.
 - **Account:** API credit, plan credits and top-up links. The status bar shows your API credit, in orange when it
@@ -321,8 +329,15 @@ Choose `transcribe-1-pro`. The plugin never rewrites your configured model.
 Set `plugins.entries.fish-audio.settings.operator_account: true` (Desktop: **Operator-managed account**) when the
 Fish account belongs to the agent operator. This hides balance, plan, billing and API-key links in chat and Desktop, and directs
 setup or credit problems to the operator. Because one operator account can serve many agents, the account's own
-voices aren't listed, edited or deleted from an agent (no My voices tab; `fish_voices` refuses `mine`, `update` and
-`delete`); cloning and designing still work, and a voice created on the Voices page goes into that agent's Favourites. It defaults to false. Tool descriptions update after a gateway restart.
+voices aren't listed, edited or deleted from an agent (no My voices tab; `fish_voices` refuses `update` and
+`delete`). Instead, `fish_voices action:"mine"` lists only this profile's saved-name voices, with details for up to
+20 voices; unavailable details leave the name and id. Cloning and saving a design automatically add a saved name
+derived from the title when possible; otherwise the result explains why the operator needs to add one.
+A voice created on the Voices page also goes into that agent's Favourites. Operator mode defaults to false.
+`fish_speak` and `fish_transcribe` results include a `usage` object with the model and billable UTF-8 bytes or audio
+seconds. Operator mode hides USD estimates and a wallet-chosen default model; personal accounts also get a USD
+estimate when available. If usage cannot be computed, the completed job is returned without it.
+Tool descriptions update after a gateway restart.
 Operators should also pin `tts.fish-audio.model` or set `allow_free_model: false`, so the model never depends on
 the wallet that users can't see.
 

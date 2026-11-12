@@ -26,11 +26,12 @@ Plan before spending:
    are free. Show the total estimate and chapter/part plan, then wait for the user's go.
    If the operator manages billing and no amount is returned, say so; do not invent a price.
 
-Create `manifest.json` in the project folder with one entry per chapter:
+Create `manifest.json` in the project folder with top-level `format` and `timestamps` preferences
+and one entry per chapter:
 `number`, `title`, `text_hash` (SHA-256 of the exact chapter text encoded as UTF-8), `file`,
-`voice` (the pinned ID), `model`, `estimated_cost`, `status` (`pending`, `done` or `failed`),
+`voice` (the pinned ID), `model`, `estimated_cost`, `status` (`pending`, `done`, `audio_only` or `failed`),
 `alignment_file` when available, and `cache_file` (the audio-cache path it was copied from). Use project-relative filenames; pending entries can have a null file.
-For a split chapter, keep a `parts` list with each part's text hash, file, estimate, status and
+For a split chapter, keep a `parts` list with each part's text hash, file, `cache_file`, estimate, status and
 alignment file; mark the chapter done only when every part is done. Sum part estimates for its cost.
 Initialize the manifest before synthesis. Save it atomically after every chapter and every part
 so an interruption loses at most the request in progress. Keep secrets out of the manifest.
@@ -40,23 +41,34 @@ Synthesize and save:
 1. In chapter order, call `fish_speak` with the chapter/part `text`, the same explicit `voice`
    and `model`, `format: "mp3"` (or the chosen format) and `delivery: "file"`, so chat surfaces send
    a file rather than a voice note. Use `timestamps: true` when subtitles or alignment are wanted.
-2. With the agent's own file tools, copy each returned `file_path` from Hermes's audio cache into
+2. Immediately record the returned `file_path` as `cache_file`, any returned subtitle/alignment cache paths
+   (`srt_cache`, `vtt_cache`, `alignment_cache`) and any `timestamps_error` or `alignment_error` in the chapter/part
+   entry; save the manifest atomically BEFORE copying. For a redo, save these in a pending
+   replacement entry without switching the old entry. With the agent's own file tools, copy the audio into
    the project folder using the planned chapter filename. Copy any returned `srt_path`, `vtt_path`
    and `alignment_path` alongside it, and set the copied alignment JSON's `audio` to the new basename.
    The alignment JSON contains every word segment even when the tool result stops at 500.
 3. Record the files and mark the entry done only after the copies succeed; write the manifest.
+   If timestamps were requested but `timestamps_error` is returned without subtitle/alignment paths,
+   keep and copy the audio, record `audio_only` with the error, and tell the user. Do not redo it unless asked;
+   another synthesis is billed again. A split chapter with such a part stays `audio_only`.
+   If `alignment_error` is returned with subtitles, mark it done but keep the error in the entry and tell the user
+   the full alignment file was not saved (the tool result holds at most 500 segments; the full file needs a billed redo).
    On a first synthesis, if a copy fails, mark the entry failed and copy again from `cache_file` without synthesis.
    If synthesis fails or is interrupted, record failed and explain any uncertain billing before retrying.
 
-Resume by reading the manifest and recomputing text hashes; keep using its pinned voice ID and model. Skip done chapters/parts whose hash
+Resume by reading the manifest and recomputing text hashes; use its pinned voice ID, model, `format` and `timestamps`.
+Finish pending copies from the recorded cache paths without synthesizing again. Skip done chapters/parts whose hash
 still matches; never synthesize them again unless asked. If a recorded file is missing, copy it again
-from `cache_file` if that still exists; otherwise ask before a billed replacement. Present changed or failed entries for approval.
+from `cache_file` if that still exists; otherwise ask before a billed replacement. Present changed, failed and
+`audio_only` entries for approval; explain the timestamp error and redo `audio_only` entries only on request.
 To redo one chapter, say it will be billed again and synthesize only that chapter's entry (its
 parts if split). Copy the new audio and sidecars to new names with a revision suffix
 (`chapter-NN-r2`, then `-r3`), leaving the old files in place. The manifest write is the switch:
 only after every copy succeeds, save the manifest pointing at the new files with the new hash, cost
-and status; then delete the old set. If anything fails before that write, delete only the new copies
-and leave the old files and manifest entry as they were.
+and status; then delete the old set. If anything fails before that write, delete only the new copies,
+mark the pending replacement `failed` (keeping its cache paths so the paid audio can be copied again without a new
+synthesis, but never applying it without the user's approval), and leave the old files and entry as they were.
 
 For multi-voice casting and timeline editing, hand off to Fish Audio's Story Studio through
 Fish's own MCP server or web app. It signs in to the user's Fish account with OAuth, not this

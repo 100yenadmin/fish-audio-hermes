@@ -8,7 +8,7 @@ import { LIMITS, clamp } from './limits'
 import { keepCreated } from './favourites'
 import { PLUGIN_ID, useAccountText } from './strings'
 import { BilledNote, card, muted } from './ui'
-import { AgentChanged, cloneVoice, MAX_FILE_BYTES, MAX_FILES } from './upload'
+import { AgentChanged, cloneVoice, type CreatedVoice, MAX_FILE_BYTES, MAX_FILES } from './upload'
 
 const label = { display: 'grid', fontSize: 12, gap: 6 } as const
 
@@ -62,6 +62,7 @@ function CloneCard({ pin }: { pin: AgentPin }) {
       )
       if (!samePin(currentPin(), pin)) return
       setStatus({ key: keepCreated(pin, voice) ? 'operatorCloned' : 'cloned', args: [voice.title] })
+      notifySavedName(voice)
       setFiles([])
       setTitle('')
       setDescription('')
@@ -168,10 +169,11 @@ function DesignCard({ pin }: { pin: AgentPin }) {
     inFlight.current = true
     setBusy(candidate.design_token)
     try {
-      const res = await post<{ voice: { id: string; title: string } }>('/design/save', { design_token: candidate.design_token, title }, 120_000)
+      const res = await post<{ voice: { id: string; title: string }; saved_name?: string; saved_name_note?: string }>('/design/save', { design_token: candidate.design_token, title }, 120_000)
       if (!samePin(currentPin(), pin)) return
       setSaved({ ...saved, [candidate.design_token]: res.voice.title })
       host.notify({ kind: 'success', message: keepCreated(pin, res.voice) ? pluginCtx().i18n.t('operatorSaved', res.voice.title) : pluginCtx().i18n.t('saved', res.voice.title) })
+      notifySavedName({ ...res.voice, saved_name: res.saved_name, saved_name_note: res.saved_name_note })
       void client.invalidateQueries({ queryKey: ['fish-audio', agentKey(pin), 'mine'] })
     } catch (error) {
       if (samePin(currentPin(), pin)) host.notify({ kind: 'error', message: errorText(error) })
@@ -244,4 +246,10 @@ function DesignCard({ pin }: { pin: AgentPin }) {
       </div>
     </section>
   )
+}
+
+/** Operator mode gives a new voice a saved name; say which one, or why there is none (the gateway's own words). */
+function notifySavedName(voice: CreatedVoice) {
+  if (voice.saved_name) host.notify({ kind: 'info', message: pluginCtx().i18n.t('savedNameAdded', voice.saved_name, voice.title) })
+  else if (voice.saved_name_note) host.notify({ kind: 'warning', message: voice.saved_name_note })
 }

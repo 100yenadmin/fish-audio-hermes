@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 1.14.0 — 2026-11-11
+
+For developers, operators and every language: a scripting CLI, translate-and-voice, voice names in any script, a Desktop voice editor, and operator-mode voices.
+- **Scripting CLI:** `hermes fish speak`, `transcribe`, `voices` and `balance` support `--json`, with safe speech output copies and no terminal prompts (#96).
+- **Translate and voice:** a new skill transcribes a clip with speaker turns, translates it, and voices it again with one
+  Fish voice per speaker, one multi-speaker call per part of up to four speakers. It returns both transcripts and new subtitles, shows the cost
+  first, never clones the people in the clip, and calls the result a voice-over, not a synchronized dub (#98).
+- On operator-managed agents, Desktop says which saved name a newly cloned or designed voice got, or why it got none; the `fish_voices` description says `mine` lists only saved-name voices there (#122).
+- The Desktop voice editor keeps a detail-load error visible while you type, and the acceptance row reports both errors when restoring a voice title fails after a failed edit (#120).
+- List this profile's saved-name voices in operator mode, automatically name cloned/saved voices, and return billable usage on speech and transcription jobs (#97).
+- Edit your own voice's title and description on Desktop ▸ Voices ▸ My voices (#99).
+- Save voice names in any script, including Japanese, Arabic and Hindi, with Unicode normalization (#99). When two stored names normalize alike, the first in code-point order wins.
+- `/fish setup` reads the Fish key only through Hermes's secret scope and no longer opens the profile `.env`; with no key visible it says to restart the gateway or Desktop app after saving one.
+- A reply that mixes a voice clip with a non-voice clip (a design preview, or a WAV without `delivery`) no longer becomes voice notes; the file wins, as it does for `delivery: file` (#125).
+- `fish_speak` with `timestamps: true` keeps its subtitles when the full alignment file is too large to save, and says so (#125).
+- Desktop: previewing the same voice again while its preview is loading no longer starts a second billed preview; the reading-speed slider follows the saved value unless you have moved it (#125).
+- Long-form skill: the manifest records the output format and subtitle choice, each part's cache path is saved before copying, and an entry whose subtitles failed is kept as audio-only instead of done (#125).
+
 ## 1.13.0 — 2026-11-11
 
 For creators: auditions, voice notes or files, and long-form chapters.

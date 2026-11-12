@@ -374,6 +374,7 @@ def test_operator_tool_notice_and_missing_key(monkeypatch):
     assert result["success"] and "notice" not in result
     # The unpinned default follows the operator's wallet, so the result names no model; a requested one is shown.
     assert "model" not in result
+    assert set(result["usage"]) == {"billable_bytes"}
     with respx.mock(assert_all_called=True) as mock:
         mock.post(BASE + "/v1/tts").respond(content=b"audio")
         assert call(tools.fish_speak, text="hello", model="s1")["model"] == "s1"
@@ -403,3 +404,24 @@ def test_operator_model_visibility_follows_how_the_model_was_chosen_not_a_later_
         result = call(tools.fish_speak, text="hello")
     assert result["success"] and "notice" not in result
     assert ("model" in result) is named and result.get("model", "s2.1-pro") == "s2.1-pro"
+
+
+@pytest.mark.parametrize("operator,fail", [(False, False), (True, False), (False, True)])
+def test_speak_usage(monkeypatch, operator, fail):
+    monkeypatch.setattr(settings, "operator_account", lambda: operator)
+    if fail:
+        def broken(*a, **kw):
+            raise RuntimeError("usage failed")
+        monkeypatch.setattr(tools.account_tool, "estimate", broken)
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(BASE + "/v1/tts").respond(content=b"audio")
+        result = call(tools.fish_speak, text="<|speaker:0|>[sound relieved] 日本語 <|speaker:1|>Hi",
+                      model="s2.1-pro", speakers=[VOICE, "b" * 32])
+    assert result["success"] and Path(result["file_path"]).read_bytes() == b"audio"
+    if fail:
+        assert "usage" not in result
+    else:
+        size = len(json.loads(route.calls.last.request.content)["text"].encode())
+        assert result["usage"] == {"model": "s2.1-pro", "billable_bytes": size,
+            **({} if operator else {"usd_estimate": pytest.approx(size * 15 / 1_000_000),
+                                   "unit_price": tools.account_tool.estimate({"bytes": size, "model": "s2.1-pro"})["unit_price"]})}

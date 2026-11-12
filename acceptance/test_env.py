@@ -330,6 +330,33 @@ def test_seed_must_have_node_modules(tmp_path):
     assert not (tmp_path / '.cache').exists()
 
 
+@pytest.mark.parametrize('version,fail', [('43.0.0', False), ('44.0.0', False), ('44.0.0', True)])
+def test_electron_binary_install_precedes_ready_marker(tmp_path, version, fail):
+    tree = tmp_path / 'src'
+    app = tree / 'apps/desktop'
+    package = app / 'node_modules/electron'
+    package.mkdir(parents=True)
+    (package / 'package.json').write_text(json.dumps({'name': 'electron', 'version': version}))
+    (package / 'install.js').write_text('throw Error("synthetic install failure")' if fail else
+        'require("fs").writeFileSync("binary-installed", "synthetic")')
+    source = (HERE / 'desktop/build.sh').read_text()
+    start = source.index('    # Electron 44+')
+    end = source.index('\n  fi\n  touch', start)
+    script = 'set -euo pipefail\nlog() { echo "$*" >&2; }\n' + source[start:end]
+    script += '\ntouch "$TREE/.acceptance-ready"\n'
+    p = subprocess.run(['/bin/bash', '-c', script], capture_output=True, text=True,
+        env={'PATH': str(Path(NODE).parent) + os.pathsep + os.defpath, 'HOME': str(tmp_path),
+             'TREE': str(tree), 'BASE': str(tmp_path)})
+    assert p.returncode == (1 if fail else 0), p.stderr
+    assert (tree / '.acceptance-ready').exists() is not fail
+    assert (app / 'binary-installed').exists() is (version.startswith('44.') and not fail)
+    if fail:
+        assert 'Electron binary install failed' in p.stderr
+        assert 'synthetic install failure' in (tmp_path / 'electron-install.log').read_text()
+    elif version.startswith('43.'):
+        assert not (tmp_path / 'electron-install.log').exists()
+
+
 def test_desktop_offline_predicates():
     p = subprocess.run([NODE, '--test', str(HERE / 'test_desktop.mjs')], env={**harness.build_env(), 'TEST_PYTHON':sys.executable}, capture_output=True, text=True, timeout=30)
     assert p.returncode == 0, p.stdout + p.stderr

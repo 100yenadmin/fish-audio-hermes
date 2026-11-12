@@ -210,7 +210,7 @@ def test_voice_detail_public_fields_projected():
     with respx.mock() as mock:
         mock.get(BASE + "/model/" + VOICE).respond(json=MODEL_PUBLIC)
         result = voices.execute({"action": "get", "voice_id": VOICE}, "synthetic-key", BASE, "")
-        assert result == {"id": VOICE, "title": "Synthetic voice", "description": "d" * 200,
+        assert result == {"id": VOICE, "title": "Synthetic voice", "description": MODEL_PUBLIC["description"],
             "languages": ["en", "ja"], "tags": list("abcdefgh"), "like_count": 3, "task_count": 4,
             "author": "Synthetic author", "visibility": "private", "state": "trained", "source": None,
             "samples": [{"title": "Preview", "text": "hi"}]}
