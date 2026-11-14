@@ -133,6 +133,9 @@ The scripting commands never prompt; `--json` emits one object and exits 0 on su
 | `fish_account` | Balance/plan, dated model prices and offline cost estimates; free |
 | `fish_pronunciations` | Create, publish, inspect and select reusable pronunciation dictionaries; free; deletes require approval |
 
+`fish_speak` takes `output_path` to also save the audio to a file; it never overwrites an existing file.
+Fish speech-to-text has no custom-vocabulary option; choose another STT provider for jargon-heavy dictation.
+
 Plain read-aloud uses Hermes's own `text_to_speech` tool, with Fish Audio as the provider. Include the
 `media_tag` that `fish_speak` returns in the reply to deliver its audio; the plugin also appends missing audio tags
 through its output hook. Plugin skills: `fish-audio:fish-audio-setup`, `fish-audio:fish-audio-expressive-speech`,

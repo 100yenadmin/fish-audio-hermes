@@ -1,22 +1,50 @@
 """Explicit Fish Audio tools; ordinary read-aloud stays with Hermes TTS."""
+from pathlib import Path
+import unicodedata
 from uuid import uuid4
 
 from . import account_tool, client, hooks, media, models, settings, tags
 from . import pronunciations as pronunciation_tools
 from .models import MODELS
+from .output import _destination, _outputs, _copy_output
 from .secrets import fish_api_key
-from .tool_support import require, voice_id, run
+from .tool_support import require, voice_id, run_tool, ToolInputError
 
 BILLING = " Calls are billed to the user's Fish Audio account."
 SPEAK_DESCRIPTION = ("Use for expressive or multi-speaker speech with Fish Audio emotion cues like [excited] "
                      "or [whispering]. Voices accept saved names. For plain read-aloud use text_to_speech. "
                      "delivery voice sends a voice note, file an audio file; use one delivery per reply." + BILLING)
 
+OUTPUT_EXISTS = "Output exists; output_path never overwrites an existing file."
+
+
+def _speak_output(args):
+    value = args["output_path"]
+    require(isinstance(value, str) and bool(value.strip()), "output_path must be a non-empty string.")
+    require(not any(unicodedata.category(c) in {"Cc", "Zl", "Zp"} for c in value)
+            and "media:" not in value.lower(), "output_path must not contain control characters, line separators or MEDIA:.")
+    path = Path(value).expanduser()
+    require(".." not in path.parts, "output_path must not contain a .. path component.")
+    path = path.absolute()
+    outputs = _outputs(path, args.get("timestamps", False), option="output_path")
+    fmt = path.suffix.lower().lstrip(".")
+    require(fmt in {"ogg", "mp3", "wav"}, "output_path must end in .ogg, .mp3 or .wav.")
+    require(args.get("format", fmt) == fmt,
+            f"format {args.get('format')} does not match the output_path file name (.{fmt}).")
+    try:
+        from agent.file_safety import is_write_denied
+    except ImportError:
+        raise ToolInputError("output_path needs a newer Hermes; copy the file from file_path instead.") from None
+    for dest in outputs:
+        require(not is_write_denied(str(dest)), "output_path is a protected location. Choose a normal folder.")
+        _destination(dest, force=False, exists_message=OUTPUT_EXISTS)
+    return path, fmt
+
 
 def _speak(args, key, base, session, *, record_media=True):
     text = args.get("text")
     require(isinstance(text, str) and bool(text.strip()), "Nothing to say: the text is empty.")
-    fmt = args.get("format", "ogg")
+    target, fmt = _speak_output(args) if "output_path" in args else (None, args.get("format", "ogg"))
     require(fmt in {"ogg", "mp3", "wav"}, "format must be ogg, mp3 or wav.")
     delivery = args.get("delivery", "voice" if fmt in {"ogg", "mp3"} else None)
     require("delivery" not in args or delivery in ("voice", "file"), "delivery must be voice or file.")
@@ -119,35 +147,54 @@ def _speak(args, key, base, session, *, record_media=True):
             result.update(speech_timestamps(events, path))
         except Exception as exc:
             result["timestamps_error"] = f"The audio is ready, but its timestamps could not be processed ({type(exc).__name__})."
+    if target is not None:
+        try:
+            _copy_output(result, target, force=False, exists_message=OUTPUT_EXISTS)
+            for ext in ("srt", "vtt"):
+                if path.with_suffix("." + ext).is_file():
+                    result["out_" + ext + "_path"] = str(target.with_suffix("." + ext))
+        except Exception as exc:
+            result = {"success": False, "error":
+                      f"The audio is billed and saved at {path}; output_path failed: {exc}", "file_path": str(path)}
     return result
 
 
 def fish_speak(args, session_id="", task_id="", tool_call_id=""):
-    return run(_speak, args, session_id)
+    return run_tool("fish_speak", _speak, args, session_id)
 
 
 def fish_voices(args, session_id="", task_id="", tool_call_id=""):
     from .voices import execute
-    return run(execute, args, session_id)
+    return run_tool("fish_voices", execute, args, session_id)
 
 
 def fish_transcribe(args, session_id="", task_id="", tool_call_id=""):
     from .transcribe import execute
-    return run(execute, args, session_id)
+
+    def transcribe(fields, key, base, session):
+        require(not ("path" in fields and "file_path" in fields and fields["path"] != fields["file_path"]),
+                "Give file_path or path, not both.")
+        require("file_path" in fields or "path" in fields,
+                "file_path is required (the audio file to transcribe).")
+        normalized = {k: v for k, v in fields.items() if k != "path"}
+        normalized["file_path"] = fields.get("file_path", fields.get("path"))
+        return execute(normalized, key, base, session)
+    return run_tool("fish_transcribe", transcribe, args, session_id)
 
 
 def fish_settings(args, session_id="", task_id="", tool_call_id=""):
     from .settings_tool import execute
-    return run(execute, args, session_id, allow_no_key=isinstance(args, dict) and args.get("action") == "get")
+    return run_tool("fish_settings", execute, args, session_id,
+                    allow_no_key=isinstance(args, dict) and args.get("action") == "get")
 
 
 def fish_account(args, session_id="", task_id="", tool_call_id=""):
     from .account_tool import execute
-    return run(execute, args, session_id)
+    return run_tool("fish_account", execute, args, session_id)
 
 
 def fish_pronunciations(args, session_id="", task_id="", tool_call_id=""):
-    return run(pronunciation_tools.execute, args, session_id)
+    return run_tool("fish_pronunciations", pronunciation_tools.execute, args, session_id)
 
 
 def _field(typ, **constraints):
@@ -165,6 +212,7 @@ DICTIONARY_REFS = _field("array", maxItems=3, items=_field("object",
 SCHEMAS = {
     "fish_speak": {"text": S, "voice": VOICE_REF, "model": _field("string", enum=[r["id"] for r in MODELS], description="s1 is deprecated; from 2026-12-31 requests use s2.1-pro."),
         "format": _field("string", enum=["ogg", "mp3", "wav"], default="ogg"),
+        "output_path": _field("string", description="Optional file to also save the audio to (.ogg, .mp3 or .wav). Never overwrites an existing file. Voice delivery still sends the cached copy."),
         "delivery": _field("string", enum=["voice", "file"], description="voice: a voice note (ogg/mp3); file: an audio file, not a voice note; omitted keeps format-based delivery. Use one delivery per reply."),
         "language": _field("string", maxLength=35, pattern="^[A-Za-z0-9_-]*$", description="Spelling of numbers, dates and units, and word timestamps; never the voice."),
         "speakers": _field("array", items=VOICE_REF, minItems=2, maxItems=4),
@@ -192,7 +240,8 @@ SCHEMAS = {
         "guidance_scale": _field("number", minimum=0), "instruct_guidance_scale": _field("number", minimum=0),
         "n": _field("integer", minimum=1, maximum=4, default=2), "seed": _field("integer"),
         "speed": _field("number", exclusiveMinimum=0, maximum=3), "design_token": S},
-    "fish_transcribe": {"file_path": S, "model": _field("string", enum=["transcribe-1-pro", "transcribe-1"], default="transcribe-1-pro", description="transcribe-1 is deprecated; from 2026-12-31 requests use transcribe-1-pro."),
+    "fish_transcribe": {"file_path": S, "path": _field("string", description="Same as file_path."),
+        "model": _field("string", enum=["transcribe-1-pro", "transcribe-1"], default="transcribe-1-pro", description="transcribe-1 is deprecated; from 2026-12-31 requests use transcribe-1-pro."),
         "language": S, "timestamps": _field("boolean", default=True),
         "diarize": _field("string", enum=["auto", "true", "false"], default="auto"),
         "num_speakers": _field("integer", minimum=1), "min_speakers": _field("integer", minimum=1),
@@ -224,7 +273,7 @@ DESCRIPTIONS = {
     "fish_speak": SPEAK_DESCRIPTION,
     "fish_voices": "Search and manage Fish voices, clone with speaker consent, or design and save a voice; audition plays up to 4 voices reading one short passage (≤200 characters); each clip is a billed synthesis. On operator-managed agents, mine lists only the voices assigned through saved names (page, query and visibility do not apply there) and update/delete are refused." + BILLING,
     "fish_transcribe": "Transcribe local audio with speaker turns, emotion cues, timestamps and optional SRT." + BILLING}
-REQUIRED = {"fish_pronunciations": ["action"], "fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": ["file_path"]}
+REQUIRED = {"fish_pronunciations": ["action"], "fish_settings": ["action"], "fish_account": ["action"], "fish_speak": ["text"], "fish_voices": ["action"], "fish_transcribe": []}
 
 
 def register(ctx):
