@@ -8,13 +8,13 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import sys
 import tempfile
 import time
 
 from . import account, commands, models, settings
 from .errors import FishAudioError, response_error
+from .output import _destination, _outputs, _copy_output, _place_new
 from .secrets import fish_api_key, redact
 from .tool_support import require, run, ToolInputError
 from .tts import FishAudioTTSProvider
@@ -71,118 +71,6 @@ def setup(parser):
     parser.set_defaults(fish_parser=parser)
 
 
-def _destination(path, force):
-    # A symlinked folder (macOS /tmp) is fine: each file lands by link or replace, never written through a link.
-    require(not path.is_symlink(), "Output path must not be a symlink.")
-    require(path.parent.is_dir(), "Output parent directory is missing.")
-    require(os.access(path.parent, os.W_OK), "Output directory is not writable.")
-    require(not path.exists() or force and path.is_file(), "Output exists; use --force to replace a file.")
-
-
-def _outputs(target, timestamps):
-    """Every path --out may write: the audio, plus its subtitles when timestamps are on."""
-    require(target.suffix.lower() not in {".srt", ".vtt"}, "Use an audio file name for --out (not .srt or .vtt).")
-    return [target] + ([target.with_suffix(ext) for ext in (".srt", ".vtt")] if timestamps else [])
-
-
-def _copy_output(result, target, force):
-    source = Path(result["file_path"])
-    require(source.resolve() != target.resolve(), "Output must differ from the cached audio path.")
-    pairs = [(source, target)] + [(source.with_suffix(ext), target.with_suffix(ext))
-                                for ext in (".srt", ".vtt") if source.with_suffix(ext).is_file()]
-    for _, dest in pairs:
-        _destination(dest, force)
-    staged, placed = [], []  # placed: (dest, identity of the file this run put there)
-    try:
-        for src, dest in pairs:  # Stage every file first; a failure then removes only what this run placed.
-            temp_path, identity = _new_file(dest.parent / ".fish-tmp", src)
-            staged.append((temp_path, identity, dest))
-        for temp_path, identity, dest in staged:
-            if force:
-                os.replace(temp_path, dest)
-                placed.append((dest, identity))
-            else:
-                placed.append((dest, identity))  # recorded first: the link shares the staged file's identity
-                placed[-1] = (dest, _place_new(temp_path, dest, identity))
-    except Exception as exc:
-        if not force:
-            _remove_own(placed)
-        elif placed:
-            raise ToolInputError("Only some outputs were replaced: " + ", ".join(str(d) for d, _ in placed)) from exc
-        raise
-    except BaseException:  # Ctrl-C and exits pass through unchanged after cleanup
-        if not force:
-            _remove_own(placed)
-        raise
-    finally:
-        for temp_path, _, _ in staged:
-            temp_path.unlink(missing_ok=True)
-    result["out_path"] = str(target)
-
-
-def _identity(stat):
-    return stat.st_dev, stat.st_ino
-
-
-def _new_file(base, src):
-    """Create a fresh file next to its destination (mode 0666 minus the umask) holding src's bytes."""
-    for attempt in range(100):
-        path = base.with_name(f"{base.name}{attempt}")
-        try:
-            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
-        except FileExistsError:
-            continue
-        try:
-            with os.fdopen(descriptor, "wb") as out, src.open("rb") as data:
-                identity = _identity(os.fstat(out.fileno()))
-                shutil.copyfileobj(data, out)
-        except BaseException:
-            path.unlink(missing_ok=True)
-            raise
-        return path, identity
-    raise ToolInputError("Could not create a temporary output file.")
-
-
-def _remove_own(placed):
-    """Delete only files that are still exactly the ones this run created (same device and inode)."""
-    for dest, identity in placed:
-        try:
-            # POSIX has no unlink-if-inode; a file swapped in between these two calls is the accepted residue.
-            if identity is not None and _identity(os.lstat(dest)) == identity:
-                dest.unlink()
-        except OSError:  # cleanup never hides the original error
-            pass
-
-
-def _place_new(temp_path, dest, identity):
-    """Put a staged file at dest without replacing a file that appeared meanwhile; return its identity."""
-    try:
-        os.link(temp_path, dest)  # atomic, refuses an existing name, keeps the staged file's identity
-        return identity
-    except FileExistsError:
-        raise ToolInputError("Output exists; use --force to replace a file.") from None
-    except OSError:  # no hard links (exFAT, some network drives): exclusive create, then copy
-        pass
-    try:
-        _, created = _new_file_at(dest, temp_path)
-    except FileExistsError:
-        raise ToolInputError("Output exists; use --force to replace a file.") from None
-    return created
-
-
-def _new_file_at(path, src):
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
-    identity = None
-    try:
-        with os.fdopen(descriptor, "wb") as out, src.open("rb") as data:
-            identity = _identity(os.fstat(out.fileno()))
-            shutil.copyfileobj(data, out)
-    except BaseException:
-        _remove_own([(path, identity)])
-        raise
-    return path, identity
-
-
 def _script(args):
     from . import account_tool, tools, transcribe, voices
     command = args.fish_command
@@ -214,7 +102,8 @@ def _script(args):
             result = json.loads(run(operation, fields))
         if result.get("success") and command == "speak" and args.out:
             try:
-                _copy_output(result, Path(args.out), args.force)
+                _copy_output(result, Path(args.out), args.force,
+                             destination=_destination, place_new=_place_new)
             except Exception as exc:  # The speech is billed and cached: say where it is.
                 result = {"success": False, "error": f"The audio is billed and saved at {result['file_path']}; --out failed: {exc}",
                           "file_path": result["file_path"]}

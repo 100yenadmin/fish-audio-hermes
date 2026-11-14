@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.14.1 — 2026-11-14
+
+A fix for agents that pass arguments Fish's tools did not take.
+
+### Fixed
+
+- `fish_speak` accepts `output_path` for safe audio and subtitle copies, while delivery keeps the cached audio (#127).
+- `fish_transcribe` accepts `path` as an alias for `file_path`; conflicting sources are refused (#127).
+- Fish tools reject unknown parameters and name the accepted parameters instead of silently ignoring them (#127).
+
 ## 1.14.0 — 2026-11-11
 
 For developers, operators and every language: a scripting CLI, translate-and-voice, voice names in any script, a Desktop voice editor, and operator-mode voices.

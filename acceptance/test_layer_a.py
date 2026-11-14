@@ -604,6 +604,43 @@ def test_delivery(paid, request):
     assert result['refusal_calls'] == 0
 
 
+@pytest.mark.row('A-TOOL-OUTPUT-PATH')
+def test_output_path(paid, request):
+    target = paid.out / 'tmp' / 'output-path-row.mp3'
+    target.unlink(missing_ok=True)  # a transient-failure rerun starts from an empty target
+    code = '\n    '.join([
+        'import json, httpx; from tools.registry import registry',
+        'def call(name, args):',
+        '    raw = registry.dispatch(name, args)',
+        '    return json.loads(raw) if isinstance(raw, str) else raw',
+        'try:\n        from agent.file_safety import is_write_denied; guard = True\n    except ImportError:\n        guard = False',
+        f'results = {{"guard": guard, '
+        f'"first": call("fish_speak", {{"text": "Good morning.", "output_path": {str(target)!r}}})}}',
+        'calls = []; original = httpx.Client.send',
+        'def refuse_network(*args, **kwargs):',
+        '    calls.append(True); raise AssertionError("Unexpected Fish request")',
+        'httpx.Client.send = refuse_network',
+        'try:',
+        f'    results["again"] = call("fish_speak", {{"text": "Good morning.", "output_path": {str(target)!r}}})',
+        '    results["unknown"] = call("fish_speak", {"text": "Good morning.", "outputpath": "x.mp3"})',
+        'finally:',
+        '    httpx.Client.send = original',
+        'results["refusal_calls"] = len(calls)',
+        'print("ACCEPTANCE_RESULT=" + json.dumps(results))'])
+    result = core(paid, code)
+    evidence(request, paid, result)
+    first = result['first']
+    if not result['guard']:  # Hermes without agent.file_safety: output_path is refused before any billed call.
+        assert first == {'success': False, 'error': 'output_path needs a newer Hermes; copy the file from file_path instead.'}
+    else:
+        assert first.get('success') is True and first['out_path'] == str(target), scrub(first)
+        assert target.is_file() and target.stat().st_size > 0 and Path(first['file_path']) != target
+        assert first['media_tag'].endswith(f"MEDIA:{first['file_path']}")
+        assert result['again'] == {'success': False, 'error': 'Output exists; output_path never overwrites an existing file.'}
+    assert result['unknown']['success'] is False and 'outputpath' in result['unknown']['error']
+    assert result['refusal_calls'] == 0
+
+
 @pytest.mark.row('A-TTS-ALIGN')
 def test_tts_alignment(paid, request):
     code = '\n    '.join([
