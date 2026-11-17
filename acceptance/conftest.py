@@ -136,7 +136,7 @@ def build(host, ref):
             try:
                 call(['uv', 'sync', '--frozen', '--no-dev'], cwd=dest, env=env, timeout=600)
                 call(['uv', 'pip', 'install', '--python', dest / '.venv/bin/python',
-                      'msgpack>=1.0,<2', 'pytest==8.4.2', 'respx==0.22.0', 'pyyaml>=6,<7'], cwd=dest, env=env, timeout=300)
+                      'msgpack>=1.0,<2', 'pytest==9.0.3', 'respx==0.22.0', 'pyyaml>=6,<7'], cwd=dest, env=env, timeout=300)
                 marker.write_text(sha)
                 break
             except Exception as exc:
