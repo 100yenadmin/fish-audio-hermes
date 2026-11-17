@@ -131,13 +131,14 @@ def build(host, ref):
     env = {**build_env(), 'UV_CACHE_DIR': str(CACHE / 'uv'), 'UV_CONCURRENT_BUILDS': '1',
            'UV_CONCURRENT_INSTALLS': '2', 'UV_CONCURRENT_DOWNLOADS': '4', 'CMAKE_BUILD_PARALLEL_LEVEL': '4'}
     marker = dest / '.acceptance-built'
-    if not marker.exists():
+    pins = ['msgpack>=1.0,<2', 'pytest==9.0.3', 'respx==0.22.0', 'pyyaml>=6,<7']
+    stamp = '\n'.join([sha, *pins])  # a pin change rebuilds venvs cached before it
+    if not marker.exists() or marker.read_text() != stamp:
         for attempt in range(2):
             try:
                 call(['uv', 'sync', '--frozen', '--no-dev'], cwd=dest, env=env, timeout=600)
-                call(['uv', 'pip', 'install', '--python', dest / '.venv/bin/python',
-                      'msgpack>=1.0,<2', 'pytest==9.0.3', 'respx==0.22.0', 'pyyaml>=6,<7'], cwd=dest, env=env, timeout=300)
-                marker.write_text(sha)
+                call(['uv', 'pip', 'install', '--python', dest / '.venv/bin/python', *pins], cwd=dest, env=env, timeout=300)
+                marker.write_text(stamp)
                 break
             except Exception as exc:
                 if attempt == 1:
