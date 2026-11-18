@@ -513,6 +513,105 @@
         ]
       }
     },
+    "/apikey/revoke": {
+      "post": {
+        "summary": "Revoke publicly exposed API keys",
+        "description": "Anyone holding an API key's plaintext can permanently revoke it here.\nNo authentication is required; Authorization headers are ignored.\nValid requests always return the same empty 202, whether or not any\nkey matched. The creator and shared team's owner receive a security\nnotice. Invalid bodies return 422; each IP is limited to 60 requests\nper hour (429). Source and URL are logged for attribution only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeCredentials"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Request accepted, processing continues off-line",
+            "headers": {}
+          },
+          "422": {
+            "description": "",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The user has sent too many requests in a given amount of time (\"rate limiting\")",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpenAPI"
+        ]
+      }
+    },
     "/v1/asr": {
       "post": {
         "summary": "Speech to Text",
@@ -789,6 +888,541 @@
         },
         "tags": [
           "OpenAPI v1"
+        ]
+      }
+    },
+    "/v1/audio/infill": {
+      "post": {
+        "summary": "Audio Infill",
+        "description": "Regenerate part of a recording with drama-3 and get the whole take back.\nUse it to apply a script change to existing audio without re-recording it:\nsend the take, the full revised `transcript` and the range to replace.\ndrama-3 regenerates that range in the speaker's voice, taken from the audio\naround it, and returns the take with the new span in place.\n\nA request takes one of two shapes. Mixing them is a 400.\n\n## Edit a take\n\nSend `audio` with where the span to replace starts and ends. Frames\n`[prefix_frames, suffix_frames)` are regenerated; the audio before and after\nthem is kept.\n\n- Give each position in frames (`prefix_frames`, `suffix_frames`) or in\n  seconds (`prefix_seconds`, `suffix_seconds`). Each side takes one of the\n  two; both for the same side is a 400, and so is a side left out.\n- Positions are absolute, counted from the start of the take, at 44100 /\n  2048 (about 21.53) frames per second. Seconds are rounded to the nearest\n  frame: `frames = round(seconds \u00d7 44100 / 2048)`.\n- `prefix_frames` equal to `suffix_frames` inserts new speech at that point.\n- Some original audio has to stay: `prefix_frames` 0 together with\n  `suffix_frames` at the end of the take is a 400. For the best results keep\n  at least 0.75 s on each side and replace at least 0.2 s.\n\n## Join two clips\n\nSend `prefix_audio` and, optionally, `suffix_audio`. drama-3 generates the\nspeech between them; with `prefix_audio` alone it continues the clip. No\npositions are needed. `suffix_audio` without `prefix_audio` is a 400.\n\n## Length of the new span\n\nThe model decides how long the regenerated span is, up to 1024 frames\n(about 47 s). There is no way to request an exact length yet, so the span\ncan come out shorter or longer than the speech it replaces.\n\n## Response\n\nThe whole take as one audio file in `format`. The kept parts are\nre-synthesized together with the new span rather than copied byte for byte.\n\nSend `Accept: text/event-stream` to receive server-sent events instead:\n`start` (with `middle_start_seconds`), then `audio.delta` events whose\nbase64 `audio` fields concatenate into the same file, then `done` (with\n`output_frames`, `middle_end_seconds` and `total_seconds`), then `[DONE]`.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "model",
+            "description": "The model that regenerates the span. Only `drama-3` serves this endpoint.",
+            "required": true,
+            "schema": {
+              "const": "drama-3",
+              "title": "Model",
+              "type": "string"
+            },
+            "deprecated": false
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "transcript": {
+                    "description": "The full text of the result: the kept audio before the change, the new span and the kept audio after it, with the edit already applied. Sent to the model as written, without text normalization.",
+                    "title": "Transcript",
+                    "type": "string"
+                  },
+                  "audio": {
+                    "anyOf": [
+                      {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: the whole recording to edit. Requires the start of the span (`prefix_frames` or `prefix_seconds`) and its end (`suffix_frames` or `suffix_seconds`). Do not combine with `prefix_audio` / `suffix_audio`.",
+                    "title": "Audio"
+                  },
+                  "prefix_frames": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: the frame where the regenerated span starts. Everything before it is kept. A whole number of frames at 44100 / 2048 (about 21.53) frames per second; 0 keeps nothing before the span. Give this or `prefix_seconds`, not both.",
+                    "title": "Prefix Frames"
+                  },
+                  "prefix_seconds": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: `prefix_frames` given in seconds from the start of the take, rounded to the nearest frame. Give this or `prefix_frames`, not both.",
+                    "title": "Prefix Seconds"
+                  },
+                  "suffix_frames": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: the frame where the regenerated span ends and the kept audio resumes. Equal to `prefix_frames` inserts new speech at that point; the take's length keeps nothing after the span. Give this or `suffix_seconds`, not both.",
+                    "title": "Suffix Frames"
+                  },
+                  "suffix_seconds": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: `suffix_frames` given in seconds from the start of the take, rounded to the nearest frame. Give this or `suffix_frames`, not both.",
+                    "title": "Suffix Seconds"
+                  },
+                  "prefix_audio": {
+                    "anyOf": [
+                      {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Join two clips: the clip before the generated speech. Alone, the model continues it.",
+                    "title": "Prefix Audio"
+                  },
+                  "suffix_audio": {
+                    "anyOf": [
+                      {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Join two clips: the clip after the generated speech. Requires `prefix_audio`.",
+                    "title": "Suffix Audio"
+                  },
+                  "format": {
+                    "default": "mp3",
+                    "description": "Output audio format.",
+                    "enum": [
+                      "wav",
+                      "pcm",
+                      "mp3",
+                      "opus"
+                    ],
+                    "title": "Format",
+                    "type": "string"
+                  },
+                  "sample_rate": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Audio sample rate in Hz. When null, uses the format's default (44100 Hz for most formats, 48000 Hz for opus).",
+                    "title": "Sample Rate"
+                  },
+                  "mp3_bitrate": {
+                    "default": 128,
+                    "description": "MP3 bitrate in kbps. Only applies when format is mp3.",
+                    "enum": [
+                      64,
+                      128,
+                      192
+                    ],
+                    "title": "Mp3 Bitrate",
+                    "type": "integer"
+                  },
+                  "opus_bitrate": {
+                    "default": -1000,
+                    "description": "Opus bitrate in bps. -1000 for automatic. Only applies when format is opus.",
+                    "enum": [
+                      -1000,
+                      24000,
+                      32000,
+                      48000,
+                      64000
+                    ],
+                    "title": "Opus Bitrate",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "transcript"
+                ],
+                "type": "object"
+              }
+            },
+            "application/msgpack": {
+              "schema": {
+                "properties": {
+                  "transcript": {
+                    "description": "The full text of the result: the kept audio before the change, the new span and the kept audio after it, with the edit already applied. Sent to the model as written, without text normalization.",
+                    "title": "Transcript",
+                    "type": "string"
+                  },
+                  "audio": {
+                    "anyOf": [
+                      {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: the whole recording to edit. Requires the start of the span (`prefix_frames` or `prefix_seconds`) and its end (`suffix_frames` or `suffix_seconds`). Do not combine with `prefix_audio` / `suffix_audio`.",
+                    "title": "Audio"
+                  },
+                  "prefix_frames": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: the frame where the regenerated span starts. Everything before it is kept. A whole number of frames at 44100 / 2048 (about 21.53) frames per second; 0 keeps nothing before the span. Give this or `prefix_seconds`, not both.",
+                    "title": "Prefix Frames"
+                  },
+                  "prefix_seconds": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: `prefix_frames` given in seconds from the start of the take, rounded to the nearest frame. Give this or `prefix_frames`, not both.",
+                    "title": "Prefix Seconds"
+                  },
+                  "suffix_frames": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: the frame where the regenerated span ends and the kept audio resumes. Equal to `prefix_frames` inserts new speech at that point; the take's length keeps nothing after the span. Give this or `suffix_seconds`, not both.",
+                    "title": "Suffix Frames"
+                  },
+                  "suffix_seconds": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Edit a take: `suffix_frames` given in seconds from the start of the take, rounded to the nearest frame. Give this or `suffix_frames`, not both.",
+                    "title": "Suffix Seconds"
+                  },
+                  "prefix_audio": {
+                    "anyOf": [
+                      {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Join two clips: the clip before the generated speech. Alone, the model continues it.",
+                    "title": "Prefix Audio"
+                  },
+                  "suffix_audio": {
+                    "anyOf": [
+                      {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Join two clips: the clip after the generated speech. Requires `prefix_audio`.",
+                    "title": "Suffix Audio"
+                  },
+                  "format": {
+                    "default": "mp3",
+                    "description": "Output audio format.",
+                    "enum": [
+                      "wav",
+                      "pcm",
+                      "mp3",
+                      "opus"
+                    ],
+                    "title": "Format",
+                    "type": "string"
+                  },
+                  "sample_rate": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Audio sample rate in Hz. When null, uses the format's default (44100 Hz for most formats, 48000 Hz for opus).",
+                    "title": "Sample Rate"
+                  },
+                  "mp3_bitrate": {
+                    "default": 128,
+                    "description": "MP3 bitrate in kbps. Only applies when format is mp3.",
+                    "enum": [
+                      64,
+                      128,
+                      192
+                    ],
+                    "title": "Mp3 Bitrate",
+                    "type": "integer"
+                  },
+                  "opus_bitrate": {
+                    "default": -1000,
+                    "description": "Opus bitrate in bps. -1000 for automatic. Only applies when format is opus.",
+                    "enum": [
+                      -1000,
+                      24000,
+                      32000,
+                      48000,
+                      64000
+                    ],
+                    "title": "Opus Bitrate",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "transcript"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {
+              "Transfer-Encoding": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "chunked"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No permission -- see authorization schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "No payment -- see charging schemes",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server cannot process the request due to a high load",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Reason"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpenAPI v1"
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "bash",
+            "label": "Edit a Take",
+            "source": "curl --request POST \\\n  --url https://api.fish.audio/v1/audio/infill \\\n  --header 'Authorization: Bearer <token>' \\\n  --header 'model: drama-3' \\\n  --form 'audio=@take.wav' \\\n  --form-string 'transcript=Next, load the wafer into chamber B and run the standard CVD recipe.' \\\n  --form 'prefix_frames=45' \\\n  --form 'suffix_frames=62' \\\n  --form 'format=mp3' \\\n  --output edited.mp3"
+          },
+          {
+            "lang": "bash",
+            "label": "Edit a Take (Seconds)",
+            "source": "curl --request POST \\\n  --url https://api.fish.audio/v1/audio/infill \\\n  --header 'Authorization: Bearer <token>' \\\n  --header 'model: drama-3' \\\n  --form 'audio=@take.wav' \\\n  --form-string 'transcript=Next, load the wafer into chamber B and run the standard CVD recipe.' \\\n  --form 'prefix_seconds=2.1' \\\n  --form 'suffix_seconds=2.9' \\\n  --form 'format=mp3' \\\n  --output edited.mp3"
+          },
+          {
+            "lang": "bash",
+            "label": "Join Two Clips",
+            "source": "curl --request POST \\\n  --url https://api.fish.audio/v1/audio/infill \\\n  --header 'Authorization: Bearer <token>' \\\n  --header 'model: drama-3' \\\n  --form 'prefix_audio=@first.wav' \\\n  --form 'suffix_audio=@second.wav' \\\n  --form-string 'transcript=Close the chamber door. Wait for the pressure to stabilize. Then start the recipe.' \\\n  --form 'format=mp3' \\\n  --output joined.mp3"
+          }
         ]
       }
     },
@@ -7590,6 +8224,51 @@
   },
   "components": {
     "schemas": {
+      "RevokeCredentials": {
+        "properties": {
+          "credentials": {
+            "items": {
+              "maxLength": 256,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Credentials",
+            "type": "array"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "credentials"
+        ],
+        "title": "RevokeCredentials",
+        "type": "object"
+      },
       "ASRSegment": {
         "properties": {
           "text": {
@@ -10204,7 +10883,7 @@
   },
   "x-source": {
     "url": "https://docs.fish.audio/api-reference/openapi.json",
-    "sha256": "698642cc0dd247e854fa9711b7d1d26916770ad466e2ae77dc9d983379dc5647",
-    "fetch_date": "2026-11-09"
+    "sha256": "1a10146e355d006428025bd15a71ff2baa22d9141d7a56e71b9690113a81ef0f",
+    "fetch_date": "2026-11-18"
   }
 }

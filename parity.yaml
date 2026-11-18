@@ -5587,6 +5587,575 @@ entries:
 - {"path": "/v1/pronunciation-dictionaries/{dictionary_id}/versions/{version_id}/compare", "method": "get", "location": "response", "field": "status", "surface": "Fish web dictionary editor", "status": "excluded", "spec": {"type": "integer", "enum": null, "required": true, "responses": {"401": {"type": "integer", "enum": null, "required": true}, "403": {"type": "integer", "enum": null, "required": true}, "404": {"type": "integer", "enum": null, "required": true}, "422": {"type": "integer", "enum": null, "required": true}, "503": {"type": "integer", "enum": null, "required": true}}}, "reason": "Metadata updates and version comparisons are outside the dictionary lifecycle tool scope; use the Fish web editor."}
 - {"path": "/v1/pronunciation-dictionaries/{dictionary_id}/versions/{version_id}/compare", "method": "get", "location": "response", "field": "message", "surface": "Fish web dictionary editor", "status": "excluded", "spec": {"type": "string", "enum": null, "required": true, "responses": {"401": {"type": "string", "enum": null, "required": true}, "403": {"type": "string", "enum": null, "required": true}, "404": {"type": "string", "enum": null, "required": true}, "422": {"type": "string", "enum": null, "required": true}, "503": {"type": "string", "enum": null, "required": true}}}, "reason": "Metadata updates and version comparisons are outside the dictionary lifecycle tool scope; use the Fish web editor."}
 - {"path": "/v1/pronunciation-dictionaries/{dictionary_id}/versions/{version_id}/compare", "method": "get", "location": "response", "field": "reason", "surface": "Fish web dictionary editor", "status": "excluded", "spec": {"type": ["null", "string"], "enum": null, "required": false, "responses": {"401": {"type": ["null", "string"], "enum": null, "required": false}, "403": {"type": ["null", "string"], "enum": null, "required": false}, "404": {"type": ["null", "string"], "enum": null, "required": false}, "422": {"type": ["null", "string"], "enum": null, "required": false}, "503": {"type": ["null", "string"], "enum": null, "required": false}}}, "reason": "Metadata updates and version comparisons are outside the dictionary lifecycle tool scope; use the Fish web editor."}
+- path: /apikey/revoke
+  method: post
+  location: json
+  field: credentials
+  surface: 'Not exposed: public endpoint for revoking a key someone else exposed'
+  status: excluded
+  tests: []
+  spec:
+    type: array
+    enum: null
+    required: true
+  reason: Anyone who finds an exposed key revokes it here without signing in; the
+    plugin only uses the profile's own key, which users delete on fish.audio.
+- path: /apikey/revoke
+  method: post
+  location: json
+  field: source
+  surface: 'Not exposed: public endpoint for revoking a key someone else exposed'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: Anyone who finds an exposed key revokes it here without signing in; the
+    plugin only uses the profile's own key, which users delete on fish.audio.
+- path: /apikey/revoke
+  method: post
+  location: json
+  field: url
+  surface: 'Not exposed: public endpoint for revoking a key someone else exposed'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: Anyone who finds an exposed key revokes it here without signing in; the
+    plugin only uses the profile's own key, which users delete on fish.audio.
+- path: /apikey/revoke
+  method: post
+  location: response
+  field: message
+  surface: 'Not exposed: public endpoint for revoking a key someone else exposed'
+  status: excluded
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '422':
+        type: string
+        enum: null
+        required: true
+      '429':
+        type: string
+        enum: null
+        required: true
+  reason: Anyone who finds an exposed key revokes it here without signing in; the
+    plugin only uses the profile's own key, which users delete on fish.audio.
+- path: /apikey/revoke
+  method: post
+  location: response
+  field: reason
+  surface: 'Not exposed: public endpoint for revoking a key someone else exposed'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '422':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '429':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+  reason: Anyone who finds an exposed key revokes it here without signing in; the
+    plugin only uses the profile's own key, which users delete on fish.audio.
+- path: /apikey/revoke
+  method: post
+  location: response
+  field: status
+  surface: 'Not exposed: public endpoint for revoking a key someone else exposed'
+  status: excluded
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '422':
+        type: integer
+        enum: null
+        required: true
+      '429':
+        type: integer
+        enum: null
+        required: true
+  reason: Anyone who finds an exposed key revokes it here without signing in; the
+    plugin only uses the profile's own key, which users delete on fish.audio.
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: audio
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: format
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: string
+    enum:
+    - mp3
+    - opus
+    - pcm
+    - wav
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: mp3_bitrate
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - 128
+    - 192
+    - 64
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: opus_bitrate
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - -1000
+    - 24000
+    - 32000
+    - 48000
+    - 64000
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: prefix_audio
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: prefix_frames
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: prefix_seconds
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - number
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: sample_rate
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: suffix_audio
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: suffix_frames
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: suffix_seconds
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - number
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: form
+  field: transcript
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: header
+  field: model
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: string
+    enum:
+    - drama-3
+    required: true
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: audio
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: format
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: string
+    enum:
+    - mp3
+    - opus
+    - pcm
+    - wav
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: mp3_bitrate
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - 128
+    - 192
+    - 64
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: opus_bitrate
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: integer
+    enum:
+    - -1000
+    - 24000
+    - 32000
+    - 48000
+    - 64000
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: prefix_audio
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: prefix_frames
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: prefix_seconds
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - number
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: sample_rate
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: suffix_audio
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: suffix_frames
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - integer
+    - 'null'
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: suffix_seconds
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - number
+    enum: null
+    required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: msgpack
+  field: transcript
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: response
+  field: message
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: string
+    enum: null
+    required: true
+    responses:
+      '400':
+        type: string
+        enum: null
+        required: true
+      '401':
+        type: string
+        enum: null
+        required: true
+      '402':
+        type: string
+        enum: null
+        required: true
+      '503':
+        type: string
+        enum: null
+        required: true
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: response
+  field: reason
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type:
+    - 'null'
+    - string
+    enum: null
+    required: false
+    responses:
+      '400':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '401':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '402':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+      '503':
+        type:
+        - 'null'
+        - string
+        enum: null
+        required: false
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
+- path: /v1/audio/infill
+  method: post
+  location: response
+  field: status
+  surface: 'Not exposed yet (audio infill is tracked in #145)'
+  status: excluded
+  tests: []
+  spec:
+    type: integer
+    enum: null
+    required: true
+    responses:
+      '400':
+        type: integer
+        enum: null
+        required: true
+      '401':
+        type: integer
+        enum: null
+        required: true
+      '402':
+        type: integer
+        enum: null
+        required: true
+      '503':
+        type: integer
+        enum: null
+        required: true
+  reason: 'Audio infill is not built; planned in #145 (Later milestone).'
 doc_only:
 - field: asr_realtime
   surface: 'Live dictation: native realtime STT (transcribe-stream-1), MessagePack, manual turns, drafts'

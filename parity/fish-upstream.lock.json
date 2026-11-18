@@ -1,5 +1,5 @@
 {
-  "fetch_date": "2026-10-30",
+  "fetch_date": "2026-11-18",
   "fish_audio_api_skill_sha256": "ae871b04b28045d716b57d3d903500a4958b96d4747155dbc95481caacdf6027",
   "known_model_ids": [
     "drama-3",
@@ -21,6 +21,7 @@
     "Fish Audio S2",
     "Fish Audio S2.1 Pro",
     "More normalization languages",
+    "Swedish and Malay normalization",
     "TTS language field",
     "Transcribe 1 Pro",
     "transcribe-1 retirement",
