@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Development only, nothing in the installed plugin changes: pytest 9.0.3 for CI and the acceptance harness (whose cached test environments now rebuild when these pins change), and newer undici, vite and vitest for the Desktop build tools.
+
 ## 1.14.1 — 2026-11-14
 
 A fix for agents that pass arguments Fish's tools did not take.

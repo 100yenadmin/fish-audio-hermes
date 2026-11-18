@@ -54,6 +54,14 @@ CI also checks the plugin inside pinned Hermes builds (`hermes plugins validate`
 - Never commit secrets, tokens, real user data, or machine-specific paths.
 - Tests use a temporary `HERMES_HOME`, never a real one.
 
+## Release closeout (required after every release, rc promoted to stable, or GA tag)
+
+After the release is published and its receipt sent:
+1. Close every issue the release fully served, with a comment naming the version (never an umbrella/parent issue whose own acceptance is not met).
+2. Tick the boxes it completed on ROADMAP.md / VISION.md, roadmap or tracking issues, and closed issues whose checklists shipped; close a milestone once all its issues are closed. Here the roadmap is issue #104.
+3. Update every README / ROADMAP line that names the latest release or what ships next.
+4. Send the Plugin Manager one closeout line: issues closed, boxes ticked, docs updated (or "none").
+
 ## Filing issues
 
 - Search first: save the key words to a file, then run `gh issue list -R 100yenadmin/fish-audio-hermes --state all --search "$(cat '<search file>')"`. Model-written words never go into the command itself, where quotes or `$` would break or expand it. If `cat` prints an error or the file is empty, the results are not matches; fix the file and search again.
