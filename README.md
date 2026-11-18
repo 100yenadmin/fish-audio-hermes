@@ -43,6 +43,7 @@ remove it first (`hermes plugins remove fish-audio`), then run the first line. I
 **Contents:** [What you get](#what-you-get) · [Setup](#setup) · [Use](#use) · [Hermes Desktop](#hermes-desktop) ·
 [Configuration](#configuration) · [Disclosure](#disclosure) · [Troubleshooting and reporting a bug](#troubleshooting-and-reporting-a-bug) ·
 [Known limitations](#known-limitations) · [Releases](https://github.com/100yenadmin/fish-audio-hermes/releases) ·
+[Roadmap (#104)](https://github.com/100yenadmin/fish-audio-hermes/issues/104) · [Vision](VISION.md) ·
 [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md) · [License](LICENSE)
 
 `--yes-deps` installs the plugin's Python dependencies without asking. Without it, Hermes 0.21.6 and newer asks

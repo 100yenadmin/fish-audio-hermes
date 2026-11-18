@@ -42,6 +42,8 @@ npm run check:bundle   # the committed desktop bundle must match the source
 
 CI also checks the plugin inside pinned Hermes builds (`hermes plugins validate`, SDK and loader checks). Leave those to CI.
 
+Required checks on main (ruleset `required-ci`): the six `Unit (…)` jobs, `Desktop half (types, tests, bundle, SDK surface, loader scan)`, `Offline acceptance harness`, and `Against Hermes (catalog)`, `(floor)`, `(release)` and `(main)`. Renaming any of these jobs means updating the ruleset in the same change.
+
 ## Rules
 
 - Keep each change small and focused: one change per PR.
@@ -58,9 +60,11 @@ CI also checks the plugin inside pinned Hermes builds (`hermes plugins validate`
 
 After the release is published and its receipt sent:
 1. Close every issue the release fully served, with a comment naming the version (never an umbrella/parent issue whose own acceptance is not met).
-2. Tick the boxes it completed on ROADMAP.md / VISION.md, roadmap or tracking issues, and closed issues whose checklists shipped; close a milestone once all its issues are closed. Here the roadmap is issue #104.
+2. Tick the boxes it completed on ROADMAP.md / VISION.md, roadmap or tracking issues, and closed issues whose checklists shipped; close a milestone once all its issues are closed.
 3. Update every README / ROADMAP line that names the latest release or what ships next.
-4. Send the Plugin Manager one closeout line: issues closed, boxes ticked, docs updated (or "none").
+4. Post one closeout line as a comment on the release pull request: issues closed, boxes ticked, docs updated (or "none").
+
+Here the roadmap is the pinned issue #104, and the vision is VISION.md.
 
 ## Filing issues
 
