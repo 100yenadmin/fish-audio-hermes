@@ -68,10 +68,10 @@ Here the roadmap is the pinned issue #104, and the vision is VISION.md.
 
 ## Filing issues
 
-- Search first: save the key words to a file, then run `gh issue list -R 100yenadmin/fish-audio-hermes --state all --search "$(cat '<search file>')"`. Model-written words never go into the command itself, where quotes or `$` would break or expand it. If `cat` prints an error or the file is empty, the results are not matches; fix the file and search again.
+- Search first: save the key words to a file, then run `gh issue list -R fishaudio/fish-audio-hermes --state all --search "$(cat '<search file>')"`. Model-written words never go into the command itself, where quotes or `$` would break or expand it. If `cat` prints an error or the file is empty, the results are not matches; fix the file and search again.
 - Use the bug form headings: What happened, What you expected, Steps to reproduce, Plugin version, Hermes version, Where it happened, Operating system, Diagnostics, Relevant log lines.
 - Maintainers filing from the CLI always pass labels: `--label bug,triage-pending` (or `triaged` once triaged), plus `agent-drafted` when an agent wrote it.
 
 ## Security
 
-Report vulnerabilities privately: https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new
+Report vulnerabilities privately: https://github.com/fishaudio/fish-audio-hermes/security/advisories/new

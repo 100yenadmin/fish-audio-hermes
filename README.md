@@ -5,15 +5,15 @@
 **Your Hermes agent speaks and listens with Fish Audio: expressive voices in 80+ languages, voice design, live dictation.**
 
 The official [Fish Audio](https://fish.audio) plugin for [Hermes Agent](https://github.com/NousResearch/hermes-agent),
-maintained by Electric Sheep. It works in the Hermes CLI, every messaging app Hermes supports and the Desktop app.
+maintained by the Fish Audio team. It works in the Hermes CLI, every messaging app Hermes supports and the Desktop app.
 
-[![Latest release](https://img.shields.io/github/v/release/100yenadmin/fish-audio-hermes)](https://github.com/100yenadmin/fish-audio-hermes/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/fishaudio/fish-audio-hermes)](https://github.com/fishaudio/fish-audio-hermes/releases/latest)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Hermes >= 0.21.5](https://img.shields.io/badge/Hermes-%E2%89%A5%200.21.5-6f42c1)](https://github.com/NousResearch/hermes-agent)
-[![CI](https://github.com/100yenadmin/fish-audio-hermes/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/100yenadmin/fish-audio-hermes/actions/workflows/ci.yml)
+[![CI](https://github.com/fishaudio/fish-audio-hermes/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fishaudio/fish-audio-hermes/actions/workflows/ci.yml)
 
 ```bash
-hermes plugins install 100yenadmin/fish-audio-hermes --enable --yes-deps
+hermes plugins install fishaudio/fish-audio-hermes --enable --yes-deps
 hermes fish login        # paste your key from https://fish.audio/app/api-keys
 ```
 
@@ -42,8 +42,8 @@ remove it first (`hermes plugins remove fish-audio`), then run the first line. I
 
 **Contents:** [What you get](#what-you-get) · [Setup](#setup) · [Use](#use) · [Hermes Desktop](#hermes-desktop) ·
 [Configuration](#configuration) · [Disclosure](#disclosure) · [Troubleshooting and reporting a bug](#troubleshooting-and-reporting-a-bug) ·
-[Known limitations](#known-limitations) · [Releases](https://github.com/100yenadmin/fish-audio-hermes/releases) ·
-[Roadmap (#104)](https://github.com/100yenadmin/fish-audio-hermes/issues/104) · [Vision](VISION.md) ·
+[Known limitations](#known-limitations) · [Releases](https://github.com/fishaudio/fish-audio-hermes/releases) ·
+[Roadmap (#104)](https://github.com/fishaudio/fish-audio-hermes/issues/104) · [Vision](VISION.md) ·
 [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md) · [License](LICENSE)
 
 `--yes-deps` installs the plugin's Python dependencies without asking. Without it, Hermes 0.21.6 and newer asks
@@ -214,7 +214,7 @@ switch on **Desktop**, and restart the gateway once.
 
 For Desktop connected to an agent on another machine, install from Desktop:
 
-1. Open **Capabilities → Plugins → Install from Git**, enter `https://github.com/100yenadmin/fish-audio-hermes`,
+1. Open **Capabilities → Plugins → Install from Git**, enter `https://github.com/fishaudio/fish-audio-hermes`,
    choose **Review repository**, then **Install**. Desktop installs the agent half into the connected agent and
    the desktop half on this computer.
 2. On Desktop 0.21.7 and newer, **Install** with **Enable after install** also switches on the desktop half. On
@@ -474,10 +474,10 @@ Plain `hermes fish doctor` makes a billed synthesis; only run it with the user's
 Ask your Hermes agent to "report a problem with Fish Audio": it drafts a report and files nothing until you approve the draft.
 On Hermes older than 0.21.6, plugin skills are not in the agent's system prompt; ask the agent to load the skill
 `fish-audio:fish-audio-report-problem` by that name (it appears in `skills_list`).
-Use the [bug report form](https://github.com/100yenadmin/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
-Report security problems through the [private advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
+Use the [bug report form](https://github.com/fishaudio/fish-audio-hermes/issues/new?template=bug_report.yml), with versions and short, redacted logs.
+Report security problems through the [private advisory form](https://github.com/fishaudio/fish-audio-hermes/security/advisories/new).
 
-Releases and notes: [Releases](https://github.com/100yenadmin/fish-audio-hermes/releases) · [CHANGELOG](CHANGELOG.md). To contribute, see [CONTRIBUTING](CONTRIBUTING.md).
+Releases and notes: [Releases](https://github.com/fishaudio/fish-audio-hermes/releases) · [CHANGELOG](CHANGELOG.md). To contribute, see [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Known limitations
 
@@ -503,7 +503,7 @@ multi-speaker speech and Drama 3 word tags
 
 ## License
 
-Apache-2.0. Maintained by [Electric Sheep](https://github.com/100yenadmin) with the Fish Audio team.
+Apache-2.0. Maintained by [Fish Audio](https://github.com/fishaudio).
 Fish Audio is a trademark of Hanabi AI Inc.
 
 ## Development

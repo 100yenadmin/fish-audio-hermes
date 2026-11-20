@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **New home:** the repository is now [fishaudio/fish-audio-hermes](https://github.com/fishaudio/fish-audio-hermes), maintained by Fish Audio. The install command, the `plugin.yaml` and package homepage, the issue and advisory links and the report-a-problem skill use the new address; the `plugin.yaml` author and the README credit name Fish Audio, and the license notice names 39 AI, Inc. GitHub redirects links and `git` from the old 100yenadmin address, so existing installs and links keep working.
 - Development only, nothing in the installed plugin changes: pytest 9.0.3 for CI and the acceptance harness (whose cached test environments now rebuild when these pins change), and newer undici, vite and vitest for the Desktop build tools.
 
 ## 1.14.1 — 2026-11-14
