@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.14.2 — 2026-11-21
+
+Official Fish Audio repository release; no behaviour changes.
+
+- **Official repository:** this plugin is now hosted at [fishaudio/fish-audio-hermes](https://github.com/fishaudio/fish-audio-hermes) and maintained by Fish Audio. The install command, `plugin.yaml` author and homepage, package homepage, issue and security advisory links, and the `fish-audio-report-problem` skill all point to the official repository, and the license notice names 39 AI, Inc. GitHub redirects links and `git` from the previous repository address, so existing installs and links keep working.
 - Development only, nothing in the installed plugin changes: pytest 9.0.3 for CI and the acceptance harness (whose cached test environments now rebuild when these pins change), and newer undici, vite and vitest for the Desktop build tools.
 
 ## 1.14.1 — 2026-11-14
@@ -57,7 +62,7 @@ For creators: auditions, voice notes or files, and long-form chapters.
 ## 1.12.1 — 2026-11-10
 
 Documentation only; no behaviour changes.
-- **README:** the first install line is now `hermes plugins install 100yenadmin/fish-audio-hermes --enable --yes-deps`,
+- **README:** the first install line is now `hermes plugins install fishaudio/fish-audio-hermes --enable --yes-deps`,
   which installs the latest release (on Hermes 0.21.5, leave out `--yes-deps`); the catalog name comes second, with the Hermes 0.23.0 note
   (it installs an older in-tree copy there for now). The README opens with what the plugin does, release, license,
   Hermes and CI badges, a three-step "Try it" ending with `/fish setup` and `/fish preview`, and a contents line. New

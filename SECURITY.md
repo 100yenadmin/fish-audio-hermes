@@ -1,6 +1,6 @@
 # Security policy
 
-Report privately using [the GitHub advisory form](https://github.com/100yenadmin/fish-audio-hermes/security/advisories/new).
+Report privately using [the GitHub advisory form](https://github.com/fishaudio/fish-audio-hermes/security/advisories/new).
 We aim to acknowledge reports within 3 business days and to share a decision or fix plan within 14 days.
 
 ## Scope
