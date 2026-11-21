@@ -35,5 +35,5 @@ Phone agents (Fish's agent API) stay in Later, and only if Fish funds them.
 
 ## Roadmap
 
-The pinned issue [#104](https://github.com/100yenadmin/fish-audio-hermes/issues/104) is the roadmap: what shipped, what
+The pinned issue [#104](https://github.com/fishaudio/fish-audio-hermes/issues/104) is the roadmap: what shipped, what
 is next, and the Later milestone.

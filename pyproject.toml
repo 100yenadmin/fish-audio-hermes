@@ -1,6 +1,6 @@
 [project]
 name = "fish-audio-hermes"
-version = "1.14.1"
+version = "1.14.2"
 description = "Fish Audio plugin for Hermes Agent"
 readme = "README.md"
 license = "Apache-2.0"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/100yenadmin/fish-audio-hermes"
+Homepage = "https://github.com/fishaudio/fish-audio-hermes"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
